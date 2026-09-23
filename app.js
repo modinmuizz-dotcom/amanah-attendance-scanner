@@ -55,11 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
   showScreen('scannerScreen');
 
   setStatus(
-    'Camera ready. Point it at the AMANAH company QR code.',
+    'Tap OPEN CAMERA to begin.',
     'info'
   );
-
-  startScanner();
 });
 
 
