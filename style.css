@@ -1,0 +1,291 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #eef2f7;
+  color: #172033;
+}
+
+.app {
+  max-width: 600px;
+  margin: auto;
+  min-height: 100vh;
+}
+
+.header {
+  background: #0b1f3a;
+  color: white;
+  padding: 22px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.15);
+}
+
+.logo-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0b1f3a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.header p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  opacity: .85;
+}
+
+main {
+  padding: 18px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.08);
+}
+
+.card h2 {
+  margin-top: 0;
+  text-align: center;
+  font-size: 22px;
+}
+
+.instruction,
+.card > p {
+  text-align: center;
+  color: #667085;
+}
+
+.step {
+  text-align: center;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+#reader {
+  width: 100%;
+  max-width: 420px;
+  margin: 20px auto;
+  overflow: hidden;
+  border-radius: 15px;
+}
+
+.status-message {
+  text-align: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #1d4ed8;
+  font-size: 14px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 15px;
+  margin: 8px 0 16px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+  background: white;
+}
+
+input:focus,
+select:focus {
+  border-color: #1d4ed8;
+}
+
+.selection-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.selection-item {
+  width: 100%;
+  padding: 15px;
+  margin: 7px 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.selection-item:hover {
+  background: #eef4ff;
+  border-color: #1d4ed8;
+}
+
+.selection-item strong {
+  display: block;
+  font-size: 16px;
+}
+
+.selection-item small {
+  color: #667085;
+}
+
+.action-buttons,
+.fuel-choice {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  flex: 1;
+}
+
+.btn-in {
+  background: #16a34a;
+  color: white;
+}
+
+.btn-out {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-yes {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-no {
+  background: #64748b;
+  color: white;
+}
+
+.btn-save {
+  width: 100%;
+  background: #0b1f3a;
+  color: white;
+  margin-top: 10px;
+}
+
+.btn-again {
+  width: 100%;
+  background: #0b1f3a;
+  color: white;
+}
+
+.back-button {
+  border: none;
+  background: transparent;
+  color: #475467;
+  padding: 12px 0 0;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.summary {
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+.summary div {
+  padding: 9px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summary div:last-child {
+  border-bottom: none;
+}
+
+.summary span {
+  display: block;
+  color: #667085;
+  font-size: 11px;
+}
+
+.summary strong {
+  display: block;
+  margin-top: 3px;
+}
+
+.success-icon,
+.error-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  margin: 10px auto 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.success-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.error-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.hidden {
+  display: none !important;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 10px;
+  color: #667085;
+}
+
+@media (max-width: 480px) {
+
+  main {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .fuel-choice {
+    flex-direction: column;
+  }
+}
