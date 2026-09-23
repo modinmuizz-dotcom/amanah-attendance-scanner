@@ -23,8 +23,8 @@
   >
 
   <script
-    src="https://unpkg.com/html5-qrcode"
-  ></script>
+  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+></script>
 </head>
 
 <body>
@@ -81,10 +81,22 @@
           Scan the one permanent AMANAH company QR code.
         </div>
 
-        <div
-  id="reader"
-  class="reader"
-></div>
+       <div class="camera-container">
+
+  <video
+    id="cameraVideo"
+    class="camera-video"
+    autoplay
+    muted
+    playsinline
+  ></video>
+
+  <canvas
+    id="cameraCanvas"
+    hidden
+  ></canvas>
+
+</div>
 
 <button
   id="startCameraButton"
