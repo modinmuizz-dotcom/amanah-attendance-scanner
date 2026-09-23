@@ -66,6 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
    ===================================================== */
 
 function setupButtons() {
+  $('startCameraButton')?.addEventListener(
+  'click',
+  startScanner
+);
 
   $('inButton')?.addEventListener(
     'click',
@@ -139,25 +143,91 @@ async function startScanner() {
     return;
   }
 
+  const button =
+    $('startCameraButton');
+
   try {
 
+    if (!window.isSecureContext) {
+
+      throw new Error(
+        'Camera requires a secure HTTPS connection.'
+      );
+    }
+
+    if (
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+
+      throw new Error(
+        'This browser does not support camera access.'
+      );
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'OPENING CAMERA...';
+    }
+
+    setStatus(
+      'Requesting camera permission...',
+      'info'
+    );
+
+    /*
+     * First explicitly request the rear camera.
+     * This gives Safari a direct user-triggered
+     * camera permission request.
+     */
+    const stream =
+      await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: {
+            ideal: 'environment'
+          }
+        },
+        audio: false
+      });
+
+    /*
+     * We only needed this stream to obtain permission.
+     * html5-qrcode will create its own camera stream.
+     */
+    stream.getTracks().forEach(track => {
+      track.stop();
+    });
+
     if (state.scanner) {
+
       try {
         await state.scanner.clear();
       } catch (_) {}
+
     }
 
     state.scanner =
-      new Html5Qrcode('reader');
+      new Html5Qrcode(
+        'reader',
+        false
+      );
+
+    setStatus(
+      'Camera opened. Point it at the AMANAH company QR code.',
+      'info'
+    );
 
     await state.scanner.start(
+
       {
         facingMode: {
           ideal: 'environment'
         }
       },
+
       {
         fps: 10,
+
         qrbox: {
           width: 260,
           height: 260
@@ -169,23 +239,71 @@ async function startScanner() {
       onScanSuccess,
 
       () => {}
+
     );
 
     state.scannerRunning = true;
 
+    if (button) {
+      button.hidden = true;
+    }
+
     setStatus(
-      'Camera ready. Point it at the AMANAH company QR code.',
+      'Camera ready. Scan the permanent AMANAH QR code.',
       'info'
     );
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      'CAMERA ERROR:',
+      error
+    );
+
+    let message =
+      'Unable to open camera. ';
+
+    if (
+      error &&
+      error.name === 'NotAllowedError'
+    ) {
+
+      message +=
+        'Camera permission was denied. Allow camera access for this website and try again.';
+
+    } else if (
+      error &&
+      error.name === 'NotFoundError'
+    ) {
+
+      message +=
+        'No camera was found on this device.';
+
+    } else if (
+      error &&
+      error.name === 'NotReadableError'
+    ) {
+
+      message +=
+        'The camera is already being used by another app or browser tab.';
+
+    } else {
+
+      message +=
+        error?.message ||
+        'Please allow camera permission and try again.';
+    }
 
     setStatus(
-      'Unable to open camera. Allow camera permission and reload the page.',
+      message,
       'error'
     );
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'TRY CAMERA AGAIN';
+    }
+
   }
 }
 
