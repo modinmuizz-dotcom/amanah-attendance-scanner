@@ -5,140 +5,379 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    content="width=device-width, initial-scale=1.0"
   >
 
-  <title>AMANAH Attendance</title>
+  <meta
+    name="theme-color"
+    content="#111827"
+  >
 
-  <link rel="stylesheet" href="style.css">
+  <title>
+    AMANAH Construction Attendance
+  </title>
 
-  <!-- QR SCANNER -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
+  <script
+    src="https://unpkg.com/html5-qrcode"
+  ></script>
 </head>
 
 <body>
 
-<div class="app">
+  <main class="app">
 
-  <!-- HEADER -->
-  <header class="header">
+    <header class="top-header">
 
-    <div class="logo">
-      AC
-    </div>
-
-    <div class="header-text">
-      <h1>AMANAH CONSTRUCTION</h1>
-      <p>Management System • Attendance</p>
-    </div>
-
-  </header>
-
-
-  <!-- STATUS -->
-  <section class="card">
-
-    <div class="title-row">
+      <div class="brand-mark">
+        A
+      </div>
 
       <div>
-        <h2 id="pageTitle">Scan Attendance QR</h2>
+        <div class="company-name">
+          AMANAH CONSTRUCTION
+        </div>
 
-        <p id="pageSubtitle">
-          Scan the AMANAH company QR code to begin.
-        </p>
+        <div class="system-name">
+          CONSTRUCTION MANAGEMENT SYSTEM
+        </div>
       </div>
 
-      <span id="connectionBadge" class="badge">
-        HTTPS
-      </span>
-
-    </div>
+    </header>
 
 
-    <!-- CAMERA -->
+    <!-- ============================================
+         STATUS
+         ============================================ -->
 
-    <div id="reader"></div>
-
-
-    <!-- STATUS MESSAGE -->
-
-    <div id="status" class="status">
-      Starting camera...
-    </div>
-
-
-    <!-- EMPLOYEE INFORMATION -->
-
-    <div id="employeePanel" class="employee-panel hidden">
-
-      <div class="employee-header">
-        <span>EMPLOYEE</span>
-      </div>
-
-      <div class="employee-name" id="employeeName">
-        —
-      </div>
-
-      <div class="employee-id" id="employeeId">
-        —
-      </div>
-
-      <div class="employee-position" id="employeePosition">
-        —
-      </div>
-
-    </div>
-
-
-    <!-- ACTION BUTTONS -->
-
-    <div id="actions" class="actions hidden">
-
-      <button
-        id="inButton"
-        class="action-button in-button"
-        onclick="recordAttendance('IN')"
-      >
-        <span>✓</span>
-        TIME IN
-      </button>
-
-
-      <button
-        id="outButton"
-        class="action-button out-button"
-        onclick="recordAttendance('OUT')"
-      >
-        <span>↗</span>
-        TIME OUT
-      </button>
-
-    </div>
-
-
-    <!-- RESET -->
-
-    <button
-      id="resetButton"
-      class="reset-button hidden"
-      onclick="resetScanner()"
+    <div
+      id="statusMessage"
+      class="status-message info"
     >
-      SCAN ANOTHER EMPLOYEE
-    </button>
-
-  </section>
+      Starting...
+    </div>
 
 
-  <!-- FOOTER -->
+    <!-- ============================================
+         SCANNER SCREEN
+         ============================================ -->
 
-  <footer>
-    AMANAH CONSTRUCTION MANAGEMENT SYSTEM
-  </footer>
+    <section
+      id="scannerScreen"
+      class="app-screen"
+    >
 
-</div>
+      <div class="card">
+
+        <div class="card-title">
+          ATTENDANCE STATION
+        </div>
+
+        <div class="card-subtitle">
+          Scan the one permanent AMANAH company QR code.
+        </div>
+
+        <div
+          id="reader"
+          class="reader"
+        ></div>
+
+        <div class="scanner-note">
+          Scan the permanent AMANAH QR only.
+          There are no employee QR codes.
+        </div>
+
+      </div>
+
+    </section>
 
 
-<script src="app.js"></script>
+    <!-- ============================================
+         ATTENDANCE SCREEN
+         ============================================ -->
+
+    <section
+      id="attendanceScreen"
+      class="app-screen"
+      hidden
+    >
+
+      <!-- EMPLOYEE -->
+
+      <div class="card">
+
+        <div class="step-number">
+          1
+        </div>
+
+        <div class="card-title">
+          WHO ARE YOU?
+        </div>
+
+        <div class="card-subtitle">
+          Select your name from the employee database.
+        </div>
+
+        <input
+          id="employeeSearch"
+          class="search-input"
+          type="search"
+          placeholder="Search employee name or ID..."
+          autocomplete="off"
+        >
+
+        <select
+          id="employeeSelect"
+          class="select-input"
+        >
+          <option value="">
+            Select employee / operator / driver
+          </option>
+        </select>
+
+      </div>
+
+
+      <!-- ACTIVE ATTENDANCE -->
+
+      <div
+        id="activeAttendance"
+        class="active-card"
+        hidden
+      ></div>
+
+
+      <!-- EQUIPMENT -->
+
+      <div class="card">
+
+        <div class="step-number">
+          2
+        </div>
+
+        <div class="card-title">
+          WHAT EQUIPMENT ARE YOU USING?
+        </div>
+
+        <input
+          id="equipmentSearch"
+          class="search-input"
+          type="search"
+          placeholder="Search equipment..."
+          autocomplete="off"
+        >
+
+        <select
+          id="equipmentSelect"
+          class="select-input"
+        >
+          <option value="">
+            Select equipment
+          </option>
+        </select>
+
+      </div>
+
+
+      <!-- PROJECT -->
+
+      <div class="card">
+
+        <div class="step-number">
+          3
+        </div>
+
+        <div class="card-title">
+          WHAT PROJECT ARE YOU WORKING ON?
+        </div>
+
+        <input
+          id="projectSearch"
+          class="search-input"
+          type="search"
+          placeholder="Search project..."
+          autocomplete="off"
+        >
+
+        <select
+          id="projectSelect"
+          class="select-input"
+        >
+          <option value="">
+            Select project
+          </option>
+        </select>
+
+      </div>
+
+
+      <!-- IN / OUT -->
+
+      <div class="card action-card">
+
+        <div class="card-title">
+          ATTENDANCE
+        </div>
+
+        <div class="button-row">
+
+          <button
+            id="inButton"
+            class="action-button in-button"
+            type="button"
+            disabled
+          >
+            TIME IN
+          </button>
+
+          <button
+            id="outButton"
+            class="action-button out-button"
+            type="button"
+            disabled
+          >
+            TIME OUT
+          </button>
+
+        </div>
+
+        <div class="small-note">
+          Fuel will only be requested when TIME OUT is selected.
+        </div>
+
+      </div>
+
+
+      <!-- FUEL QUESTION -->
+
+      <div
+        id="fuelQuestion"
+        class="card fuel-card"
+        hidden
+      >
+
+        <div class="card-title">
+          DID YOU FUEL THE EQUIPMENT?
+        </div>
+
+        <div class="button-row">
+
+          <button
+            id="fuelNoButton"
+            class="secondary-button"
+            type="button"
+          >
+            NO FUEL
+          </button>
+
+          <button
+            id="fuelYesButton"
+            class="primary-button"
+            type="button"
+          >
+            YES, FUELED
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- FUEL FORM -->
+
+      <div
+        id="fuelForm"
+        class="card"
+        hidden
+      >
+
+        <div class="card-title">
+          FUEL DETAILS
+        </div>
+
+        <label>
+          Quantity
+        </label>
+
+        <input
+          id="fuelQuantity"
+          class="text-input"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Enter quantity"
+        >
+
+        <label>
+          Unit
+        </label>
+
+        <select
+          id="fuelUnit"
+          class="select-input"
+        >
+          <option value="Liter">
+            Liter
+          </option>
+
+          <option value="Gallon">
+            Gallon
+          </option>
+        </select>
+
+        <label>
+          Fuel Price / Amount
+        </label>
+
+        <input
+          id="fuelAmount"
+          class="text-input"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Enter fuel price / amount"
+        >
+
+        <button
+          id="fuelConfirmButton"
+          class="primary-button full-button"
+          type="button"
+        >
+          COMPLETE TIME OUT
+        </button>
+
+      </div>
+
+
+      <!-- RESULT -->
+
+      <div
+        id="resultBox"
+        class="result-card"
+        hidden
+      ></div>
+
+
+      <!-- RESTART -->
+
+      <button
+        id="restartScannerButton"
+        class="restart-button"
+        type="button"
+      >
+        SCAN STATION AGAIN
+      </button>
+
+    </section>
+
+  </main>
+
+
+  <script src="app.js"></script>
 
 </body>
 </html>
