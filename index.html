@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>AMANAH Attendance Scanner</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- QR Scanner -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo-circle">A</div>
+
+    <div>
+      <h1>AMANAH</h1>
+      <p>CONSTRUCTION MANAGEMENT SYSTEM</p>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- SCANNER -->
+    <section id="scannerSection" class="card">
+
+      <h2>ATTENDANCE SCANNER</h2>
+
+      <p class="instruction">
+        Scan the AMANAH attendance QR code
+      </p>
+
+      <div id="reader"></div>
+
+      <div id="cameraStatus" class="status-message">
+        Starting camera...
+      </div>
+
+    </section>
+
+
+    <!-- EMPLOYEE -->
+    <section id="employeeSection" class="card hidden">
+
+      <div class="step">STEP 1 OF 4</div>
+
+      <h2>WHO ARE YOU?</h2>
+
+      <p>Select your name</p>
+
+      <input
+        type="text"
+        id="employeeSearch"
+        placeholder="Search employee..."
+        autocomplete="off"
+      >
+
+      <div id="employeeList" class="selection-list"></div>
+
+    </section>
+
+
+    <!-- EQUIPMENT -->
+    <section id="equipmentSection" class="card hidden">
+
+      <div class="step">STEP 2 OF 4</div>
+
+      <h2>WHAT EQUIPMENT?</h2>
+
+      <p>Select the equipment you are operating</p>
+
+      <input
+        type="text"
+        id="equipmentSearch"
+        placeholder="Search equipment..."
+        autocomplete="off"
+      >
+
+      <div id="equipmentList" class="selection-list"></div>
+
+      <button class="back-button" onclick="showEmployeeStep()">
+        ← BACK
+      </button>
+
+    </section>
+
+
+    <!-- PROJECT -->
+    <section id="projectSection" class="card hidden">
+
+      <div class="step">STEP 3 OF 4</div>
+
+      <h2>WHAT PROJECT?</h2>
+
+      <p>Select the project</p>
+
+      <input
+        type="text"
+        id="projectSearch"
+        placeholder="Search project..."
+        autocomplete="off"
+      >
+
+      <div id="projectList" class="selection-list"></div>
+
+      <button class="back-button" onclick="showEquipmentStep()">
+        ← BACK
+      </button>
+
+    </section>
+
+
+    <!-- IN / OUT -->
+    <section id="attendanceSection" class="card hidden">
+
+      <div class="step">STEP 4 OF 4</div>
+
+      <h2>ATTENDANCE</h2>
+
+      <div class="summary">
+
+        <div>
+          <span>EMPLOYEE</span>
+          <strong id="summaryEmployee"></strong>
+        </div>
+
+        <div>
+          <span>EQUIPMENT</span>
+          <strong id="summaryEquipment"></strong>
+        </div>
+
+        <div>
+          <span>PROJECT</span>
+          <strong id="summaryProject"></strong>
+        </div>
+
+      </div>
+
+      <div class="action-buttons">
+
+        <button
+          id="inButton"
+          class="btn btn-in"
+          onclick="clockIn()"
+        >
+          CLOCK IN
+        </button>
+
+        <button
+          id="outButton"
+          class="btn btn-out"
+          onclick="clockOut()"
+        >
+          CLOCK OUT
+        </button>
+
+      </div>
+
+      <button class="back-button" onclick="showProjectStep()">
+        ← BACK
+      </button>
+
+    </section>
+
+
+    <!-- FUEL -->
+    <section id="fuelSection" class="card hidden">
+
+      <h2>DID YOU FUEL?</h2>
+
+      <p>
+        Fuel entry is optional.
+      </p>
+
+      <div class="fuel-choice">
+
+        <button
+          class="btn btn-no"
+          onclick="finishWithoutFuel()"
+        >
+          NO
+        </button>
+
+        <button
+          class="btn btn-yes"
+          onclick="showFuelForm()"
+        >
+          YES
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- FUEL FORM -->
+    <section id="fuelFormSection" class="card hidden">
+
+      <h2>FUEL INFORMATION</h2>
+
+      <label>Fuel Amount</label>
+
+      <input
+        type="number"
+        id="fuelAmount"
+        min="0"
+        step="0.01"
+        placeholder="Example: 50"
+      >
+
+      <label>Unit</label>
+
+      <select id="fuelUnit">
+        <option value="Liter">Liter</option>
+        <option value="Gallon">Gallon</option>
+      </select>
+
+      <label>Fuel Price</label>
+
+      <input
+        type="number"
+        id="fuelPrice"
+        min="0"
+        step="0.01"
+        placeholder="Example: 60.50"
+      >
+
+      <button
+        class="btn btn-save"
+        onclick="saveFuel()"
+      >
+        SAVE FUEL & COMPLETE OUT
+      </button>
+
+    </section>
+
+
+    <!-- SUCCESS -->
+    <section id="successSection" class="card hidden">
+
+      <div class="success-icon">
+        ✓
+      </div>
+
+      <h2 id="successTitle">
+        ATTENDANCE SAVED
+      </h2>
+
+      <p id="successMessage"></p>
+
+      <button
+        class="btn btn-again"
+        onclick="startAgain()"
+      >
+        SCAN ANOTHER EMPLOYEE
+      </button>
+
+    </section>
+
+
+    <!-- ERROR -->
+    <section id="errorSection" class="card hidden">
+
+      <div class="error-icon">
+        !
+      </div>
+
+      <h2>ERROR</h2>
+
+      <p id="errorMessage"></p>
+
+      <button
+        class="btn btn-again"
+        onclick="startAgain()"
+      >
+        TRY AGAIN
+      </button>
+
+    </section>
+
+  </main>
+
+  <footer>
+    AMANAH CONSTRUCTION MANAGEMENT SYSTEM
+  </footer>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
