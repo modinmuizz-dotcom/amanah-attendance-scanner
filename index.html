@@ -1,252 +1,1336 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0b5ed7">
 
-  <title>AMANAH CONSTRUCTION - Attendance</title>
+<meta charset="UTF-8">
 
-  <link rel="stylesheet" href="style.css">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
+<title>AMANAH Attendance Scanner</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #eef4fb;
+  color: #17202a;
+}
+
+.container {
+  width: 94%;
+  max-width: 600px;
+  margin: 20px auto 40px;
+}
+
+.card {
+  background: white;
+  border-radius: 25px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.10);
+}
+
+.header {
+  text-align: center;
+}
+
+.logo {
+  width: 78px;
+  height: 78px;
+  background: #1769e0;
+  color: white;
+  border-radius: 20px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27px;
+  font-weight: bold;
+}
+
+h1 {
+  margin: 15px 0 4px;
+  font-size: 26px;
+}
+
+.subtitle {
+  color: #6d7888;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+#reader {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.status {
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 14px;
+  background: #edf4ff;
+  color: #255a9b;
+  text-align: center;
+  font-weight: bold;
+}
+
+.success {
+  background: #e9f8ef;
+  color: #16703a;
+}
+
+.error {
+  background: #ffe9e9;
+  color: #a12222;
+}
+
+.hidden {
+  display: none !important;
+}
+
+label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 7px;
+  font-weight: bold;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #d6dce5;
+  border-radius: 11px;
+  font-size: 16px;
+  background: white;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.in {
+  background: #168548;
+  color: white;
+}
+
+.out {
+  background: #d92d20;
+  color: white;
+}
+
+.secondary {
+  background: #17202a;
+  color: white;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.summary {
+  background: #f5f7fa;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid #e5e8ec;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row span:first-child {
+  color: #687386;
+}
+
+.row span:last-child {
+  font-weight: bold;
+}
+
+footer {
+  text-align: center;
+  color: #8b95a3;
+  font-size: 13px;
+  margin-top: 25px;
+}
+
+</style>
+
 </head>
 
 <body>
 
-<main class="app">
+<div class="container">
 
-  <section class="card header-card">
-    <div class="brand-mark">AC</div>
+<div class="card header">
 
-    <div>
-      <h1>AMANAH CONSTRUCTION</h1>
-      <p>Management System • Attendance</p>
-    </div>
-  </section>
+  <div class="logo">
+    AC
+  </div>
 
+  <h1>
+    AMANAH CONSTRUCTION
+  </h1>
 
-  <!-- QR SCANNER -->
+  <div class="subtitle">
+    Management System • Attendance
+  </div>
 
-  <section id="scannerSection" class="card">
-
-    <div class="section-title">
-
-      <div>
-        <h2>Scan Attendance QR</h2>
-        <p>Scan the single company QR code to begin.</p>
-      </div>
-
-      <span class="badge">HTTPS</span>
-
-    </div>
-
-    <div id="reader"></div>
-
-    <div id="scanStatus" class="status">
-      Starting camera...
-    </div>
-
-    <button
-      id="startCameraBtn"
-      class="secondary hidden">
-      Open Camera
-    </button>
-
-  </section>
+</div>
 
 
-  <!-- ATTENDANCE FORM -->
+<div class="card">
 
-  <section id="formSection" class="card hidden">
+  <h2>
+    Scan Attendance QR
+  </h2>
 
-    <div class="success-banner">
+  <p>
+    Scan the single company QR code to begin.
+  </p>
 
-      <strong>QR VERIFIED</strong>
+  <div id="reader"></div>
 
-      <span>
-        Now complete your attendance.
-      </span>
+  <div id="scanStatus"
+       class="status">
+    Starting camera...
+  </div>
 
-    </div>
+</div>
 
 
-    <!-- EMPLOYEE -->
+<div id="formCard"
+     class="card hidden">
 
-    <label>Who are you?</label>
+  <h2>
+    Attendance Information
+  </h2>
 
-    <select id="employeeSelect">
-      <option value="">
-        Select employee
+
+  <label>
+    Who are you?
+  </label>
+
+  <select id="employee">
+    <option value="">
+      Loading employees...
+    </option>
+  </select>
+
+
+  <label>
+    What equipment are you operating?
+  </label>
+
+  <select id="equipment">
+    <option value="">
+      Loading equipment...
+    </option>
+  </select>
+
+
+  <label>
+    What project?
+  </label>
+
+  <select id="project">
+    <option value="">
+      Loading projects...
+    </option>
+  </select>
+
+
+  <div id="fuelSection"
+       class="hidden">
+
+    <h3>
+      ⛽ Fuel Information
+    </h3>
+
+    <p>
+      Fuel entry is optional.
+      Only enter it if the equipment was fueled.
+    </p>
+
+    <label>
+      Did you fuel this equipment?
+    </label>
+
+    <select id="fueled"
+            onchange="toggleFuel()">
+
+      <option value="NO">
+        NO
       </option>
+
+      <option value="YES">
+        YES
+      </option>
+
     </select>
 
 
-    <!-- EQUIPMENT -->
+    <div id="fuelInputs"
+         class="hidden">
 
-    <label>Equipment</label>
+      <label>
+        Fuel Quantity
+      </label>
 
-    <select id="equipmentSelect">
-      <option value="">
-        Select equipment
-      </option>
-    </select>
-
-
-    <!-- PROJECT -->
-
-    <label>Project</label>
-
-    <select id="projectSelect">
-      <option value="">
-        Select project
-      </option>
-    </select>
-
-
-    <!-- ACTION -->
-
-    <div class="action-grid">
-
-      <button
-        id="inBtn"
-        class="primary">
-        TIME IN
-      </button>
-
-      <button
-        id="outBtn"
-        class="danger">
-        TIME OUT
-      </button>
-
-    </div>
-
-
-    <!-- FUEL -->
-
-    <div
-      id="fuelSection"
-      class="fuel-box hidden">
-
-      <div class="fuel-heading">
-
-        <h3>Fuel Used</h3>
-
-        <span>Optional</span>
-
-      </div>
+      <input
+        id="fuelQuantity"
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Example: 20"
+      >
 
 
       <label>
-        Did you fuel this equipment?
+        Unit
       </label>
 
+      <select id="fuelUnit">
 
-      <div class="choice-grid">
+        <option value="Liter">
+          Liter
+        </option>
 
-        <button
-          type="button"
-          class="choice"
-          data-fuel="no">
+        <option value="Gallon">
+          Gallon
+        </option>
 
-          NO
-
-        </button>
-
-
-        <button
-          type="button"
-          class="choice"
-          data-fuel="yes">
-
-          YES
-
-        </button>
-
-      </div>
+      </select>
 
 
-      <div id="fuelFields" class="hidden">
+      <label>
+        Fuel Price
+      </label>
 
-        <label>
-          Fuel amount
-        </label>
-
-        <input
-          id="fuelAmount"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="Example: 25">
-
-
-        <label>
-          Unit
-        </label>
-
-        <select id="fuelUnit">
-
-          <option value="Liter">
-            Liter
-          </option>
-
-          <option value="Gallon">
-            Gallon
-          </option>
-
-        </select>
-
-
-        <label>
-          Fuel price
-        </label>
-
-        <div class="price-input">
-
-          <span>₱</span>
-
-          <input
-            id="fuelPrice"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Example: 60.50">
-
-        </div>
-
-      </div>
+      <input
+        id="fuelPrice"
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Example: 60.50"
+      >
 
     </div>
 
+  </div>
 
-    <div
-      id="message"
-      class="status">
-    </div>
 
+  <div class="buttons">
 
     <button
-      id="resetBtn"
-      class="secondary">
+      class="in"
+      onclick="submitAttendance('IN')">
 
-      Scan Another QR
+      🟢 TIME IN
 
     </button>
 
-  </section>
+
+    <button
+      class="out"
+      onclick="showOutForm()">
+
+      🔴 TIME OUT
+
+    </button>
+
+  </div>
+
+</div>
 
 
-  <section class="footer-note">
+<div id="resultCard"
+     class="card hidden">
 
-    AMANAH CONSTRUCTION MANAGEMENT SYSTEM
+  <h2>
+    Attendance Saved
+  </h2>
 
-  </section>
+  <div id="resultMessage"
+       class="status success">
+  </div>
 
-</main>
+  <button
+    class="secondary"
+    onclick="resetScanner()">
+
+    SCAN NEXT PERSON
+
+  </button>
+
+</div>
 
 
-<script src="app.js"></script>
+<footer>
+  AMANAH CONSTRUCTION MANAGEMENT SYSTEM
+</footer>
+
+</div>
+
+
+<script>
+
+/*******************************************************
+ * CONFIGURATION
+ *******************************************************/
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycby4au7sf04nsQNJTQ7OaUYHtPWWCkrwn0H1ib2qbUI6xcErCbN63NMU2-KRBzwNjgVy/exec";
+
+
+const COMPANY_QR =
+"AMANAH_ATTENDANCE_V1";
+
+
+/*******************************************************
+ * GLOBAL DATA
+ *******************************************************/
+
+let employees = [];
+
+let equipment = [];
+
+let projects = [];
+
+let scanner = null;
+
+let qrScanned = false;
+
+let currentAction = null;
+
+
+/*******************************************************
+ * START
+ *******************************************************/
+
+window.addEventListener(
+  "load",
+  function() {
+
+    loadData();
+
+    startScanner();
+
+  }
+);
+
+
+/*******************************************************
+ * LOAD DATA FROM APPS SCRIPT
+ *
+ * JSONP avoids browser CORS problems.
+ *******************************************************/
+
+function loadData() {
+
+  const callbackName =
+    "amanahCallback_" +
+    Date.now();
+
+
+  window[callbackName] =
+    function(data) {
+
+      try {
+
+        if (!data.success) {
+
+          showError(
+            data.error ||
+            "Unable to load data."
+          );
+
+          return;
+
+        }
+
+        employees =
+          data.employees || [];
+
+        equipment =
+          data.equipment || [];
+
+        projects =
+          data.projects || [];
+
+
+        populateEmployees();
+
+        populateEquipment();
+
+        populateProjects();
+
+      }
+      finally {
+
+        delete window[callbackName];
+
+      }
+
+    };
+
+
+  const script =
+    document.createElement("script");
+
+
+  script.src =
+    API_URL +
+    "?action=getData" +
+    "&callback=" +
+    encodeURIComponent(
+      callbackName
+    );
+
+
+  script.onerror =
+    function() {
+
+      showError(
+        "Unable to connect to AMANAH server."
+      );
+
+    };
+
+
+  document.body.appendChild(script);
+
+}
+
+
+/*******************************************************
+ * POPULATE EMPLOYEES
+ *******************************************************/
+
+function populateEmployees() {
+
+  const select =
+    document.getElementById(
+      "employee"
+    );
+
+  select.innerHTML =
+    '<option value="">Select your name</option>';
+
+
+  employees.forEach(
+    function(emp) {
+
+      const id =
+        getField(
+          emp,
+          [
+            "Employee ID",
+            "EmployeeID",
+            "ID",
+            "EMPLOYEE ID"
+          ]
+        );
+
+
+      const name =
+        getField(
+          emp,
+          [
+            "Employee Name",
+            "EmployeeName",
+            "Name",
+            "EMPLOYEE NAME"
+          ]
+        );
+
+
+      if (!id && !name) {
+        return;
+      }
+
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        JSON.stringify({
+          id: id,
+          name: name
+        });
+
+
+      option.textContent =
+        name +
+        (id
+          ? " — " + id
+          : "");
+
+
+      select.appendChild(option);
+
+    }
+  );
+
+}
+
+
+/*******************************************************
+ * POPULATE EQUIPMENT
+ *******************************************************/
+
+function populateEquipment() {
+
+  const select =
+    document.getElementById(
+      "equipment"
+    );
+
+  select.innerHTML =
+    '<option value="">Select equipment</option>';
+
+
+  equipment.forEach(
+    function(item) {
+
+      const id =
+        getField(
+          item,
+          [
+            "Equipment ID",
+            "EquipmentID",
+            "ID"
+          ]
+        );
+
+
+      const name =
+        getField(
+          item,
+          [
+            "Equipment Name",
+            "EquipmentName",
+            "Name"
+          ]
+        );
+
+
+      if (!id && !name) {
+        return;
+      }
+
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        JSON.stringify({
+          id: id,
+          name: name
+        });
+
+
+      option.textContent =
+        name +
+        (id
+          ? " — " + id
+          : "");
+
+
+      select.appendChild(option);
+
+    }
+  );
+
+}
+
+
+/*******************************************************
+ * POPULATE PROJECTS
+ *******************************************************/
+
+function populateProjects() {
+
+  const select =
+    document.getElementById(
+      "project"
+    );
+
+  select.innerHTML =
+    '<option value="">Select project</option>';
+
+
+  projects.forEach(
+    function(item) {
+
+      const id =
+        getField(
+          item,
+          [
+            "Project ID",
+            "ProjectID",
+            "ID"
+          ]
+        );
+
+
+      const name =
+        getField(
+          item,
+          [
+            "Project Name",
+            "ProjectName",
+            "Name"
+          ]
+        );
+
+
+      if (!id && !name) {
+        return;
+      }
+
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        JSON.stringify({
+          id: id,
+          name: name
+        });
+
+
+      option.textContent =
+        name +
+        (id
+          ? " — " + id
+          : "");
+
+
+      select.appendChild(option);
+
+    }
+  );
+
+}
+
+
+/*******************************************************
+ * DYNAMIC FIELD FINDER
+ *******************************************************/
+
+function getField(
+  object,
+  names
+) {
+
+  const keys =
+    Object.keys(object);
+
+
+  for (
+    let i = 0;
+    i < names.length;
+    i++
+  ) {
+
+    const target =
+      normalize(
+        names[i]
+      );
+
+
+    for (
+      let j = 0;
+      j < keys.length;
+      j++
+    ) {
+
+      if (
+        normalize(keys[j]) ===
+        target
+      ) {
+
+        return object[keys[j]];
+
+      }
+
+    }
+
+  }
+
+
+  return "";
+
+}
+
+
+/*******************************************************
+ * NORMALIZE
+ *******************************************************/
+
+function normalize(value) {
+
+  return String(
+    value || ""
+  )
+  .toLowerCase()
+  .replace(
+    /[^a-z0-9]/g,
+    ""
+  );
+
+}
+
+
+/*******************************************************
+ * CAMERA
+ *******************************************************/
+
+function startScanner() {
+
+  scanner =
+    new Html5Qrcode(
+      "reader"
+    );
+
+
+  scanner.start(
+
+    {
+      facingMode: "environment"
+    },
+
+    {
+      fps: 10,
+      qrbox: {
+        width: 250,
+        height: 250
+      }
+    },
+
+    onScanSuccess,
+
+    function(errorMessage) {
+      // Ignore normal scanning errors.
+    }
+
+  )
+  .then(function() {
+
+    setStatus(
+      "Camera ready. Point it at the company QR code.",
+      "success"
+    );
+
+  })
+  .catch(function(error) {
+
+    setStatus(
+      "Unable to open camera. Please allow camera permission and reload the page.",
+      "error"
+    );
+
+    console.error(error);
+
+  });
+
+}
+
+
+/*******************************************************
+ * QR SCANNED
+ *******************************************************/
+
+function onScanSuccess(
+  decodedText
+) {
+
+  if (qrScanned) {
+    return;
+  }
+
+
+  if (
+    decodedText.trim() !==
+    COMPANY_QR
+  ) {
+
+    setStatus(
+      "Invalid QR code. Please scan the AMANAH company QR code.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  qrScanned = true;
+
+
+  if (scanner) {
+
+    scanner.stop()
+      .catch(function() {});
+
+  }
+
+
+  setStatus(
+    "Company QR verified.",
+    "success"
+  );
+
+
+  document
+    .getElementById(
+      "formCard"
+    )
+    .classList.remove(
+      "hidden"
+    );
+
+}
+
+
+/*******************************************************
+ * OUT FORM
+ *******************************************************/
+
+function showOutForm() {
+
+  currentAction = "OUT";
+
+  document
+    .getElementById(
+      "fuelSection"
+    )
+    .classList.remove(
+      "hidden"
+    );
+
+}
+
+
+/*******************************************************
+ * FUEL
+ *******************************************************/
+
+function toggleFuel() {
+
+  const value =
+    document.getElementById(
+      "fueled"
+    ).value;
+
+
+  const inputs =
+    document.getElementById(
+      "fuelInputs"
+    );
+
+
+  if (value === "YES") {
+
+    inputs.classList.remove(
+      "hidden"
+    );
+
+  } else {
+
+    inputs.classList.add(
+      "hidden"
+    );
+
+  }
+
+}
+
+
+/*******************************************************
+ * SUBMIT
+ *******************************************************/
+
+function submitAttendance(
+  action
+) {
+
+  currentAction =
+    action;
+
+
+  const employeeValue =
+    document.getElementById(
+      "employee"
+    ).value;
+
+
+  const equipmentValue =
+    document.getElementById(
+      "equipment"
+    ).value;
+
+
+  const projectValue =
+    document.getElementById(
+      "project"
+    ).value;
+
+
+  if (!employeeValue) {
+
+    alert(
+      "Please select who you are."
+    );
+
+    return;
+
+  }
+
+
+  if (!equipmentValue) {
+
+    alert(
+      "Please select the equipment."
+    );
+
+    return;
+
+  }
+
+
+  if (!projectValue) {
+
+    alert(
+      "Please select the project."
+    );
+
+    return;
+
+  }
+
+
+  const employee =
+    JSON.parse(
+      employeeValue
+    );
+
+
+  const equipment =
+    JSON.parse(
+      equipmentValue
+    );
+
+
+  const project =
+    JSON.parse(
+      projectValue
+    );
+
+
+  let fuel = "";
+
+  let fuelUnit = "";
+
+  let fuelPrice = "";
+
+
+  if (action === "OUT") {
+
+    const fueled =
+      document.getElementById(
+        "fueled"
+      ).value;
+
+
+    if (fueled === "YES") {
+
+      fuel =
+        document.getElementById(
+          "fuelQuantity"
+        ).value;
+
+
+      fuelUnit =
+        document.getElementById(
+          "fuelUnit"
+        ).value;
+
+
+      fuelPrice =
+        document.getElementById(
+          "fuelPrice"
+        ).value;
+
+
+      if (!fuel) {
+
+        alert(
+          "Please enter the fuel quantity."
+        );
+
+        return;
+
+      }
+
+    }
+
+  }
+
+
+  const params = new URLSearchParams({
+
+    action: "save",
+
+    employeeId:
+      employee.id,
+
+    employeeName:
+      employee.name,
+
+    equipmentId:
+      equipment.id,
+
+    equipmentName:
+      equipment.name,
+
+    projectId:
+      project.id,
+
+    projectName:
+      project.name,
+
+    attendanceAction:
+      action,
+
+    fuel:
+      fuel,
+
+    fuelUnit:
+      fuelUnit,
+
+    fuelPrice:
+      fuelPrice
+
+  });
+
+
+  setStatus(
+    "Saving attendance...",
+    ""
+  );
+
+
+  /*
+   * JSONP GET
+   *
+   * This works with the static
+   * GitHub Pages frontend.
+   */
+
+  const callbackName =
+    "saveCallback_" +
+    Date.now();
+
+
+  window[callbackName] =
+    function(data) {
+
+      delete window[callbackName];
+
+
+      if (
+        data &&
+        data.success
+      ) {
+
+        showSaved(
+          data
+        );
+
+      } else {
+
+        showError(
+          data &&
+          data.error
+            ? data.error
+            : "Unable to save attendance."
+        );
+
+      }
+
+    };
+
+
+  const script =
+    document.createElement(
+      "script"
+    );
+
+
+  script.src =
+    API_URL +
+    "?" +
+    params.toString() +
+    "&callback=" +
+    callbackName;
+
+
+  script.onerror =
+    function() {
+
+      delete window[callbackName];
+
+      showError(
+        "Unable to communicate with Google Sheets."
+      );
+
+    };
+
+
+  document.body.appendChild(
+    script
+  );
+
+}
+
+
+/*******************************************************
+ * SAVED
+ *******************************************************/
+
+function showSaved(
+  data
+) {
+
+  document
+    .getElementById(
+      "formCard"
+    )
+    .classList.add(
+      "hidden"
+    );
+
+
+  document
+    .getElementById(
+      "resultCard"
+    )
+    .classList.remove(
+      "hidden"
+    );
+
+
+  document
+    .getElementById(
+      "resultMessage"
+    )
+    .textContent =
+      data.message ||
+      "Attendance saved successfully.";
+
+}
+
+
+/*******************************************************
+ * RESET
+ *******************************************************/
+
+function resetScanner() {
+
+  location.reload();
+
+}
+
+
+/*******************************************************
+ * STATUS
+ *******************************************************/
+
+function setStatus(
+  message,
+  type
+) {
+
+  const box =
+    document.getElementById(
+      "scanStatus"
+    );
+
+
+  box.textContent =
+    message;
+
+
+  box.className =
+    "status";
+
+
+  if (type) {
+
+    box.classList.add(
+      type
+    );
+
+  }
+
+}
+
+
+function showError(
+  message
+) {
+
+  setStatus(
+    message,
+    "error"
+  );
+
+}
+
+</script>
 
 </body>
 </html>
