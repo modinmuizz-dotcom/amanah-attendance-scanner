@@ -1,9 +1,39 @@
 /*******************************************************
- * AMANAH ATTENDANCE SCANNER
+ * AMANAH CONSTRUCTION MANAGEMENT SYSTEM
+ * MOBILE ATTENDANCE SCANNER
+ *
+ * ONE PERMANENT COMPANY QR ONLY
+ *
+ * FLOW:
+ * COMPANY QR
+ *     ↓
+ * WHO ARE YOU?
+ *     ↓
+ * EQUIPMENT
+ *     ↓
+ * PROJECT
+ *     ↓
+ * TIME IN
+ *     ↓
+ * TIME OUT
+ *     ↓
+ * OPTIONAL FUEL
+ *
+ * NO EMPLOYEE QR CODES
+ *
+ * IMPORTANT:
+ * This file uses jsQR only.
+ * There must be ZERO Html5Qrcode references.
  *******************************************************/
+
+
+/* =====================================================
+   CONFIGURATION
+   ===================================================== */
 
 const API_URL =
   'https://script.google.com/macros/s/AKfycbyxEhNRWFlbW-RbwYKyfer9Xd9f5w-ZXnGt9UBxWf2pAM50N5fzhleXfiIhBKFiSw2i/exec';
+
 
 const PERMANENT_QR = {
   type: 'AMANAH_ATTENDANCE_V1',
@@ -15,11 +45,15 @@ const PERMANENT_QR = {
 
 
 /* =====================================================
-   STATE
+   APPLICATION STATE
    ===================================================== */
 
 const state = {
+
   stationVerified: false,
+
+  cameraStream: null,
+  scannerRunning: false,
 
   employees: [],
   equipment: [],
@@ -30,111 +64,212 @@ const state = {
   selectedEquipment: null,
   selectedProject: null,
 
-  scanner: null,
-  scannerRunning: false,
+  pendingOut: false,
 
-  pendingOut: false
+  lastQrData: '',
+  lastQrTime: 0
 };
 
 
 /* =====================================================
-   DOM
+   DOM SHORTCUT
    ===================================================== */
 
-const $ = (id) => document.getElementById(id);
-
-
-/* =====================================================
-   START
-   ===================================================== */
-
-document.addEventListener('DOMContentLoaded', () => {
-
-  setupButtons();
-
-  showScreen('scannerScreen');
-
-  setStatus(
-    'Tap OPEN CAMERA to begin.',
-    'info'
-  );
-});
-
-
-/* =====================================================
-   BUTTONS
-   ===================================================== */
-
-function setupButtons() {
-  $('startCameraButton')?.addEventListener(
-  'click',
-  startScanner
-);
-
-  $('inButton')?.addEventListener(
-    'click',
-    timeIn
-  );
-
-  $('outButton')?.addEventListener(
-    'click',
-    beginTimeOut
-  );
-
-  $('fuelNoButton')?.addEventListener(
-    'click',
-    () => completeTimeOut(false)
-  );
-
-  $('fuelYesButton')?.addEventListener(
-    'click',
-    showFuelForm
-  );
-
-  $('fuelConfirmButton')?.addEventListener(
-    'click',
-    () => completeTimeOut(true)
-  );
-
-  $('restartScannerButton')?.addEventListener(
-    'click',
-    restartScanner
-  );
-
-  $('employeeSearch')?.addEventListener(
-    'input',
-    filterEmployees
-  );
-
-  $('equipmentSearch')?.addEventListener(
-    'input',
-    filterEquipment
-  );
-
-  $('projectSearch')?.addEventListener(
-    'input',
-    filterProjects
-  );
-
-  $('employeeSelect')?.addEventListener(
-    'change',
-    employeeChanged
-  );
-
-  $('equipmentSelect')?.addEventListener(
-    'change',
-    equipmentChanged
-  );
-
-  $('projectSelect')?.addEventListener(
-    'change',
-    projectChanged
-  );
+function $(id) {
+  return document.getElementById(id);
 }
 
 
 /* =====================================================
-   CAMERA
+   PAGE START
+   ===================================================== */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  function () {
+
+    setupButtons();
+
+    showScreen('scannerScreen');
+
+    setStatus(
+      'Tap OPEN CAMERA to begin.',
+      'info'
+    );
+
+  }
+);
+
+
+/* =====================================================
+   BUTTON SETUP
+   ===================================================== */
+
+function setupButtons() {
+
+  const startCameraButton =
+    $('startCameraButton');
+
+  if (startCameraButton) {
+
+    startCameraButton.addEventListener(
+      'click',
+      startScanner
+    );
+  }
+
+
+  const inButton =
+    $('inButton');
+
+  if (inButton) {
+
+    inButton.addEventListener(
+      'click',
+      timeIn
+    );
+  }
+
+
+  const outButton =
+    $('outButton');
+
+  if (outButton) {
+
+    outButton.addEventListener(
+      'click',
+      beginTimeOut
+    );
+  }
+
+
+  const fuelNoButton =
+    $('fuelNoButton');
+
+  if (fuelNoButton) {
+
+    fuelNoButton.addEventListener(
+      'click',
+      function () {
+        completeTimeOut(false);
+      }
+    );
+  }
+
+
+  const fuelYesButton =
+    $('fuelYesButton');
+
+  if (fuelYesButton) {
+
+    fuelYesButton.addEventListener(
+      'click',
+      showFuelForm
+    );
+  }
+
+
+  const fuelConfirmButton =
+    $('fuelConfirmButton');
+
+  if (fuelConfirmButton) {
+
+    fuelConfirmButton.addEventListener(
+      'click',
+      function () {
+        completeTimeOut(true);
+      }
+    );
+  }
+
+
+  const restartButton =
+    $('restartScannerButton');
+
+  if (restartButton) {
+
+    restartButton.addEventListener(
+      'click',
+      restartScanner
+    );
+  }
+
+
+  const employeeSearch =
+    $('employeeSearch');
+
+  if (employeeSearch) {
+
+    employeeSearch.addEventListener(
+      'input',
+      filterEmployees
+    );
+  }
+
+
+  const equipmentSearch =
+    $('equipmentSearch');
+
+  if (equipmentSearch) {
+
+    equipmentSearch.addEventListener(
+      'input',
+      filterEquipment
+    );
+  }
+
+
+  const projectSearch =
+    $('projectSearch');
+
+  if (projectSearch) {
+
+    projectSearch.addEventListener(
+      'input',
+      filterProjects
+    );
+  }
+
+
+  const employeeSelect =
+    $('employeeSelect');
+
+  if (employeeSelect) {
+
+    employeeSelect.addEventListener(
+      'change',
+      employeeChanged
+    );
+  }
+
+
+  const equipmentSelect =
+    $('equipmentSelect');
+
+  if (equipmentSelect) {
+
+    equipmentSelect.addEventListener(
+      'change',
+      equipmentChanged
+    );
+  }
+
+
+  const projectSelect =
+    $('projectSelect');
+
+  if (projectSelect) {
+
+    projectSelect.addEventListener(
+      'change',
+      projectChanged
+    );
+  }
+}
+
+
+/* =====================================================
+   START CAMERA
    ===================================================== */
 
 async function startScanner() {
@@ -143,17 +278,26 @@ async function startScanner() {
     return;
   }
 
+
   const button =
     $('startCameraButton');
 
+  const video =
+    $('cameraVideo');
+
+
+  if (!video) {
+
+    setStatus(
+      'Camera video element was not found.',
+      'error'
+    );
+
+    return;
+  }
+
+
   try {
-
-    if (!window.isSecureContext) {
-
-      throw new Error(
-        'Camera requires a secure HTTPS connection.'
-      );
-    }
 
     if (
       !navigator.mediaDevices ||
@@ -165,93 +309,97 @@ async function startScanner() {
       );
     }
 
+
     if (button) {
+
       button.disabled = true;
-      button.textContent = 'OPENING CAMERA...';
+      button.textContent =
+        'OPENING CAMERA...';
     }
 
+
     setStatus(
-      'Requesting camera permission...',
+      'Requesting camera access...',
       'info'
     );
 
+
     /*
-     * First explicitly request the rear camera.
-     * This gives Safari a direct user-triggered
-     * camera permission request.
+     * Open ONE native camera stream.
+     * We do NOT use Html5Qrcode.
      */
+
     const stream =
       await navigator.mediaDevices.getUserMedia({
+
         video: {
           facingMode: {
             ideal: 'environment'
+          },
+
+          width: {
+            ideal: 1280
+          },
+
+          height: {
+            ideal: 720
           }
         },
+
         audio: false
       });
 
+
+    state.cameraStream =
+      stream;
+
+
     /*
-     * We only needed this stream to obtain permission.
-     * html5-qrcode will create its own camera stream.
+     * Attach stream to the video.
      */
-    stream.getTracks().forEach(track => {
-      track.stop();
-    });
 
-    if (state.scanner) {
+    video.srcObject =
+      stream;
 
-      try {
-        await state.scanner.clear();
-      } catch (_) {}
+    video.muted = true;
 
-    }
-
-    state.scanner =
-      new Html5Qrcode(
-        'reader',
-        false
-      );
-
-    setStatus(
-      'Camera opened. Point it at the AMANAH company QR code.',
-      'info'
+    video.setAttribute(
+      'playsinline',
+      'true'
     );
 
-    await state.scanner.start(
-
-      {
-        facingMode: {
-          ideal: 'environment'
-        }
-      },
-
-      {
-        fps: 10,
-
-        qrbox: {
-          width: 260,
-          height: 260
-        },
-
-        aspectRatio: 1.0
-      },
-
-      onScanSuccess,
-
-      () => {}
-
+    video.setAttribute(
+      'autoplay',
+      'true'
     );
 
-    state.scannerRunning = true;
+
+    await video.play();
+
+
+    state.scannerRunning =
+      true;
+
 
     if (button) {
-      button.hidden = true;
+
+      button.hidden =
+        true;
     }
 
+
     setStatus(
-      'Camera ready. Scan the permanent AMANAH QR code.',
+      'Camera ready. Point it at the AMANAH company QR code.',
       'info'
     );
+
+
+    /*
+     * Begin scanning video frames.
+     */
+
+    scanCameraFrame();
+
 
   } catch (error) {
 
@@ -260,8 +408,14 @@ async function startScanner() {
       error
     );
 
+
+    state.scannerRunning =
+      false;
+
+
     let message =
       'Unable to open camera. ';
+
 
     if (
       error &&
@@ -269,7 +423,8 @@ async function startScanner() {
     ) {
 
       message +=
-        'Camera permission was denied. Allow camera access for this website and try again.';
+        'Camera permission was denied. Allow camera access for this website.';
+
 
     } else if (
       error &&
@@ -279,29 +434,42 @@ async function startScanner() {
       message +=
         'No camera was found on this device.';
 
+
     } else if (
       error &&
       error.name === 'NotReadableError'
     ) {
 
       message +=
-        'The camera is already being used by another app or browser tab.';
+        'The camera is being used by another app or browser tab.';
+
 
     } else {
 
       message +=
-        error?.message ||
-        'Please allow camera permission and try again.';
+        error &&
+        error.message
+          ? error.message
+          : 'Please try again.';
     }
+
 
     setStatus(
       message,
       'error'
     );
 
+
     if (button) {
-      button.disabled = false;
-      button.textContent = 'TRY CAMERA AGAIN';
+
+      button.disabled =
+        false;
+
+      button.hidden =
+        false;
+
+      button.textContent =
+        'TRY CAMERA AGAIN';
     }
 
   }
@@ -309,16 +477,189 @@ async function startScanner() {
 
 
 /* =====================================================
-   QR SUCCESS
+   SCAN CAMERA FRAME
    ===================================================== */
 
-async function onScanSuccess(decodedText) {
+function scanCameraFrame() {
+
+  if (!state.scannerRunning) {
+    return;
+  }
+
 
   if (state.stationVerified) {
     return;
   }
 
-  const payload = parseQr(decodedText);
+
+  const video =
+    $('cameraVideo');
+
+  const canvas =
+    $('cameraCanvas');
+
+
+  if (!video || !canvas) {
+
+    requestAnimationFrame(
+      scanCameraFrame
+    );
+
+    return;
+  }
+
+
+  if (
+    video.readyState >=
+    HTMLMediaElement.HAVE_CURRENT_DATA
+  ) {
+
+    const width =
+      video.videoWidth;
+
+    const height =
+      video.videoHeight;
+
+
+    if (
+      width > 0 &&
+      height > 0
+    ) {
+
+      /*
+       * Keep the canvas at the actual
+       * camera resolution.
+       */
+
+      canvas.width =
+        width;
+
+      canvas.height =
+        height;
+
+
+      const context =
+        canvas.getContext(
+          '2d',
+          {
+            willReadFrequently: true
+          }
+        );
+
+
+      if (context) {
+
+        context.drawImage(
+          video,
+          0,
+          0,
+          width,
+          height
+        );
+
+
+        const imageData =
+          context.getImageData(
+            0,
+            0,
+            width,
+            height
+          );
+
+
+        /*
+         * jsQR is supplied by index.html.
+         */
+
+        if (
+          typeof jsQR ===
+          'function'
+        ) {
+
+          const qr =
+            jsQR(
+              imageData.data,
+              imageData.width,
+              imageData.height,
+              {
+                inversionAttempts:
+                  'attemptBoth'
+              }
+            );
+
+
+          if (
+            qr &&
+            qr.data
+          ) {
+
+            processQrResult(
+              qr.data
+            );
+
+            return;
+          }
+
+        } else {
+
+          setStatus(
+            'QR scanner library is not loaded. Please reload the page.',
+            'error'
+          );
+
+          state.scannerRunning =
+            false;
+
+          stopCamera();
+
+          return;
+        }
+      }
+    }
+  }
+
+
+  requestAnimationFrame(
+    scanCameraFrame
+  );
+}
+
+
+/* =====================================================
+   PROCESS QR RESULT
+   ===================================================== */
+
+async function processQrResult(
+  decodedText
+) {
+
+  /*
+   * Prevent repeatedly processing
+   * the same QR every frame.
+   */
+
+  const now =
+    Date.now();
+
+  if (
+    decodedText === state.lastQrData &&
+    now - state.lastQrTime < 2500
+  ) {
+
+    return;
+  }
+
+
+  state.lastQrData =
+    decodedText;
+
+  state.lastQrTime =
+    now;
+
+
+  const payload =
+    parseQr(decodedText);
+
 
   if (!payload) {
 
@@ -327,15 +668,31 @@ async function onScanSuccess(decodedText) {
       'error'
     );
 
+
+    resumeQrScanning(
+      1500
+    );
+
     return;
   }
 
+
   const valid =
-    payload.type === PERMANENT_QR.type &&
-    payload.company === PERMANENT_QR.company &&
-    payload.system === PERMANENT_QR.system &&
-    payload.station === PERMANENT_QR.station &&
-    Number(payload.version) === PERMANENT_QR.version;
+    payload.type ===
+      PERMANENT_QR.type &&
+
+    payload.company ===
+      PERMANENT_QR.company &&
+
+    payload.system ===
+      PERMANENT_QR.system &&
+
+    payload.station ===
+      PERMANENT_QR.station &&
+
+    Number(payload.version) ===
+      PERMANENT_QR.version;
+
 
   if (!valid) {
 
@@ -344,26 +701,43 @@ async function onScanSuccess(decodedText) {
       'error'
     );
 
+
+    resumeQrScanning(
+      1500
+    );
+
     return;
   }
 
-  state.stationVerified = true;
+
+  /*
+   * SUCCESS
+   */
+
+  state.stationVerified =
+    true;
+
 
   await stopScanner();
+
 
   setStatus(
     '✓ AMANAH station verified.',
     'success'
   );
 
-  showScreen('attendanceScreen');
+
+  showScreen(
+    'attendanceScreen'
+  );
+
 
   await loadBootstrap();
 }
 
 
 /* =====================================================
-   QR PARSER
+   PARSE QR
    ===================================================== */
 
 function parseQr(text) {
@@ -382,7 +756,96 @@ function parseQr(text) {
 
 
 /* =====================================================
-   LOAD DATA
+   RESUME SCANNING
+   ===================================================== */
+
+function resumeQrScanning(
+  delay
+) {
+
+  setTimeout(
+    function () {
+
+      if (
+        state.scannerRunning &&
+        !state.stationVerified
+      ) {
+
+        setStatus(
+          'Camera ready. Point it at the AMANAH company QR code.',
+          'info'
+        );
+
+        requestAnimationFrame(
+          scanCameraFrame
+        );
+      }
+
+    },
+    delay || 1000
+  );
+}
+
+
+/* =====================================================
+   STOP CAMERA
+   ===================================================== */
+
+async function stopScanner() {
+
+  stopCamera();
+
+  state.scannerRunning =
+    false;
+}
+
+
+/* =====================================================
+   STOP CAMERA HARD
+   ===================================================== */
+
+function stopCamera() {
+
+  const video =
+    $('cameraVideo');
+
+
+  if (
+    state.cameraStream
+  ) {
+
+    state.cameraStream
+      .getTracks()
+      .forEach(
+        function (track) {
+
+          try {
+            track.stop();
+          } catch (_) {}
+
+        }
+      );
+
+
+    state.cameraStream =
+      null;
+  }
+
+
+  if (video) {
+
+    try {
+      video.pause();
+    } catch (_) {}
+
+    video.srcObject =
+      null;
+  }
+}
+
+
+/* =====================================================
+   LOAD SYSTEM DATA
    ===================================================== */
 
 async function loadBootstrap() {
@@ -392,55 +855,86 @@ async function loadBootstrap() {
     'info'
   );
 
+
   try {
 
-    const data = await apiCall(
-      'getBootstrap'
-    );
+    const data =
+      await apiCall(
+        'getBootstrap'
+      );
 
-    if (!data.success) {
+
+    if (
+      !data ||
+      !data.success
+    ) {
+
       throw new Error(
-        data.error || 'Unable to load system data.'
+        data &&
+        data.error
+          ? data.error
+          : 'Unable to load system data.'
       );
     }
 
+
     state.employees =
-      Array.isArray(data.employees)
+      Array.isArray(
+        data.employees
+      )
         ? data.employees
         : [];
 
+
     state.equipment =
-      Array.isArray(data.equipment)
+      Array.isArray(
+        data.equipment
+      )
         ? data.equipment
         : [];
 
+
     state.projects =
-      Array.isArray(data.projects)
+      Array.isArray(
+        data.projects
+      )
         ? data.projects
         : [];
 
+
     state.activeAttendance =
-      Array.isArray(data.activeAttendance)
+      Array.isArray(
+        data.activeAttendance
+      )
         ? data.activeAttendance
         : [];
+
 
     buildEmployeeList();
     buildEquipmentList();
     buildProjectList();
 
+
     setStatus(
-      '✓ Station verified. Please select who you are.',
+      '✓ AMANAH station verified. Who are you?',
       'success'
     );
 
+
     updateButtons();
+
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      'BOOTSTRAP ERROR:',
+      error
+    );
+
 
     setStatus(
-      error.message || 'Unable to load system data.',
+      error.message ||
+        'Unable to load system data.',
       'error'
     );
   }
@@ -448,87 +942,61 @@ async function loadBootstrap() {
 
 
 /* =====================================================
-   EMPLOYEES
+   BUILD EMPLOYEE LIST
    ===================================================== */
 
 function buildEmployeeList() {
 
-  const select = $('employeeSelect');
-
-  if (!select) {
-    return;
-  }
-
-  select.innerHTML =
-    '<option value="">Select employee / operator / driver</option>';
-
-  state.employees.forEach(employee => {
-
-    if (!employee.employeeId) {
-      return;
-    }
-
-    const option =
-      document.createElement('option');
-
-    option.value =
-      employee.employeeId;
-
-    option.textContent =
-      employee.employeeName +
-      ' — ' +
-      employee.employeeId +
-      (
-        employee.position
-          ? ' (' + employee.position + ')'
-          : ''
-      );
-
-    select.appendChild(option);
-  });
-}
-
-
-function filterEmployees() {
-
-  const search =
-    String(
-      $('employeeSearch')?.value || ''
-    ).toLowerCase().trim();
-
   const select =
     $('employeeSelect');
 
+
   if (!select) {
     return;
   }
 
+
   select.innerHTML =
-    '<option value="">Select employee / operator / driver</option>';
+    '';
 
-  state.employees
-    .filter(employee => {
 
-      const text =
-        [
-          employee.employeeId,
-          employee.employeeName,
-          employee.position,
-          employee.department
-        ]
-          .join(' ')
-          .toLowerCase();
+  const first =
+    document.createElement(
+      'option'
+    );
 
-      return text.includes(search);
 
-    })
-    .forEach(employee => {
+  first.value =
+    '';
+
+  first.textContent =
+    'Select employee / operator / driver';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.employees.forEach(
+    function (employee) {
+
+      if (
+        !employee.employeeId
+      ) {
+        return;
+      }
+
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
+
 
       option.value =
         employee.employeeId;
+
 
       option.textContent =
         employee.employeeName +
@@ -536,25 +1004,153 @@ function filterEmployees() {
         employee.employeeId +
         (
           employee.position
-            ? ' (' + employee.position + ')'
+            ? ' (' +
+              employee.position +
+              ')'
             : ''
         );
 
-      select.appendChild(option);
-    });
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
 }
 
 
+/* =====================================================
+   FILTER EMPLOYEES
+   ===================================================== */
+
+function filterEmployees() {
+
+  const input =
+    $('employeeSearch');
+
+
+  const select =
+    $('employeeSelect');
+
+
+  if (!select) {
+    return;
+  }
+
+
+  const search =
+    input &&
+    input.value
+      ? input.value
+          .toLowerCase()
+          .trim()
+      : '';
+
+
+  select.innerHTML =
+    '';
+
+
+  const first =
+    document.createElement(
+      'option'
+    );
+
+  first.value =
+    '';
+
+  first.textContent =
+    'Select employee / operator / driver';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.employees
+    .filter(
+      function (employee) {
+
+        const text =
+          [
+            employee.employeeId,
+            employee.employeeName,
+            employee.position,
+            employee.department
+          ]
+            .join(' ')
+            .toLowerCase();
+
+
+        return text.includes(
+          search
+        );
+      }
+    )
+    .forEach(
+      function (employee) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          employee.employeeId;
+
+
+        option.textContent =
+          employee.employeeName +
+          ' — ' +
+          employee.employeeId +
+          (
+            employee.position
+              ? ' (' +
+                employee.position +
+                ')'
+              : ''
+          );
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+}
+
+
+/* =====================================================
+   EMPLOYEE CHANGED
+   ===================================================== */
+
 function employeeChanged() {
 
+  const select =
+    $('employeeSelect');
+
+
   const employeeId =
-    $('employeeSelect')?.value || '';
+    select
+      ? select.value
+      : '';
+
 
   state.selectedEmployee =
     state.employees.find(
-      employee =>
-        employee.employeeId === employeeId
+      function (employee) {
+
+        return (
+          employee.employeeId ===
+          employeeId
+        );
+      }
     ) || null;
+
 
   updateActiveAttendanceDisplay();
 
@@ -563,7 +1159,7 @@ function employeeChanged() {
 
 
 /* =====================================================
-   EQUIPMENT
+   BUILD EQUIPMENT LIST
    ===================================================== */
 
 function buildEquipmentList() {
@@ -571,108 +1167,207 @@ function buildEquipmentList() {
   const select =
     $('equipmentSelect');
 
-  if (!select) {
-    return;
-  }
-
-  select.innerHTML =
-    '<option value="">Select equipment</option>';
-
-  state.equipment.forEach(item => {
-
-    if (!item.equipmentId) {
-      return;
-    }
-
-    const option =
-      document.createElement('option');
-
-    option.value =
-      item.equipmentId;
-
-    option.textContent =
-      item.equipmentName +
-      ' — ' +
-      item.equipmentId;
-
-    if (item.equipmentType) {
-      option.textContent +=
-        ' (' + item.equipmentType + ')';
-    }
-
-    select.appendChild(option);
-  });
-}
-
-
-function filterEquipment() {
-
-  const search =
-    String(
-      $('equipmentSearch')?.value || ''
-    ).toLowerCase().trim();
-
-  const select =
-    $('equipmentSelect');
 
   if (!select) {
     return;
   }
 
+
   select.innerHTML =
-    '<option value="">Select equipment</option>';
+    '';
 
-  state.equipment
-    .filter(item => {
 
-      const text =
-        [
-          item.equipmentId,
-          item.equipmentName,
-          item.equipmentType,
-          item.plateNumber
-        ]
-          .join(' ')
-          .toLowerCase();
+  const first =
+    document.createElement(
+      'option'
+    );
 
-      return text.includes(search);
 
-    })
-    .forEach(item => {
+  first.value =
+    '';
+
+  first.textContent =
+    'Select equipment';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.equipment.forEach(
+    function (item) {
+
+      if (!item.equipmentId) {
+        return;
+      }
+
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
+
 
       option.value =
         item.equipmentId;
+
 
       option.textContent =
         item.equipmentName +
         ' — ' +
         item.equipmentId;
 
-      select.appendChild(option);
-    });
+
+      if (
+        item.equipmentType
+      ) {
+
+        option.textContent +=
+          ' (' +
+          item.equipmentType +
+          ')';
+      }
+
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
 }
 
 
+/* =====================================================
+   FILTER EQUIPMENT
+   ===================================================== */
+
+function filterEquipment() {
+
+  const input =
+    $('equipmentSearch');
+
+  const select =
+    $('equipmentSelect');
+
+
+  if (!select) {
+    return;
+  }
+
+
+  const search =
+    input &&
+    input.value
+      ? input.value
+          .toLowerCase()
+          .trim()
+      : '';
+
+
+  select.innerHTML =
+    '';
+
+
+  const first =
+    document.createElement(
+      'option'
+    );
+
+  first.value =
+    '';
+
+  first.textContent =
+    'Select equipment';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.equipment
+    .filter(
+      function (item) {
+
+        const text =
+          [
+            item.equipmentId,
+            item.equipmentName,
+            item.equipmentType,
+            item.plateNumber
+          ]
+            .join(' ')
+            .toLowerCase();
+
+
+        return text.includes(
+          search
+        );
+      }
+    )
+    .forEach(
+      function (item) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          item.equipmentId;
+
+
+        option.textContent =
+          item.equipmentName +
+          ' — ' +
+          item.equipmentId;
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+}
+
+
+/* =====================================================
+   EQUIPMENT CHANGED
+   ===================================================== */
+
 function equipmentChanged() {
 
+  const select =
+    $('equipmentSelect');
+
+
   const id =
-    $('equipmentSelect')?.value || '';
+    select
+      ? select.value
+      : '';
+
 
   state.selectedEquipment =
     state.equipment.find(
-      item =>
-        item.equipmentId === id
+      function (item) {
+
+        return (
+          item.equipmentId === id
+        );
+      }
     ) || null;
+
 
   updateButtons();
 }
 
 
 /* =====================================================
-   PROJECTS
+   BUILD PROJECT LIST
    ===================================================== */
 
 function buildProjectList() {
@@ -680,96 +1375,189 @@ function buildProjectList() {
   const select =
     $('projectSelect');
 
-  if (!select) {
-    return;
-  }
-
-  select.innerHTML =
-    '<option value="">Select project</option>';
-
-  state.projects.forEach(project => {
-
-    if (!project.projectId) {
-      return;
-    }
-
-    const option =
-      document.createElement('option');
-
-    option.value =
-      project.projectId;
-
-    option.textContent =
-      project.projectName +
-      ' — ' +
-      project.projectId;
-
-    select.appendChild(option);
-  });
-}
-
-
-function filterProjects() {
-
-  const search =
-    String(
-      $('projectSearch')?.value || ''
-    ).toLowerCase().trim();
-
-  const select =
-    $('projectSelect');
 
   if (!select) {
     return;
   }
 
+
   select.innerHTML =
-    '<option value="">Select project</option>';
+    '';
 
-  state.projects
-    .filter(project => {
 
-      const text =
-        [
-          project.projectId,
-          project.projectName,
-          project.client,
-          project.location
-        ]
-          .join(' ')
-          .toLowerCase();
+  const first =
+    document.createElement(
+      'option'
+    );
 
-      return text.includes(search);
 
-    })
-    .forEach(project => {
+  first.value =
+    '';
+
+  first.textContent =
+    'Select project';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.projects.forEach(
+    function (project) {
+
+      if (!project.projectId) {
+        return;
+      }
+
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
+
 
       option.value =
         project.projectId;
+
 
       option.textContent =
         project.projectName +
         ' — ' +
         project.projectId;
 
-      select.appendChild(option);
-    });
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
 }
 
 
+/* =====================================================
+   FILTER PROJECTS
+   ===================================================== */
+
+function filterProjects() {
+
+  const input =
+    $('projectSearch');
+
+  const select =
+    $('projectSelect');
+
+
+  if (!select) {
+    return;
+  }
+
+
+  const search =
+    input &&
+    input.value
+      ? input.value
+          .toLowerCase()
+          .trim()
+      : '';
+
+
+  select.innerHTML =
+    '';
+
+
+  const first =
+    document.createElement(
+      'option'
+    );
+
+  first.value =
+    '';
+
+  first.textContent =
+    'Select project';
+
+
+  select.appendChild(
+    first
+  );
+
+
+  state.projects
+    .filter(
+      function (project) {
+
+        const text =
+          [
+            project.projectId,
+            project.projectName,
+            project.client,
+            project.location
+          ]
+            .join(' ')
+            .toLowerCase();
+
+
+        return text.includes(
+          search
+        );
+      }
+    )
+    .forEach(
+      function (project) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          project.projectId;
+
+
+        option.textContent =
+          project.projectName +
+          ' — ' +
+          project.projectId;
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+}
+
+
+/* =====================================================
+   PROJECT CHANGED
+   ===================================================== */
+
 function projectChanged() {
 
+  const select =
+    $('projectSelect');
+
+
   const id =
-    $('projectSelect')?.value || '';
+    select
+      ? select.value
+      : '';
+
 
   state.selectedProject =
     state.projects.find(
-      project =>
-        project.projectId === id
+      function (project) {
+
+        return (
+          project.projectId === id
+        );
+      }
     ) || null;
+
 
   updateButtons();
 }
@@ -781,64 +1569,101 @@ function projectChanged() {
 
 function getActiveAttendance() {
 
-  if (!state.selectedEmployee) {
+  if (
+    !state.selectedEmployee
+  ) {
+
     return null;
   }
 
+
   return state.activeAttendance.find(
-    item =>
-      item.employeeId ===
-      state.selectedEmployee.employeeId
+    function (item) {
+
+      return (
+        item.employeeId ===
+        state.selectedEmployee.employeeId
+      );
+    }
   ) || null;
 }
 
+
+/* =====================================================
+   DISPLAY ACTIVE ATTENDANCE
+   ===================================================== */
 
 function updateActiveAttendanceDisplay() {
 
   const box =
     $('activeAttendance');
 
-  const active =
-    getActiveAttendance();
 
   if (!box) {
     return;
   }
 
+
+  const active =
+    getActiveAttendance();
+
+
   if (!active) {
 
-    box.hidden = true;
-    box.innerHTML = '';
+    box.hidden =
+      true;
+
+    box.innerHTML =
+      '';
 
     return;
   }
 
-  box.hidden = false;
 
-  box.innerHTML = `
-    <div class="active-title">
-      ACTIVE ATTENDANCE
-    </div>
+  box.hidden =
+    false;
 
-    <div class="active-row">
-      <strong>${escapeHtml(active.employeeName)}</strong>
-    </div>
 
-    <div class="active-row">
-      Equipment:
-      <strong>${escapeHtml(active.equipmentName)}</strong>
-    </div>
+  box.innerHTML =
 
-    <div class="active-row">
-      Project:
-      <strong>${escapeHtml(active.projectName)}</strong>
-    </div>
+    '<div class="active-title">' +
+      'ACTIVE ATTENDANCE' +
+    '</div>' +
 
-    <div class="active-row">
-      Time In:
-      <strong>${escapeHtml(active.timeIn)}</strong>
-    </div>
-  `;
+    '<div class="active-row">' +
+      '<strong>' +
+      escapeHtml(
+        active.employeeName
+      ) +
+      '</strong>' +
+    '</div>' +
+
+    '<div class="active-row">' +
+      'Equipment: ' +
+      '<strong>' +
+      escapeHtml(
+        active.equipmentName
+      ) +
+      '</strong>' +
+    '</div>' +
+
+    '<div class="active-row">' +
+      'Project: ' +
+      '<strong>' +
+      escapeHtml(
+        active.projectName
+      ) +
+      '</strong>' +
+    '</div>' +
+
+    '<div class="active-row">' +
+      'Time In: ' +
+      '<strong>' +
+      escapeHtml(
+        active.timeIn
+      ) +
+      '</strong>' +
+    '</div>';
 }
 
 
@@ -854,27 +1679,38 @@ function updateButtons() {
   const outButton =
     $('outButton');
 
-  if (!inButton || !outButton) {
+
+  if (
+    !inButton ||
+    !outButton
+  ) {
+
     return;
   }
+
 
   const employeeSelected =
     !!state.selectedEmployee;
 
+
   const equipmentSelected =
     !!state.selectedEquipment;
+
 
   const projectSelected =
     !!state.selectedProject;
 
+
   const active =
     getActiveAttendance();
+
 
   inButton.disabled =
     !employeeSelected ||
     !equipmentSelected ||
     !projectSelected ||
     !!active;
+
 
   outButton.disabled =
     !employeeSelected ||
@@ -902,7 +1738,9 @@ async function timeIn() {
     return;
   }
 
+
   setBusy(true);
+
 
   try {
 
@@ -910,6 +1748,7 @@ async function timeIn() {
       await apiCall(
         'timeIn',
         {
+
           employeeId:
             state.selectedEmployee.employeeId,
 
@@ -930,30 +1769,47 @@ async function timeIn() {
         }
       );
 
-    if (!response.success) {
+
+    if (
+      !response ||
+      !response.success
+    ) {
+
       throw new Error(
-        response.error || 'Time In failed.'
+        response &&
+        response.error
+          ? response.error
+          : 'Time In failed.'
       );
     }
+
 
     setStatus(
       '✓ TIME IN recorded successfully.',
       'success'
     );
 
+
     showResult(
       response.attendance,
       'TIME IN RECORDED'
     );
 
+
     await loadBootstrap();
+
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      'TIME IN ERROR:',
+      error
+    );
+
 
     setStatus(
-      error.message || 'Time In failed.',
+      error.message ||
+        'Time In failed.',
       'error'
     );
 
@@ -965,7 +1821,7 @@ async function timeIn() {
 
 
 /* =====================================================
-   BEGIN OUT
+   BEGIN TIME OUT
    ===================================================== */
 
 function beginTimeOut() {
@@ -973,50 +1829,94 @@ function beginTimeOut() {
   const active =
     getActiveAttendance();
 
+
   if (!active) {
 
     setStatus(
-      'No active attendance was found for this employee.',
+      'No active attendance was found.',
       'error'
     );
 
     return;
   }
 
-  state.pendingOut = true;
 
-  hideElement('fuelForm', true);
-  hideElement('fuelQuestion', false);
+  state.pendingOut =
+    true;
+
+
+  hideElement(
+    'fuelForm',
+    true
+  );
+
+
+  hideElement(
+    'fuelQuestion',
+    false
+  );
+
 
   setStatus(
     'Time Out selected. Did you fuel the equipment?',
     'info'
   );
 
-  $('fuelQuestion')?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'center'
-  });
+
+  const question =
+    $('fuelQuestion');
+
+
+  if (question) {
+
+    question.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
+  }
 }
 
 
 /* =====================================================
-   FUEL
+   SHOW FUEL FORM
    ===================================================== */
 
 function showFuelForm() {
 
-  hideElement('fuelQuestion', true);
-  hideElement('fuelForm', false);
+  hideElement(
+    'fuelQuestion',
+    true
+  );
 
-  $('fuelQuantity')?.focus();
+
+  hideElement(
+    'fuelForm',
+    false
+  );
+
+
+  const quantity =
+    $('fuelQuantity');
+
+
+  if (quantity) {
+
+    quantity.focus();
+  }
 }
 
 
-async function completeTimeOut(useFuel) {
+/* =====================================================
+   COMPLETE TIME OUT
+   ===================================================== */
+
+async function completeTimeOut(
+  useFuel
+) {
 
   const employee =
     state.selectedEmployee;
+
 
   if (!employee) {
 
@@ -1028,26 +1928,51 @@ async function completeTimeOut(useFuel) {
     return;
   }
 
+
   let fuelData = {
-    fuelUsed: 'NO'
+
+    fuelUsed:
+      'NO'
   };
+
 
   if (useFuel) {
 
+    const quantityInput =
+      $('fuelQuantity');
+
+    const unitInput =
+      $('fuelUnit');
+
+    const amountInput =
+      $('fuelAmount');
+
+
     const quantity =
-      parseFloat(
-        $('fuelQuantity')?.value || ''
-      );
+      quantityInput
+        ? parseFloat(
+            quantityInput.value
+          )
+        : NaN;
+
 
     const unit =
-      $('fuelUnit')?.value || '';
+      unitInput
+        ? unitInput.value
+        : '';
+
 
     const amount =
-      parseFloat(
-        $('fuelAmount')?.value || ''
-      );
+      amountInput
+        ? parseFloat(
+            amountInput.value
+          )
+        : NaN;
 
-    if (!(quantity > 0)) {
+
+    if (
+      !(quantity > 0)
+    ) {
 
       setStatus(
         'Enter the fuel quantity.',
@@ -1056,6 +1981,7 @@ async function completeTimeOut(useFuel) {
 
       return;
     }
+
 
     if (
       unit !== 'Liter' &&
@@ -1070,7 +1996,10 @@ async function completeTimeOut(useFuel) {
       return;
     }
 
-    if (!(amount >= 0)) {
+
+    if (
+      !(amount >= 0)
+    ) {
 
       setStatus(
         'Enter the fuel price / amount.',
@@ -1080,15 +2009,26 @@ async function completeTimeOut(useFuel) {
       return;
     }
 
+
     fuelData = {
-      fuelUsed: 'YES',
-      fuelQuantity: quantity,
-      fuelUnit: unit,
-      fuelAmount: amount
+
+      fuelUsed:
+        'YES',
+
+      fuelQuantity:
+        quantity,
+
+      fuelUnit:
+        unit,
+
+      fuelAmount:
+        amount
     };
   }
 
+
   setBusy(true);
+
 
   try {
 
@@ -1097,40 +2037,60 @@ async function completeTimeOut(useFuel) {
         'timeOut',
         Object.assign(
           {
+
             employeeId:
               employee.employeeId
+
           },
+
           fuelData
         )
       );
 
-    if (!response.success) {
+
+    if (
+      !response ||
+      !response.success
+    ) {
 
       throw new Error(
-        response.error || 'Time Out failed.'
+        response &&
+        response.error
+          ? response.error
+          : 'Time Out failed.'
       );
     }
+
 
     setStatus(
       '✓ TIME OUT recorded successfully.',
       'success'
     );
 
+
     showResult(
       response.attendance,
       'TIME OUT RECORDED'
     );
 
+
     resetFuel();
+
 
     await loadBootstrap();
 
+
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      'TIME OUT ERROR:',
+      error
+    );
+
 
     setStatus(
-      error.message || 'Time Out failed.',
+      error.message ||
+        'Time Out failed.',
       'error'
     );
 
@@ -1142,89 +2102,153 @@ async function completeTimeOut(useFuel) {
 
 
 /* =====================================================
-   RESULT
+   RESULT DISPLAY
    ===================================================== */
 
-function showResult(attendance, title) {
+function showResult(
+  attendance,
+  title
+) {
 
   const box =
     $('resultBox');
 
-  if (!box || !attendance) {
+
+  if (
+    !box ||
+    !attendance
+  ) {
+
     return;
   }
 
-  box.hidden = false;
 
-  box.innerHTML = `
-    <div class="result-title">
-      ${escapeHtml(title)}
-    </div>
+  box.hidden =
+    false;
 
-    <div class="result-item">
-      Employee:
-      <strong>${escapeHtml(attendance.employeeName || '')}</strong>
-    </div>
 
-    <div class="result-item">
-      Equipment:
-      <strong>${escapeHtml(attendance.equipmentName || '')}</strong>
-    </div>
+  let html = '';
 
-    <div class="result-item">
-      Project:
-      <strong>${escapeHtml(attendance.projectName || '')}</strong>
-    </div>
 
-    <div class="result-item">
-      Date:
-      <strong>${escapeHtml(attendance.date || '')}</strong>
-    </div>
+  html +=
+    '<div class="result-title">' +
+    escapeHtml(title) +
+    '</div>';
 
-    ${
-      attendance.timeIn
-        ? `
-          <div class="result-item">
-            Time In:
-            <strong>${escapeHtml(attendance.timeIn)}</strong>
-          </div>
-        `
-        : ''
-    }
 
-    ${
-      attendance.timeOut
-        ? `
-          <div class="result-item">
-            Time Out:
-            <strong>${escapeHtml(attendance.timeOut)}</strong>
-          </div>
-        `
-        : ''
-    }
+  html +=
+    '<div class="result-item">' +
+    'Employee: ' +
+    '<strong>' +
+    escapeHtml(
+      attendance.employeeName || ''
+    ) +
+    '</strong>' +
+    '</div>';
 
-    ${
-      attendance.totalHours !== undefined
-        ? `
-          <div class="result-item">
-            Total Hours:
-            <strong>${escapeHtml(String(attendance.totalHours))}</strong>
-          </div>
-        `
-        : ''
-    }
 
-    ${
-      attendance.fuel
-        ? `
-          <div class="result-item">
-            Fuel:
-            <strong>${escapeHtml(attendance.fuel)}</strong>
-          </div>
-        `
-        : ''
-    }
-  `;
+  html +=
+    '<div class="result-item">' +
+    'Equipment: ' +
+    '<strong>' +
+    escapeHtml(
+      attendance.equipmentName || ''
+    ) +
+    '</strong>' +
+    '</div>';
+
+
+  html +=
+    '<div class="result-item">' +
+    'Project: ' +
+    '<strong>' +
+    escapeHtml(
+      attendance.projectName || ''
+    ) +
+    '</strong>' +
+    '</div>';
+
+
+  html +=
+    '<div class="result-item">' +
+    'Date: ' +
+    '<strong>' +
+    escapeHtml(
+      attendance.date || ''
+    ) +
+    '</strong>' +
+    '</div>';
+
+
+  if (
+    attendance.timeIn
+  ) {
+
+    html +=
+      '<div class="result-item">' +
+      'Time In: ' +
+      '<strong>' +
+      escapeHtml(
+        attendance.timeIn
+      ) +
+      '</strong>' +
+      '</div>';
+  }
+
+
+  if (
+    attendance.timeOut
+  ) {
+
+    html +=
+      '<div class="result-item">' +
+      'Time Out: ' +
+      '<strong>' +
+      escapeHtml(
+        attendance.timeOut
+      ) +
+      '</strong>' +
+      '</div>';
+  }
+
+
+  if (
+    attendance.totalHours !==
+    undefined
+  ) {
+
+    html +=
+      '<div class="result-item">' +
+      'Total Hours: ' +
+      '<strong>' +
+      escapeHtml(
+        String(
+          attendance.totalHours
+        )
+      ) +
+      '</strong>' +
+      '</div>';
+  }
+
+
+  if (
+    attendance.fuel
+  ) {
+
+    html +=
+      '<div class="result-item">' +
+      'Fuel: ' +
+      '<strong>' +
+      escapeHtml(
+        attendance.fuel
+      ) +
+      '</strong>' +
+      '</div>';
+  }
+
+
+  box.innerHTML =
+    html;
 }
 
 
@@ -1232,208 +2256,303 @@ function showResult(attendance, title) {
    API JSONP
    ===================================================== */
 
-function apiCall(action, params = {}) {
+function apiCall(
+  action,
+  params
+) {
 
-  return new Promise((resolve, reject) => {
+  params =
+    params || {};
 
-    const callbackName =
-      'amanahCallback_' +
-      Date.now() +
-      '_' +
-      Math.floor(
-        Math.random() * 100000
+
+  return new Promise(
+    function (
+      resolve,
+      reject
+    ) {
+
+      const callbackName =
+        'amanahCallback_' +
+        Date.now() +
+        '_' +
+        Math.floor(
+          Math.random() * 100000
+        );
+
+
+      const script =
+        document.createElement(
+          'script'
+        );
+
+
+      const query =
+        new URLSearchParams();
+
+
+      query.set(
+        'action',
+        action
       );
 
-    const script =
-      document.createElement('script');
 
-    const query =
-      new URLSearchParams();
+      query.set(
+        'callback',
+        callbackName
+      );
 
-    query.set(
-      'action',
-      action
-    );
 
-    query.set(
-      'callback',
-      callbackName
-    );
+      query.set(
+        '_',
+        String(
+          Date.now()
+        )
+      );
 
-    query.set(
-      '_',
-      Date.now()
-    );
 
-    Object.keys(params).forEach(key => {
+      Object.keys(
+        params
+      ).forEach(
+        function (key) {
 
-      if (
-        params[key] !== undefined &&
-        params[key] !== null
-      ) {
+          const value =
+            params[key];
 
-        query.set(
-          key,
-          String(params[key])
+
+          if (
+            value !== undefined &&
+            value !== null
+          ) {
+
+            query.set(
+              key,
+              String(value)
+            );
+          }
+
+        }
+      );
+
+
+      const timeout =
+        setTimeout(
+          function () {
+
+            cleanup();
+
+            reject(
+              new Error(
+                'API request timed out.'
+              )
+            );
+
+          },
+          20000
         );
-      }
-    });
 
-    const timeout =
-      setTimeout(() => {
 
-        cleanup();
+      function cleanup() {
 
-        reject(
-          new Error(
-            'API request timed out.'
-          )
+        clearTimeout(
+          timeout
         );
 
-      }, 20000);
 
-    function cleanup() {
+        try {
 
-      clearTimeout(timeout);
+          delete window[
+            callbackName
+          ];
 
-      try {
-        delete window[callbackName];
-      } catch (_) {
-        window[callbackName] =
-          undefined;
+        } catch (_) {
+
+          window[
+            callbackName
+          ] = undefined;
+        }
+
+
+        script.remove();
       }
 
-      script.remove();
+
+      window[
+        callbackName
+      ] =
+        function (data) {
+
+          cleanup();
+
+          resolve(
+            data
+          );
+        };
+
+
+      script.onerror =
+        function () {
+
+          cleanup();
+
+          reject(
+            new Error(
+              'Unable to connect to AMANAH API.'
+            )
+          );
+        };
+
+
+      script.src =
+        API_URL +
+        '?' +
+        query.toString();
+
+
+      document.body.appendChild(
+        script
+      );
+
     }
-
-    window[callbackName] =
-      function(data) {
-
-        cleanup();
-        resolve(data);
-      };
-
-    script.onerror =
-      function() {
-
-        cleanup();
-
-        reject(
-          new Error(
-            'Unable to connect to AMANAH API.'
-          )
-        );
-      };
-
-    script.src =
-      API_URL +
-      '?' +
-      query.toString();
-
-    document.body.appendChild(
-      script
-    );
-  });
+  );
 }
 
 
 /* =====================================================
-   SCANNER CONTROL
+   RESTART SCANNER
    ===================================================== */
-
-async function stopScanner() {
-
-  if (!state.scanner) {
-    return;
-  }
-
-  try {
-
-    if (state.scannerRunning) {
-      await state.scanner.stop();
-    }
-
-  } catch (error) {
-
-    console.warn(
-      'Scanner stop warning:',
-      error
-    );
-  }
-
-  try {
-    await state.scanner.clear();
-  } catch (_) {}
-
-  state.scannerRunning = false;
-}
-
 
 async function restartScanner() {
 
-  state.stationVerified = false;
-  state.selectedEmployee = null;
-  state.selectedEquipment = null;
-  state.selectedProject = null;
+  await stopScanner();
+
+
+  state.stationVerified =
+    false;
+
+  state.selectedEmployee =
+    null;
+
+  state.selectedEquipment =
+    null;
+
+  state.selectedProject =
+    null;
+
+  state.pendingOut =
+    false;
+
+  state.lastQrData =
+    '';
+
+  state.lastQrTime =
+    0;
+
 
   hideElement(
     'attendanceScreen',
     true
   );
 
+
   hideElement(
     'resultBox',
     true
   );
 
-  showScreen('scannerScreen');
 
-  setStatus(
-    'Starting camera...',
-    'info'
+  hideElement(
+    'fuelQuestion',
+    true
   );
 
-  await startScanner();
+
+  hideElement(
+    'fuelForm',
+    true
+  );
+
+
+  showScreen(
+    'scannerScreen'
+  );
+
+
+  const button =
+    $('startCameraButton');
+
+
+  if (button) {
+
+    button.hidden =
+      false;
+
+    button.disabled =
+      false;
+
+    button.textContent =
+      'OPEN CAMERA';
+  }
+
+
+  setStatus(
+    'Tap OPEN CAMERA to begin.',
+    'info'
+  );
 }
 
 
 /* =====================================================
-   SCREEN
+   SCREEN SWITCH
    ===================================================== */
 
-function showScreen(screenId) {
+function showScreen(
+  screenId
+) {
 
   document
     .querySelectorAll(
       '.app-screen'
     )
-    .forEach(screen => {
+    .forEach(
+      function (screen) {
 
-      screen.hidden =
-        screen.id !== screenId;
-    });
+        screen.hidden =
+          screen.id !==
+          screenId;
+
+      }
+    );
 }
 
 
 /* =====================================================
-   STATUS
+   STATUS MESSAGE
    ===================================================== */
 
-function setStatus(message, type) {
+function setStatus(
+  message,
+  type
+) {
 
   const element =
     $('statusMessage');
+
 
   if (!element) {
     return;
   }
 
+
   element.textContent =
     message;
 
+
   element.className =
     'status-message ' +
-    (type || 'info');
+    (
+      type ||
+      'info'
+    );
 }
 
 
@@ -1441,12 +2560,15 @@ function setStatus(message, type) {
    BUSY
    ===================================================== */
 
-function setBusy(busy) {
+function setBusy(
+  busy
+) {
 
   document.body.classList.toggle(
     'busy',
     busy
   );
+
 
   if (busy) {
 
@@ -1456,13 +2578,18 @@ function setBusy(busy) {
     const outButton =
       $('outButton');
 
+
     if (inButton) {
-      inButton.disabled = true;
+      inButton.disabled =
+        true;
     }
 
+
     if (outButton) {
-      outButton.disabled = true;
+      outButton.disabled =
+        true;
     }
+
 
   } else {
 
@@ -1477,54 +2604,104 @@ function setBusy(busy) {
 
 function resetFuel() {
 
-  if ($('fuelQuantity')) {
-    $('fuelQuantity').value = '';
+  const quantity =
+    $('fuelQuantity');
+
+  const unit =
+    $('fuelUnit');
+
+  const amount =
+    $('fuelAmount');
+
+
+  if (quantity) {
+    quantity.value =
+      '';
   }
 
-  if ($('fuelUnit')) {
-    $('fuelUnit').value = 'Liter';
+
+  if (unit) {
+    unit.value =
+      'Liter';
   }
 
-  if ($('fuelAmount')) {
-    $('fuelAmount').value = '';
+
+  if (amount) {
+    amount.value =
+      '';
   }
+
 
   hideElement(
     'fuelQuestion',
     true
   );
 
+
   hideElement(
     'fuelForm',
     true
   );
 
-  state.pendingOut = false;
+
+  state.pendingOut =
+    false;
 }
 
 
 /* =====================================================
-   HELPERS
+   HIDE ELEMENT
    ===================================================== */
 
-function hideElement(id, hidden) {
+function hideElement(
+  id,
+  hidden
+) {
 
   const element =
     $(id);
 
+
   if (element) {
+
     element.hidden =
       hidden;
   }
 }
 
 
-function escapeHtml(value) {
+/* =====================================================
+   HTML ESCAPE
+   ===================================================== */
 
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value === null ||
+    value === undefined
+      ? ''
+      : value
+  )
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
 }
