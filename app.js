@@ -3,7 +3,7 @@
  *******************************************************/
 
 const API_URL =
-  'https://script.google.com/macros/s/AKfycbyIUJffSWob23Ewwx8qKhVGFRJMoSn1mCnVCYoGDN-JsV4sAWIvYFGx5IG9LjpWEIbi/exec';
+  'https://script.google.com/macros/s/AKfycbyxEhNRWFlbW-RbwYKyfer9Xd9f5w-ZXnGt9UBxWf2pAM50N5fzhleXfiIhBKFiSw2i/exec';
 
 const PERMANENT_QR = {
   type: 'AMANAH_ATTENDANCE_V1',
