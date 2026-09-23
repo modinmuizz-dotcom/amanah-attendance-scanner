@@ -1,1137 +1,1414 @@
-/* =========================================================
-   AMANAH CONSTRUCTION
-   ATTENDANCE QR SCANNER
-   GitHub Pages Frontend
-   ========================================================= */
-
-
-/* =========================================================
-   CONFIGURATION
-   ========================================================= */
+/*******************************************************
+ * AMANAH ATTENDANCE SCANNER
+ *******************************************************/
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbyIUJffSWob23Ewwx8qKhVGFRJMoSn1mCnVCYoGDN-JsV4sAWIvYFGx5IG9LjpWEIbi/exec";
+  'https://script.google.com/macros/s/AKfycbyIUJffSWob23Ewwx8qKhVGFRJMoSn1mCnVCYoGDN-JsV4sAWIvYFGx5IG9LjpWEIbi/exec';
 
-
-/*
-   PERMANENT AMANAH COMPANY QR
-*/
-
-const AMANAH_QR = {
-  type: "AMANAH_ATTENDANCE_V1",
-  company: "AMANAH CONSTRUCTION",
-  system: "AMANAH CONSTRUCTION MANAGEMENT SYSTEM",
-  station: "MAIN_ATTENDANCE",
+const PERMANENT_QR = {
+  type: 'AMANAH_ATTENDANCE_V1',
+  company: 'AMANAH CONSTRUCTION',
+  system: 'AMANAH CONSTRUCTION MANAGEMENT SYSTEM',
+  station: 'MAIN_ATTENDANCE',
   version: 1
 };
 
 
-/*
-   SCANNER SETTINGS
-*/
+/* =====================================================
+   STATE
+   ===================================================== */
 
-const SCANNER_CONFIG = {
+const state = {
+  stationVerified: false,
 
-  fps: 10,
+  employees: [],
+  equipment: [],
+  projects: [],
+  activeAttendance: [],
 
-  qrbox: function(viewfinderWidth, viewfinderHeight) {
+  selectedEmployee: null,
+  selectedEquipment: null,
+  selectedProject: null,
 
-    const size = Math.floor(
-      Math.min(viewfinderWidth, viewfinderHeight) * 0.70
-    );
+  scanner: null,
+  scannerRunning: false,
 
-    return {
-      width: size,
-      height: size
-    };
-
-  },
-
-  aspectRatio: 1.0,
-
-  rememberLastUsedCamera: true,
-
-  showTorchButtonIfSupported: true,
-
-  showZoomSliderIfSupported: true
-
+  pendingOut: false
 };
 
 
-/* =========================================================
-   GLOBAL VARIABLES
-   ========================================================= */
+/* =====================================================
+   DOM
+   ===================================================== */
 
-let scanner = null;
-
-let scannerRunning = false;
-
-let companyVerified = false;
-
-let employeeData = null;
-
-let lastScannedText = "";
-
-let scanLock = false;
+const $ = (id) => document.getElementById(id);
 
 
-/* =========================================================
-   PAGE LOAD
-   ========================================================= */
+/* =====================================================
+   START
+   ===================================================== */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  function() {
+document.addEventListener('DOMContentLoaded', () => {
 
-    startScanner();
+  setupButtons();
 
-  }
-);
+  showScreen('scannerScreen');
+
+  setStatus(
+    'Camera ready. Point it at the AMANAH company QR code.',
+    'info'
+  );
+
+  startScanner();
+});
 
 
-/* =========================================================
-   START CAMERA
-   ========================================================= */
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+
+function setupButtons() {
+
+  $('inButton')?.addEventListener(
+    'click',
+    timeIn
+  );
+
+  $('outButton')?.addEventListener(
+    'click',
+    beginTimeOut
+  );
+
+  $('fuelNoButton')?.addEventListener(
+    'click',
+    () => completeTimeOut(false)
+  );
+
+  $('fuelYesButton')?.addEventListener(
+    'click',
+    showFuelForm
+  );
+
+  $('fuelConfirmButton')?.addEventListener(
+    'click',
+    () => completeTimeOut(true)
+  );
+
+  $('restartScannerButton')?.addEventListener(
+    'click',
+    restartScanner
+  );
+
+  $('employeeSearch')?.addEventListener(
+    'input',
+    filterEmployees
+  );
+
+  $('equipmentSearch')?.addEventListener(
+    'input',
+    filterEquipment
+  );
+
+  $('projectSearch')?.addEventListener(
+    'input',
+    filterProjects
+  );
+
+  $('employeeSelect')?.addEventListener(
+    'change',
+    employeeChanged
+  );
+
+  $('equipmentSelect')?.addEventListener(
+    'change',
+    equipmentChanged
+  );
+
+  $('projectSelect')?.addEventListener(
+    'change',
+    projectChanged
+  );
+}
+
+
+/* =====================================================
+   CAMERA
+   ===================================================== */
 
 async function startScanner() {
 
-  setStatus(
-    "Starting camera...",
-    "info"
-  );
+  if (state.scannerRunning) {
+    return;
+  }
 
   try {
 
-    if (
-      !window.isSecureContext &&
-      location.hostname !== "localhost"
-    ) {
-
-      setStatus(
-        "Camera requires HTTPS. Please open the GitHub Pages HTTPS address.",
-        "error"
-      );
-
-      return;
-
+    if (state.scanner) {
+      try {
+        await state.scanner.clear();
+      } catch (_) {}
     }
 
+    state.scanner =
+      new Html5Qrcode('reader');
 
-    if (
-      !navigator.mediaDevices ||
-      !navigator.mediaDevices.getUserMedia
-    ) {
+    await state.scanner.start(
+      {
+        facingMode: {
+          ideal: 'environment'
+        }
+      },
+      {
+        fps: 10,
+        qrbox: {
+          width: 260,
+          height: 260
+        },
 
-      setStatus(
-        "This browser does not support camera access.",
-        "error"
-      );
-
-      return;
-
-    }
-
-
-    scanner = new Html5Qrcode("reader");
-
-
-    /*
-       Try back camera first.
-    */
-
-    let cameraId = null;
-
-
-    try {
-
-      const cameras =
-        await Html5Qrcode.getCameras();
-
-
-      if (!cameras || cameras.length === 0) {
-
-        throw new Error(
-          "No camera was found."
-        );
-
-      }
-
-
-      /*
-         Prefer rear/back camera.
-      */
-
-      const backCamera =
-        cameras.find(camera => {
-
-          const label =
-            (camera.label || "").toLowerCase();
-
-          return (
-            label.includes("back") ||
-            label.includes("rear") ||
-            label.includes("environment")
-          );
-
-        });
-
-
-      cameraId =
-        backCamera
-          ? backCamera.id
-          : cameras[0].id;
-
-    }
-
-    catch (cameraError) {
-
-      console.log(
-        "Camera enumeration:",
-        cameraError
-      );
-
-      /*
-         Let html5-qrcode request the camera.
-      */
-
-      cameraId = {
-        facingMode: "environment"
-      };
-
-    }
-
-
-    await scanner.start(
-
-      cameraId,
-
-      SCANNER_CONFIG,
+        aspectRatio: 1.0
+      },
 
       onScanSuccess,
 
-      onScanFailure
-
+      () => {}
     );
 
-
-    scannerRunning = true;
-
+    state.scannerRunning = true;
 
     setStatus(
-      "Camera ready. Point it at the AMANAH company QR code.",
-      "success"
+      'Camera ready. Point it at the AMANAH company QR code.',
+      'info'
     );
 
-
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
-
     setStatus(
-      "Unable to open camera. Please allow camera permission and reload this page.",
-      "error"
+      'Unable to open camera. Allow camera permission and reload the page.',
+      'error'
     );
-
   }
-
 }
 
 
-/* =========================================================
-   QR SCAN SUCCESS
-   ========================================================= */
+/* =====================================================
+   QR SUCCESS
+   ===================================================== */
 
-function onScanSuccess(decodedText) {
+async function onScanSuccess(decodedText) {
 
-  if (scanLock) {
+  if (state.stationVerified) {
     return;
   }
 
+  const payload = parseQr(decodedText);
 
-  if (decodedText === lastScannedText) {
+  if (!payload) {
+
+    setStatus(
+      'Invalid QR code. Please scan the AMANAH company QR code.',
+      'error'
+    );
+
     return;
   }
 
+  const valid =
+    payload.type === PERMANENT_QR.type &&
+    payload.company === PERMANENT_QR.company &&
+    payload.system === PERMANENT_QR.system &&
+    payload.station === PERMANENT_QR.station &&
+    Number(payload.version) === PERMANENT_QR.version;
 
-  lastScannedText = decodedText;
+  if (!valid) {
+
+    setStatus(
+      'This is not the AMANAH attendance station QR code.',
+      'error'
+    );
+
+    return;
+  }
+
+  state.stationVerified = true;
+
+  await stopScanner();
+
+  setStatus(
+    '✓ AMANAH station verified.',
+    'success'
+  );
+
+  showScreen('attendanceScreen');
+
+  await loadBootstrap();
+}
 
 
-  let data;
+/* =====================================================
+   QR PARSER
+   ===================================================== */
 
+function parseQr(text) {
 
   try {
 
-    data = JSON.parse(decodedText);
-
-  }
-
-  catch (error) {
-
-    /*
-       Not JSON.
-       Ignore and continue scanning.
-    */
-
-    return;
-
-  }
-
-
-  /*
-     STEP 1
-     COMPANY QR
-  */
-
-  if (isAmanahCompanyQR(data)) {
-
-    verifyCompanyQR(data);
-
-    return;
-
-  }
-
-
-  /*
-     STEP 2
-     EMPLOYEE QR
-  */
-
-  if (companyVerified) {
-
-    processEmployeeQR(data);
-
-    return;
-
-  }
-
-
-  setStatus(
-    "Please scan the AMANAH company QR first.",
-    "error"
-  );
-
-}
-
-
-/* =========================================================
-   QR SCAN FAILURE
-   ========================================================= */
-
-function onScanFailure(errorMessage) {
-
-  /*
-     Normal.
-     QR scanners continuously report failures
-     while searching for a QR.
-  */
-
-}
-
-
-/* =========================================================
-   VALIDATE COMPANY QR
-   ========================================================= */
-
-function isAmanahCompanyQR(data) {
-
-  return (
-
-    data &&
-    data.type === AMANAH_QR.type &&
-    data.company === AMANAH_QR.company &&
-    data.system === AMANAH_QR.system &&
-    data.station === AMANAH_QR.station &&
-    Number(data.version) === AMANAH_QR.version
-
-  );
-
-}
-
-
-/* =========================================================
-   COMPANY QR VERIFIED
-   ========================================================= */
-
-async function verifyCompanyQR(data) {
-
-  if (scanLock) {
-    return;
-  }
-
-
-  scanLock = true;
-
-
-  setStatus(
-    "AMANAH company QR detected. Verifying station...",
-    "info"
-  );
-
-
-  try {
-
-    const result =
-      await apiGet(
-        "verifyStation"
-      );
-
-
-    if (
-      result &&
-      result.success === true
-    ) {
-
-      companyVerified = true;
-
-
-      document.getElementById(
-        "pageTitle"
-      ).textContent =
-        "Scan Employee QR";
-
-
-      document.getElementById(
-        "pageSubtitle"
-      ).textContent =
-        "Company station verified. Scan the employee QR code.";
-
-
-      setStatus(
-        "✓ AMANAH station verified. Scan an employee QR code.",
-        "success"
-      );
-
-    }
-
-    else {
-
-      companyVerified = false;
-
-
-      setStatus(
-        "Company QR is not authorized for this attendance station.",
-        "error"
-      );
-
-    }
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-
-    /*
-       If API verification fails because of a temporary
-       network problem, we still recognize the permanent
-       QR locally.
-
-       This keeps the camera usable while the API is
-       unavailable.
-    */
-
-    companyVerified = true;
-
-
-    document.getElementById(
-      "pageTitle"
-    ).textContent =
-      "Scan Employee QR";
-
-
-    document.getElementById(
-      "pageSubtitle"
-    ).textContent =
-      "Company QR recognized. Scan the employee QR code.";
-
-
-    setStatus(
-      "✓ AMANAH company QR recognized. Scan employee QR.",
-      "success"
+    return JSON.parse(
+      String(text).trim()
     );
 
-  }
+  } catch (error) {
 
-
-  setTimeout(
-    function() {
-
-      scanLock = false;
-      lastScannedText = "";
-
-    },
-    1200
-  );
-
-}
-
-
-/* =========================================================
-   PROCESS EMPLOYEE QR
-   ========================================================= */
-
-async function processEmployeeQR(data) {
-
-  if (scanLock) {
-    return;
-  }
-
-
-  scanLock = true;
-
-
-  setStatus(
-    "Employee QR detected. Looking up employee...",
-    "info"
-  );
-
-
-  try {
-
-    const employee =
-      normalizeEmployeeQR(data);
-
-
-    if (!employee) {
-
-      setStatus(
-        "Invalid employee QR. Employee ID or employee name is missing.",
-        "error"
-      );
-
-
-      scanLock = false;
-
-      return;
-
-    }
-
-
-    /*
-       Ask Apps Script to verify employee.
-    */
-
-    const result =
-      await apiGet(
-        "employee",
-        {
-          employeeId:
-            employee.employeeId,
-
-          name:
-            employee.name
-        }
-      );
-
-
-    if (
-      !result ||
-      result.success !== true
-    ) {
-
-      setStatus(
-        result && result.message
-          ? result.message
-          : "Employee was not found.",
-        "error"
-      );
-
-
-      scanLock = false;
-
-      return;
-
-    }
-
-
-    employeeData = {
-
-      employeeId:
-        result.employeeId ||
-        employee.employeeId,
-
-      name:
-        result.name ||
-        employee.name,
-
-      position:
-        result.position ||
-        employee.position ||
-        ""
-
-    };
-
-
-    showEmployee(employeeData);
-
-
-    setStatus(
-      "Employee verified. Choose TIME IN or TIME OUT.",
-      "success"
-    );
-
-
-    stopScanner();
-
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-
-    setStatus(
-      "Unable to verify employee. Please try again.",
-      "error"
-    );
-
-
-  }
-
-
-  scanLock = false;
-
-}
-
-
-/* =========================================================
-   NORMALIZE EMPLOYEE QR
-   ========================================================= */
-
-function normalizeEmployeeQR(data) {
-
-  if (!data) {
     return null;
   }
+}
 
 
-  /*
-     Support multiple employee QR formats.
+/* =====================================================
+   LOAD DATA
+   ===================================================== */
 
-     This makes the scanner compatible with
-     your previous QR generator versions.
-  */
+async function loadBootstrap() {
+
+  setStatus(
+    'Loading employees, equipment and projects...',
+    'info'
+  );
+
+  try {
+
+    const data = await apiCall(
+      'getBootstrap'
+    );
+
+    if (!data.success) {
+      throw new Error(
+        data.error || 'Unable to load system data.'
+      );
+    }
+
+    state.employees =
+      Array.isArray(data.employees)
+        ? data.employees
+        : [];
+
+    state.equipment =
+      Array.isArray(data.equipment)
+        ? data.equipment
+        : [];
+
+    state.projects =
+      Array.isArray(data.projects)
+        ? data.projects
+        : [];
+
+    state.activeAttendance =
+      Array.isArray(data.activeAttendance)
+        ? data.activeAttendance
+        : [];
+
+    buildEmployeeList();
+    buildEquipmentList();
+    buildProjectList();
+
+    setStatus(
+      '✓ Station verified. Please select who you are.',
+      'success'
+    );
+
+    updateButtons();
+
+  } catch (error) {
+
+    console.error(error);
+
+    setStatus(
+      error.message || 'Unable to load system data.',
+      'error'
+    );
+  }
+}
+
+
+/* =====================================================
+   EMPLOYEES
+   ===================================================== */
+
+function buildEmployeeList() {
+
+  const select = $('employeeSelect');
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML =
+    '<option value="">Select employee / operator / driver</option>';
+
+  state.employees.forEach(employee => {
+
+    if (!employee.employeeId) {
+      return;
+    }
+
+    const option =
+      document.createElement('option');
+
+    option.value =
+      employee.employeeId;
+
+    option.textContent =
+      employee.employeeName +
+      ' — ' +
+      employee.employeeId +
+      (
+        employee.position
+          ? ' (' + employee.position + ')'
+          : ''
+      );
+
+    select.appendChild(option);
+  });
+}
+
+
+function filterEmployees() {
+
+  const search =
+    String(
+      $('employeeSearch')?.value || ''
+    ).toLowerCase().trim();
+
+  const select =
+    $('employeeSelect');
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML =
+    '<option value="">Select employee / operator / driver</option>';
+
+  state.employees
+    .filter(employee => {
+
+      const text =
+        [
+          employee.employeeId,
+          employee.employeeName,
+          employee.position,
+          employee.department
+        ]
+          .join(' ')
+          .toLowerCase();
+
+      return text.includes(search);
+
+    })
+    .forEach(employee => {
+
+      const option =
+        document.createElement('option');
+
+      option.value =
+        employee.employeeId;
+
+      option.textContent =
+        employee.employeeName +
+        ' — ' +
+        employee.employeeId +
+        (
+          employee.position
+            ? ' (' + employee.position + ')'
+            : ''
+        );
+
+      select.appendChild(option);
+    });
+}
+
+
+function employeeChanged() {
 
   const employeeId =
-    firstValue(
-      data.employeeId,
-      data.employeeID,
-      data["Employee ID"],
-      data.id,
-      data.ID
-    );
+    $('employeeSelect')?.value || '';
 
+  state.selectedEmployee =
+    state.employees.find(
+      employee =>
+        employee.employeeId === employeeId
+    ) || null;
 
-  const name =
-    firstValue(
-      data.name,
-      data.Name,
-      data.employeeName,
-      data["Employee Name"],
-      data["NAME OF OPERATORS"],
-      data["Operator/Driver"],
-      data.operator,
-      data.operatorName
-    );
+  updateActiveAttendanceDisplay();
 
-
-  const position =
-    firstValue(
-      data.position,
-      data.Position
-    );
-
-
-  if (!employeeId && !name) {
-
-    return null;
-
-  }
-
-
-  return {
-
-    employeeId:
-      employeeId
-        ? String(employeeId).trim()
-        : "",
-
-    name:
-      name
-        ? String(name).trim()
-        : "",
-
-    position:
-      position
-        ? String(position).trim()
-        : ""
-
-  };
-
+  updateButtons();
 }
 
 
-/* =========================================================
-   FIRST AVAILABLE VALUE
-   ========================================================= */
+/* =====================================================
+   EQUIPMENT
+   ===================================================== */
 
-function firstValue(...values) {
+function buildEquipmentList() {
 
-  for (
-    const value of values
-  ) {
+  const select =
+    $('equipmentSelect');
 
-    if (
-      value !== undefined &&
-      value !== null &&
-      String(value).trim() !== ""
-    ) {
+  if (!select) {
+    return;
+  }
 
-      return value;
+  select.innerHTML =
+    '<option value="">Select equipment</option>';
 
+  state.equipment.forEach(item => {
+
+    if (!item.equipmentId) {
+      return;
     }
 
+    const option =
+      document.createElement('option');
+
+    option.value =
+      item.equipmentId;
+
+    option.textContent =
+      item.equipmentName +
+      ' — ' +
+      item.equipmentId;
+
+    if (item.equipmentType) {
+      option.textContent +=
+        ' (' + item.equipmentType + ')';
+    }
+
+    select.appendChild(option);
+  });
+}
+
+
+function filterEquipment() {
+
+  const search =
+    String(
+      $('equipmentSearch')?.value || ''
+    ).toLowerCase().trim();
+
+  const select =
+    $('equipmentSelect');
+
+  if (!select) {
+    return;
   }
 
+  select.innerHTML =
+    '<option value="">Select equipment</option>';
 
-  return "";
+  state.equipment
+    .filter(item => {
 
+      const text =
+        [
+          item.equipmentId,
+          item.equipmentName,
+          item.equipmentType,
+          item.plateNumber
+        ]
+          .join(' ')
+          .toLowerCase();
+
+      return text.includes(search);
+
+    })
+    .forEach(item => {
+
+      const option =
+        document.createElement('option');
+
+      option.value =
+        item.equipmentId;
+
+      option.textContent =
+        item.equipmentName +
+        ' — ' +
+        item.equipmentId;
+
+      select.appendChild(option);
+    });
 }
 
 
-/* =========================================================
-   DISPLAY EMPLOYEE
-   ========================================================= */
+function equipmentChanged() {
 
-function showEmployee(employee) {
+  const id =
+    $('equipmentSelect')?.value || '';
 
-  document.getElementById(
-    "employeePanel"
-  ).classList.remove("hidden");
+  state.selectedEquipment =
+    state.equipment.find(
+      item =>
+        item.equipmentId === id
+    ) || null;
 
-
-  document.getElementById(
-    "employeeName"
-  ).textContent =
-    employee.name || "—";
-
-
-  document.getElementById(
-    "employeeId"
-  ).textContent =
-    employee.employeeId
-      ? "ID: " + employee.employeeId
-      : "ID: —";
-
-
-  document.getElementById(
-    "employeePosition"
-  ).textContent =
-    employee.position || "—";
-
-
-  document.getElementById(
-    "actions"
-  ).classList.remove("hidden");
-
-
-  document.getElementById(
-    "resetButton"
-  ).classList.remove("hidden");
-
+  updateButtons();
 }
 
 
-/* =========================================================
-   RECORD ATTENDANCE
-   ========================================================= */
+/* =====================================================
+   PROJECTS
+   ===================================================== */
 
-async function recordAttendance(type) {
+function buildProjectList() {
 
-  if (!employeeData) {
+  const select =
+    $('projectSelect');
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML =
+    '<option value="">Select project</option>';
+
+  state.projects.forEach(project => {
+
+    if (!project.projectId) {
+      return;
+    }
+
+    const option =
+      document.createElement('option');
+
+    option.value =
+      project.projectId;
+
+    option.textContent =
+      project.projectName +
+      ' — ' +
+      project.projectId;
+
+    select.appendChild(option);
+  });
+}
+
+
+function filterProjects() {
+
+  const search =
+    String(
+      $('projectSearch')?.value || ''
+    ).toLowerCase().trim();
+
+  const select =
+    $('projectSelect');
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML =
+    '<option value="">Select project</option>';
+
+  state.projects
+    .filter(project => {
+
+      const text =
+        [
+          project.projectId,
+          project.projectName,
+          project.client,
+          project.location
+        ]
+          .join(' ')
+          .toLowerCase();
+
+      return text.includes(search);
+
+    })
+    .forEach(project => {
+
+      const option =
+        document.createElement('option');
+
+      option.value =
+        project.projectId;
+
+      option.textContent =
+        project.projectName +
+        ' — ' +
+        project.projectId;
+
+      select.appendChild(option);
+    });
+}
+
+
+function projectChanged() {
+
+  const id =
+    $('projectSelect')?.value || '';
+
+  state.selectedProject =
+    state.projects.find(
+      project =>
+        project.projectId === id
+    ) || null;
+
+  updateButtons();
+}
+
+
+/* =====================================================
+   ACTIVE ATTENDANCE
+   ===================================================== */
+
+function getActiveAttendance() {
+
+  if (!state.selectedEmployee) {
+    return null;
+  }
+
+  return state.activeAttendance.find(
+    item =>
+      item.employeeId ===
+      state.selectedEmployee.employeeId
+  ) || null;
+}
+
+
+function updateActiveAttendanceDisplay() {
+
+  const box =
+    $('activeAttendance');
+
+  const active =
+    getActiveAttendance();
+
+  if (!box) {
+    return;
+  }
+
+  if (!active) {
+
+    box.hidden = true;
+    box.innerHTML = '';
+
+    return;
+  }
+
+  box.hidden = false;
+
+  box.innerHTML = `
+    <div class="active-title">
+      ACTIVE ATTENDANCE
+    </div>
+
+    <div class="active-row">
+      <strong>${escapeHtml(active.employeeName)}</strong>
+    </div>
+
+    <div class="active-row">
+      Equipment:
+      <strong>${escapeHtml(active.equipmentName)}</strong>
+    </div>
+
+    <div class="active-row">
+      Project:
+      <strong>${escapeHtml(active.projectName)}</strong>
+    </div>
+
+    <div class="active-row">
+      Time In:
+      <strong>${escapeHtml(active.timeIn)}</strong>
+    </div>
+  `;
+}
+
+
+/* =====================================================
+   BUTTON STATE
+   ===================================================== */
+
+function updateButtons() {
+
+  const inButton =
+    $('inButton');
+
+  const outButton =
+    $('outButton');
+
+  if (!inButton || !outButton) {
+    return;
+  }
+
+  const employeeSelected =
+    !!state.selectedEmployee;
+
+  const equipmentSelected =
+    !!state.selectedEquipment;
+
+  const projectSelected =
+    !!state.selectedProject;
+
+  const active =
+    getActiveAttendance();
+
+  inButton.disabled =
+    !employeeSelected ||
+    !equipmentSelected ||
+    !projectSelected ||
+    !!active;
+
+  outButton.disabled =
+    !employeeSelected ||
+    !active;
+}
+
+
+/* =====================================================
+   TIME IN
+   ===================================================== */
+
+async function timeIn() {
+
+  if (
+    !state.selectedEmployee ||
+    !state.selectedEquipment ||
+    !state.selectedProject
+  ) {
 
     setStatus(
-      "Please scan an employee QR first.",
-      "error"
+      'Please select employee, equipment and project.',
+      'error'
     );
 
     return;
-
   }
 
-
-  const buttons =
-    document.querySelectorAll(
-      ".action-button"
-    );
-
-
-  buttons.forEach(
-    button => {
-      button.disabled = true;
-    }
-  );
-
-
-  setStatus(
-    type === "IN"
-      ? "Recording TIME IN..."
-      : "Recording TIME OUT...",
-    "info"
-  );
-
+  setBusy(true);
 
   try {
 
-    const result =
-      await apiGet(
-        "attendance",
+    const response =
+      await apiCall(
+        'timeIn',
         {
-
-          action:
-            type,
-
           employeeId:
-            employeeData.employeeId,
+            state.selectedEmployee.employeeId,
 
-          name:
-            employeeData.name,
+          employeeName:
+            state.selectedEmployee.employeeName,
 
-          position:
-            employeeData.position,
+          equipmentId:
+            state.selectedEquipment.equipmentId,
 
-          station:
-            AMANAH_QR.station
+          equipmentName:
+            state.selectedEquipment.equipmentName,
 
+          projectId:
+            state.selectedProject.projectId,
+
+          projectName:
+            state.selectedProject.projectName
         }
       );
 
-
-    if (
-      result &&
-      result.success === true
-    ) {
-
-      setStatus(
-        result.message ||
-        (
-          type === "IN"
-            ? "TIME IN recorded successfully."
-            : "TIME OUT recorded successfully."
-        ),
-        "success"
+    if (!response.success) {
+      throw new Error(
+        response.error || 'Time In failed.'
       );
-
-
-      /*
-         Hide action buttons after successful attendance.
-      */
-
-      document.getElementById(
-        "actions"
-      ).classList.add("hidden");
-
-
     }
 
-    else {
+    setStatus(
+      '✓ TIME IN recorded successfully.',
+      'success'
+    );
 
-      setStatus(
-        result && result.message
-          ? result.message
-          : "Attendance could not be recorded.",
-        "error"
-      );
+    showResult(
+      response.attendance,
+      'TIME IN RECORDED'
+    );
 
+    await loadBootstrap();
 
-      buttons.forEach(
-        button => {
-          button.disabled = false;
-        }
-      );
-
-    }
-
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
+    setStatus(
+      error.message || 'Time In failed.',
+      'error'
+    );
+
+  } finally {
+
+    setBusy(false);
+  }
+}
+
+
+/* =====================================================
+   BEGIN OUT
+   ===================================================== */
+
+function beginTimeOut() {
+
+  const active =
+    getActiveAttendance();
+
+  if (!active) {
 
     setStatus(
-      "Connection error. Attendance was not confirmed.",
-      "error"
+      'No active attendance was found for this employee.',
+      'error'
     );
 
-
-    buttons.forEach(
-      button => {
-        button.disabled = false;
-      }
-    );
-
+    return;
   }
 
-}
+  state.pendingOut = true;
 
-
-/* =========================================================
-   RESET SCANNER
-   ========================================================= */
-
-async function resetScanner() {
-
-  employeeData = null;
-
-  lastScannedText = "";
-
-  scanLock = false;
-
-
-  document.getElementById(
-    "employeePanel"
-  ).classList.add("hidden");
-
-
-  document.getElementById(
-    "actions"
-  ).classList.add("hidden");
-
-
-  document.getElementById(
-    "resetButton"
-  ).classList.add("hidden");
-
-
-  document.getElementById(
-    "pageTitle"
-  ).textContent =
-    "Scan Employee QR";
-
-
-  document.getElementById(
-    "pageSubtitle"
-  ).textContent =
-    "Scan the employee QR code.";
-
+  hideElement('fuelForm', true);
+  hideElement('fuelQuestion', false);
 
   setStatus(
-    "Ready for next employee.",
-    "info"
+    'Time Out selected. Did you fuel the equipment?',
+    'info'
   );
 
-
-  await startScanner();
-
+  $('fuelQuestion')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center'
+  });
 }
 
 
-/* =========================================================
-   STOP SCANNER
-   ========================================================= */
+/* =====================================================
+   FUEL
+   ===================================================== */
+
+function showFuelForm() {
+
+  hideElement('fuelQuestion', true);
+  hideElement('fuelForm', false);
+
+  $('fuelQuantity')?.focus();
+}
+
+
+async function completeTimeOut(useFuel) {
+
+  const employee =
+    state.selectedEmployee;
+
+  if (!employee) {
+
+    setStatus(
+      'Please select the employee.',
+      'error'
+    );
+
+    return;
+  }
+
+  let fuelData = {
+    fuelUsed: 'NO'
+  };
+
+  if (useFuel) {
+
+    const quantity =
+      parseFloat(
+        $('fuelQuantity')?.value || ''
+      );
+
+    const unit =
+      $('fuelUnit')?.value || '';
+
+    const amount =
+      parseFloat(
+        $('fuelAmount')?.value || ''
+      );
+
+    if (!(quantity > 0)) {
+
+      setStatus(
+        'Enter the fuel quantity.',
+        'error'
+      );
+
+      return;
+    }
+
+    if (
+      unit !== 'Liter' &&
+      unit !== 'Gallon'
+    ) {
+
+      setStatus(
+        'Select Liter or Gallon.',
+        'error'
+      );
+
+      return;
+    }
+
+    if (!(amount >= 0)) {
+
+      setStatus(
+        'Enter the fuel price / amount.',
+        'error'
+      );
+
+      return;
+    }
+
+    fuelData = {
+      fuelUsed: 'YES',
+      fuelQuantity: quantity,
+      fuelUnit: unit,
+      fuelAmount: amount
+    };
+  }
+
+  setBusy(true);
+
+  try {
+
+    const response =
+      await apiCall(
+        'timeOut',
+        Object.assign(
+          {
+            employeeId:
+              employee.employeeId
+          },
+          fuelData
+        )
+      );
+
+    if (!response.success) {
+
+      throw new Error(
+        response.error || 'Time Out failed.'
+      );
+    }
+
+    setStatus(
+      '✓ TIME OUT recorded successfully.',
+      'success'
+    );
+
+    showResult(
+      response.attendance,
+      'TIME OUT RECORDED'
+    );
+
+    resetFuel();
+
+    await loadBootstrap();
+
+  } catch (error) {
+
+    console.error(error);
+
+    setStatus(
+      error.message || 'Time Out failed.',
+      'error'
+    );
+
+  } finally {
+
+    setBusy(false);
+  }
+}
+
+
+/* =====================================================
+   RESULT
+   ===================================================== */
+
+function showResult(attendance, title) {
+
+  const box =
+    $('resultBox');
+
+  if (!box || !attendance) {
+    return;
+  }
+
+  box.hidden = false;
+
+  box.innerHTML = `
+    <div class="result-title">
+      ${escapeHtml(title)}
+    </div>
+
+    <div class="result-item">
+      Employee:
+      <strong>${escapeHtml(attendance.employeeName || '')}</strong>
+    </div>
+
+    <div class="result-item">
+      Equipment:
+      <strong>${escapeHtml(attendance.equipmentName || '')}</strong>
+    </div>
+
+    <div class="result-item">
+      Project:
+      <strong>${escapeHtml(attendance.projectName || '')}</strong>
+    </div>
+
+    <div class="result-item">
+      Date:
+      <strong>${escapeHtml(attendance.date || '')}</strong>
+    </div>
+
+    ${
+      attendance.timeIn
+        ? `
+          <div class="result-item">
+            Time In:
+            <strong>${escapeHtml(attendance.timeIn)}</strong>
+          </div>
+        `
+        : ''
+    }
+
+    ${
+      attendance.timeOut
+        ? `
+          <div class="result-item">
+            Time Out:
+            <strong>${escapeHtml(attendance.timeOut)}</strong>
+          </div>
+        `
+        : ''
+    }
+
+    ${
+      attendance.totalHours !== undefined
+        ? `
+          <div class="result-item">
+            Total Hours:
+            <strong>${escapeHtml(String(attendance.totalHours))}</strong>
+          </div>
+        `
+        : ''
+    }
+
+    ${
+      attendance.fuel
+        ? `
+          <div class="result-item">
+            Fuel:
+            <strong>${escapeHtml(attendance.fuel)}</strong>
+          </div>
+        `
+        : ''
+    }
+  `;
+}
+
+
+/* =====================================================
+   API JSONP
+   ===================================================== */
+
+function apiCall(action, params = {}) {
+
+  return new Promise((resolve, reject) => {
+
+    const callbackName =
+      'amanahCallback_' +
+      Date.now() +
+      '_' +
+      Math.floor(
+        Math.random() * 100000
+      );
+
+    const script =
+      document.createElement('script');
+
+    const query =
+      new URLSearchParams();
+
+    query.set(
+      'action',
+      action
+    );
+
+    query.set(
+      'callback',
+      callbackName
+    );
+
+    query.set(
+      '_',
+      Date.now()
+    );
+
+    Object.keys(params).forEach(key => {
+
+      if (
+        params[key] !== undefined &&
+        params[key] !== null
+      ) {
+
+        query.set(
+          key,
+          String(params[key])
+        );
+      }
+    });
+
+    const timeout =
+      setTimeout(() => {
+
+        cleanup();
+
+        reject(
+          new Error(
+            'API request timed out.'
+          )
+        );
+
+      }, 20000);
+
+    function cleanup() {
+
+      clearTimeout(timeout);
+
+      try {
+        delete window[callbackName];
+      } catch (_) {
+        window[callbackName] =
+          undefined;
+      }
+
+      script.remove();
+    }
+
+    window[callbackName] =
+      function(data) {
+
+        cleanup();
+        resolve(data);
+      };
+
+    script.onerror =
+      function() {
+
+        cleanup();
+
+        reject(
+          new Error(
+            'Unable to connect to AMANAH API.'
+          )
+        );
+      };
+
+    script.src =
+      API_URL +
+      '?' +
+      query.toString();
+
+    document.body.appendChild(
+      script
+    );
+  });
+}
+
+
+/* =====================================================
+   SCANNER CONTROL
+   ===================================================== */
 
 async function stopScanner() {
 
-  if (
-    scanner &&
-    scannerRunning
-  ) {
-
-    try {
-
-      await scanner.stop();
-
-      scannerRunning = false;
-
-    }
-
-    catch (error) {
-
-      console.log(
-        "Scanner stop:",
-        error
-      );
-
-    }
-
+  if (!state.scanner) {
+    return;
   }
 
+  try {
+
+    if (state.scannerRunning) {
+      await state.scanner.stop();
+    }
+
+  } catch (error) {
+
+    console.warn(
+      'Scanner stop warning:',
+      error
+    );
+  }
+
+  try {
+    await state.scanner.clear();
+  } catch (_) {}
+
+  state.scannerRunning = false;
 }
 
 
-/* =========================================================
-   API GET / JSONP
-   ========================================================= */
+async function restartScanner() {
 
-function apiGet(
-  action,
-  params = {}
-) {
+  state.stationVerified = false;
+  state.selectedEmployee = null;
+  state.selectedEquipment = null;
+  state.selectedProject = null;
 
-  return new Promise(
-    function(resolve, reject) {
-
-      const callbackName =
-        "amanahCallback_" +
-        Date.now() +
-        "_" +
-        Math.floor(
-          Math.random() * 100000
-        );
-
-
-      const script =
-        document.createElement(
-          "script"
-        );
-
-
-      const query =
-        new URLSearchParams();
-
-
-      query.set(
-        "callback",
-        callbackName
-      );
-
-
-      query.set(
-        "action",
-        action
-      );
-
-
-      Object.keys(params).forEach(
-        key => {
-
-          if (
-            params[key] !== undefined &&
-            params[key] !== null
-          ) {
-
-            query.set(
-              key,
-              params[key]
-            );
-
-          }
-
-        }
-      );
-
-
-      const timer =
-        setTimeout(
-          function() {
-
-            cleanup();
-
-            reject(
-              new Error(
-                "API request timed out."
-              )
-            );
-
-          },
-          15000
-        );
-
-
-      window[callbackName] =
-        function(data) {
-
-          clearTimeout(timer);
-
-          cleanup();
-
-          resolve(data);
-
-        };
-
-
-      function cleanup() {
-
-        try {
-          delete window[callbackName];
-        }
-
-        catch (e) {
-          window[callbackName] =
-            undefined;
-        }
-
-
-        if (script.parentNode) {
-
-          script.parentNode.removeChild(
-            script
-          );
-
-        }
-
-      }
-
-
-      script.onerror =
-        function() {
-
-          clearTimeout(timer);
-
-          cleanup();
-
-          reject(
-            new Error(
-              "Unable to connect to AMANAH API."
-            )
-          );
-
-        };
-
-
-      script.src =
-        API_URL +
-        "?" +
-        query.toString();
-
-
-      document.body.appendChild(
-        script
-      );
-
-    }
+  hideElement(
+    'attendanceScreen',
+    true
   );
 
+  hideElement(
+    'resultBox',
+    true
+  );
+
+  showScreen('scannerScreen');
+
+  setStatus(
+    'Starting camera...',
+    'info'
+  );
+
+  await startScanner();
 }
 
 
-/* =========================================================
-   STATUS DISPLAY
-   ========================================================= */
+/* =====================================================
+   SCREEN
+   ===================================================== */
 
-function setStatus(
-  message,
-  type = "info"
-) {
+function showScreen(screenId) {
 
-  const status =
-    document.getElementById(
-      "status"
-    );
+  document
+    .querySelectorAll(
+      '.app-screen'
+    )
+    .forEach(screen => {
+
+      screen.hidden =
+        screen.id !== screenId;
+    });
+}
 
 
-  status.textContent =
+/* =====================================================
+   STATUS
+   ===================================================== */
+
+function setStatus(message, type) {
+
+  const element =
+    $('statusMessage');
+
+  if (!element) {
+    return;
+  }
+
+  element.textContent =
     message;
 
+  element.className =
+    'status-message ' +
+    (type || 'info');
+}
 
-  status.className =
-    "status " +
-    type;
 
+/* =====================================================
+   BUSY
+   ===================================================== */
+
+function setBusy(busy) {
+
+  document.body.classList.toggle(
+    'busy',
+    busy
+  );
+
+  if (busy) {
+
+    const inButton =
+      $('inButton');
+
+    const outButton =
+      $('outButton');
+
+    if (inButton) {
+      inButton.disabled = true;
+    }
+
+    if (outButton) {
+      outButton.disabled = true;
+    }
+
+  } else {
+
+    updateButtons();
+  }
+}
+
+
+/* =====================================================
+   FUEL RESET
+   ===================================================== */
+
+function resetFuel() {
+
+  if ($('fuelQuantity')) {
+    $('fuelQuantity').value = '';
+  }
+
+  if ($('fuelUnit')) {
+    $('fuelUnit').value = 'Liter';
+  }
+
+  if ($('fuelAmount')) {
+    $('fuelAmount').value = '';
+  }
+
+  hideElement(
+    'fuelQuestion',
+    true
+  );
+
+  hideElement(
+    'fuelForm',
+    true
+  );
+
+  state.pendingOut = false;
+}
+
+
+/* =====================================================
+   HELPERS
+   ===================================================== */
+
+function hideElement(id, hidden) {
+
+  const element =
+    $(id);
+
+  if (element) {
+    element.hidden =
+      hidden;
+  }
+}
+
+
+function escapeHtml(value) {
+
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
