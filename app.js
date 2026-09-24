@@ -2152,6 +2152,10 @@ function showFuelForm() {
    TIME OUT
    ===================================================== */
 
+/* =====================================================
+   TIME OUT
+   ===================================================== */
+
 async function completeTimeOut(
   useFuel
 ) {
@@ -2199,6 +2203,10 @@ async function completeTimeOut(
     null;
 
 
+  /* ===================================================
+     FUEL VALIDATION
+     =================================================== */
+
   if (useFuel) {
 
     const quantityInput =
@@ -2221,7 +2229,9 @@ async function completeTimeOut(
 
     fuelUnit =
       unitInput
-        ? unitInput.value
+        ? String(
+            unitInput.value
+          ).trim()
         : '';
 
 
@@ -2278,6 +2288,10 @@ async function completeTimeOut(
   }
 
 
+  /* ===================================================
+     START
+     =================================================== */
+
   setBusy(
     true
   );
@@ -2285,207 +2299,220 @@ async function completeTimeOut(
 
   try {
 
+    const timeOut =
+      new Date().toISOString();
+
+
+    /* =================================================
+       CALL SUPABASE DATABASE FUNCTION
+
+       This replaces the old:
+
+       .from('attendance')
+       .update(...)
+
+       The database function handles:
+       - TIME OUT
+       - Total Hours
+       - Status
+       - Fuel
+       ================================================= */
+
+    const rpcResult =
+      await supabaseClient.rpc(
+        'complete_attendance',
+        {
+
+          p_attendance_id:
+            active.attendance_id,
+
+          p_employee_id:
+            employee.employee_id,
+
+          p_time_out:
+            timeOut,
+
+          p_fuel_used:
+            fuelUsed,
+
+          p_fuel_quantity:
+            fuelUsed
+              ? fuelQuantity
+              : null,
+
+          p_fuel_unit:
+            fuelUsed
+              ? fuelUnit
+              : null,
+
+          p_fuel_amount:
+            fuelUsed
+              ? fuelAmount
+              : null
+
+        }
+      );
+
+
+    /* =================================================
+       CHECK SUPABASE ERROR
+       ================================================= */
+
+    if (
+      rpcResult.error
+    ) {
+
+      throw new Error(
+        rpcResult.error.message
+      );
+    }
+
+
+    if (
+      !rpcResult.data
+    ) {
+
+      throw new Error(
+        'TIME OUT function returned no result.'
+      );
+    }
+
+
     /*
-     * Re-read the active attendance so we
-     * update the current database row.
+     * JSONB functions normally return an object.
+     * This also safely handles a one-item array.
      */
 
-    const activeResult =
-      await supabaseClient
-        .from('attendance')
-        .select('*')
-        .eq(
-          'attendance_id',
-          active.attendance_id
-        )
-        .eq(
-          'employee_id',
-          employee.employee_id
-        )
-        .eq(
-          'status',
-          'IN'
-        )
-        .maybeSingle();
+    const completed =
+      Array.isArray(
+        rpcResult.data
+      )
+        ? rpcResult.data[0]
+        : rpcResult.data;
 
 
     if (
-      activeResult.error
+      !completed
     ) {
 
       throw new Error(
-        activeResult.error.message
+        'TIME OUT function returned an empty result.'
       );
     }
 
 
     if (
-      !activeResult.data
+      completed.success !== true
     ) {
 
       throw new Error(
-        'The active attendance could not be found. Refresh and try again.'
+        'TIME OUT was not completed.'
       );
     }
 
 
-    const existing =
-      activeResult.data;
+    /* =================================================
+       BUILD RESULT FOR EXISTING UI
+
+       The current database function does not return
+       attendance_date, so use the already-loaded
+       active attendance date.
+       ================================================= */
+
+    const completedAttendance = {
+
+      attendance_id:
+        completed.attendance_id ||
+        active.attendance_id,
 
 
-    const timeOut =
-      new Date();
+      employee_name:
+        completed.employee_name ||
+        active.employee_name,
 
 
-    const timeInDate =
-      new Date(
-        existing.time_in
-      );
+      equipment_name:
+        completed.equipment_name ||
+        active.equipment_name,
 
 
-    const totalMilliseconds =
-      timeOut.getTime() -
-      timeInDate.getTime();
+      project_name:
+        completed.project_name ||
+        active.project_name,
 
 
-    const totalHours =
-      Math.max(
-        0,
-        totalMilliseconds /
-          1000 /
-          60 /
-          60
-      );
+      attendance_date:
+        active.attendance_date,
 
 
-    const updateData = {
+      time_in:
+        completed.time_in ||
+        active.time_in,
+
 
       time_out:
-        timeOut.toISOString(),
+        completed.time_out ||
+        timeOut,
+
 
       total_hours:
-        Number(
-          totalHours.toFixed(2)
-        ),
+        completed.total_hours,
 
-      status:
-        'COMPLETED',
 
       fuel_used:
-        fuelUsed,
+        completed.fuel_used === true
+          ? true
+          : false,
+
 
       fuel_quantity:
-        fuelUsed
-          ? fuelQuantity
-          : null,
+        completed.fuel_quantity ??
+        null,
+
 
       fuel_unit:
-        fuelUsed
-          ? fuelUnit
-          : null,
+        completed.fuel_unit ??
+        null,
+
 
       fuel_amount:
-        fuelUsed
-          ? fuelAmount
-          : null
+        completed.fuel_amount ??
+        null
 
     };
 
 
-    const updateResult =
-  await supabaseClient
-    .from('attendance')
-    .update(
-      updateData
-    )
-    .eq(
-      'attendance_id',
-      existing.attendance_id
-    )
-    .eq(
-      'employee_id',
-      employee.employee_id
-    )
-    .eq(
-      'status',
-      'IN'
+    /* =================================================
+       SUCCESS
+       ================================================= */
+
+    setStatus(
+      '✓ TIME OUT recorded successfully.',
+      'success'
     );
 
 
-if (
-  updateResult.error
-) {
-
-  throw new Error(
-    updateResult.error.message
-  );
-}
+    showResult(
+      mapAttendanceForResult(
+        completedAttendance
+      ),
+      'TIME OUT RECORDED'
+    );
 
 
-/*
- * We deliberately do NOT use .select()
- * here because the completed row is no longer
- * visible under the scanner's current SELECT policy.
- *
- * We already know the values that were written,
- * so build the result locally.
- */
-
-const completedAttendance = {
-
-  attendance_id:
-    existing.attendance_id,
-
-  employee_name:
-    existing.employee_name,
-
-  equipment_name:
-    existing.equipment_name,
-
-  project_name:
-    existing.project_name,
-
-  attendance_date:
-    existing.attendance_date,
-
-  time_in:
-    existing.time_in,
-
-  time_out:
-    updateData.time_out,
-
-  total_hours:
-    updateData.total_hours,
-
-  fuel_used:
-    updateData.fuel_used,
-
-  fuel_quantity:
-    updateData.fuel_quantity,
-
-  fuel_unit:
-    updateData.fuel_unit,
-
-  fuel_amount:
-    updateData.fuel_amount
-};
-
-
-setStatus(
-  '✓ TIME OUT recorded successfully.',
-  'success'
-);
-
-
-showResult(
-  mapAttendanceForResult(
-    completedAttendance
-  ),
-  'TIME OUT RECORDED'
-);
+    /* =================================================
+       RESET FUEL UI
+       ================================================= */
 
     resetFuel();
 
+
+    /* =================================================
+       REFRESH ACTIVE ATTENDANCE
+
+       This removes the green ACTIVE ATTENDANCE
+       box because the row is now COMPLETED.
+       ================================================= */
 
     await loadSystemData();
 
@@ -2501,18 +2528,23 @@ showResult(
     setStatus(
       'TIME OUT failed: ' +
       (
-        error.message ||
-        'Unknown error'
+        error &&
+        error.message
+          ? error.message
+          : 'Unknown error'
       ),
       'error'
     );
+
 
   } finally {
 
     setBusy(
       false
     );
+
   }
+
 }
 
 
