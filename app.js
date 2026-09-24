@@ -2393,50 +2393,96 @@ async function completeTimeOut(
 
 
     const updateResult =
-      await supabaseClient
-        .from('attendance')
-        .update(
-          updateData
-        )
-        .eq(
-          'attendance_id',
-          existing.attendance_id
-        )
-        .eq(
-          'employee_id',
-          employee.employee_id
-        )
-        .eq(
-          'status',
-          'IN'
-        )
-        .select()
-        .single();
-
-
-    if (
-      updateResult.error
-    ) {
-
-      throw new Error(
-        updateResult.error.message
-      );
-    }
-
-
-    setStatus(
-      '✓ TIME OUT recorded successfully.',
-      'success'
+  await supabaseClient
+    .from('attendance')
+    .update(
+      updateData
+    )
+    .eq(
+      'attendance_id',
+      existing.attendance_id
+    )
+    .eq(
+      'employee_id',
+      employee.employee_id
+    )
+    .eq(
+      'status',
+      'IN'
     );
 
 
-    showResult(
-      mapAttendanceForResult(
-        updateResult.data
-      ),
-      'TIME OUT RECORDED'
-    );
+if (
+  updateResult.error
+) {
 
+  throw new Error(
+    updateResult.error.message
+  );
+}
+
+
+/*
+ * We deliberately do NOT use .select()
+ * here because the completed row is no longer
+ * visible under the scanner's current SELECT policy.
+ *
+ * We already know the values that were written,
+ * so build the result locally.
+ */
+
+const completedAttendance = {
+
+  attendance_id:
+    existing.attendance_id,
+
+  employee_name:
+    existing.employee_name,
+
+  equipment_name:
+    existing.equipment_name,
+
+  project_name:
+    existing.project_name,
+
+  attendance_date:
+    existing.attendance_date,
+
+  time_in:
+    existing.time_in,
+
+  time_out:
+    updateData.time_out,
+
+  total_hours:
+    updateData.total_hours,
+
+  fuel_used:
+    updateData.fuel_used,
+
+  fuel_quantity:
+    updateData.fuel_quantity,
+
+  fuel_unit:
+    updateData.fuel_unit,
+
+  fuel_amount:
+    updateData.fuel_amount
+};
+
+
+setStatus(
+  '✓ TIME OUT recorded successfully.',
+  'success'
+);
+
+
+showResult(
+  mapAttendanceForResult(
+    completedAttendance
+  ),
+  'TIME OUT RECORDED'
+);
 
     resetFuel();
 
