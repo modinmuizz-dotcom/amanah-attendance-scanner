@@ -1,45 +1,72 @@
 /*******************************************************
  * AMANAH CONSTRUCTION MANAGEMENT SYSTEM
- * MOBILE ATTENDANCE SCANNER
+ * GITHUB + SUPABASE ATTENDANCE SCANNER
  *
- * ONE PERMANENT COMPANY QR ONLY
+ * WORKFLOW:
  *
- * FLOW:
- * COMPANY QR
- *     ↓
+ * ONE PERMANENT AMANAH QR
+ *        ↓
  * WHO ARE YOU?
- *     ↓
+ *        ↓
  * EQUIPMENT
- *     ↓
+ *        ↓
  * PROJECT
- *     ↓
+ *        ↓
  * TIME IN
- *     ↓
+ *        ↓
  * TIME OUT
- *     ↓
- * OPTIONAL FUEL
+ *        ↓
+ * DID YOU FUEL?
+ *      /       \
+ *    NO         YES
+ *              ↓
+ *       Quantity
+ *       Liter/Gallon
+ *       Fuel Amount
  *
  * NO EMPLOYEE QR CODES
  *
- * IMPORTANT:
- * This file uses jsQR only.
- * There must be ZERO Html5Qrcode references.
+ * NO APPS SCRIPT API
  *******************************************************/
 
 
 /* =====================================================
-   CONFIGURATION
+   SUPABASE CONFIGURATION
    ===================================================== */
 
-const API_URL =
-  'https://script.google.com/macros/s/AKfycbyxEhNRWFlbW-RbwYKyfer9Xd9f5w-ZXnGt9UBxWf2pAM50N5fzhleXfiIhBKFiSw2i/exec';
+const SUPABASE_URL =
+  'https://bafmycjinxomufhkjvy.supabase.co';
 
+const SUPABASE_PUBLISHABLE_KEY =
+  'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
+
+
+/* =====================================================
+   SUPABASE CLIENT
+   ===================================================== */
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+
+/* =====================================================
+   PERMANENT AMANAH QR
+   ===================================================== */
 
 const PERMANENT_QR = {
+
   type: 'AMANAH_ATTENDANCE_V1',
+
   company: 'AMANAH CONSTRUCTION',
-  system: 'AMANAH CONSTRUCTION MANAGEMENT SYSTEM',
+
+  system:
+    'AMANAH CONSTRUCTION MANAGEMENT SYSTEM',
+
   station: 'MAIN_ATTENDANCE',
+
   version: 1
 };
 
@@ -53,29 +80,37 @@ const state = {
   stationVerified: false,
 
   cameraStream: null,
+
   scannerRunning: false,
 
   employees: [],
+
   equipment: [],
+
   projects: [],
+
   activeAttendance: [],
 
   selectedEmployee: null,
+
   selectedEquipment: null,
+
   selectedProject: null,
 
   pendingOut: false,
 
   lastQrData: '',
+
   lastQrTime: 0
 };
 
 
 /* =====================================================
-   DOM SHORTCUT
+   DOM HELPER
    ===================================================== */
 
 function $(id) {
+
   return document.getElementById(id);
 }
 
@@ -90,7 +125,9 @@ document.addEventListener(
 
     setupButtons();
 
-    showScreen('scannerScreen');
+    showScreen(
+      'scannerScreen'
+    );
 
     setStatus(
       'Tap OPEN CAMERA to begin.',
@@ -102,17 +139,17 @@ document.addEventListener(
 
 
 /* =====================================================
-   BUTTON SETUP
+   BUTTONS
    ===================================================== */
 
 function setupButtons() {
 
-  const startCameraButton =
+  const startButton =
     $('startCameraButton');
 
-  if (startCameraButton) {
+  if (startButton) {
 
-    startCameraButton.addEventListener(
+    startButton.addEventListener(
       'click',
       startScanner
     );
@@ -151,7 +188,11 @@ function setupButtons() {
     fuelNoButton.addEventListener(
       'click',
       function () {
-        completeTimeOut(false);
+
+        completeTimeOut(
+          false
+        );
+
       }
     );
   }
@@ -177,7 +218,11 @@ function setupButtons() {
     fuelConfirmButton.addEventListener(
       'click',
       function () {
-        completeTimeOut(true);
+
+        completeTimeOut(
+          true
+        );
+
       }
     );
   }
@@ -269,27 +314,28 @@ function setupButtons() {
 
 
 /* =====================================================
-   START CAMERA
+   CAMERA
    ===================================================== */
 
 async function startScanner() {
 
   if (state.scannerRunning) {
+
     return;
   }
 
 
-  const button =
-    $('startCameraButton');
-
   const video =
     $('cameraVideo');
+
+  const button =
+    $('startCameraButton');
 
 
   if (!video) {
 
     setStatus(
-      'Camera video element was not found.',
+      'Camera element was not found.',
       'error'
     );
 
@@ -312,27 +358,25 @@ async function startScanner() {
 
     if (button) {
 
-      button.disabled = true;
+      button.disabled =
+        true;
+
       button.textContent =
         'OPENING CAMERA...';
     }
 
 
     setStatus(
-      'Requesting camera access...',
+      'Opening camera...',
       'info'
     );
 
-
-    /*
-     * Open ONE native camera stream.
-     * We do NOT use Html5Qrcode.
-     */
 
     const stream =
       await navigator.mediaDevices.getUserMedia({
 
         video: {
+
           facingMode: {
             ideal: 'environment'
           },
@@ -347,6 +391,7 @@ async function startScanner() {
         },
 
         audio: false
+
       });
 
 
@@ -354,22 +399,22 @@ async function startScanner() {
       stream;
 
 
-    /*
-     * Attach stream to the video.
-     */
-
     video.srcObject =
       stream;
 
-    video.muted = true;
 
-    video.setAttribute(
-      'playsinline',
-      'true'
-    );
+    video.muted =
+      true;
+
 
     video.setAttribute(
       'autoplay',
+      'true'
+    );
+
+
+    video.setAttribute(
+      'playsinline',
       'true'
     );
 
@@ -394,10 +439,6 @@ async function startScanner() {
     );
 
 
-    /*
-     * Begin scanning video frames.
-     */
-
     scanCameraFrame();
 
 
@@ -419,30 +460,30 @@ async function startScanner() {
 
     if (
       error &&
-      error.name === 'NotAllowedError'
+      error.name ===
+        'NotAllowedError'
     ) {
 
       message +=
-        'Camera permission was denied. Allow camera access for this website.';
-
+        'Camera permission was denied.';
 
     } else if (
       error &&
-      error.name === 'NotFoundError'
+      error.name ===
+        'NotFoundError'
     ) {
 
       message +=
-        'No camera was found on this device.';
-
+        'No camera was found.';
 
     } else if (
       error &&
-      error.name === 'NotReadableError'
+      error.name ===
+        'NotReadableError'
     ) {
 
       message +=
-        'The camera is being used by another app or browser tab.';
-
+        'The camera is being used by another app or tab.';
 
     } else {
 
@@ -477,17 +518,23 @@ async function startScanner() {
 
 
 /* =====================================================
-   SCAN CAMERA FRAME
+   CAMERA FRAME SCANNING
    ===================================================== */
 
 function scanCameraFrame() {
 
-  if (!state.scannerRunning) {
+  if (
+    !state.scannerRunning
+  ) {
+
     return;
   }
 
 
-  if (state.stationVerified) {
+  if (
+    state.stationVerified
+  ) {
+
     return;
   }
 
@@ -499,7 +546,10 @@ function scanCameraFrame() {
     $('cameraCanvas');
 
 
-  if (!video || !canvas) {
+  if (
+    !video ||
+    !canvas
+  ) {
 
     requestAnimationFrame(
       scanCameraFrame
@@ -526,11 +576,6 @@ function scanCameraFrame() {
       height > 0
     ) {
 
-      /*
-       * Keep the canvas at the actual
-       * camera resolution.
-       */
-
       canvas.width =
         width;
 
@@ -542,7 +587,8 @@ function scanCameraFrame() {
         canvas.getContext(
           '2d',
           {
-            willReadFrequently: true
+            willReadFrequently:
+              true
           }
         );
 
@@ -566,10 +612,6 @@ function scanCameraFrame() {
             height
           );
 
-
-        /*
-         * jsQR is supplied by index.html.
-         */
 
         if (
           typeof jsQR ===
@@ -600,17 +642,18 @@ function scanCameraFrame() {
             return;
           }
 
-        } else {
 
-          setStatus(
-            'QR scanner library is not loaded. Please reload the page.',
-            'error'
-          );
+        } else {
 
           state.scannerRunning =
             false;
 
           stopCamera();
+
+          setStatus(
+            'QR scanner library did not load. Reload the page.',
+            'error'
+          );
 
           return;
         }
@@ -626,24 +669,23 @@ function scanCameraFrame() {
 
 
 /* =====================================================
-   PROCESS QR RESULT
+   QR RESULT
    ===================================================== */
 
 async function processQrResult(
   decodedText
 ) {
 
-  /*
-   * Prevent repeatedly processing
-   * the same QR every frame.
-   */
-
   const now =
     Date.now();
 
+
   if (
-    decodedText === state.lastQrData &&
-    now - state.lastQrTime < 2500
+    decodedText ===
+      state.lastQrData &&
+    now -
+      state.lastQrTime <
+      2500
   ) {
 
     return;
@@ -658,18 +700,20 @@ async function processQrResult(
 
 
   const payload =
-    parseQr(decodedText);
+    parseQr(
+      decodedText
+    );
 
 
   if (!payload) {
 
     setStatus(
-      'Invalid QR code. Please scan the AMANAH company QR code.',
+      'Invalid QR code. Scan the AMANAH company QR.',
       'error'
     );
 
 
-    resumeQrScanning(
+    resumeScanning(
       1500
     );
 
@@ -697,22 +741,18 @@ async function processQrResult(
   if (!valid) {
 
     setStatus(
-      'This is not the AMANAH attendance station QR code.',
+      'This is not the AMANAH attendance station QR.',
       'error'
     );
 
 
-    resumeQrScanning(
+    resumeScanning(
       1500
     );
 
     return;
   }
 
-
-  /*
-   * SUCCESS
-   */
 
   state.stationVerified =
     true;
@@ -732,7 +772,7 @@ async function processQrResult(
   );
 
 
-  await loadBootstrap();
+  await loadSystemData();
 }
 
 
@@ -740,12 +780,16 @@ async function processQrResult(
    PARSE QR
    ===================================================== */
 
-function parseQr(text) {
+function parseQr(
+  text
+) {
 
   try {
 
     return JSON.parse(
-      String(text).trim()
+      String(
+        text
+      ).trim()
     );
 
   } catch (error) {
@@ -759,7 +803,7 @@ function parseQr(text) {
    RESUME SCANNING
    ===================================================== */
 
-function resumeQrScanning(
+function resumeScanning(
   delay
 ) {
 
@@ -775,6 +819,7 @@ function resumeQrScanning(
           'Camera ready. Point it at the AMANAH company QR code.',
           'info'
         );
+
 
         requestAnimationFrame(
           scanCameraFrame
@@ -793,15 +838,15 @@ function resumeQrScanning(
 
 async function stopScanner() {
 
-  stopCamera();
-
   state.scannerRunning =
     false;
+
+  stopCamera();
 }
 
 
 /* =====================================================
-   STOP CAMERA HARD
+   STOP CAMERA STREAM
    ===================================================== */
 
 function stopCamera() {
@@ -820,7 +865,9 @@ function stopCamera() {
         function (track) {
 
           try {
+
             track.stop();
+
           } catch (_) {}
 
         }
@@ -835,8 +882,11 @@ function stopCamera() {
   if (video) {
 
     try {
+
       video.pause();
+
     } catch (_) {}
+
 
     video.srcObject =
       null;
@@ -845,10 +895,10 @@ function stopCamera() {
 
 
 /* =====================================================
-   LOAD SYSTEM DATA
+   LOAD DATA FROM SUPABASE
    ===================================================== */
 
-async function loadBootstrap() {
+async function loadSystemData() {
 
   setStatus(
     'Loading employees, equipment and projects...',
@@ -858,60 +908,156 @@ async function loadBootstrap() {
 
   try {
 
-    const data =
-      await apiCall(
-        'getBootstrap'
-      );
+    const results =
+      await Promise.all([
+
+        supabaseClient
+          .from('employees')
+          .select(
+            'employee_id,employee_name,position,department,status'
+          )
+          .eq(
+            'status',
+            'ACTIVE'
+          )
+          .order(
+            'employee_name',
+            {
+              ascending: true
+            }
+          ),
+
+        supabaseClient
+          .from('equipment')
+          .select(
+            'equipment_id,equipment_name,equipment_type,plate_number,status'
+          )
+          .eq(
+            'status',
+            'ACTIVE'
+          )
+          .order(
+            'equipment_name',
+            {
+              ascending: true
+            }
+          ),
+
+        supabaseClient
+          .from('projects')
+          .select(
+            'project_id,project_name,client,location,site_engineer,start_date,target_completion,actual_completion,contract_amount,current_progress,status'
+          )
+          .eq(
+            'status',
+            'ACTIVE'
+          )
+          .order(
+            'project_name',
+            {
+              ascending: true
+            }
+          ),
+
+        supabaseClient
+          .from('attendance')
+          .select(
+            '*'
+          )
+          .eq(
+            'status',
+            'IN'
+          )
+          .order(
+            'created_at',
+            {
+              ascending: false
+            }
+          )
+      ]);
+
+
+    const employeeResult =
+      results[0];
+
+    const equipmentResult =
+      results[1];
+
+    const projectResult =
+      results[2];
+
+    const attendanceResult =
+      results[3];
 
 
     if (
-      !data ||
-      !data.success
+      employeeResult.error
     ) {
 
       throw new Error(
-        data &&
-        data.error
-          ? data.error
-          : 'Unable to load system data.'
+        'Employees: ' +
+        employeeResult.error.message
+      );
+    }
+
+
+    if (
+      equipmentResult.error
+    ) {
+
+      throw new Error(
+        'Equipment: ' +
+        equipmentResult.error.message
+      );
+    }
+
+
+    if (
+      projectResult.error
+    ) {
+
+      throw new Error(
+        'Projects: ' +
+        projectResult.error.message
+      );
+    }
+
+
+    if (
+      attendanceResult.error
+    ) {
+
+      throw new Error(
+        'Attendance: ' +
+        attendanceResult.error.message
       );
     }
 
 
     state.employees =
-      Array.isArray(
-        data.employees
-      )
-        ? data.employees
-        : [];
+      employeeResult.data ||
+      [];
 
 
     state.equipment =
-      Array.isArray(
-        data.equipment
-      )
-        ? data.equipment
-        : [];
+      equipmentResult.data ||
+      [];
 
 
     state.projects =
-      Array.isArray(
-        data.projects
-      )
-        ? data.projects
-        : [];
+      projectResult.data ||
+      [];
 
 
     state.activeAttendance =
-      Array.isArray(
-        data.activeAttendance
-      )
-        ? data.activeAttendance
-        : [];
+      attendanceResult.data ||
+      [];
 
 
     buildEmployeeList();
+
     buildEquipmentList();
+
     buildProjectList();
 
 
@@ -927,14 +1073,17 @@ async function loadBootstrap() {
   } catch (error) {
 
     console.error(
-      'BOOTSTRAP ERROR:',
+      'SUPABASE ERROR:',
       error
     );
 
 
     setStatus(
-      error.message ||
-        'Unable to load system data.',
+      'Unable to load system data: ' +
+      (
+        error.message ||
+        'Unknown error'
+      ),
       'error'
     );
   }
@@ -942,7 +1091,7 @@ async function loadBootstrap() {
 
 
 /* =====================================================
-   BUILD EMPLOYEE LIST
+   EMPLOYEES
    ===================================================== */
 
 function buildEmployeeList() {
@@ -952,6 +1101,7 @@ function buildEmployeeList() {
 
 
   if (!select) {
+
     return;
   }
 
@@ -981,41 +1131,61 @@ function buildEmployeeList() {
   state.employees.forEach(
     function (employee) {
 
-      if (
-        !employee.employeeId
-      ) {
-        return;
-      }
-
-
-      const option =
-        document.createElement(
-          'option'
-        );
-
-
-      option.value =
-        employee.employeeId;
-
-
-      option.textContent =
-        employee.employeeName +
-        ' — ' +
-        employee.employeeId +
-        (
-          employee.position
-            ? ' (' +
-              employee.position +
-              ')'
-            : ''
-        );
-
-
-      select.appendChild(
-        option
+      addEmployeeOption(
+        select,
+        employee
       );
 
     }
+  );
+}
+
+
+/* =====================================================
+   ADD EMPLOYEE OPTION
+   ===================================================== */
+
+function addEmployeeOption(
+  select,
+  employee
+) {
+
+  if (
+    !employee.employee_id
+  ) {
+
+    return;
+  }
+
+
+  const option =
+    document.createElement(
+      'option'
+    );
+
+
+  option.value =
+    employee.employee_id;
+
+
+  option.textContent =
+    (
+      employee.employee_name ||
+      ''
+    ) +
+    ' — ' +
+    employee.employee_id +
+    (
+      employee.position
+        ? ' (' +
+          employee.position +
+          ')'
+        : ''
+    );
+
+
+  select.appendChild(
+    option
   );
 }
 
@@ -1029,12 +1199,12 @@ function filterEmployees() {
   const input =
     $('employeeSearch');
 
-
   const select =
     $('employeeSelect');
 
 
   if (!select) {
+
     return;
   }
 
@@ -1057,6 +1227,7 @@ function filterEmployees() {
       'option'
     );
 
+
   first.value =
     '';
 
@@ -1075,10 +1246,15 @@ function filterEmployees() {
 
         const text =
           [
-            employee.employeeId,
-            employee.employeeName,
+
+            employee.employee_id,
+
+            employee.employee_name,
+
             employee.position,
+
             employee.department
+
           ]
             .join(' ')
             .toLowerCase();
@@ -1092,31 +1268,9 @@ function filterEmployees() {
     .forEach(
       function (employee) {
 
-        const option =
-          document.createElement(
-            'option'
-          );
-
-
-        option.value =
-          employee.employeeId;
-
-
-        option.textContent =
-          employee.employeeName +
-          ' — ' +
-          employee.employeeId +
-          (
-            employee.position
-              ? ' (' +
-                employee.position +
-                ')'
-              : ''
-          );
-
-
-        select.appendChild(
-          option
+        addEmployeeOption(
+          select,
+          employee
         );
 
       }
@@ -1145,7 +1299,7 @@ function employeeChanged() {
       function (employee) {
 
         return (
-          employee.employeeId ===
+          employee.employee_id ===
           employeeId
         );
       }
@@ -1159,7 +1313,7 @@ function employeeChanged() {
 
 
 /* =====================================================
-   BUILD EQUIPMENT LIST
+   EQUIPMENT
    ===================================================== */
 
 function buildEquipmentList() {
@@ -1169,6 +1323,7 @@ function buildEquipmentList() {
 
 
   if (!select) {
+
     return;
   }
 
@@ -1198,43 +1353,61 @@ function buildEquipmentList() {
   state.equipment.forEach(
     function (item) {
 
-      if (!item.equipmentId) {
-        return;
-      }
-
-
-      const option =
-        document.createElement(
-          'option'
-        );
-
-
-      option.value =
-        item.equipmentId;
-
-
-      option.textContent =
-        item.equipmentName +
-        ' — ' +
-        item.equipmentId;
-
-
-      if (
-        item.equipmentType
-      ) {
-
-        option.textContent +=
-          ' (' +
-          item.equipmentType +
-          ')';
-      }
-
-
-      select.appendChild(
-        option
+      addEquipmentOption(
+        select,
+        item
       );
 
     }
+  );
+}
+
+
+/* =====================================================
+   ADD EQUIPMENT OPTION
+   ===================================================== */
+
+function addEquipmentOption(
+  select,
+  item
+) {
+
+  if (
+    !item.equipment_id
+  ) {
+
+    return;
+  }
+
+
+  const option =
+    document.createElement(
+      'option'
+    );
+
+
+  option.value =
+    item.equipment_id;
+
+
+  option.textContent =
+    (
+      item.equipment_name ||
+      ''
+    ) +
+    ' — ' +
+    item.equipment_id +
+    (
+      item.equipment_type
+        ? ' (' +
+          item.equipment_type +
+          ')'
+        : ''
+    );
+
+
+  select.appendChild(
+    option
   );
 }
 
@@ -1253,6 +1426,7 @@ function filterEquipment() {
 
 
   if (!select) {
+
     return;
   }
 
@@ -1275,6 +1449,7 @@ function filterEquipment() {
       'option'
     );
 
+
   first.value =
     '';
 
@@ -1293,10 +1468,15 @@ function filterEquipment() {
 
         const text =
           [
-            item.equipmentId,
-            item.equipmentName,
-            item.equipmentType,
-            item.plateNumber
+
+            item.equipment_id,
+
+            item.equipment_name,
+
+            item.equipment_type,
+
+            item.plate_number
+
           ]
             .join(' ')
             .toLowerCase();
@@ -1310,24 +1490,9 @@ function filterEquipment() {
     .forEach(
       function (item) {
 
-        const option =
-          document.createElement(
-            'option'
-          );
-
-
-        option.value =
-          item.equipmentId;
-
-
-        option.textContent =
-          item.equipmentName +
-          ' — ' +
-          item.equipmentId;
-
-
-        select.appendChild(
-          option
+        addEquipmentOption(
+          select,
+          item
         );
 
       }
@@ -1356,7 +1521,8 @@ function equipmentChanged() {
       function (item) {
 
         return (
-          item.equipmentId === id
+          item.equipment_id ===
+          id
         );
       }
     ) || null;
@@ -1367,7 +1533,7 @@ function equipmentChanged() {
 
 
 /* =====================================================
-   BUILD PROJECT LIST
+   PROJECTS
    ===================================================== */
 
 function buildProjectList() {
@@ -1377,6 +1543,7 @@ function buildProjectList() {
 
 
   if (!select) {
+
     return;
   }
 
@@ -1406,32 +1573,54 @@ function buildProjectList() {
   state.projects.forEach(
     function (project) {
 
-      if (!project.projectId) {
-        return;
-      }
-
-
-      const option =
-        document.createElement(
-          'option'
-        );
-
-
-      option.value =
-        project.projectId;
-
-
-      option.textContent =
-        project.projectName +
-        ' — ' +
-        project.projectId;
-
-
-      select.appendChild(
-        option
+      addProjectOption(
+        select,
+        project
       );
 
     }
+  );
+}
+
+
+/* =====================================================
+   ADD PROJECT OPTION
+   ===================================================== */
+
+function addProjectOption(
+  select,
+  project
+) {
+
+  if (
+    !project.project_id
+  ) {
+
+    return;
+  }
+
+
+  const option =
+    document.createElement(
+      'option'
+    );
+
+
+  option.value =
+    project.project_id;
+
+
+  option.textContent =
+    (
+      project.project_name ||
+      ''
+    ) +
+    ' — ' +
+    project.project_id;
+
+
+  select.appendChild(
+    option
   );
 }
 
@@ -1450,6 +1639,7 @@ function filterProjects() {
 
 
   if (!select) {
+
     return;
   }
 
@@ -1472,6 +1662,7 @@ function filterProjects() {
       'option'
     );
 
+
   first.value =
     '';
 
@@ -1490,10 +1681,15 @@ function filterProjects() {
 
         const text =
           [
-            project.projectId,
-            project.projectName,
+
+            project.project_id,
+
+            project.project_name,
+
             project.client,
+
             project.location
+
           ]
             .join(' ')
             .toLowerCase();
@@ -1507,24 +1703,9 @@ function filterProjects() {
     .forEach(
       function (project) {
 
-        const option =
-          document.createElement(
-            'option'
-          );
-
-
-        option.value =
-          project.projectId;
-
-
-        option.textContent =
-          project.projectName +
-          ' — ' +
-          project.projectId;
-
-
-        select.appendChild(
-          option
+        addProjectOption(
+          select,
+          project
         );
 
       }
@@ -1553,7 +1734,8 @@ function projectChanged() {
       function (project) {
 
         return (
-          project.projectId === id
+          project.project_id ===
+          id
         );
       }
     ) || null;
@@ -1581,9 +1763,10 @@ function getActiveAttendance() {
     function (item) {
 
       return (
-        item.employeeId ===
-        state.selectedEmployee.employeeId
+        item.employee_id ===
+        state.selectedEmployee.employee_id
       );
+
     }
   ) || null;
 }
@@ -1600,6 +1783,7 @@ function updateActiveAttendanceDisplay() {
 
 
   if (!box) {
+
     return;
   }
 
@@ -1633,7 +1817,7 @@ function updateActiveAttendanceDisplay() {
     '<div class="active-row">' +
       '<strong>' +
       escapeHtml(
-        active.employeeName
+        active.employee_name
       ) +
       '</strong>' +
     '</div>' +
@@ -1642,7 +1826,7 @@ function updateActiveAttendanceDisplay() {
       'Equipment: ' +
       '<strong>' +
       escapeHtml(
-        active.equipmentName
+        active.equipment_name
       ) +
       '</strong>' +
     '</div>' +
@@ -1651,7 +1835,7 @@ function updateActiveAttendanceDisplay() {
       'Project: ' +
       '<strong>' +
       escapeHtml(
-        active.projectName
+        active.project_name
       ) +
       '</strong>' +
     '</div>' +
@@ -1659,8 +1843,8 @@ function updateActiveAttendanceDisplay() {
     '<div class="active-row">' +
       'Time In: ' +
       '<strong>' +
-      escapeHtml(
-        active.timeIn
+      formatTime(
+        active.time_in
       ) +
       '</strong>' +
     '</div>';
@@ -1739,47 +1923,95 @@ async function timeIn() {
   }
 
 
-  setBusy(true);
+  setBusy(
+    true
+  );
 
 
   try {
 
-    const response =
-      await apiCall(
-        'timeIn',
-        {
+    const employee =
+      state.selectedEmployee;
 
-          employeeId:
-            state.selectedEmployee.employeeId,
+    const equipment =
+      state.selectedEquipment;
 
-          employeeName:
-            state.selectedEmployee.employeeName,
-
-          equipmentId:
-            state.selectedEquipment.equipmentId,
-
-          equipmentName:
-            state.selectedEquipment.equipmentName,
-
-          projectId:
-            state.selectedProject.projectId,
-
-          projectName:
-            state.selectedProject.projectName
-        }
-      );
+    const project =
+      state.selectedProject;
 
 
-    if (
-      !response ||
-      !response.success
-    ) {
+    const attendanceDate =
+      getManilaDate();
+
+
+    const timeIn =
+      new Date().toISOString();
+
+
+    const insertData = {
+
+      employee_id:
+        employee.employee_id,
+
+      employee_name:
+        employee.employee_name,
+
+      attendance_date:
+        attendanceDate,
+
+      time_in:
+        timeIn,
+
+      time_out:
+        null,
+
+      total_hours:
+        null,
+
+      status:
+        'IN',
+
+      equipment_id:
+        equipment.equipment_id,
+
+      equipment_name:
+        equipment.equipment_name,
+
+      project_id:
+        project.project_id,
+
+      project_name:
+        project.project_name,
+
+      fuel_used:
+        false,
+
+      fuel_quantity:
+        null,
+
+      fuel_unit:
+        null,
+
+      fuel_amount:
+        null
+
+    };
+
+
+    const result =
+      await supabaseClient
+        .from('attendance')
+        .insert(
+          insertData
+        )
+        .select()
+        .single();
+
+
+    if (result.error) {
 
       throw new Error(
-        response &&
-        response.error
-          ? response.error
-          : 'Time In failed.'
+        result.error.message
       );
     }
 
@@ -1791,12 +2023,14 @@ async function timeIn() {
 
 
     showResult(
-      response.attendance,
+      mapAttendanceForResult(
+        result.data
+      ),
       'TIME IN RECORDED'
     );
 
 
-    await loadBootstrap();
+    await loadSystemData();
 
 
   } catch (error) {
@@ -1808,14 +2042,19 @@ async function timeIn() {
 
 
     setStatus(
-      error.message ||
-        'Time In failed.',
+      'TIME IN failed: ' +
+      (
+        error.message ||
+        'Unknown error'
+      ),
       'error'
     );
 
   } finally {
 
-    setBusy(false);
+    setBusy(
+      false
+    );
   }
 }
 
@@ -1870,15 +2109,18 @@ function beginTimeOut() {
   if (question) {
 
     question.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center'
+      behavior:
+        'smooth',
+
+      block:
+        'center'
     });
   }
 }
 
 
 /* =====================================================
-   SHOW FUEL FORM
+   FUEL FORM
    ===================================================== */
 
 function showFuelForm() {
@@ -1907,7 +2149,7 @@ function showFuelForm() {
 
 
 /* =====================================================
-   COMPLETE TIME OUT
+   TIME OUT
    ===================================================== */
 
 async function completeTimeOut(
@@ -1929,11 +2171,32 @@ async function completeTimeOut(
   }
 
 
-  let fuelData = {
+  const active =
+    getActiveAttendance();
 
-    fuelUsed:
-      'NO'
-  };
+
+  if (!active) {
+
+    setStatus(
+      'No active attendance was found.',
+      'error'
+    );
+
+    return;
+  }
+
+
+  let fuelUsed =
+    false;
+
+  let fuelQuantity =
+    null;
+
+  let fuelUnit =
+    null;
+
+  let fuelAmount =
+    null;
 
 
   if (useFuel) {
@@ -1948,7 +2211,7 @@ async function completeTimeOut(
       $('fuelAmount');
 
 
-    const quantity =
+    fuelQuantity =
       quantityInput
         ? parseFloat(
             quantityInput.value
@@ -1956,13 +2219,13 @@ async function completeTimeOut(
         : NaN;
 
 
-    const unit =
+    fuelUnit =
       unitInput
         ? unitInput.value
         : '';
 
 
-    const amount =
+    fuelAmount =
       amountInput
         ? parseFloat(
             amountInput.value
@@ -1971,7 +2234,7 @@ async function completeTimeOut(
 
 
     if (
-      !(quantity > 0)
+      !(fuelQuantity > 0)
     ) {
 
       setStatus(
@@ -1984,8 +2247,8 @@ async function completeTimeOut(
 
 
     if (
-      unit !== 'Liter' &&
-      unit !== 'Gallon'
+      fuelUnit !== 'Liter' &&
+      fuelUnit !== 'Gallon'
     ) {
 
       setStatus(
@@ -1998,7 +2261,7 @@ async function completeTimeOut(
 
 
     if (
-      !(amount >= 0)
+      !(fuelAmount >= 0)
     ) {
 
       setStatus(
@@ -2010,54 +2273,153 @@ async function completeTimeOut(
     }
 
 
-    fuelData = {
-
-      fuelUsed:
-        'YES',
-
-      fuelQuantity:
-        quantity,
-
-      fuelUnit:
-        unit,
-
-      fuelAmount:
-        amount
-    };
+    fuelUsed =
+      true;
   }
 
 
-  setBusy(true);
+  setBusy(
+    true
+  );
 
 
   try {
 
-    const response =
-      await apiCall(
-        'timeOut',
-        Object.assign(
-          {
+    /*
+     * Re-read the active attendance so we
+     * update the current database row.
+     */
 
-            employeeId:
-              employee.employeeId
-
-          },
-
-          fuelData
+    const activeResult =
+      await supabaseClient
+        .from('attendance')
+        .select('*')
+        .eq(
+          'attendance_id',
+          active.attendance_id
         )
-      );
+        .eq(
+          'employee_id',
+          employee.employee_id
+        )
+        .eq(
+          'status',
+          'IN'
+        )
+        .maybeSingle();
 
 
     if (
-      !response ||
-      !response.success
+      activeResult.error
     ) {
 
       throw new Error(
-        response &&
-        response.error
-          ? response.error
-          : 'Time Out failed.'
+        activeResult.error.message
+      );
+    }
+
+
+    if (
+      !activeResult.data
+    ) {
+
+      throw new Error(
+        'The active attendance could not be found. Refresh and try again.'
+      );
+    }
+
+
+    const existing =
+      activeResult.data;
+
+
+    const timeOut =
+      new Date();
+
+
+    const timeInDate =
+      new Date(
+        existing.time_in
+      );
+
+
+    const totalMilliseconds =
+      timeOut.getTime() -
+      timeInDate.getTime();
+
+
+    const totalHours =
+      Math.max(
+        0,
+        totalMilliseconds /
+          1000 /
+          60 /
+          60
+      );
+
+
+    const updateData = {
+
+      time_out:
+        timeOut.toISOString(),
+
+      total_hours:
+        Number(
+          totalHours.toFixed(2)
+        ),
+
+      status:
+        'COMPLETED',
+
+      fuel_used:
+        fuelUsed,
+
+      fuel_quantity:
+        fuelUsed
+          ? fuelQuantity
+          : null,
+
+      fuel_unit:
+        fuelUsed
+          ? fuelUnit
+          : null,
+
+      fuel_amount:
+        fuelUsed
+          ? fuelAmount
+          : null
+
+    };
+
+
+    const updateResult =
+      await supabaseClient
+        .from('attendance')
+        .update(
+          updateData
+        )
+        .eq(
+          'attendance_id',
+          existing.attendance_id
+        )
+        .eq(
+          'employee_id',
+          employee.employee_id
+        )
+        .eq(
+          'status',
+          'IN'
+        )
+        .select()
+        .single();
+
+
+    if (
+      updateResult.error
+    ) {
+
+      throw new Error(
+        updateResult.error.message
       );
     }
 
@@ -2069,7 +2431,9 @@ async function completeTimeOut(
 
 
     showResult(
-      response.attendance,
+      mapAttendanceForResult(
+        updateResult.data
+      ),
       'TIME OUT RECORDED'
     );
 
@@ -2077,7 +2441,7 @@ async function completeTimeOut(
     resetFuel();
 
 
-    await loadBootstrap();
+    await loadSystemData();
 
 
   } catch (error) {
@@ -2089,15 +2453,81 @@ async function completeTimeOut(
 
 
     setStatus(
-      error.message ||
-        'Time Out failed.',
+      'TIME OUT failed: ' +
+      (
+        error.message ||
+        'Unknown error'
+      ),
       'error'
     );
 
   } finally {
 
-    setBusy(false);
+    setBusy(
+      false
+    );
   }
+}
+
+
+/* =====================================================
+   RESULT MAPPING
+   ===================================================== */
+
+function mapAttendanceForResult(
+  row
+) {
+
+  return {
+
+    attendance_id:
+      row.attendance_id,
+
+    employeeName:
+      row.employee_name,
+
+    equipmentName:
+      row.equipment_name,
+
+    projectName:
+      row.project_name,
+
+    date:
+      row.attendance_date,
+
+    timeIn:
+      row.time_in
+        ? formatTime(
+            row.time_in
+          )
+        : '',
+
+    timeOut:
+      row.time_out
+        ? formatTime(
+            row.time_out
+          )
+        : '',
+
+    totalHours:
+      row.total_hours,
+
+    fuel:
+      row.fuel_used
+        ? (
+            Number(
+              row.fuel_quantity
+            ).toFixed(2) +
+            ' ' +
+            row.fuel_unit +
+            ' | ₱' +
+            Number(
+              row.fuel_amount
+            ).toFixed(2)
+          )
+        : ''
+
+  };
 }
 
 
@@ -2123,60 +2553,62 @@ function showResult(
   }
 
 
-  box.hidden =
-    false;
-
-
   let html = '';
 
 
   html +=
     '<div class="result-title">' +
-    escapeHtml(title) +
+      escapeHtml(
+        title
+      ) +
     '</div>';
 
 
   html +=
     '<div class="result-item">' +
-    'Employee: ' +
-    '<strong>' +
-    escapeHtml(
-      attendance.employeeName || ''
-    ) +
-    '</strong>' +
+      'Employee: ' +
+      '<strong>' +
+        escapeHtml(
+          attendance.employeeName ||
+          ''
+        ) +
+      '</strong>' +
     '</div>';
 
 
   html +=
     '<div class="result-item">' +
-    'Equipment: ' +
-    '<strong>' +
-    escapeHtml(
-      attendance.equipmentName || ''
-    ) +
-    '</strong>' +
+      'Equipment: ' +
+      '<strong>' +
+        escapeHtml(
+          attendance.equipmentName ||
+          ''
+        ) +
+      '</strong>' +
     '</div>';
 
 
   html +=
     '<div class="result-item">' +
-    'Project: ' +
-    '<strong>' +
-    escapeHtml(
-      attendance.projectName || ''
-    ) +
-    '</strong>' +
+      'Project: ' +
+      '<strong>' +
+        escapeHtml(
+          attendance.projectName ||
+          ''
+        ) +
+      '</strong>' +
     '</div>';
 
 
   html +=
     '<div class="result-item">' +
-    'Date: ' +
-    '<strong>' +
-    escapeHtml(
-      attendance.date || ''
-    ) +
-    '</strong>' +
+      'Date: ' +
+      '<strong>' +
+        escapeHtml(
+          attendance.date ||
+          ''
+        ) +
+      '</strong>' +
     '</div>';
 
 
@@ -2186,12 +2618,12 @@ function showResult(
 
     html +=
       '<div class="result-item">' +
-      'Time In: ' +
-      '<strong>' +
-      escapeHtml(
-        attendance.timeIn
-      ) +
-      '</strong>' +
+        'Time In: ' +
+        '<strong>' +
+          escapeHtml(
+            attendance.timeIn
+          ) +
+        '</strong>' +
       '</div>';
   }
 
@@ -2202,31 +2634,33 @@ function showResult(
 
     html +=
       '<div class="result-item">' +
-      'Time Out: ' +
-      '<strong>' +
-      escapeHtml(
-        attendance.timeOut
-      ) +
-      '</strong>' +
+        'Time Out: ' +
+        '<strong>' +
+          escapeHtml(
+            attendance.timeOut
+          ) +
+        '</strong>' +
       '</div>';
   }
 
 
   if (
     attendance.totalHours !==
+    null &&
+    attendance.totalHours !==
     undefined
   ) {
 
     html +=
       '<div class="result-item">' +
-      'Total Hours: ' +
-      '<strong>' +
-      escapeHtml(
-        String(
-          attendance.totalHours
-        )
-      ) +
-      '</strong>' +
+        'Total Hours: ' +
+        '<strong>' +
+          escapeHtml(
+            String(
+              attendance.totalHours
+            )
+          ) +
+        '</strong>' +
       '</div>';
   }
 
@@ -2237,188 +2671,27 @@ function showResult(
 
     html +=
       '<div class="result-item">' +
-      'Fuel: ' +
-      '<strong>' +
-      escapeHtml(
-        attendance.fuel
-      ) +
-      '</strong>' +
+        'Fuel: ' +
+        '<strong>' +
+          escapeHtml(
+            attendance.fuel
+          ) +
+        '</strong>' +
       '</div>';
   }
 
 
   box.innerHTML =
     html;
+
+
+  box.hidden =
+    false;
 }
 
 
 /* =====================================================
-   API JSONP
-   ===================================================== */
-
-function apiCall(
-  action,
-  params
-) {
-
-  params =
-    params || {};
-
-
-  return new Promise(
-    function (
-      resolve,
-      reject
-    ) {
-
-      const callbackName =
-        'amanahCallback_' +
-        Date.now() +
-        '_' +
-        Math.floor(
-          Math.random() * 100000
-        );
-
-
-      const script =
-        document.createElement(
-          'script'
-        );
-
-
-      const query =
-        new URLSearchParams();
-
-
-      query.set(
-        'action',
-        action
-      );
-
-
-      query.set(
-        'callback',
-        callbackName
-      );
-
-
-      query.set(
-        '_',
-        String(
-          Date.now()
-        )
-      );
-
-
-      Object.keys(
-        params
-      ).forEach(
-        function (key) {
-
-          const value =
-            params[key];
-
-
-          if (
-            value !== undefined &&
-            value !== null
-          ) {
-
-            query.set(
-              key,
-              String(value)
-            );
-          }
-
-        }
-      );
-
-
-      const timeout =
-        setTimeout(
-          function () {
-
-            cleanup();
-
-            reject(
-              new Error(
-                'API request timed out.'
-              )
-            );
-
-          },
-          20000
-        );
-
-
-      function cleanup() {
-
-        clearTimeout(
-          timeout
-        );
-
-
-        try {
-
-          delete window[
-            callbackName
-          ];
-
-        } catch (_) {
-
-          window[
-            callbackName
-          ] = undefined;
-        }
-
-
-        script.remove();
-      }
-
-
-      window[
-        callbackName
-      ] =
-        function (data) {
-
-          cleanup();
-
-          resolve(
-            data
-          );
-        };
-
-
-      script.onerror =
-        function () {
-
-          cleanup();
-
-          reject(
-            new Error(
-              'Unable to connect to AMANAH API.'
-            )
-          );
-        };
-
-
-      script.src =
-        API_URL +
-        '?' +
-        query.toString();
-
-
-      document.body.appendChild(
-        script
-      );
-
-    }
-  );
-}
-
-
-/* =====================================================
-   RESTART SCANNER
+   RESTART
    ===================================================== */
 
 async function restartScanner() {
@@ -2429,20 +2702,26 @@ async function restartScanner() {
   state.stationVerified =
     false;
 
+
   state.selectedEmployee =
     null;
+
 
   state.selectedEquipment =
     null;
 
+
   state.selectedProject =
     null;
+
 
   state.pendingOut =
     false;
 
+
   state.lastQrData =
     '';
+
 
   state.lastQrTime =
     0;
@@ -2502,7 +2781,7 @@ async function restartScanner() {
 
 
 /* =====================================================
-   SCREEN SWITCH
+   SCREEN
    ===================================================== */
 
 function showScreen(
@@ -2519,14 +2798,13 @@ function showScreen(
         screen.hidden =
           screen.id !==
           screenId;
-
       }
     );
 }
 
 
 /* =====================================================
-   STATUS MESSAGE
+   STATUS
    ===================================================== */
 
 function setStatus(
@@ -2539,6 +2817,7 @@ function setStatus(
 
 
   if (!element) {
+
     return;
   }
 
@@ -2580,12 +2859,14 @@ function setBusy(
 
 
     if (inButton) {
+
       inButton.disabled =
         true;
     }
 
 
     if (outButton) {
+
       outButton.disabled =
         true;
     }
@@ -2615,18 +2896,21 @@ function resetFuel() {
 
 
   if (quantity) {
+
     quantity.value =
       '';
   }
 
 
   if (unit) {
+
     unit.value =
       'Liter';
   }
 
 
   if (amount) {
+
     amount.value =
       '';
   }
@@ -2646,6 +2930,89 @@ function resetFuel() {
 
   state.pendingOut =
     false;
+}
+
+
+/* =====================================================
+   MANILA DATE
+   ===================================================== */
+
+function getManilaDate() {
+
+  return new Intl.DateTimeFormat(
+    'en-CA',
+    {
+      timeZone:
+        'Asia/Manila',
+
+      year:
+        'numeric',
+
+      month:
+        '2-digit',
+
+      day:
+        '2-digit'
+    }
+  ).format(
+    new Date()
+  );
+}
+
+
+/* =====================================================
+   MANILA TIME
+   ===================================================== */
+
+function formatTime(
+  value
+) {
+
+  if (!value) {
+
+    return '';
+  }
+
+
+  const date =
+    new Date(
+      value
+    );
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return String(
+      value
+    );
+  }
+
+
+  return new Intl.DateTimeFormat(
+    'en-PH',
+    {
+      timeZone:
+        'Asia/Manila',
+
+      hour:
+        '2-digit',
+
+      minute:
+        '2-digit',
+
+      second:
+        '2-digit',
+
+      hour12:
+        true
+    }
+  ).format(
+    date
+  );
 }
 
 
