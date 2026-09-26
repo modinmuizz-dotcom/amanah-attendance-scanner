@@ -11,7 +11,7 @@ const SUPABASE_URL =
  * working admin.js / app.js here.
  */
 const SUPABASE_PUBLISHABLE_KEY =
-    "https://bafmycjninxomufhkjvy.supabase.co";
+    "sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 
 
 const supabaseClient =
