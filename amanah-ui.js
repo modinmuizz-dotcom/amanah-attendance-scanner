@@ -71,7 +71,7 @@
 
     const style=document.createElement('link');
     style.rel='stylesheet';
-    style.href='amanah-ui.css?v=1';
+    style.href='amanah-ui.css?v=3';
     document.head.appendChild(style);
 
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
@@ -197,18 +197,32 @@
     });
   }
 
+  function removeShell(){
+    ['amanahSidebar','amanahTopbar','amanahMobileOverlay'].forEach(id=>{
+      document.getElementById(id)?.remove();
+    });
+    document.body.classList.remove('amanah-common-active','amanah-sidebar-open');
+  }
+
   function start(){
     const isAdmin=/admin\\.html$/i.test(location.pathname);
     if(isAdmin){
       const login=document.getElementById('loginScreen');
       const app=document.getElementById('adminApp');
-      if(login && app && !login.classList.contains('hidden')){
-        const obs=new MutationObserver(()=>{
-          if(login.classList.contains('hidden') && !document.getElementById('amanahSidebar')){
-            obs.disconnect();build();
+
+      if(login && app){
+        const syncShell=()=>{
+          const loggedOut=!login.classList.contains('hidden');
+          if(loggedOut){
+            removeShell();
+          }else if(!document.getElementById('amanahSidebar')){
+            build();
           }
-        });
+        };
+
+        const obs=new MutationObserver(syncShell);
         obs.observe(login,{attributes:true,attributeFilter:['class']});
+        syncShell();
         return;
       }
     }
