@@ -1153,11 +1153,63 @@
           <input type="number" id="manpower" min="0" value="0">
         </div>
 
-        <div class="pm-field">
-  <label for="equipment">Equipment</label>
-  <select id="equipment">
-    <option value="">Select equipment</option>
-  </select>
+        <div class="pm-field full">
+  <label>EQUIPMENT USED</label>
+
+  <div class="pm-equipment-box">
+
+    <div class="pm-equipment-toolbar">
+
+      <input
+        type="search"
+        id="equipmentSearch"
+        class="pm-equipment-search"
+        placeholder="Search equipment..."
+        autocomplete="off"
+      >
+
+      <div class="pm-equipment-toolbar-actions">
+
+        <button
+          type="button"
+          id="selectAllEquipmentButton"
+          class="pm-equipment-tool-button"
+        >
+          SELECT ALL
+        </button>
+
+        <button
+          type="button"
+          id="clearEquipmentButton"
+          class="pm-equipment-tool-button secondary"
+        >
+          CLEAR
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="equipmentList"
+      class="pm-equipment-list"
+    >
+      <div class="pm-equipment-empty">
+        Loading equipment...
+      </div>
+    </div>
+
+
+    <div
+      id="equipmentSelectedSummary"
+      class="pm-equipment-summary"
+    >
+      No equipment selected.
+    </div>
+
+  </div>
+
 </div>
 
         <div class="pm-field">
