@@ -27,7 +27,7 @@ create table if not exists public.repair_requests (
     on update cascade
     on delete set null,
 
-  pm_inspection_id uuid null,
+  pm_inspection_ref text null,
   reported_by text not null,
 
   body_plate_no text null,
@@ -48,7 +48,7 @@ create table if not exists public.repair_requests (
       )
     ),
 
-  prepared_by uuid null references auth.users(id),
+  prepared_by uuid null references auth.users(id) default auth.uid(),
   prepared_at timestamptz null,
 
   reviewed_by uuid null references auth.users(id),
@@ -370,6 +370,8 @@ select
   r.repair_request_id,
   r.repair_form_no,
   r.request_date,
+  r.created_at,
+  r.updated_at,
   r.equipment_id,
   e.equipment_name,
   e.equipment_type,
