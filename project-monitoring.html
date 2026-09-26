@@ -1014,6 +1014,195 @@
     padding: 13px;
   }
 }
+
+    /* =========================================================
+   MULTI-EQUIPMENT SELECTOR
+   ========================================================= */
+
+.pm-equipment-box {
+  border: 1px solid var(--gray-200);
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.pm-equipment-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.pm-equipment-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--gray-300);
+  border-radius: 11px;
+  background: #fff;
+  color: var(--navy-2);
+  outline: none;
+}
+
+.pm-equipment-search:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+}
+
+.pm-equipment-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pm-equipment-tool-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.pm-equipment-tool-button:hover {
+  background: #dbeafe;
+}
+
+.pm-equipment-tool-button.secondary {
+  border-color: var(--gray-300);
+  background: #fff;
+  color: var(--gray-700);
+}
+
+.pm-equipment-tool-button.secondary:hover {
+  background: var(--gray-100);
+}
+
+.pm-equipment-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #fff;
+}
+
+.pm-equipment-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background .15s ease,
+    border-color .15s ease,
+    transform .15s ease;
+}
+
+.pm-equipment-option:hover {
+  background: #f8fafc;
+  border-color: #dbeafe;
+}
+
+.pm-equipment-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pm-equipment-checkmark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pm-equipment-option:has(
+  input[type="checkbox"]:checked
+) {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.pm-equipment-option:has(
+  input[type="checkbox"]:checked
+) .pm-equipment-checkmark {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.pm-equipment-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pm-equipment-info strong {
+  color: var(--navy-2);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.pm-equipment-info small {
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pm-equipment-summary {
+  padding: 11px 13px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pm-equipment-summary.has-selection {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.pm-equipment-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+
+  .pm-equipment-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .pm-equipment-toolbar-actions {
+    width: 100%;
+  }
+
+  .pm-equipment-tool-button {
+    flex: 1;
+  }
+
+  .pm-equipment-list {
+    max-height: 320px;
+  }
+}
     
   </style>
 </head>
