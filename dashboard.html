@@ -465,18 +465,37 @@
 
     <div class="panel-header">
 
-      <h2>
-        RECENT ATTENDANCE
-      </h2>
+  <h2>
+    RECENT ATTENDANCE
+  </h2>
 
-      <button
-        id="refreshButton"
-        class="refresh"
-      >
-        REFRESH
-      </button>
+  <div
+    style="
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    "
+  >
 
-    </div>
+    <button
+      class="refresh"
+      onclick="
+        location.href='attendance.html'
+      "
+    >
+      VIEW ALL ATTENDANCE
+    </button>
+
+    <button
+      id="refreshButton"
+      class="refresh"
+    >
+      REFRESH
+    </button>
+
+  </div>
+
+</div>
 
 
     <div class="table-wrap">
