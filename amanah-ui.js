@@ -184,7 +184,7 @@
     });
 
     document.getElementById('amanahSidebarLogout')?.addEventListener('click',async()=>{
-      const isAdmin=/admin\\.html$/i.test(location.pathname);
+      const isAdmin=/admin\.html$/i.test(location.pathname);
       const existing=document.getElementById('logoutButton');
 
       if(existing){
@@ -212,7 +212,7 @@
   }
 
   function start(){
-    const isAdmin=/admin\\.html$/i.test(location.pathname);
+    const isAdmin=/admin\.html$/i.test(location.pathname);
     if(isAdmin){
       const login=document.getElementById('loginScreen');
       const app=document.getElementById('adminApp');
