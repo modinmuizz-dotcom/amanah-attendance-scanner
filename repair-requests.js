@@ -245,15 +245,22 @@ async function openDetail(id){
   const r=await supabaseClient.from("repair_requests").select("*").eq("repair_request_id",id).single();
   if(r.error){showMessage(r.error.message,"error");return;}
 
-  const [items,photos]=await Promise.all([
+  const [items,photos,costs]=await Promise.all([
     supabaseClient.from("repair_request_items").select("*").eq("repair_request_id",id).order("display_order"),
-    supabaseClient.from("repair_request_photos").select("*").eq("repair_request_id",id).order("uploaded_at",{ascending:false})
+    supabaseClient.from("repair_request_photos").select("*").eq("repair_request_id",id).order("uploaded_at",{ascending:false}),
+    supabaseClient.from("repair_request_costs").select("*").eq("repair_request_id",id).order("created_at",{ascending:true})
   ]);
 
   if(items.error)throw items.error;
   if(photos.error)throw photos.error;
+  if(costs.error)throw costs.error;
 
-  state.selectedRequest={request:r.data,items:items.data||[],photos:photos.data||[]};
+  state.selectedRequest={
+    request:r.data,
+    items:items.data||[],
+    photos:photos.data||[],
+    costs:costs.data||[]
+  };
 
   const eq=state.equipment.find(x=>x.equipment_id===r.data.equipment_id);
   const project=state.projects.find(x=>x.project_id===r.data.project_id);
@@ -301,6 +308,16 @@ async function openDetail(id){
     </section>
 
     <section class="card" style="margin-top:16px;padding:14px">
+      <div class="toolbar">
+        <div>
+          <h2 style="font-size:15px">REPAIR COST</h2>
+          <p class="subtitle">Actual labor, parts/materials, and other repair costs.</p>
+        </div>
+      </div>
+      <div id="repairCostContent" style="margin-top:10px"></div>
+    </section>
+
+    <section class="card" style="margin-top:16px;padding:14px">
       <div class="toolbar"><div><h2 style="font-size:15px">REPAIR STATUS</h2></div></div>
       <div class="actions" id="detailActions"></div>
     </section>
@@ -324,6 +341,8 @@ async function openDetail(id){
   il.innerHTML=state.selectedRequest.items.length
     ? state.selectedRequest.items.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong> — '+escapeHtml(x.material_or_spare_part||"")+' '+escapeHtml(x.quantity??"")+' '+escapeHtml(x.unit||"")+'</div>').join("")
     : '<div class="empty">No work/material lines yet.</div>';
+
+  renderRepairCosts();
 
   const repairBox=document.createElement("section");
   repairBox.className="card";
@@ -391,6 +410,146 @@ async function openDetail(id){
 
   renderDetailActions();
   $("detailModal").classList.add("open");
+}
+
+function renderRepairCosts(){
+  const box=$("repairCostContent");
+  if(!box)return;
+
+  const costs=state.selectedRequest.costs||[];
+  const total=costs.reduce((s,x)=>s+Number(x.amount||0),0);
+  const labor=costs.filter(x=>x.cost_type==="LABOR").reduce((s,x)=>s+Number(x.amount||0),0);
+  const material=costs.filter(x=>x.cost_type==="MATERIAL").reduce((s,x)=>s+Number(x.amount||0),0);
+  const other=costs.filter(x=>x.cost_type==="OTHER").reduce((s,x)=>s+Number(x.amount||0),0);
+
+  let html=
+    '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px">'+
+      '<div class="detail-box"><h3>Total Repair Cost</h3><div class="detail-text"><strong>'+money(total)+'</strong></div></div>'+
+      '<div class="detail-box"><h3>Labor</h3><div class="detail-text">'+money(labor)+'</div></div>'+
+      '<div class="detail-box"><h3>Materials</h3><div class="detail-text">'+money(material)+'</div></div>'+
+      '<div class="detail-box"><h3>Other</h3><div class="detail-text">'+money(other)+'</div></div>'+
+    '</div>';
+
+  if(costs.length){
+    html += '<div style="overflow:auto"><table style="width:100%;min-width:760px;border-collapse:collapse">'+
+      '<thead><tr><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">TYPE</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">DESCRIPTION</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">QTY</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">UNIT</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">UNIT COST</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left">AMOUNT</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:left"></th></tr></thead>'+
+      '<tbody>'+
+      costs.map(x=>
+        '<tr>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+escapeHtml(x.cost_type)+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+escapeHtml(x.description)+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+escapeHtml(x.quantity)+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+escapeHtml(x.unit||"")+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+money(x.unit_cost)+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9;font-weight:800">'+money(x.amount)+'</td>'+
+          '<td style="padding:8px;border-bottom:1px solid #f1f5f9">'+
+            (state.selectedRequest.request.status==="IN PROGRESS"
+              ? '<button class="btn btn-danger" type="button" data-delete-repair-cost="'+escapeHtml(x.repair_cost_id)+'">DELETE</button>'
+              : '')+
+          '</td>'+
+        '</tr>'
+      ).join("")+
+      '</tbody></table></div>';
+  }else{
+    html += '<div class="empty">No actual repair costs recorded yet.</div>';
+  }
+
+  if(state.selectedRequest.request.status==="IN PROGRESS"){
+    html +=
+      '<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb">'+
+        '<div class="detail-grid">'+
+          '<div class="field"><label>Cost Type</label><select class="select" id="repairCostType"><option>LABOR</option><option>MATERIAL</option><option>OTHER</option></select></div>'+
+          '<div class="field"><label>Description</label><input class="input" id="repairCostDescription" placeholder="Example: Hydraulic Hose"></div>'+
+          '<div class="field"><label>Quantity</label><input class="input" id="repairCostQty" type="number" min="0" step="0.001" value="1"></div>'+
+          '<div class="field"><label>Unit</label><input class="input" id="repairCostUnit" placeholder="pcs / hour / set"></div>'+
+          '<div class="field"><label>Unit Cost</label><input class="input" id="repairCostUnitCost" type="number" min="0" step="0.01" value="0"></div>'+
+          '<div class="field"><label>Total Amount</label><input class="input" id="repairCostAmount" readonly value="0.00"></div>'+
+          '<div class="field full"><label>Reference / OR No.</label><input class="input" id="repairCostReference" placeholder="Optional"></div>'+
+          '<div class="field full"><label>Notes</label><textarea class="textarea" id="repairCostNotes" placeholder="Optional"></textarea></div>'+
+        '</div>'+
+        '<div class="actions" style="margin-top:12px"><button class="btn btn-green" type="button" id="saveRepairCost">SAVE REPAIR COST</button></div>'+
+      '</div>';
+  }
+
+  box.innerHTML=html;
+
+  const qty=$("repairCostQty");
+  const unitCost=$("repairCostUnitCost");
+  const amount=$("repairCostAmount");
+  const recalc=()=>{
+    if(!qty||!unitCost||!amount)return;
+    amount.value=(Number(qty.value||0)*Number(unitCost.value||0)).toFixed(2);
+  };
+  qty?.addEventListener("input",recalc);
+  unitCost?.addEventListener("input",recalc);
+
+  $("saveRepairCost")?.addEventListener("click",async()=>{
+    try{
+      await saveRepairCost();
+    }catch(e){
+      showMessage(e.message||"Unable to save repair cost.","error");
+    }
+  });
+
+  box.querySelectorAll("[data-delete-repair-cost]").forEach(btn=>{
+    btn.addEventListener("click",async()=>{
+      try{
+        await deleteRepairCost(btn.dataset.deleteRepairCost);
+      }catch(e){
+        showMessage(e.message||"Unable to delete repair cost.","error");
+      }
+    });
+  });
+}
+
+async function saveRepairCost(){
+  const request=state.selectedRequest.request;
+  if(request.status!=="IN PROGRESS")throw new Error("Repair costs can only be added while the repair is IN PROGRESS.");
+
+  const costType=$("repairCostType").value;
+  const description=$("repairCostDescription").value.trim();
+  const quantity=Number($("repairCostQty").value||0);
+  const unit=$("repairCostUnit").value.trim()||null;
+  const unitCost=Number($("repairCostUnitCost").value||0);
+  const referenceNo=$("repairCostReference").value.trim()||null;
+  const notes=$("repairCostNotes").value.trim()||null;
+
+  if(!description)throw new Error("Enter a repair cost description.");
+  if(quantity<0||unitCost<0)throw new Error("Quantity and unit cost cannot be negative.");
+
+  const {error}=await supabaseClient.from("repair_request_costs").insert({
+    repair_request_id:request.repair_request_id,
+    cost_type:costType,
+    description,
+    quantity,
+    unit,
+    unit_cost:unitCost,
+    reference_no:referenceNo,
+    notes,
+    created_by:state.userId
+  });
+  if(error)throw error;
+
+  await openDetail(request.repair_request_id);
+  showMessage("Repair cost saved successfully and synchronized to Project Cost.","success");
+}
+
+async function deleteRepairCost(id){
+  if(!id) return;
+  const request=state.selectedRequest.request;
+  if(request.status!=="IN PROGRESS")return;
+
+  if(!confirm("Delete this repair cost entry?"))return;
+
+  const {error}=await supabaseClient.from("repair_request_costs")
+    .delete()
+    .eq("repair_cost_id",id)
+    .eq("repair_request_id",request.repair_request_id);
+
+  if(error)throw error;
+
+  await openDetail(request.repair_request_id);
+  showMessage("Repair cost deleted successfully.","success");
 }
 
 async function uploadRepairPhotos(request){
@@ -653,6 +812,11 @@ $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove(
     if(!await requireSession())return;
     await loadMasterData();
     await loadRequests();
+
+    const requestedId=new URLSearchParams(location.search).get("id");
+    if(requestedId){
+      await openDetail(requestedId);
+    }
   }catch(e){
     console.error(e);
     showMessage(e.message||"Unable to load Repair Requests.","error");
