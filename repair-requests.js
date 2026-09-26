@@ -488,7 +488,22 @@ function renderDetailActions(){
   }
 
   if(r.status==="IN PROGRESS"){
-    html += '<button class="btn btn-green" id="completeRepairButton">MARK COMPLETED</button>';
+    const hasRepairedBy = !!String(r.repaired_by || "").trim();
+    const hasAfterPhoto = state.selectedRequest.photos.some(x => x.photo_category === "REPAIR AFTER");
+    const canComplete = hasRepairedBy && hasAfterPhoto;
+
+    html += '<button class="btn btn-green" id="completeRepairButton" ' +
+      (canComplete ? "" : "disabled") +
+      '>MARK COMPLETED</button>';
+
+    if(!canComplete){
+      const missing = [];
+      if(!hasRepairedBy) missing.push("Repaired By");
+      if(!hasAfterPhoto) missing.push("REPAIR AFTER photo");
+      html += '<div style="width:100%;margin-top:8px;color:#64748b;font-size:11px;font-weight:800">' +
+        'Completion locked until: ' + escapeHtml(missing.join(" and ")) +
+        '</div>';
+    }
   }
 
   if(r.status==="COMPLETED"){
