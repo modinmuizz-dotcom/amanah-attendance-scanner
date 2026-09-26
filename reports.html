@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#111827"
+  >
+
+  <title>AMANAH Attendance Reports</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+
+      --navy: #111827;
+      --green: #16a34a;
+      --red: #dc2626;
+      --blue: #2563eb;
+      --orange: #ea580c;
+
+      --gray-bg: #f1f5f9;
+      --gray-text: #64748b;
+
+      --white: #ffffff;
+      --border: #e2e8f0;
+
+      --shadow:
+        0 10px 30px
+        rgba(15, 23, 42, 0.08);
+
+    }
+
+    body {
+
+      margin: 0;
+
+      background:
+        var(--gray-bg);
+
+      color:
+        var(--navy);
+
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    }
+
+    header {
+
+      background:
+        var(--navy);
+
+      color:
+        white;
+
+      padding:
+        14px 22px;
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        space-between;
+
+      gap:
+        20px;
+
+    }
+
+    .brand {
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      gap:
+        12px;
+
+    }
+
+    .brand-logo {
+
+      width:
+        46px;
+
+      height:
+        46px;
+
+      border-radius:
+        12px;
+
+      background:
+        white;
+
+      color:
+        var(--navy);
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      font-size:
+        28px;
+
+      font-weight:
+        800;
+
+    }
+
+    .brand-title {
+
+      font-size:
+        18px;
+
+      font-weight:
+        800;
+
+    }
+
+    .brand-subtitle {
+
+      font-size:
+        11px;
+
+      opacity:
+        0.75;
+
+      margin-top:
+        2px;
+
+    }
+
+    .top-actions {
+
+      display:
+        flex;
+
+      gap:
+        8px;
+
+      flex-wrap:
+        wrap;
+
+    }
+
+    button {
+
+      border:
+        none;
+
+      cursor:
+        pointer;
+
+      font-weight:
+        700;
+
+    }
+
+    .btn-light {
+
+      background:
+        white;
+
+      color:
+        var(--navy);
+
+      border-radius:
+        10px;
+
+      padding:
+        11px 16px;
+
+    }
+
+    .btn-dark {
+
+      background:
+        var(--navy);
+
+      color:
+        white;
+
+      border-radius:
+        10px;
+
+      padding:
+        12px 18px;
+
+    }
+
+    .btn-blue {
+
+      background:
+        var(--blue);
+
+      color:
+        white;
+
+      border-radius:
+        10px;
+
+      padding:
+        12px 18px;
+
+    }
+
+    .btn-green {
+
+      background:
+        var(--green);
+
+      color:
+        white;
+
+      border-radius:
+        10px;
+
+      padding:
+        12px 18px;
+
+    }
+
+    .btn-gray {
+
+      background:
+        #e2e8f0;
+
+      color:
+        var(--navy);
+
+      border-radius:
+        10px;
+
+      padding:
+        12px 18px;
+
+    }
+
+    .container {
+
+      width:
+        min(1400px, calc(100% - 32px));
+
+      margin:
+        32px auto 60px;
+
+    }
+
+    h1 {
+
+      margin:
+        0 0 6px;
+
+      font-size:
+        30px;
+
+    }
+
+    .subtitle {
+
+      color:
+        var(--gray-text);
+
+      margin-bottom:
+        24px;
+
+    }
+
+    .message {
+
+      display:
+        none;
+
+      padding:
+        14px 16px;
+
+      border-radius:
+        10px;
+
+      margin-bottom:
+        18px;
+
+      font-weight:
+        700;
+
+    }
+
+    .message.error {
+
+      display:
+        block;
+
+      background:
+        #fee2e2;
+
+      color:
+        #991b1b;
+
+    }
+
+    .message.success {
+
+      display:
+        block;
+
+      background:
+        #dcfce7;
+
+      color:
+        #166534;
+
+    }
+
+    .filter-panel {
+
+      background:
+        white;
+
+      border:
+        1px solid var(--border);
+
+      border-radius:
+        16px;
+
+      box-shadow:
+        var(--shadow);
+
+      padding:
+        20px;
+
+      margin-bottom:
+        22px;
+
+    }
+
+    .filter-grid {
+
+      display:
+        grid;
+
+      grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+      gap:
+        14px;
+
+    }
+
+    .field {
+
+      display:
+        flex;
+
+      flex-direction:
+        column;
+
+      gap:
+        7px;
+
+    }
+
+    .field label {
+
+      font-weight:
+        700;
+
+      font-size:
+        13px;
+
+    }
+
+    .field input,
+    .field select {
+
+      width:
+        100%;
+
+      height:
+        44px;
+
+      border:
+        1px solid #cbd5e1;
+
+      border-radius:
+        10px;
+
+      padding:
+        0 12px;
+
+      font-size:
+        14px;
+
+      background:
+        white;
+
+    }
+
+    .filter-actions {
+
+      margin-top:
+        16px;
+
+      display:
+        flex;
+
+      gap:
+        10px;
+
+      flex-wrap:
+        wrap;
+
+    }
+
+    .summary-grid {
+
+      display:
+        grid;
+
+      grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+
+      gap:
+        14px;
+
+      margin-bottom:
+        22px;
+
+    }
+
+    .summary-card {
+
+      background:
+        white;
+
+      border:
+        1px solid var(--border);
+
+      border-radius:
+        14px;
+
+      box-shadow:
+        var(--shadow);
+
+      padding:
+        18px;
+
+      min-height:
+        110px;
+
+    }
+
+    .summary-label {
+
+      color:
+        var(--gray-text);
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-transform:
+        uppercase;
+
+    }
+
+    .summary-value {
+
+      font-size:
+        28px;
+
+      font-weight:
+        800;
+
+      margin-top:
+        12px;
+
+    }
+
+    .report-panel {
+
+      background:
+        white;
+
+      border:
+        1px solid var(--border);
+
+      border-radius:
+        16px;
+
+      box-shadow:
+        var(--shadow);
+
+      overflow:
+        hidden;
+
+    }
+
+    .report-header {
+
+      padding:
+        18px 20px;
+
+      display:
+        flex;
+
+      justify-content:
+        space-between;
+
+      align-items:
+        center;
+
+      gap:
+        12px;
+
+      flex-wrap:
+        wrap;
+
+      border-bottom:
+        1px solid var(--border);
+
+    }
+
+    .report-header h2 {
+
+      margin:
+        0;
+
+      font-size:
+        18px;
+
+    }
+
+    .table-wrap {
+
+      width:
+        100%;
+
+      overflow-x:
+        auto;
+
+    }
+
+    table {
+
+      width:
+        100%;
+
+      border-collapse:
+        collapse;
+
+      min-width:
+        1200px;
+
+    }
+
+    th,
+    td {
+
+      padding:
+        13px 14px;
+
+      border-bottom:
+        1px solid var(--border);
+
+      text-align:
+        left;
+
+      vertical-align:
+        top;
+
+      font-size:
+        13px;
+
+    }
+
+    th {
+
+      background:
+        #f8fafc;
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      white-space:
+        nowrap;
+
+    }
+
+    td strong {
+
+      display:
+        block;
+
+      margin-bottom:
+        3px;
+
+    }
+
+    td small {
+
+      color:
+        var(--gray-text);
+
+    }
+
+    .status {
+
+      display:
+        inline-block;
+
+      padding:
+        6px 10px;
+
+      border-radius:
+        999px;
+
+      font-size:
+        11px;
+
+      font-weight:
+        800;
+
+    }
+
+    .status-in {
+
+      background:
+        #dcfce7;
+
+      color:
+        #166534;
+
+    }
+
+    .status-completed {
+
+      background:
+        #dbeafe;
+
+      color:
+        #1d4ed8;
+
+    }
+
+    .status-other {
+
+      background:
+        #e2e8f0;
+
+      color:
+        #475569;
+
+    }
+
+    .fuel-yes {
+
+      color:
+        #ea580c;
+
+      font-weight:
+        800;
+
+    }
+
+    .fuel-no {
+
+      color:
+        #64748b;
+
+    }
+
+    .empty {
+
+      padding:
+        30px;
+
+      text-align:
+        center;
+
+      color:
+        var(--gray-text);
+
+    }
+
+    @media print {
+
+      header,
+      .filter-panel,
+      .summary-grid,
+      .report-actions {
+
+        display:
+          none !important;
+
+      }
+
+      body {
+
+        background:
+          white;
+
+      }
+
+      .container {
+
+        width:
+          100%;
+
+        margin:
+          0;
+
+      }
+
+      .report-panel {
+
+        box-shadow:
+          none;
+
+        border:
+          none;
+
+      }
+
+      table {
+
+        min-width:
+          0;
+
+      }
+
+    }
+
+    @media (max-width: 1100px) {
+
+      .summary-grid {
+
+        grid-template-columns:
+          repeat(3, minmax(0, 1fr));
+
+      }
+
+      .filter-grid {
+
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+
+      }
+
+    }
+
+    @media (max-width: 700px) {
+
+      header {
+
+        align-items:
+          flex-start;
+
+        flex-direction:
+          column;
+
+      }
+
+      .top-actions {
+
+        width:
+          100%;
+
+      }
+
+      .top-actions button {
+
+        flex:
+          1;
+
+      }
+
+      .filter-grid,
+      .summary-grid {
+
+        grid-template-columns:
+          1fr;
+
+      }
+
+      .container {
+
+        width:
+          min(100% - 20px, 1400px);
+
+        margin-top:
+          18px;
+
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<header>
+
+  <div class="brand">
+
+    <div class="brand-logo">
+      A
+    </div>
+
+    <div>
+
+      <div class="brand-title">
+        AMANAH CONSTRUCTION
+      </div>
+
+      <div class="brand-subtitle">
+        CONSTRUCTION MANAGEMENT SYSTEM
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="top-actions">
+
+    <button
+      class="btn-light"
+      onclick="location.href='dashboard.html'"
+    >
+      DASHBOARD
+    </button>
+
+    <button
+      class="btn-light"
+      onclick="location.href='admin.html'"
+    >
+      MASTER DATA
+    </button>
+
+    <button
+      class="btn-light"
+      onclick="location.href='attendance.html'"
+    >
+      ATTENDANCE
+    </button>
+
+    <button
+      class="btn-light"
+      id="logoutButton"
+    >
+      LOG OUT
+    </button>
+
+  </div>
+
+</header>
+
+
+<main class="container">
+
+  <h1>
+    ATTENDANCE REPORTS
+  </h1>
+
+  <div class="subtitle">
+    Analyze AMANAH attendance, working hours and fuel usage.
+  </div>
+
+
+  <div
+    id="message"
+    class="message"
+  ></div>
+
+
+  <section class="filter-panel">
+
+    <div class="filter-grid">
+
+      <div class="field">
+
+        <label>
+          DATE FROM
+        </label>
+
+        <input
+          id="dateFrom"
+          type="date"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          DATE TO
+        </label>
+
+        <input
+          id="dateTo"
+          type="date"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          EMPLOYEE
+        </label>
+
+        <select
+          id="employeeFilter"
+        >
+
+          <option value="">
+            ALL EMPLOYEES
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          EQUIPMENT
+        </label>
+
+        <select
+          id="equipmentFilter"
+        >
+
+          <option value="">
+            ALL EQUIPMENT
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          PROJECT
+        </label>
+
+        <select
+          id="projectFilter"
+        >
+
+          <option value="">
+            ALL PROJECTS
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          STATUS
+        </label>
+
+        <select
+          id="statusFilter"
+        >
+
+          <option value="">
+            ALL
+          </option>
+
+          <option value="IN">
+            IN
+          </option>
+
+          <option value="COMPLETED">
+            COMPLETED
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          FUEL
+        </label>
+
+        <select
+          id="fuelFilter"
+        >
+
+          <option value="">
+            ALL
+          </option>
+
+          <option value="YES">
+            FUELED
+          </option>
+
+          <option value="NO">
+            NO FUEL
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          SEARCH
+        </label>
+
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Employee, equipment, project..."
+        >
+
+      </div>
+
+    </div>
+
+
+    <div class="filter-actions">
+
+      <button
+        id="filterButton"
+        class="btn-dark"
+      >
+        FILTER REPORT
+      </button>
+
+      <button
+        id="clearButton"
+        class="btn-gray"
+      >
+        CLEAR
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <section class="summary-grid">
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        TOTAL RECORDS
+      </div>
+
+      <div
+        id="recordsCount"
+        class="summary-value"
+      >
+        0
+      </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        TOTAL HOURS
+      </div>
+
+      <div
+        id="hoursCount"
+        class="summary-value"
+      >
+        0.00
+      </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        CURRENTLY IN
+      </div>
+
+      <div
+        id="inCount"
+        class="summary-value"
+      >
+        0
+      </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        COMPLETED
+      </div>
+
+      <div
+        id="completedCount"
+        class="summary-value"
+      >
+        0
+      </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        FUEL RECORDS
+      </div>
+
+      <div
+        id="fuelCount"
+        class="summary-value"
+      >
+        0
+      </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+      <div class="summary-label">
+        FUEL COST
+      </div>
+
+      <div
+        id="fuelAmount"
+        class="summary-value"
+      >
+        ₱0.00
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section class="report-panel">
+
+    <div class="report-header">
+
+      <h2>
+        ATTENDANCE REPORT
+      </h2>
+
+      <div
+        class="report-actions"
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <button
+          id="exportButton"
+          class="btn-green"
+        >
+          EXPORT CSV
+        </button>
+
+        <button
+          id="printButton"
+          class="btn-blue"
+        >
+          PRINT REPORT
+        </button>
+
+        <button
+          id="refreshButton"
+          class="btn-dark"
+        >
+          REFRESH
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>
+              ATTENDANCE ID
+            </th>
+
+            <th>
+              EMPLOYEE
+            </th>
+
+            <th>
+              EQUIPMENT
+            </th>
+
+            <th>
+              PROJECT
+            </th>
+
+            <th>
+              DATE
+            </th>
+
+            <th>
+              TIME IN
+            </th>
+
+            <th>
+              TIME OUT
+            </th>
+
+            <th>
+              TOTAL HOURS
+            </th>
+
+            <th>
+              FUEL
+            </th>
+
+            <th>
+              STATUS
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody
+          id="reportBody"
+        >
+
+          <tr>
+
+            <td
+              colspan="10"
+              class="empty"
+            >
+              Loading...
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="reports.js?v=1"
+></script>
+
+</body>
+
+</html>
