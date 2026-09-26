@@ -20,9 +20,9 @@
  *      /       \
  *    NO         YES
  *              ↓
- *       Quantity
- *       Liter/Gallon
- *       Fuel Amount
+ *       Quantity (Liters)
+ *       Fuel Price / Liter
+ *       Total Fuel Cost
  *
  * NO EMPLOYEE QR CODES
  *
@@ -225,6 +225,31 @@ function setupButtons() {
 
       }
     );
+  }
+
+
+  const fuelQuantity =
+    $('fuelQuantity');
+
+  const fuelPricePerLiter =
+    $('fuelPricePerLiter');
+
+  if (fuelQuantity) {
+
+    fuelQuantity.addEventListener(
+      'input',
+      updateFuelTotal
+    );
+
+  }
+
+  if (fuelPricePerLiter) {
+
+    fuelPricePerLiter.addEventListener(
+      'input',
+      updateFuelTotal
+    );
+
   }
 
 
@@ -2149,6 +2174,42 @@ function showFuelForm() {
 
 
 /* =====================================================
+   FUEL TOTAL CALCULATION
+   ===================================================== */
+
+function updateFuelTotal() {
+
+  const quantity =
+    parseFloat(
+      $('fuelQuantity')?.value
+    );
+
+  const pricePerLiter =
+    parseFloat(
+      $('fuelPricePerLiter')?.value
+    );
+
+  const total =
+    quantity > 0 &&
+    pricePerLiter >= 0
+      ? quantity * pricePerLiter
+      : 0;
+
+  const totalInput =
+    $('fuelTotal');
+
+  if (totalInput) {
+
+    totalInput.value =
+      total.toFixed(2);
+
+  }
+
+  return total;
+}
+
+
+/* =====================================================
    TIME OUT
    ===================================================== */
 
@@ -2199,6 +2260,9 @@ async function completeTimeOut(
   let fuelUnit =
     null;
 
+  let fuelPricePerLiter =
+    null;
+
   let fuelAmount =
     null;
 
@@ -2212,11 +2276,8 @@ async function completeTimeOut(
     const quantityInput =
       $('fuelQuantity');
 
-    const unitInput =
-      $('fuelUnit');
-
-    const amountInput =
-      $('fuelAmount');
+    const priceInput =
+      $('fuelPricePerLiter');
 
 
     fuelQuantity =
@@ -2227,18 +2288,10 @@ async function completeTimeOut(
         : NaN;
 
 
-    fuelUnit =
-      unitInput
-        ? String(
-            unitInput.value
-          ).trim()
-        : '';
-
-
-    fuelAmount =
-      amountInput
+    fuelPricePerLiter =
+      priceInput
         ? parseFloat(
-            amountInput.value
+            priceInput.value
           )
         : NaN;
 
@@ -2248,7 +2301,7 @@ async function completeTimeOut(
     ) {
 
       setStatus(
-        'Enter the fuel quantity.',
+        'Enter the fuel quantity in liters.',
         'error'
       );
 
@@ -2257,12 +2310,11 @@ async function completeTimeOut(
 
 
     if (
-      fuelUnit !== 'Liter' &&
-      fuelUnit !== 'Gallon'
+      !(fuelPricePerLiter > 0)
     ) {
 
       setStatus(
-        'Select Liter or Gallon.',
+        'Enter the fuel price per liter.',
         'error'
       );
 
@@ -2270,17 +2322,20 @@ async function completeTimeOut(
     }
 
 
-    if (
-      !(fuelAmount >= 0)
-    ) {
+    fuelUnit =
+      'Liter';
 
-      setStatus(
-        'Enter the fuel price / amount.',
-        'error'
+
+    fuelAmount =
+      Number(
+        (
+          fuelQuantity *
+          fuelPricePerLiter
+        ).toFixed(2)
       );
 
-      return;
-    }
+
+    updateFuelTotal();
 
 
     fuelUsed =
@@ -2966,31 +3021,34 @@ function resetFuel() {
   const quantity =
     $('fuelQuantity');
 
-  const unit =
-    $('fuelUnit');
+  const pricePerLiter =
+    $('fuelPricePerLiter');
 
-  const amount =
-    $('fuelAmount');
+  const total =
+    $('fuelTotal');
 
 
   if (quantity) {
 
     quantity.value =
       '';
+
   }
 
 
-  if (unit) {
+  if (pricePerLiter) {
 
-    unit.value =
-      'Liter';
-  }
-
-
-  if (amount) {
-
-    amount.value =
+    pricePerLiter.value =
       '';
+
+  }
+
+
+  if (total) {
+
+    total.value =
+      '0.00';
+
   }
 
 
@@ -3008,6 +3066,7 @@ function resetFuel() {
 
   state.pendingOut =
     false;
+
 }
 
 
