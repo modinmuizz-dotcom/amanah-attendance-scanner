@@ -647,7 +647,7 @@
 
 /* ---------- DAILY ACTIVITY CARD ---------- */
 
-.pm-container > section.pm-card:nth-of-type(2) {
+.pm-container > section.pm-card.activity-card {
   position: relative;
   overflow: hidden;
   border: 1px solid #dbe5f0;
@@ -658,7 +658,7 @@
     0 2px 6px rgba(15, 23, 42, 0.03);
 }
 
-.pm-container > section.pm-card:nth-of-type(2)::before {
+.pm-container > section.pm-card.activity-card::before {
   content: "DAILY SITE REPORT";
   display: inline-flex;
   align-items: center;
@@ -675,7 +675,7 @@
 
 /* Activity section title */
 
-.pm-container > section.pm-card:nth-of-type(2) h2 {
+.pm-container > section.pm-card.activity-card h2 {
   margin-bottom: 24px;
   color: #0f172a;
   font-size: 22px;
@@ -685,11 +685,11 @@
 
 /* ---------- FORM FIELDS ---------- */
 
-.pm-container > section.pm-card:nth-of-type(2) .pm-field {
+.pm-container > section.pm-card.activity-card .pm-field {
   gap: 8px;
 }
 
-.pm-container > section.pm-card:nth-of-type(2) .pm-field label {
+.pm-container > section.pm-card.activity-card .pm-field label {
   color: #334155;
   font-size: 12px;
   font-weight: 800;
@@ -699,9 +699,9 @@
 
 /* Inputs */
 
-.pm-container > section.pm-card:nth-of-type(2) input,
-.pm-container > section.pm-card:nth-of-type(2) textarea,
-.pm-container > section.pm-card:nth-of-type(2) select {
+.pm-container > section.pm-card.activity-card input,
+.pm-container > section.pm-card.activity-card textarea,
+.pm-container > section.pm-card.activity-card select {
   min-height: 48px;
   border: 1px solid #d6dee8;
   border-radius: 11px;
@@ -716,16 +716,16 @@
 
 /* Textareas */
 
-.pm-container > section.pm-card:nth-of-type(2) textarea {
+.pm-container > section.pm-card.activity-card textarea {
   min-height: 125px;
   line-height: 1.55;
 }
 
 /* Focus effect */
 
-.pm-container > section.pm-card:nth-of-type(2) input:focus,
-.pm-container > section.pm-card:nth-of-type(2) textarea:focus,
-.pm-container > section.pm-card:nth-of-type(2) select:focus {
+.pm-container > section.pm-card.activity-card input:focus,
+.pm-container > section.pm-card.activity-card textarea:focus,
+.pm-container > section.pm-card.activity-card select:focus {
   outline: none;
   border-color: #2563eb;
   background: #ffffff;
@@ -734,20 +734,20 @@
 
 /* Placeholder */
 
-.pm-container > section.pm-card:nth-of-type(2) input::placeholder,
-.pm-container > section.pm-card:nth-of-type(2) textarea::placeholder {
+.pm-container > section.pm-card.activity-card input::placeholder,
+.pm-container > section.pm-card.activity-card textarea::placeholder {
   color: #94a3b8;
 }
 
 /* Date field */
 
-.pm-container > section.pm-card:nth-of-type(2) input[type="date"] {
+.pm-container > section.pm-card.activity-card input[type="date"] {
   color: #0f172a;
 }
 
 /* Number fields */
 
-.pm-container > section.pm-card:nth-of-type(2) input[type="number"] {
+.pm-container > section.pm-card.activity-card input[type="number"] {
   font-weight: 700;
 }
 
@@ -774,7 +774,7 @@
 
 /* ---------- ACTION BUTTONS ---------- */
 
-.pm-container > section.pm-card:nth-of-type(2) .pm-actions {
+.pm-container > section.pm-card.activity-card .pm-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -786,38 +786,38 @@
 
 /* Clear */
 
-.pm-container > section.pm-card:nth-of-type(2) #clearActivityButton {
+.pm-container > section.pm-card.activity-card #clearActivityButton {
   min-width: 110px;
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #d8e0e9;
 }
 
-.pm-container > section.pm-card:nth-of-type(2) #clearActivityButton:hover {
+.pm-container > section.pm-card.activity-card #clearActivityButton:hover {
   background: #e2e8f0;
 }
 
 /* Save */
 
-.pm-container > section.pm-card:nth-of-type(2) #saveActivityButton {
+.pm-container > section.pm-card.activity-card #saveActivityButton {
   min-width: 160px;
   background: #16a34a;
   color: #ffffff;
   box-shadow: 0 6px 15px rgba(22, 163, 74, 0.18);
 }
 
-.pm-container > section.pm-card:nth-of-type(2) #saveActivityButton:hover {
+.pm-container > section.pm-card.activity-card #saveActivityButton:hover {
   background: #15803d;
   transform: translateY(-1px);
 }
 
-.pm-container > section.pm-card:nth-of-type(2) #saveActivityButton:active {
+.pm-container > section.pm-card.activity-card #saveActivityButton:active {
   transform: translateY(0);
 }
 
 /* ---------- PROJECT ACTIVITY HISTORY ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) {
+.pm-container > section.pm-card.history-card {
   position: relative;
   overflow: hidden;
   padding: 0;
@@ -829,7 +829,7 @@
 
 /* History header */
 
-.pm-container > section.pm-card:nth-of-type(3) h2 {
+.pm-container > section.pm-card.history-card h2 {
   margin: 0;
   padding: 24px 28px;
   border-bottom: 1px solid #e2e8f0;
@@ -848,14 +848,14 @@
 
 /* History table area */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table-wrap {
+.pm-container > section.pm-card.history-card .pm-table-wrap {
   padding: 0;
   overflow-x: auto;
 }
 
 /* Table */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table {
+.pm-container > section.pm-card.history-card .pm-table {
   min-width: 900px;
   width: 100%;
   border-collapse: separate;
@@ -864,7 +864,7 @@
 
 /* Table header */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table th {
+.pm-container > section.pm-card.history-card .pm-table th {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -880,7 +880,7 @@
 
 /* Table cells */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td {
+.pm-container > section.pm-card.history-card .pm-table td {
   padding: 16px;
   background: #ffffff;
   color: #334155;
@@ -891,26 +891,26 @@
 
 /* Row hover */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table tbody tr:hover td {
+.pm-container > section.pm-card.history-card .pm-table tbody tr:hover td {
   background: #f8fbff;
 }
 
 /* Last row */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table tbody tr:last-child td {
+.pm-container > section.pm-card.history-card .pm-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* ---------- ACTIVITY NAME ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(2) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(2) {
   color: #0f172a;
   font-weight: 800;
 }
 
 /* ---------- DESCRIPTION ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(3) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(3) {
   max-width: 320px;
   white-space: normal;
   line-height: 1.45;
@@ -919,28 +919,28 @@
 
 /* ---------- MANPOWER ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(4) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(4) {
   font-weight: 700;
   color: #0f172a;
 }
 
 /* ---------- EQUIPMENT ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(5) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(5) {
   white-space: normal;
   max-width: 220px;
 }
 
 /* ---------- PROGRESS ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(6) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(6) {
   color: #15803d;
   font-weight: 800;
 }
 
 /* ---------- REMARKS ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3) .pm-table td:nth-child(7) {
+.pm-container > section.pm-card.history-card .pm-table td:nth-child(7) {
   max-width: 240px;
   white-space: normal;
   color: #64748b;
@@ -949,7 +949,7 @@
 
 /* ---------- EMPTY TABLE ---------- */
 
-.pm-container > section.pm-card:nth-of-type(3)
+.pm-container > section.pm-card.history-card
 .pm-table td[colspan] {
   padding: 35px 20px;
   color: #94a3b8;
@@ -977,39 +977,39 @@
 
 @media (max-width: 700px) {
 
-  .pm-container > section.pm-card:nth-of-type(2) {
+  .pm-container > section.pm-card.activity-card {
     padding: 20px;
     border-radius: 16px;
   }
 
-  .pm-container > section.pm-card:nth-of-type(2) h2 {
+  .pm-container > section.pm-card.activity-card h2 {
     font-size: 19px;
   }
 
-  .pm-container > section.pm-card:nth-of-type(2) .pm-actions {
+  .pm-container > section.pm-card.activity-card .pm-actions {
     gap: 10px;
   }
 
-  .pm-container > section.pm-card:nth-of-type(2)
+  .pm-container > section.pm-card.activity-card
   #clearActivityButton,
-  .pm-container > section.pm-card:nth-of-type(2)
+  .pm-container > section.pm-card.activity-card
   #saveActivityButton {
     width: 100%;
     min-width: 0;
   }
 
-  .pm-container > section.pm-card:nth-of-type(3) {
+  .pm-container > section.pm-card.history-card {
     border-radius: 16px;
   }
 
-  .pm-container > section.pm-card:nth-of-type(3) h2 {
+  .pm-container > section.pm-card.history-card h2 {
     padding: 20px;
     font-size: 18px;
   }
 
-  .pm-container > section.pm-card:nth-of-type(3)
+  .pm-container > section.pm-card.history-card
   .pm-table th,
-  .pm-container > section.pm-card:nth-of-type(3)
+  .pm-container > section.pm-card.history-card
   .pm-table td {
     padding: 13px;
   }
