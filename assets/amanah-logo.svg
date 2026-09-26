@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="70%" stop-color="#05070b"/>
+      <stop offset="100%" stop-color="#000"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff1a6"/>
+      <stop offset="28%" stop-color="#f7c94a"/>
+      <stop offset="60%" stop-color="#d59600"/>
+      <stop offset="100%" stop-color="#fff0a2"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#75ff35"/>
+      <stop offset="100%" stop-color="#12a512"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="360" cy="360" r="340" fill="url(#bg)" stroke="#000" stroke-width="12"/>
+  <circle cx="360" cy="360" r="327" fill="none" stroke="url(#gold)" stroke-width="17"/>
+  <circle cx="360" cy="360" r="305" fill="none" stroke="#6c4700" stroke-width="5"/>
+
+  <g opacity=".24" stroke="#c79622" stroke-width="2">
+    <path d="M95 160H625M72 195H648M60 230H660"/>
+    <path d="M80 560H640M95 595H625"/>
+  </g>
+
+  <g transform="translate(95 85)" filter="url(#glow)">
+    <path d="M65 25h120v345H65z" fill="url(#green)" stroke="#091006" stroke-width="10"/>
+    <path d="M185 70h72v300h-72z" fill="#0d1216" stroke="#050607" stroke-width="10"/>
+    <g fill="#091006">
+      <rect x="88" y="62" width="25" height="30"/><rect x="130" y="105" width="25" height="30"/>
+      <rect x="88" y="150" width="25" height="30"/><rect x="130" y="193" width="25" height="30"/>
+      <rect x="88" y="238" width="25" height="30"/><rect x="130" y="281" width="25" height="30"/>
+    </g>
+    <path d="M50 365h215l-58 52H0z" fill="url(#gold)" stroke="#050607" stroke-width="9"/>
+    <path d="M94 418h92l-46 42z" fill="#0a0d10"/>
+  </g>
+
+  <g transform="translate(245 92)">
+    <path d="M10 170c12-61 58-92 125-92 66 0 113 31 126 92z" fill="#f2f2f2" stroke="#101010" stroke-width="12"/>
+    <path d="M35 174h205v35H35z" fill="#f5f5f5" stroke="#101010" stroke-width="12"/>
+    <path d="M70 103c17-31 41-49 65-49 29 0 55 20 74 54" fill="none" stroke="#d4d4d4" stroke-width="13"/>
+    <path d="M112 61l22-23 22 23v84h-44z" fill="#e7e7e7"/>
+  </g>
+
+  <text x="360" y="365" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="148" font-weight="900" fill="url(#gold)" stroke="#111" stroke-width="8" paint-order="stroke">A</text>
+
+  <g transform="translate(35 390)">
+    <path d="M0 0h650l-28 105H28z" fill="#0c0e11" stroke="url(#gold)" stroke-width="10"/>
+    <text x="325" y="70" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="58" font-weight="900" letter-spacing="6" fill="url(#gold)">AMANAH</text>
+  </g>
+
+  <g transform="translate(66 510)">
+    <path d="M0 0h588l-23 76H23z" fill="#0b0d10" stroke="url(#gold)" stroke-width="8"/>
+    <text x="294" y="51" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="800" letter-spacing="2" fill="#f7cf58">CONSTRUCTION SERVICES</text>
+  </g>
+
+  <g fill="url(#gold)" opacity=".9">
+    <path d="M115 620h88v-38h30v38h75v-55h28v55h78v-32h27v32h82v-48h30v48h77l-55 45H169z"/>
+  </g>
+</svg>
