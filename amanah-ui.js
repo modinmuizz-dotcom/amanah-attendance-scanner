@@ -156,7 +156,8 @@
         }).join('')).join('')+
       '</nav>'+
       '<div class="amanah-side-bottom"><div class="amanah-status-row"><span class="amanah-status-dot"></span>Local system online</div>'+
-      '<div class="amanah-user-card"><div class="amanah-avatar">SA</div><div><div class="amanah-user-name">Super Admin</div><div class="amanah-user-role">Administrator</div></div><div class="amanah-user-gear">⚙</div></div></div>';
+      '<div class="amanah-user-card"><div class="amanah-avatar">SA</div><div><div class="amanah-user-name">Super Admin</div><div class="amanah-user-role">Administrator</div></div><div class="amanah-user-gear">⚙</div></div>'+
+      '<button class="amanah-sidebar-logout" id="amanahSidebarLogout" type="button">LOG OUT</button></div>';
 
     const topbar=document.createElement('header');
     topbar.id='amanahTopbar';
