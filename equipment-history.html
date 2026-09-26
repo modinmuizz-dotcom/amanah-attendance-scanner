@@ -32,7 +32,7 @@ button,input,select{font:inherit}button{cursor:pointer}
 .metric{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.metric-label{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.metric-value{margin-top:7px;font-size:23px;font-weight:900}
 .section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:16px;flex-wrap:wrap}
 .section-head h2{margin:0;font-size:18px}.section-head p{margin:6px 0 0;color:#64748b;font-size:13px}
-.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1200px}
+.table-wrap{overflow-x:auto}.summary-table th,.summary-table td{padding:10px 8px;font-size:11px}.summary-table th{font-size:9px}.summary-table th:nth-child(1){width:19%}.summary-table th:nth-child(2){width:10%}.summary-table th:nth-child(3){width:8%}.summary-table th:nth-child(4){width:8%}.summary-table th:nth-child(5){width:8%}.summary-table th:nth-child(6){width:8%}.summary-table th:nth-child(7){width:9%}.summary-table th:nth-child(8){width:11%}.summary-table th:nth-child(9){width:10%}.summary-table th:nth-child(10){width:9%}.summary-table .btn{min-height:34px;padding:0 10px;font-size:10px;white-space:nowrap}.repair-table th,.repair-table td{padding:10px 8px;font-size:11px}.repair-table th{font-size:9px}.repair-table th:nth-child(1){width:12%}.repair-table th:nth-child(2){width:9%}.repair-table th:nth-child(3){width:12%}.repair-table th:nth-child(4){width:11%}.repair-table th:nth-child(5){width:25%}.repair-table th:nth-child(6){width:10%}.repair-table th:nth-child(7){width:10%}.repair-table th:nth-child(8){width:7%}.repair-table th:nth-child(9){width:8%}.repair-table .money{font-size:11px}.repair-table .problem-cell{white-space:normal;overflow-wrap:anywhere}.repair-table .photo-cell{white-space:normal;line-height:1.35}.repair-table .repair-link{white-space:nowrap}table{width:100%;border-collapse:collapse;min-width:0;table-layout:fixed}
 th,td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:12px}
 th{background:#f8fafc;color:#334155;font-weight:900;text-transform:uppercase;font-size:10px}
 .empty{text-align:center;color:#64748b;padding:28px}
@@ -102,7 +102,7 @@ th{background:#f8fafc;color:#334155;font-weight:900;text-transform:uppercase;fon
     <div class="table-wrap">
       <table>
         <thead><tr><th>Equipment</th><th>Type</th><th>Plate</th><th>Status</th><th>PM Records</th><th>Repairs</th><th>Open Repairs</th><th>Closed Repairs</th><th>Total Repair Cost</th><th>Last Repair</th><th>ACTION</th></tr></thead>
-        <tbody id="summaryBody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
+        <tbody id="summaryBody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -114,7 +114,7 @@ th{background:#f8fafc;color:#334155;font-weight:900;text-transform:uppercase;fon
     <div class="table-wrap">
       <table>
         <thead><tr><th>Repair No.</th><th>Date</th><th>Equipment</th><th>Project</th><th>Problem</th><th>Status</th><th>Repair Cost</th><th>Photos</th><th>Repair By</th><th>ACTION</th></tr></thead>
-        <tbody id="historyBody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+        <tbody id="historyBody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
       </table>
     </div>
   </section>
