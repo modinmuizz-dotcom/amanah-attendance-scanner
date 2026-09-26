@@ -64,7 +64,7 @@ function render(){
       '<td>'+formatDate(x.last_repair_completed)+'</td>'+
       '<td><button class="btn btn-primary" type="button" data-view-equipment="'+escapeHtml(x.equipment_id)+'">VIEW HISTORY</button></td>'+
     '</tr>';
-  }).join(""):'<tr><td colspan="11" class="empty">No equipment found.</td></tr>';
+  }).join(""):'<tr><td colspan="9" class="empty">No equipment found.</td></tr>';
 
   $("historyBody").innerHTML=f.repairs.length?f.repairs.map(x=>
     '<tr>'+
@@ -75,7 +75,7 @@ function render(){
       '<td>'+escapeHtml(x.problems_encountered||"")+'</td>'+
       '<td>'+statusPill(x.status)+'</td>'+
       '<td class="money">'+money(x.total_repair_cost)+'</td>'+
-      '<td class="photo-cell">'+Number(x.total_photos||0)+' <span class="muted">('+Number(x.pm_finding_photos||0)+' PM / '+Number(x.before_photos||0)+' before / '+Number(x.during_photos||0)+' after)</span></td>'+
+      '<td class="photo-cell">'+Number(x.total_photos||0)+' <span class="muted">('+Number(x.pm_finding_photos||0)+' PM / '+Number(x.before_photos||0)+' before / '+Number(x.during_photos||0)+' during / '+Number(x.after_photos||0)+' after)</span></td>'+
       '<td><button class="repair-link" type="button" data-view-repair="'+escapeHtml(x.repair_request_id)+'">VIEW</button></td>'+
     '</tr>').join(""):'<tr><td colspan="9" class="empty">No repair history found for the selected filters.</td></tr>';
 }
