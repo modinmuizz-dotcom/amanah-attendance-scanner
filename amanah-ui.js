@@ -120,16 +120,36 @@
     });
 
     document.getElementById('amanahLogoutButton')?.addEventListener('click',async()=>{
+      const existing=document.getElementById('logoutButton');
+      if(existing){
+        existing.click();
+        setTimeout(()=>{ if(location.href.indexOf('index.html')===-1) location.href='index.html'; },900);
+        return;
+      }
       try{
         if(window.supabaseClient?.auth) await window.supabaseClient.auth.signOut();
-      }catch(_){}
-      try{
-        if(window.supabase?.auth) await window.supabase.auth.signOut();
       }catch(_){}
       location.href='index.html';
     });
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',build,{once:true});
-  else build();
+  function start(){
+    const isAdmin=/admin\\.html$/i.test(location.pathname);
+    if(isAdmin){
+      const login=document.getElementById('loginScreen');
+      const app=document.getElementById('adminApp');
+      if(login && app && !login.classList.contains('hidden')){
+        const obs=new MutationObserver(()=>{
+          if(login.classList.contains('hidden') && !document.getElementById('amanahSidebar')){
+            obs.disconnect();build();
+          }
+        });
+        obs.observe(login,{attributes:true,attributeFilter:['class']});
+        return;
+      }
+    }
+    build();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
 })();
