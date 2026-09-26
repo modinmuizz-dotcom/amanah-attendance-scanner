@@ -131,6 +131,6 @@ $("refreshButton").addEventListener("click",async()=>{try{await loadMaster();awa
 $("closeModal").addEventListener("click",closeModal);
 $("historyModal").addEventListener("click",e=>{if(e.target===$("historyModal"))closeModal();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
-$("logoutButton").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.href="index.html";});
+$("sidebarLogoutButton").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.href="index.html";});
 
 (async()=>{try{if(!await requireSession())return;await loadMaster();await loadData();}catch(e){console.error(e);showMessage(e.message||"Unable to load equipment history.","error");$("summaryBody").innerHTML='<tr><td colspan="9" class="empty">Unable to load equipment history.</td></tr>';$("historyBody").innerHTML='<tr><td colspan="9" class="empty">Unable to load repair history.</td></tr>';}})();
