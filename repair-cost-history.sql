@@ -390,6 +390,12 @@ select
   r.repair_date_started,
   r.repair_date_completed,
 
+  (
+    select count(*)
+    from public.repair_request_photos ph
+    where ph.repair_request_id = r.repair_request_id
+  ) as photo_count,
+
   coalesce((
     select sum(c.amount)
     from public.repair_request_costs c
@@ -415,13 +421,7 @@ select
     from public.repair_request_costs c
     where c.repair_request_id = r.repair_request_id
       and c.cost_type = 'OTHER'
-  ), 0)::numeric(15,2) as repair_other_cost,
-
-  (
-    select count(*)
-    from public.repair_request_photos ph
-    where ph.repair_request_id = r.repair_request_id
-  ) as photo_count
+  ), 0)::numeric(15,2) as repair_other_cost
 
 from public.repair_requests r
 
@@ -430,7 +430,6 @@ left join public.equipment e
 
 left join public.projects p
   on p.project_id = r.project_id;
-
 
 -- ---------------------------------------------------------
 -- 7. EQUIPMENT REPAIR HISTORY
