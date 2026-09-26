@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#111827"
+  >
+
+  <title>AMANAH Dashboard</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --navy: #111827;
+      --green: #16a34a;
+      --red: #dc2626;
+      --blue: #2563eb;
+      --orange: #ea580c;
+      --gray-bg: #f1f5f9;
+      --gray-text: #64748b;
+      --white: #ffffff;
+      --border: #e2e8f0;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    body {
+      margin: 0;
+      background: var(--gray-bg);
+      color: var(--navy);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
+
+    .topbar {
+      background: var(--navy);
+      color: white;
+      padding: 16px 4%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: white;
+      color: var(--navy);
+      display: grid;
+      place-items: center;
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      opacity: 0.75;
+      margin-top: 3px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--navy);
+    }
+
+    .container {
+      width: min(1400px, 94%);
+      margin: auto;
+      padding: 30px 0 50px;
+    }
+
+    .heading {
+      margin-bottom: 25px;
+    }
+
+    .heading h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .heading p {
+      margin: 8px 0 0;
+      color: var(--gray-text);
+    }
+
+    .message {
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 25px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .card-label {
+      color: var(--gray-text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .card-value {
+      margin-top: 8px;
+      font-size: 34px;
+      font-weight: 900;
+    }
+
+    .card-green {
+      border-left: 6px solid var(--green);
+    }
+
+    .card-blue {
+      border-left: 6px solid var(--blue);
+    }
+
+    .card-orange {
+      border-left: 6px solid var(--orange);
+    }
+
+    .card-red {
+      border-left: 6px solid var(--red);
+    }
+
+    .panel {
+      background: white;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .refresh {
+      background: var(--navy);
+      color: white;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    th,
+    td {
+      padding: 15px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    .status {
+      font-weight: 900;
+    }
+
+    .status.in {
+      color: var(--green);
+    }
+
+    .status.completed {
+      color: var(--blue);
+    }
+
+    .status.other {
+      color: var(--gray-text);
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--gray-text);
+      padding: 35px;
+    }
+
+    @media (max-width: 1000px) {
+      .cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .heading h1 {
+        font-size: 26px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .top-actions button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="brand">
+
+    <div class="logo">
+      A
+    </div>
+
+    <div>
+      <div class="brand-title">
+        AMANAH CONSTRUCTION
+      </div>
+
+      <div class="brand-subtitle">
+        CONSTRUCTION MANAGEMENT SYSTEM
+      </div>
+    </div>
+
+  </div>
+
+  <div class="top-actions">
+
+    <button
+      class="btn-light"
+      onclick="location.href='admin.html'"
+    >
+      MASTER DATA
+    </button>
+
+    <button
+      class="btn-light"
+      id="logoutButton"
+    >
+      LOG OUT
+    </button>
+
+  </div>
+
+</header>
+
+
+<main class="container">
+
+  <div
+    id="message"
+    class="message"
+  ></div>
+
+  <section class="heading">
+
+    <h1>
+      DASHBOARD
+    </h1>
+
+    <p>
+      AMANAH Construction Management System
+    </p>
+
+  </section>
+
+
+  <section class="cards">
+
+    <div class="card card-blue">
+      <div class="card-label">
+        TOTAL EMPLOYEES
+      </div>
+      <div
+        id="totalEmployees"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-green">
+      <div class="card-label">
+        ACTIVE EMPLOYEES
+      </div>
+      <div
+        id="activeEmployees"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-orange">
+      <div class="card-label">
+        TOTAL EQUIPMENT
+      </div>
+      <div
+        id="totalEquipment"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-green">
+      <div class="card-label">
+        ACTIVE EQUIPMENT
+      </div>
+      <div
+        id="activeEquipment"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-blue">
+      <div class="card-label">
+        ACTIVE PROJECTS
+      </div>
+      <div
+        id="activeProjects"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-green">
+      <div class="card-label">
+        TODAY'S IN
+      </div>
+      <div
+        id="todayIn"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-orange">
+      <div class="card-label">
+        CURRENTLY WORKING
+      </div>
+      <div
+        id="currentlyWorking"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+    <div class="card card-red">
+      <div class="card-label">
+        COMPLETED TODAY
+      </div>
+      <div
+        id="completedToday"
+        class="card-value"
+      >
+        0
+      </div>
+    </div>
+
+  </section>
+
+
+  <section class="panel">
+
+    <div class="panel-header">
+
+      <h2>
+        RECENT ATTENDANCE
+      </h2>
+
+      <button
+        id="refreshButton"
+        class="refresh"
+      >
+        REFRESH
+      </button>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Employee</th>
+            <th>Equipment</th>
+            <th>Project</th>
+            <th>Date</th>
+            <th>Time In</th>
+            <th>Time Out</th>
+            <th>Total Hours</th>
+            <th>Fuel</th>
+            <th>Status</th>
+          </tr>
+
+        </thead>
+
+        <tbody id="attendanceBody">
+
+          <tr>
+            <td
+              colspan="9"
+              class="empty"
+            >
+              Loading...
+            </td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="dashboard.js?v=1"></script>
+
+</body>
+</html>
