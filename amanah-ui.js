@@ -184,16 +184,23 @@
     });
 
     document.getElementById('amanahSidebarLogout')?.addEventListener('click',async()=>{
+      const isAdmin=/admin\\.html$/i.test(location.pathname);
       const existing=document.getElementById('logoutButton');
+
       if(existing){
         existing.click();
-        setTimeout(()=>{ if(location.href.indexOf('index.html')===-1) location.href='index.html'; },900);
+        // admin.html handles the logout locally and returns to the login screen.
+        if(isAdmin) return;
+        setTimeout(()=>{ location.href='admin.html'; },600);
         return;
       }
+
       try{
         if(window.supabaseClient?.auth) await window.supabaseClient.auth.signOut();
       }catch(_){}
-      location.href='index.html';
+
+      // Never send authenticated users to the public attendance station.
+      location.href='admin.html';
     });
   }
 
