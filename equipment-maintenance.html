@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMANAH - Equipment Maintenance</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f3f6fb;color:#0f172a}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.topbar{min-height:66px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 30px;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:10px;min-width:230px}.brand-logo{width:40px;height:40px;border-radius:10px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900}.brand-title{font-size:14px;font-weight:900}.brand-subtitle{font-size:9px;opacity:.72;margin-top:2px}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.btn-light,.btn-primary,.btn-secondary,.btn-danger,.btn-green{border:0;border-radius:9px;min-height:38px;padding:0 14px;font-weight:800}.btn-light,.btn-secondary{background:#fff;color:#111827}.btn-primary{background:#111827;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-danger{background:#dc2626;color:#fff;min-height:34px;padding:0 11px;font-size:12px}
+.page{max-width:1160px;margin:0 auto;padding:34px 24px 70px}.hero{display:flex;justify-content:space-between;gap:30px;align-items:flex-end;margin-bottom:24px}.kicker{color:#1d4ed8;font-size:11px;font-weight:900;letter-spacing:1.2px;margin-bottom:8px}.hero h1{margin:0;font-size:clamp(30px,4vw,46px);letter-spacing:-.8px}.hero p{color:#64748b;max-width:760px;line-height:1.5;margin:8px 0 0}.hero-card{background:#fff;border-radius:18px;padding:18px 22px;min-width:220px;box-shadow:0 8px 28px rgba(15,23,42,.06)}.hero-card-label{color:#64748b;text-transform:uppercase;font-size:9px;font-weight:900;letter-spacing:1px}.hero-card-value{font-size:18px;font-weight:900;margin-top:8px}
+.message{display:none;padding:13px 16px;border-radius:12px;font-weight:800;margin-bottom:18px}.message.success{display:block;background:#dcfce7;color:#166534}.message.error{display:block;background:#fee2e2;color:#991b1b}.message.info{display:block;background:#e0f2fe;color:#075985}
+.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 28px rgba(15,23,42,.06);margin-bottom:20px}.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}.card-header h2{margin:0;font-size:18px}.subtitle{margin:6px 0 0;color:#64748b;font-size:13px}
+.filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px}.field label{display:block;font-size:11px;font-weight:900;margin-bottom:6px;color:#334155;text-transform:uppercase;letter-spacing:.5px}.input,.select,.textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;min-height:42px;padding:0 12px;background:#fff;color:#111827}.textarea{padding:10px 12px;min-height:88px;resize:vertical}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.metric{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.metric-label{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.metric-value{margin-top:7px;font-size:24px;font-weight:900}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1100px}th,td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:12px}th{background:#f8fafc;color:#334155;font-weight:900;text-transform:uppercase;font-size:10px}.tag{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:900}.empty{text-align:center;color:#64748b;padding:28px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.58);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal-backdrop.open{display:flex}.modal{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(15,23,42,.28)}.modal-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}.modal-header h3{margin:0;font-size:22px}.close{border:0;background:#f1f5f9;width:38px;height:38px;border-radius:50%;font-size:20px;font-weight:900}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.full{grid-column:1/-1}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.calculated{background:#ecfdf5;border-color:#bbf7d0;color:#166534;font-weight:900}
+@media(max-width:900px){.topbar{padding:10px 16px}.hero{flex-direction:column;align-items:stretch}.filters,.summary,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.hero-card{min-width:0}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-logo">A</div>
+    <div><div class="brand-title">AMANAH CONSTRUCTION</div><div class="brand-subtitle">CONSTRUCTION MANAGEMENT SYSTEM</div></div>
+  </div>
+  <div class="top-actions">
+    <button class="btn-light" onclick="location.href='dashboard.html'">DASHBOARD</button>
+    <button class="btn-light" onclick="location.href='admin.html'">MASTER DATA</button>
+    <button class="btn-light" onclick="location.href='project-monitoring.html'">PROJECT MONITORING</button>
+    <button class="btn-light" onclick="location.href='attendance.html'">ATTENDANCE</button>
+    <button class="btn-light" onclick="location.href='project-cost.html'">PROJECT COST</button>
+    <button class="btn-light" id="maintenanceNav">EQUIP MAINT.</button>
+    <button class="btn-light" onclick="location.href='reports.html'">REPORTS</button>
+    <button class="btn-light" id="logoutButton">LOG OUT</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div>
+      <div class="kicker">EQUIPMENT CONTROL</div>
+      <h1>EQUIPMENT MAINTENANCE &amp; REPAIR</h1>
+      <p>Record preventive maintenance, repairs, parts, tires, fluids and other actual equipment expenses. Project-related expenses automatically flow into Project Cost Control.</p>
+    </div>
+    <div class="hero-card"><div class="hero-card-label">System Module</div><div class="hero-card-value">Equipment Lifecycle Cost</div></div>
+  </section>
+
+  <div id="message" class="message"></div>
+
+  <section class="card">
+    <div class="card-header">
+      <div><h2>MAINTENANCE RECORDS</h2><p class="subtitle">Search and review equipment maintenance and repair expenses.</p></div>
+      <button class="btn-primary" id="addButton">+ ADD MAINTENANCE</button>
+    </div>
+
+    <div class="filters">
+      <div class="field"><label for="equipmentFilter">Equipment</label><select id="equipmentFilter" class="select"><option value="">ALL EQUIPMENT</option></select></div>
+      <div class="field"><label for="projectFilter">Project</label><select id="projectFilter" class="select"><option value="">ALL PROJECTS</option></select></div>
+      <div class="field"><label for="typeFilter">Maintenance Type</label><select id="typeFilter" class="select">
+        <option value="">ALL TYPES</option>
+        <option value="PREVENTIVE MAINTENANCE">PREVENTIVE MAINTENANCE</option>
+        <option value="REPAIR">REPAIR</option>
+        <option value="SPARE PARTS">SPARE PARTS</option>
+        <option value="TIRES">TIRES</option>
+        <option value="OIL / FLUIDS">OIL / FLUIDS</option>
+        <option value="OTHER">OTHER</option>
+      </select></div>
+    </div>
+
+    <div class="summary">
+      <div class="metric"><div class="metric-label">Records</div><div class="metric-value" id="recordCount">0</div></div>
+      <div class="metric"><div class="metric-label">Total Maintenance Cost</div><div class="metric-value" id="totalCost">₱0.00</div></div>
+      <div class="metric"><div class="metric-label">Project-Assigned Cost</div><div class="metric-value" id="projectCost">₱0.00</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Equipment</th><th>Project</th><th>Type</th><th>Description</th><th>Supplier / Shop</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th><th>Reference</th><th>Action</th>
+        </tr></thead>
+        <tbody id="tableBody"><tr><td colspan="12" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div id="modalBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-header"><h3>ADD MAINTENANCE</h3><button class="close" id="closeModal" type="button">×</button></div>
+    <form id="recordForm">
+      <div class="form-grid">
+        <div class="field"><label for="maintenanceDate">Date</label><input class="input" type="date" id="maintenanceDate" required></div>
+        <div class="field"><label for="maintenanceType">Maintenance Type</label><select class="select" id="maintenanceType" required>
+          <option value="PREVENTIVE MAINTENANCE">PREVENTIVE MAINTENANCE</option>
+          <option value="REPAIR">REPAIR</option>
+          <option value="SPARE PARTS">SPARE PARTS</option>
+          <option value="TIRES">TIRES</option>
+          <option value="OIL / FLUIDS">OIL / FLUIDS</option>
+          <option value="OTHER">OTHER</option>
+        </select></div>
+        <div class="field"><label for="equipmentId">Equipment</label><select class="select" id="equipmentId" required></select></div>
+        <div class="field"><label for="projectId">Project (optional)</label><select class="select" id="projectId"><option value="">No project assigned</option></select></div>
+        <div class="field full"><label for="description">Description</label><input class="input" id="description" required placeholder="Example: Replace hydraulic hose"></div>
+        <div class="field"><label for="supplierShop">Supplier / Shop</label><input class="input" id="supplierShop" placeholder="Example: ABC Auto Supply"></div>
+        <div class="field"><label for="referenceNo">Reference / OR No.</label><input class="input" id="referenceNo" placeholder="Optional"></div>
+        <div class="field"><label for="quantity">Quantity</label><input class="input" id="quantity" type="number" min="0" step="0.001" value="1" required></div>
+        <div class="field"><label for="unit">Unit</label><input class="input" id="unit" value="LOT" required></div>
+        <div class="field"><label for="unitCost">Unit Cost</label><input class="input" id="unitCost" type="number" min="0" step="0.01" value="0" required></div>
+        <div class="field"><label for="totalAmount">Total Amount</label><input class="input calculated" id="totalAmount" readonly value="0.00"></div>
+        <div class="field full"><label for="remarks">Remarks</label><textarea class="textarea" id="remarks" placeholder="Additional details..."></textarea></div>
+      </div>
+      <div class="modal-actions"><button class="btn-secondary" type="button" id="cancelButton">CANCEL</button><button class="btn-green" type="submit" id="saveButton">SAVE MAINTENANCE</button></div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="equipment-maintenance.js?v=1"></script>
+</body>
+</html>
