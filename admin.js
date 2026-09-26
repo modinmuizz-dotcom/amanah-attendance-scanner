@@ -1047,6 +1047,15 @@ function openEquipmentModal(
         values.plate_number
       )}
 
+      ${field(
+        'Hourly Rate',
+        'hourly_rate',
+        values.hourly_rate,
+        false,
+        'number',
+        '0.00'
+      )}
+
       ${selectField(
         'Status',
         'status',
