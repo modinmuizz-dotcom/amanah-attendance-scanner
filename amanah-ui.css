@@ -1,0 +1,115 @@
+/* AMANAH shared application chrome — same sidebar/topbar on all management modules */
+:root{
+  --amanah-navy:#111827;
+  --amanah-blue:#2563eb;
+  --amanah-bg:#f5f7fb;
+  --amanah-line:#e5e7eb;
+  --amanah-text:#0f172a;
+  --amanah-muted:#64748b;
+}
+body.amanah-common-active{
+  margin:0 !important;
+  padding-left:238px !important;
+  padding-top:56px !important;
+  min-height:100vh;
+  background:var(--amanah-bg) !important;
+  color:var(--amanah-text);
+}
+#amanahSidebar{
+  position:fixed;left:0;top:0;bottom:0;width:238px;background:var(--amanah-navy);color:#fff;
+  display:flex;flex-direction:column;z-index:10000;border-right:1px solid rgba(255,255,255,.06);
+  box-sizing:border-box;
+}
+#amanahSidebar *{box-sizing:border-box}
+#amanahSidebar .amanah-side-top{padding:18px 14px 14px}
+#amanahSidebar .amanah-brand{display:flex;align-items:center;gap:10px;padding:2px 4px 18px}
+#amanahSidebar .amanah-brand-logo{width:38px;height:38px;border-radius:9px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900}
+#amanahSidebar .amanah-brand-title{font-size:14px;font-weight:900;letter-spacing:.2px}
+#amanahSidebar .amanah-brand-subtitle{font-size:9px;opacity:.65;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+#amanahSidebar .amanah-side-search{
+  height:38px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);
+  color:#fff;border-radius:8px;padding:0 12px;width:100%;outline:none;font-size:12px
+}
+#amanahSidebar .amanah-side-search::placeholder{color:#9ca3af}
+#amanahSidebar .amanah-nav{padding:0 10px 16px;overflow-y:auto;flex:1}
+#amanahSidebar .amanah-nav-section{margin:14px 0 6px;padding:0 9px;font-size:9px;font-weight:900;color:#7f8ca6;letter-spacing:1.3px;text-transform:uppercase}
+#amanahSidebar .amanah-nav-item{
+  display:flex;align-items:center;gap:10px;min-height:38px;padding:0 10px;margin:3px 0;
+  border-radius:8px;color:#d1d5db;font-size:12px;font-weight:700;transition:.15s;
+  cursor:pointer;white-space:nowrap;
+}
+#amanahSidebar .amanah-nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+#amanahSidebar .amanah-nav-item.active{background:#2563eb;color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.25)}
+#amanahSidebar .amanah-nav-icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px}
+#amanahSidebar .amanah-nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#amanahSidebar .amanah-nav-chevron{margin-left:auto;opacity:.7}
+#amanahSidebar .amanah-side-bottom{padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,.08)}
+#amanahSidebar .amanah-status-row{display:flex;align-items:center;gap:8px;padding:0 8px 10px;color:#d1d5db;font-size:10px}
+#amanahSidebar .amanah-status-dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
+#amanahSidebar .amanah-user-card{display:flex;align-items:center;gap:9px;padding:10px 8px;border-radius:10px;background:rgba(255,255,255,.05)}
+#amanahSidebar .amanah-avatar{width:30px;height:30px;border-radius:50%;background:#eef2ff;color:#1e3a8a;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center}
+#amanahSidebar .amanah-user-name{font-weight:800;font-size:11px;color:#fff}
+#amanahSidebar .amanah-user-role{font-size:9px;color:#94a3b8;margin-top:2px}
+#amanahSidebar .amanah-user-gear{margin-left:auto;color:#94a3b8}
+#amanahTopbar{
+  position:fixed;left:238px;right:0;top:0;height:56px;background:#fff;border-bottom:1px solid #e5e7eb;
+  display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:9999;box-sizing:border-box;
+}
+#amanahTopbar .amanah-breadcrumb{display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:11px}
+#amanahTopbar .amanah-breadcrumb strong{color:#0f172a}
+#amanahTopbar .amanah-crumb-arrow{font-size:16px;color:#cbd5e1}
+#amanahTopbar .amanah-top-right{display:flex;align-items:center;gap:14px}
+#amanahTopbar .amanah-local-ai{display:flex;align-items:center;gap:6px;font-size:10px;color:#475569}
+#amanahTopbar .amanah-ai-dot{width:6px;height:6px;border-radius:50%;background:#22c55e}
+#amanahTopbar .amanah-icon-btn{
+  width:34px;height:34px;border:0;background:transparent;border-radius:8px;color:#64748b;
+  display:flex;align-items:center;justify-content:center
+}
+#amanahTopbar .amanah-icon-btn:hover{background:#f1f5f9}
+#amanahTopbar .amanah-icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#amanahTopbar .amanah-top-avatar{width:32px;height:32px;border-radius:50%;background:#e0e7ff;color:#1e3a8a;font-weight:900;font-size:10px;display:flex;align-items:center;justify-content:center}
+#amanahTopbar .amanah-menu-toggle{display:none}
+.amanah-common-active > header,
+.amanah-common-active > .topbar,
+.amanah-common-active > .top-header,
+.amanah-common-active #adminApp > header.topbar{
+  display:none !important;
+}
+.amanah-common-active #adminApp{
+  min-height:calc(100vh - 56px);
+}
+.amanah-common-active .container{
+  width:min(1400px,94%);
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+.amanah-common-active .page{
+  max-width:1260px;
+  margin:0 auto;
+  padding:26px 26px 60px;
+}
+.amanah-common-active .app{
+  max-width:none !important;
+  width:auto !important;
+  margin:0 auto !important;
+  padding:0 !important;
+}
+#amanahMobileOverlay{display:none}
+@media(max-width:900px){
+  body.amanah-common-active{padding-left:0 !important;padding-top:54px !important}
+  #amanahSidebar{transform:translateX(-100%);transition:transform .2s}
+  #amanahSidebar.open{transform:translateX(0)}
+  #amanahTopbar{left:0;height:54px;padding:0 14px}
+  #amanahTopbar .amanah-menu-toggle{display:flex}
+  #amanahTopbar .amanah-local-ai{display:none}
+  #amanahMobileOverlay{
+    display:none;position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:9998
+  }
+  body.amanah-sidebar-open #amanahMobileOverlay{display:block}
+  .amanah-common-active #adminApp{min-height:calc(100vh - 54px)}
+}
+@media(max-width:600px){
+  #amanahTopbar .amanah-breadcrumb{font-size:10px}
+  .amanah-common-active .container{width:calc(100% - 20px)}
+  .amanah-common-active .page{padding:18px 10px 40px}
+}
