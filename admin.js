@@ -566,7 +566,7 @@ function renderEquipment() {
     body.innerHTML = `
       <tr>
         <td
-          colspan="7"
+          colspan="6"
           class="empty-row"
         >
           No equipment found.
@@ -615,12 +615,6 @@ function renderEquipment() {
           ${escapeHtml(
             equipment.status
           )}
-        </td>
-
-        <td>
-          ₱${Number(
-            equipment.hourly_rate ?? 0
-          ).toFixed(2)}
         </td>
 
         <td>
@@ -970,15 +964,6 @@ function openEmployeeModal(
         values.date_hired,
         false,
         'date'
-      )}
-
-      ${field(
-        'Hourly Rate',
-        'hourly_rate',
-        values.hourly_rate,
-        false,
-        'number',
-        '0.00'
       )}
 
       ${selectField(
@@ -1404,13 +1389,6 @@ async function saveEmployee(
     date_hired:
       values.date_hired ||
       null,
-
-    hourly_rate:
-      values.hourly_rate === ''
-        ? 0
-        : Number(
-            values.hourly_rate
-          ),
 
     status:
       values.status || 'ACTIVE'
