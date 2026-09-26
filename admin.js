@@ -24,7 +24,7 @@ const SUPABASE_URL =
  * Do NOT use the secret key.
  */
 const SUPABASE_PUBLISHABLE_KEY =
-  'PASTE_THE_SAME_PUBLISHABLE_KEY_FROM_APP_JS_HERE';
+  'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
 
 
 const supabaseClient =
