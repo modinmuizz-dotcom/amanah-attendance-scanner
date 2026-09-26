@@ -55,8 +55,6 @@ function render(){
     const pmCount=state.pmRecords.filter(pm=>pm.equipment_id===x.equipment_id).length;
     return '<tr>'+
       '<td><div class="strong">'+escapeHtml(x.equipment_name||x.equipment_id)+'</div><div class="muted">'+escapeHtml(x.equipment_id)+'</div></td>'+
-      '<td>'+escapeHtml(x.equipment_type||"—")+'</td>'+
-      '<td>'+escapeHtml(x.plate_number||"—")+'</td>'+
       '<td>'+equipmentPill(x.status)+'</td>'+
       '<td>'+pmCount+'</td>'+
       '<td>'+Number(x.total_repair_requests||0)+'</td>'+
@@ -77,10 +75,9 @@ function render(){
       '<td>'+escapeHtml(x.problems_encountered||"")+'</td>'+
       '<td>'+statusPill(x.status)+'</td>'+
       '<td class="money">'+money(x.total_repair_cost)+'</td>'+
-      '<td>'+Number(x.total_photos||0)+' <span class="muted">('+Number(x.pm_finding_photos||0)+' PM / '+Number(x.before_photos||0)+' before / '+Number(x.during_photos||0)+' during / '+Number(x.after_photos||0)+' after)</span></td>'+
-      '<td>'+escapeHtml(x.repaired_by||"—")+'</td>'+
+      '<td class="photo-cell">'+Number(x.total_photos||0)+' <span class="muted">('+Number(x.pm_finding_photos||0)+' PM / '+Number(x.before_photos||0)+' before / '+Number(x.during_photos||0)+' after)</span></td>'+
       '<td><button class="repair-link" type="button" data-view-repair="'+escapeHtml(x.repair_request_id)+'">VIEW</button></td>'+
-    '</tr>').join(""):'<tr><td colspan="10" class="empty">No repair history found for the selected filters.</td></tr>';
+    '</tr>').join(""):'<tr><td colspan="9" class="empty">No repair history found for the selected filters.</td></tr>';
 }
 
 async function openEquipmentHistory(equipmentId){
@@ -136,4 +133,4 @@ $("historyModal").addEventListener("click",e=>{if(e.target===$("historyModal"))c
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 $("logoutButton").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.href="index.html";});
 
-(async()=>{try{if(!await requireSession())return;await loadMaster();await loadData();}catch(e){console.error(e);showMessage(e.message||"Unable to load equipment history.","error");$("summaryBody").innerHTML='<tr><td colspan="11" class="empty">Unable to load equipment history.</td></tr>';$("historyBody").innerHTML='<tr><td colspan="10" class="empty">Unable to load repair history.</td></tr>';}})();
+(async()=>{try{if(!await requireSession())return;await loadMaster();await loadData();}catch(e){console.error(e);showMessage(e.message||"Unable to load equipment history.","error");$("summaryBody").innerHTML='<tr><td colspan="9" class="empty">Unable to load equipment history.</td></tr>';$("historyBody").innerHTML='<tr><td colspan="9" class="empty">Unable to load repair history.</td></tr>';}})();
