@@ -1,606 +1,839 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>AMANAH Project Monitoring</title>
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+  <!-- Keep the shared AMANAH stylesheet loaded for consistency with the other pages. -->
+  <link rel="stylesheet" href="style.css?v=4">
 
-    <title>AMANAH Project Monitoring</title>
+  <style>
+    :root {
+      --navy: #0f172a;
+      --navy-2: #111827;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #16a34a;
+      --green-soft: #ecfdf3;
+      --orange: #ea580c;
+      --orange-soft: #fff7ed;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --gray-25: #fcfcfd;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 18px 45px rgba(15, 23, 42, 0.10);
+      --radius: 18px;
+    }
 
-    <link
-        rel="stylesheet"
-        href="style.css?v=1"
-    >
+    * {
+      box-sizing: border-box;
+    }
 
-    <style>
-        .pm-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
+    html {
+      scroll-behavior: smooth;
+    }
 
-        .pm-title {
-            margin-bottom: 25px;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.05), transparent 28%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      color: var(--navy-2);
+      font-family: Arial, Helvetica, sans-serif;
+    }
 
-        .pm-title h1 {
-            margin: 0;
-            font-size: 32px;
-        }
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
 
-        .pm-title p {
-            color: #64748b;
-            margin-top: 8px;
-        }
+    button {
+      cursor: pointer;
+    }
 
-        .pm-card {
-            background: #ffffff;
-            border-radius: 18px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
-        }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
 
-        .pm-card h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
+    /* =========================================================
+       PROFESSIONAL AMANAH HEADER
+       ========================================================= */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      min-height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px clamp(18px, 4vw, 56px);
+      background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+      color: #fff;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.18);
+    }
 
-        .pm-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 18px;
-        }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
 
-        .pm-field {
-            display: flex;
-            flex-direction: column;
-            gap: 7px;
-        }
+    .brand-logo {
+      width: 50px;
+      height: 50px;
+      flex: 0 0 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--navy);
+      font-size: 27px;
+      font-weight: 900;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
 
-        .pm-field.full {
-            grid-column: 1 / -1;
-        }
+    .brand-title {
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
 
-        .pm-field label {
-            font-weight: 700;
-            font-size: 14px;
-        }
+    .brand-subtitle {
+      margin-top: 5px;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+    }
 
-        .pm-field input,
-        .pm-field select,
-        .pm-field textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 15px;
-            box-sizing: border-box;
-        }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
-        .pm-field textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
+    .btn-light {
+      min-height: 40px;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
 
-        .pm-readonly {
-            background: #f8fafc;
-        }
+    .btn-light:hover {
+      transform: translateY(-1px);
+      background: #fff;
+      box-shadow: 0 7px 16px rgba(0, 0, 0, 0.18);
+    }
 
-        .pm-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
+    .btn-light:active {
+      transform: translateY(0);
+    }
 
-        .pm-button {
-            border: none;
-            border-radius: 10px;
-            padding: 13px 20px;
-            font-weight: 700;
-            cursor: pointer;
-        }
+    /* =========================================================
+       PAGE LAYOUT
+       ========================================================= */
+    .pm-container {
+      width: min(1260px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
 
-        .pm-button-primary {
-            background: #111827;
-            color: white;
-        }
+    .pm-hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
 
-        .pm-button-secondary {
-            background: #e2e8f0;
-            color: #111827;
-        }
+    .pm-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      margin-bottom: 10px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
 
-        .pm-message {
-            padding: 14px 18px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
-            font-weight: 600;
-        }
+    .pm-kicker-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
 
-        .pm-success {
-            background: #dcfce7;
-            color: #166534;
-        }
+    .pm-title {
+      margin: 0;
+    }
 
-        .pm-error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+    .pm-title h1 {
+      margin: 0;
+      color: var(--navy);
+      font-size: clamp(30px, 4vw, 40px);
+      line-height: 1.08;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
 
-        .pm-table-wrap {
-            overflow-x: auto;
-        }
+    .pm-title p {
+      margin: 10px 0 0;
+      max-width: 720px;
+      color: var(--gray-500);
+      font-size: 15px;
+      line-height: 1.6;
+    }
 
-        .pm-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .pm-hero-card {
+      min-width: 220px;
+      padding: 16px 18px;
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.88);
+      box-shadow: var(--shadow-sm);
+    }
 
-        .pm-table th,
-        .pm-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e2e8f0;
-            text-align: left;
-            white-space: nowrap;
-        }
+    .pm-hero-card-label {
+      color: var(--gray-500);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
 
-        .pm-table th {
-            background: #f8fafc;
-        }
+    .pm-hero-card-value {
+      margin-top: 7px;
+      color: var(--navy);
+      font-size: 20px;
+      font-weight: 900;
+    }
 
-        .pm-progress {
-            font-weight: 700;
-        }
+    /* =========================================================
+       MESSAGE BANNERS
+       ========================================================= */
+    .pm-message {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px 17px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: var(--shadow-sm);
+    }
 
-        @media (max-width: 700px) {
-            .pm-grid {
-                grid-template-columns: 1fr;
-            }
+    .pm-success {
+      background: var(--green-soft);
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
 
-            .pm-field.full {
-                grid-column: auto;
-            }
+    .pm-error {
+      background: var(--red-soft);
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
 
-            .pm-actions {
-                flex-direction: column;
-            }
+    /* =========================================================
+       CARDS
+       ========================================================= */
+    .pm-card {
+      position: relative;
+      margin-bottom: 22px;
+      padding: 26px;
+      border: 1px solid rgba(203, 213, 225, 0.9);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.96);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
 
-            .pm-button {
-                width: 100%;
-            }
-        }
-    </style>
+    .pm-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--blue), #60a5fa);
+    }
+
+    .pm-card.activity-card::before {
+      background: linear-gradient(90deg, var(--green), #4ade80);
+    }
+
+    .pm-card.history-card::before {
+      background: linear-gradient(90deg, var(--orange), #fb923c);
+    }
+
+    .pm-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .pm-card-heading {
+      min-width: 0;
+    }
+
+    .pm-card h2 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 900;
+      letter-spacing: -0.015em;
+    }
+
+    .pm-card-subtitle {
+      margin: 6px 0 0;
+      color: var(--gray-500);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .pm-section-tag {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--gray-100);
+      color: var(--gray-600);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    /* =========================================================
+       PROJECT INFORMATION
+       ========================================================= */
+    .project-picker {
+      margin-bottom: 22px;
+      padding: 18px;
+      border: 1px solid #dbeafe;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+    }
+
+    .project-picker label,
+    .pm-field label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--gray-700);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    .project-picker .picker-label {
+      margin-bottom: 8px;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .pm-field input,
+    .pm-field select,
+    .pm-field textarea,
+    .project-picker select {
+      width: 100%;
+      min-height: 46px;
+      padding: 12px 14px;
+      border: 1px solid var(--gray-300);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--navy-2);
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+
+    .pm-field input:focus,
+    .pm-field select:focus,
+    .pm-field textarea:focus,
+    .project-picker select:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    }
+
+    .project-picker select {
+      min-height: 50px;
+      border: 1px solid #bfdbfe;
+      background: #fff;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .pm-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .pm-field {
+      min-width: 0;
+    }
+
+    .pm-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .pm-field input.pm-readonly {
+      background: var(--gray-50);
+      color: var(--gray-700);
+      border-color: var(--gray-200);
+      cursor: default;
+    }
+
+    .pm-field input#currentProgress {
+      background: linear-gradient(90deg, #ecfdf5, #f8fafc);
+      border-color: #bbf7d0;
+      color: #166534;
+      font-weight: 900;
+    }
+
+    .pm-field input#projectStatus {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .pm-field textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    /* =========================================================
+       ACTIVITY FORM
+       ========================================================= */
+    .activity-intro {
+      margin-bottom: 18px;
+      padding: 13px 15px;
+      border: 1px solid #bbf7d0;
+      border-radius: 13px;
+      background: var(--green-soft);
+      color: #166534;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .activity-intro strong {
+      font-weight: 900;
+    }
+
+    .pm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pm-button {
+      min-height: 46px;
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+
+    .pm-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .pm-button-primary {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(22, 163, 74, 0.22);
+    }
+
+    .pm-button-primary:hover:not(:disabled) {
+      box-shadow: 0 11px 24px rgba(22, 163, 74, 0.28);
+    }
+
+    .pm-button-secondary {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--gray-200);
+    }
+
+    /* =========================================================
+       HISTORY TABLE
+       ========================================================= */
+    .pm-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .pm-table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+    }
+
+    .pm-table th,
+    .pm-table td {
+      padding: 14px 14px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .pm-table th {
+      background: #f8fafc;
+      color: var(--gray-600);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pm-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .pm-table tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .pm-table td strong {
+      color: var(--navy);
+    }
+
+    .pm-progress {
+      font-weight: 900;
+      color: #166534;
+      background: #f0fdf4;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+    @media (max-width: 980px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px 18px;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .pm-hero {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .pm-hero-card {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .pm-container {
+        width: min(100% - 20px, 1260px);
+        padding: 22px 0 40px;
+      }
+
+      .brand-logo {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+        border-radius: 12px;
+      }
+
+      .brand-title {
+        font-size: 15px;
+      }
+
+      .brand-subtitle {
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+
+      .top-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .btn-light {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 8px;
+        font-size: 10px;
+      }
+
+      .pm-hero-card {
+        padding: 14px;
+      }
+
+      .pm-card {
+        padding: 18px;
+        border-radius: 16px;
+      }
+
+      .pm-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .pm-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pm-field.full {
+        grid-column: auto;
+      }
+
+      .pm-actions {
+        flex-direction: column-reverse;
+      }
+
+      .pm-button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 
 <body>
-
-<header class="topbar">
+  <header class="topbar">
     <div class="brand">
-        <div class="brand-logo">A</div>
-
-        <div>
-            <div class="brand-title">
-                AMANAH CONSTRUCTION
-            </div>
-
-            <div class="brand-subtitle">
-                CONSTRUCTION MANAGEMENT SYSTEM
-            </div>
-        </div>
+      <div class="brand-logo">A</div>
+      <div>
+        <div class="brand-title">AMANAH CONSTRUCTION</div>
+        <div class="brand-subtitle">CONSTRUCTION MANAGEMENT SYSTEM</div>
+      </div>
     </div>
 
     <div class="top-actions">
-
-        <button
-            class="btn-light"
-            onclick="location.href='dashboard.html'"
-        >
-            DASHBOARD
-        </button>
-
-        <button
-            class="btn-light"
-            onclick="location.href='admin.html'"
-        >
-            MASTER DATA
-        </button>
-
-        <button
-            class="btn-light"
-            onclick="location.href='attendance.html'"
-        >
-            ATTENDANCE
-        </button>
-
-        <button
-            class="btn-light"
-            onclick="location.href='reports.html'"
-        >
-            REPORTS
-        </button>
-
-        <button
-            class="btn-light"
-            id="logoutButton"
-        >
-            LOG OUT
-        </button>
-
+      <button class="btn-light" onclick="location.href='dashboard.html'">DASHBOARD</button>
+      <button class="btn-light" onclick="location.href='admin.html'">MASTER DATA</button>
+      <button class="btn-light" onclick="location.href='attendance.html'">ATTENDANCE</button>
+      <button class="btn-light" onclick="location.href='reports.html'">REPORTS</button>
+      <button class="btn-light" id="logoutButton">LOG OUT</button>
     </div>
-</header>
+  </header>
 
-
-<main class="pm-container">
-
-    <div class="pm-title">
-        <h1>PROJECT MONITORING</h1>
-
-        <p>
-            Monitor project progress and daily construction activities.
-        </p>
-    </div>
-
-
-    <div
-        id="successMessage"
-        class="pm-message pm-success"
-    ></div>
-
-    <div
-        id="errorMessage"
-        class="pm-message pm-error"
-    ></div>
-
-
-    <!-- PROJECT SELECTION -->
-
-    <section class="pm-card">
-
-        <h2>PROJECT INFORMATION</h2>
-
-        <div class="pm-grid">
-
-            <div class="pm-field full">
-
-                <label>
-                    Project
-                </label>
-
-                <select id="projectSelect">
-
-                    <option value="">
-                        Select project
-                    </option>
-
-                </select>
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Project ID
-                </label>
-
-                <input
-                    id="projectId"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Project Name
-                </label>
-
-                <input
-                    id="projectName"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Client
-                </label>
-
-                <input
-                    id="client"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Location
-                </label>
-
-                <input
-                    id="location"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Site Engineer
-                </label>
-
-                <input
-                    id="siteEngineer"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Current Progress (%)
-                </label>
-
-                <input
-                    id="currentProgress"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Contract Amount
-                </label>
-
-                <input
-                    id="contractAmount"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Status
-                </label>
-
-                <input
-                    id="projectStatus"
-                    class="pm-readonly"
-                    readonly
-                >
-
-            </div>
-
+  <main class="pm-container">
+    <section class="pm-hero">
+      <div class="pm-title">
+        <div class="pm-kicker">
+          <span class="pm-kicker-dot"></span>
+          PROJECT OPERATIONS
         </div>
+        <h1>PROJECT MONITORING</h1>
+        <p>Monitor project progress, record daily construction activities, and keep your site history organized in one place.</p>
+      </div>
 
+      <div class="pm-hero-card">
+        <div class="pm-hero-card-label">System Module</div>
+        <div class="pm-hero-card-value">Daily Project Control</div>
+      </div>
     </section>
 
+    <div id="successMessage" class="pm-message pm-success"></div>
+    <div id="errorMessage" class="pm-message pm-error"></div>
+
+    <!-- PROJECT INFORMATION -->
+    <section class="pm-card">
+      <div class="pm-card-header">
+        <div class="pm-card-heading">
+          <h2>PROJECT INFORMATION</h2>
+          <p class="pm-card-subtitle">Select a project to view its current master data and progress information.</p>
+        </div>
+        <div class="pm-section-tag">Project Master</div>
+      </div>
+
+      <div class="project-picker">
+        <div class="picker-label">Active Project</div>
+        <label for="projectSelect">Project</label>
+        <select id="projectSelect">
+          <option value="">Select project</option>
+        </select>
+      </div>
+
+      <div class="pm-grid">
+        <div class="pm-field">
+          <label for="projectId">Project ID</label>
+          <input id="projectId" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="projectName">Project Name</label>
+          <input id="projectName" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="client">Client</label>
+          <input id="client" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="location">Location</label>
+          <input id="location" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="siteEngineer">Site Engineer</label>
+          <input id="siteEngineer" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="currentProgress">Current Progress (%)</label>
+          <input id="currentProgress" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="contractAmount">Contract Amount</label>
+          <input id="contractAmount" class="pm-readonly" readonly>
+        </div>
+
+        <div class="pm-field">
+          <label for="projectStatus">Status</label>
+          <input id="projectStatus" class="pm-readonly" readonly>
+        </div>
+      </div>
+    </section>
 
     <!-- DAILY ACTIVITY -->
+    <section class="pm-card activity-card">
+      <div class="pm-card-header">
+        <div class="pm-card-heading">
+          <h2>ADD DAILY PROJECT ACTIVITY</h2>
+          <p class="pm-card-subtitle">Record the work completed on site for the selected project.</p>
+        </div>
+        <div class="pm-section-tag">Daily Site Report</div>
+      </div>
 
-    <section class="pm-card">
+      <div class="activity-intro">
+        <strong>Tip:</strong> Enter the actual activity performed, manpower used, equipment involved, accomplishment percentage, and any important remarks for the day.
+      </div>
 
-        <h2>ADD DAILY PROJECT ACTIVITY</h2>
-
-        <div class="pm-grid">
-
-            <div class="pm-field">
-
-                <label>
-                    Activity Date
-                </label>
-
-                <input
-                    type="date"
-                    id="activityDate"
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Activity
-                </label>
-
-                <input
-                    id="activity"
-                    placeholder="Example: Concrete Pouring"
-                >
-
-            </div>
-
-
-            <div class="pm-field full">
-
-                <label>
-                    Description
-                </label>
-
-                <textarea
-                    id="description"
-                    placeholder="Describe today's activity..."
-                ></textarea>
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Manpower
-                </label>
-
-                <input
-                    type="number"
-                    id="manpower"
-                    min="0"
-                    value="0"
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Equipment
-                </label>
-
-                <input
-                    id="equipment"
-                    placeholder="Example: Excavator, Dump Truck"
-                >
-
-            </div>
-
-
-            <div class="pm-field">
-
-                <label>
-                    Accomplishment (%)
-                </label>
-
-                <input
-                    type="number"
-                    id="accomplishment"
-                    min="0"
-                    max="100"
-                    value="0"
-                >
-
-            </div>
-
-
-            <div class="pm-field full">
-
-                <label>
-                    Remarks
-                </label>
-
-                <textarea
-                    id="remarks"
-                    placeholder="Additional remarks..."
-                ></textarea>
-
-            </div>
-
+      <div class="pm-grid">
+        <div class="pm-field">
+          <label for="activityDate">Activity Date</label>
+          <input type="date" id="activityDate">
         </div>
 
-
-        <div class="pm-actions">
-
-            <button
-                class="pm-button pm-button-secondary"
-                id="clearActivityButton"
-            >
-                CLEAR
-            </button>
-
-            <button
-                class="pm-button pm-button-primary"
-                id="saveActivityButton"
-            >
-                SAVE ACTIVITY
-            </button>
-
+        <div class="pm-field">
+          <label for="activity">Activity</label>
+          <input id="activity" placeholder="Example: Concrete Pouring">
         </div>
 
+        <div class="pm-field full">
+          <label for="description">Description</label>
+          <textarea id="description" placeholder="Describe today's activity..."></textarea>
+        </div>
+
+        <div class="pm-field">
+          <label for="manpower">Manpower</label>
+          <input type="number" id="manpower" min="0" value="0">
+        </div>
+
+        <div class="pm-field">
+          <label for="equipment">Equipment</label>
+          <input id="equipment" placeholder="Example: Excavator, Dump Truck">
+        </div>
+
+        <div class="pm-field">
+          <label for="accomplishment">Accomplishment (%)</label>
+          <input type="number" id="accomplishment" min="0" max="100" value="0">
+        </div>
+
+        <div class="pm-field full">
+          <label for="remarks">Remarks</label>
+          <textarea id="remarks" placeholder="Additional remarks..."></textarea>
+        </div>
+      </div>
+
+      <div class="pm-actions">
+        <button class="pm-button pm-button-secondary" id="clearActivityButton">CLEAR</button>
+        <button class="pm-button pm-button-primary" id="saveActivityButton">SAVE ACTIVITY</button>
+      </div>
     </section>
-
 
     <!-- HISTORY -->
-
-    <section class="pm-card">
-
-        <h2>PROJECT ACTIVITY HISTORY</h2>
-
-        <div class="pm-table-wrap">
-
-            <table class="pm-table">
-
-                <thead>
-
-                    <tr>
-
-                        <th>Date</th>
-
-                        <th>Activity</th>
-
-                        <th>Description</th>
-
-                        <th>Manpower</th>
-
-                        <th>Equipment</th>
-
-                        <th>Progress</th>
-
-                        <th>Remarks</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody id="activityBody">
-
-                    <tr>
-
-                        <td colspan="7">
-                            Select a project.
-                        </td>
-
-                    </tr>
-
-                </tbody>
-
-            </table>
-
+    <section class="pm-card history-card">
+      <div class="pm-card-header">
+        <div class="pm-card-heading">
+          <h2>PROJECT ACTIVITY HISTORY</h2>
+          <p class="pm-card-subtitle">Review previously recorded project activities for the selected project.</p>
         </div>
+        <div class="pm-section-tag">Activity Log</div>
+      </div>
 
+      <div class="pm-table-wrap">
+        <table class="pm-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Activity</th>
+              <th>Description</th>
+              <th>Manpower</th>
+              <th>Equipment</th>
+              <th>Progress</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="activityBody">
+            <tr>
+              <td colspan="7">Select a project.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
+  </main>
 
-</main>
-
-
-<script
-    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-></script>
-
-<script
-     src="project-monitoring.js?v=3"
-></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="project-monitoring.js?v=4"></script>
 </body>
 </html>
