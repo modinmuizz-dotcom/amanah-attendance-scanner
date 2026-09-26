@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMANAH - Repair Requests</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f3f6fb;color:#0f172a}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.topbar{min-height:66px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 28px;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:10px}.brand-logo{width:40px;height:40px;border-radius:10px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900}.brand-title{font-size:14px;font-weight:900}.brand-subtitle{font-size:9px;opacity:.72;margin-top:2px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.nav button{border:0;background:#fff;color:#111827;border-radius:9px;min-height:38px;padding:0 13px;font-weight:800}
+.page{max-width:1180px;margin:auto;padding:34px 22px 70px}.hero{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-bottom:20px}.kicker{font-size:11px;font-weight:900;letter-spacing:1px;color:#1d4ed8;margin-bottom:7px}.hero h1{margin:0;font-size:clamp(30px,4vw,45px)}.hero p{color:#64748b;max-width:780px;line-height:1.5}.hero-card,.card{background:#fff;border-radius:18px;box-shadow:0 8px 28px rgba(15,23,42,.06)}.hero-card{padding:17px 20px;min-width:215px}.hero-card small{display:block;color:#64748b;font-weight:900;text-transform:uppercase;font-size:9px}.hero-card strong{display:block;margin-top:7px}
+.message{display:none;padding:13px 16px;border-radius:12px;font-weight:800;margin-bottom:16px}.message.success{display:block;background:#dcfce7;color:#166534}.message.error{display:block;background:#fee2e2;color:#991b1b}.message.info{display:block;background:#e0f2fe;color:#075985}
+.card{padding:21px;margin-bottom:18px}.toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center}.toolbar h2{margin:0;font-size:19px}.toolbar p{margin:5px 0 0;color:#64748b;font-size:13px}
+.btn{border:0;border-radius:9px;min-height:40px;padding:0 14px;font-weight:900}.btn-primary{background:#111827;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-blue{background:#2563eb;color:#fff}.btn-gray{background:#e2e8f0;color:#111827}.btn-red{background:#dc2626;color:#fff}.btn:disabled{opacity:.45;cursor:not-allowed}
+.filters{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;margin:18px 0}.field label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:#334155;margin-bottom:6px}.input,.select,.textarea{width:100%;min-height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;background:#fff}.textarea{padding:10px;min-height:100px;resize:vertical}
+.table-wrap{overflow:auto}table{width:100%;min-width:1100px;border-collapse:collapse}th,td{padding:11px 9px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:12px;vertical-align:top}th{font-size:10px;text-transform:uppercase;background:#f8fafc}.pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-weight:900;font-size:9px}.draft{background:#e2e8f0}.review{background:#dbeafe;color:#1d4ed8}.approval{background:#fef3c7;color:#92400e}.approved{background:#dcfce7;color:#166534}.returned{background:#fee2e2;color:#991b1b}.repair{background:#ede9fe;color:#6d28d9}.completed{background:#dcfce7;color:#166534}.closed{background:#e2e8f0}
+.empty{text-align:center;color:#64748b;padding:28px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.detail-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:13px;padding:14px}.detail-box h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;color:#64748b}.detail-text{white-space:pre-wrap;line-height:1.5}
+.workflow{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.workflow .step{padding:8px 10px;border-radius:999px;background:#f1f5f9;font-size:10px;font-weight:900}.workflow .active{background:#111827;color:#fff}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}.photo-card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.photo-card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#e5e7eb}.photo-meta{padding:9px}.photo-meta strong{font-size:10px}.photo-meta small{display:block;color:#64748b;margin-top:3px}
+.upload-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.dialog{width:min(980px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:20px}
+.dialog-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.dialog-head h2{margin:0}.close{width:38px;height:38px;border:0;border-radius:50%;background:#e2e8f0;font-size:20px;font-weight:900}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}.check-row{display:flex;gap:9px;align-items:center;margin-top:10px;font-weight:800}.check-row input{width:18px;height:18px}
+.item-row{display:grid;grid-template-columns:1.5fr 1.2fr .6fr .7fr;gap:8px;margin-bottom:8px}.item-row .input{min-height:38px}
+@media(max-width:900px){.topbar{padding:10px 15px}.hero{flex-direction:column;align-items:stretch}.filters,.detail-grid,.photo-grid,.upload-row{grid-template-columns:1fr}.item-row{grid-template-columns:1fr}.hero-card{min-width:0}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><div class="brand-logo">A</div><div><div class="brand-title">AMANAH CONSTRUCTION</div><div class="brand-subtitle">CONSTRUCTION MANAGEMENT SYSTEM</div></div></div>
+  <div class="nav">
+    <button onclick="location.href='dashboard.html'">DASHBOARD</button>
+    <button onclick="location.href='admin.html'">MASTER DATA</button>
+    <button onclick="location.href='project-monitoring.html'">PROJECT MONITORING</button>
+    <button onclick="location.href='attendance.html'">ATTENDANCE</button>
+    <button onclick="location.href='project-cost.html'">PROJECT COST</button>
+    <button onclick="location.href='equipment-maintenance.html'">EQUIP MAINT.</button>
+    <button onclick="location.href='reports.html'">REPORTS</button>
+    <button id="logoutButton">LOG OUT</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div>
+      <div class="kicker">MAINTENANCE CONTROL</div>
+      <h1>REPAIR REQUESTS</h1>
+      <p>Digitize the AMANAH Repair Form, keep PM damage evidence attached, and require the reviewer and approver to acknowledge the photo evidence before moving the request forward.</p>
+    </div>
+    <div class="hero-card"><small>System Module</small><strong>Repair &amp; Evidence Control</strong></div>
+  </section>
+
+  <div id="message" class="message"></div>
+
+  <section class="card">
+    <div class="toolbar">
+      <div><h2>REPAIR REQUEST REGISTER</h2><p>Draft → Review → Approval → Repair → Completion → Closure</p></div>
+      <button class="btn btn-primary" id="newRequest">+ NEW REPAIR REQUEST</button>
+    </div>
+
+    <div class="filters">
+      <div class="field"><label>Status</label><select class="select" id="statusFilter"><option value="">ALL STATUS</option><option>DRAFT</option><option>PENDING REVIEW</option><option>PENDING APPROVAL</option><option>APPROVED</option><option>RETURNED</option><option>IN PROGRESS</option><option>COMPLETED</option><option>CLOSED</option></select></div>
+      <div class="field"><label>Equipment</label><select class="select" id="equipmentFilter"><option value="">ALL EQUIPMENT</option></select></div>
+      <div class="field"><label>Project</label><select class="select" id="projectFilter"><option value="">ALL PROJECTS</option></select></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Request No.</th><th>Date</th><th>Equipment</th><th>Project</th><th>Reported By</th><th>Photos</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="requestBody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="requestModal">
+  <div class="dialog">
+    <div class="dialog-head"><h2 id="modalTitle">NEW REPAIR REQUEST</h2><button class="close" id="closeModal">×</button></div>
+
+    <form id="requestForm">
+      <div class="detail-grid" style="margin-top:14px">
+        <div class="field"><label>Equipment</label><select class="select" id="equipmentId" required></select></div>
+        <div class="field"><label>Project</label><select class="select" id="projectId"><option value="">No project</option></select></div>
+        <div class="field"><label>Request Date</label><input class="input" type="date" id="requestDate" required></div>
+        <div class="field"><label>Reported By</label><input class="input" id="reportedBy" required placeholder="Inspector / operator"></div>
+        <div class="field"><label>Body / Plate No.</label><input class="input" id="bodyPlateNo" placeholder="Auto from equipment or manual"></div>
+        <div class="field"><label>PM Inspection Reference</label><input class="input" id="pmInspectionId" placeholder="Optional PM inspection ID"></div>
+        <div class="field" style="grid-column:1/-1"><label>Problems Encountered (Sira)</label><textarea class="textarea" id="problems" required placeholder="Describe the problems found during PM inspection."></textarea></div>
+        <div class="field" style="grid-column:1/-1"><label>Remarks</label><textarea class="textarea" id="remarks" placeholder="Additional notes..."></textarea></div>
+      </div>
+
+      <div class="card" style="padding:14px;margin-top:16px;background:#f8fafc">
+        <div class="toolbar"><div><h2 style="font-size:15px">WORKS TO BE DONE / MATERIALS / QTY</h2><p class="subtitle">These can be completed by the Maintenance Manager after the PM finding is reviewed.</p></div><button class="btn btn-gray" type="button" id="addItem">+ ADD LINE</button></div>
+        <div id="items"></div>
+      </div>
+
+      <div class="card" style="padding:14px;margin-top:16px">
+        <div class="toolbar"><div><h2 style="font-size:15px">PHOTO EVIDENCE</h2><p class="subtitle">PM findings and repair evidence stay attached to the request.</p></div></div>
+        <div class="upload-row" style="margin-top:12px">
+          <div class="field"><label>Photo Category</label><select class="select" id="photoCategory"><option>PM FINDING</option><option>PART / DAMAGE EVIDENCE</option><option>REPAIR BEFORE</option><option>REPAIR DURING</option><option>REPAIR AFTER</option><option>OTHER</option></select></div>
+          <div class="field"><label>Add Photos</label><input class="input" type="file" id="photoInput" accept="image/*" multiple capture="environment"></div>
+        </div>
+        <div id="selectedPhotos" style="margin-top:10px;color:#64748b;font-size:12px"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-gray" type="button" id="cancelRequest">CANCEL</button>
+        <button class="btn btn-primary" type="submit" id="saveDraft">SAVE DRAFT</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="detailModal">
+  <div class="dialog">
+    <div class="dialog-head"><h2 id="detailTitle">REPAIR REQUEST</h2><button class="close" id="closeDetail">×</button></div>
+    <div id="detailContent" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="repair-requests.js?v=1"></script>
+</body>
+</html>
