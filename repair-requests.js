@@ -317,48 +317,114 @@ function renderDetailActions(){
   let html="";
 
   if(r.status==="DRAFT"){
-    html+='<button class="btn btn-blue" onclick="setStatus(''+r.repair_request_id+'',\'PENDING REVIEW\')">SUBMIT FOR REVIEW</button>';
+    html += '<button class="btn btn-blue" id="submitReviewButton">SUBMIT FOR REVIEW</button>';
   }
 
   if(r.status==="PENDING REVIEW"){
-    html+='<button class="btn btn-green" id="reviewAndForward">REVIEW & FORWARD</button>';
+    html += '<button class="btn btn-green" id="reviewAndForward">REVIEW & FORWARD</button>';
   }
 
   if(r.status==="PENDING APPROVAL"){
-    html+='<button class="btn btn-green" id="approveRequest">APPROVE REPAIR</button>';
-    html+='<button class="btn btn-gray" onclick="setStatus(''+r.repair_request_id+'',\'RETURNED\')">RETURN</button>';
+    html += '<button class="btn btn-green" id="approveRequest">APPROVE REPAIR</button>';
+    html += '<button class="btn btn-gray" id="returnRequest">RETURN</button>';
   }
 
   if(r.status==="APPROVED"){
-    html+='<button class="btn btn-primary" onclick="setStatus(''+r.repair_request_id+'',\'IN PROGRESS\')">START REPAIR</button>';
+    html += '<button class="btn btn-primary" id="startRepairButton">START REPAIR</button>';
   }
 
   if(r.status==="IN PROGRESS"){
-    html+='<button class="btn btn-green" onclick="setStatus(''+r.repair_request_id+'',\'COMPLETED\')">MARK COMPLETED</button>';
+    html += '<button class="btn btn-green" id="completeRepairButton">MARK COMPLETED</button>';
   }
 
   if(r.status==="COMPLETED"){
-    html+='<button class="btn btn-primary" onclick="setStatus(''+r.repair_request_id+'',\'CLOSED\')">CLOSE REPAIR</button>';
+    html += '<button class="btn btn-primary" id="closeRepairButton">CLOSE REPAIR</button>';
   }
 
-  if(!html)html='<span style="color:#64748b">No action available for this status.</span>';
+  if(!html){
+    html='<span style="color:#64748b">No action available for this status.</span>';
+  }
+
   actions.innerHTML=html;
+
+  const submit=document.getElementById("submitReviewButton");
+  if(submit){
+    submit.addEventListener("click",async()=>{
+      await setStatus(r.repair_request_id,"PENDING REVIEW");
+    });
+  }
 
   const review=document.getElementById("reviewAndForward");
   if(review){
     review.addEventListener("click",async()=>{
-      const checked=document.getElementById("reviewEvidence").checked;
-      if(photoCount>0 && !checked){showMessage("Reviewer must confirm that all photo evidence has been reviewed.","error");return;}
-      await updateWorkflow(r.repair_request_id,"PENDING APPROVAL",{reviewer_evidence_reviewed:checked});
+      const checked=document.getElementById("reviewEvidence")?.checked || false;
+
+      if(photoCount>0 && !checked){
+        showMessage(
+          "Reviewer must confirm that all photo evidence has been reviewed.",
+          "error"
+        );
+        return;
+      }
+
+      await updateWorkflow(
+        r.repair_request_id,
+        "PENDING APPROVAL",
+        {
+          reviewer_evidence_reviewed: checked
+        }
+      );
     });
   }
 
   const approve=document.getElementById("approveRequest");
   if(approve){
     approve.addEventListener("click",async()=>{
-      const checked=document.getElementById("approveEvidence").checked;
-      if(photoCount>0 && !checked){showMessage("Approver must confirm that all photo evidence has been reviewed.","error");return;}
-      await updateWorkflow(r.repair_request_id,"APPROVED",{approver_evidence_reviewed:checked});
+      const checked=document.getElementById("approveEvidence")?.checked || false;
+
+      if(photoCount>0 && !checked){
+        showMessage(
+          "Approver must confirm that all photo evidence has been reviewed.",
+          "error"
+        );
+        return;
+      }
+
+      await updateWorkflow(
+        r.repair_request_id,
+        "APPROVED",
+        {
+          approver_evidence_reviewed: checked
+        }
+      );
+    });
+  }
+
+  const returnButton=document.getElementById("returnRequest");
+  if(returnButton){
+    returnButton.addEventListener("click",async()=>{
+      await setStatus(r.repair_request_id,"RETURNED");
+    });
+  }
+
+  const startRepair=document.getElementById("startRepairButton");
+  if(startRepair){
+    startRepair.addEventListener("click",async()=>{
+      await setStatus(r.repair_request_id,"IN PROGRESS");
+    });
+  }
+
+  const completeRepair=document.getElementById("completeRepairButton");
+  if(completeRepair){
+    completeRepair.addEventListener("click",async()=>{
+      await setStatus(r.repair_request_id,"COMPLETED");
+    });
+  }
+
+  const closeRepair=document.getElementById("closeRepairButton");
+  if(closeRepair){
+    closeRepair.addEventListener("click",async()=>{
+      await setStatus(r.repair_request_id,"CLOSED");
     });
   }
 }
