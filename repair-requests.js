@@ -15,6 +15,7 @@ const supabaseClient =
   );
 
 const state = {
+  userId: null,
   equipment: [],
   projects: [],
   requests: [],
@@ -47,7 +48,8 @@ function showMessage(msg,type="info"){
 }
 
 function statusPill(status){
-  const key=String(status||"DRAFT").toLowerCase().replaceAll(" ","-");
+  const map={"PENDING REVIEW":"review","PENDING APPROVAL":"approval"};
+  const key=map[status]||String(status||"DRAFT").toLowerCase().replaceAll(" ","-");
   return '<span class="pill '+escapeHtml(key)+'">'+escapeHtml(status)+'</span>';
 }
 
@@ -189,7 +191,7 @@ async function createRequest(){
     request_date:date,
     equipment_id:eq,
     project_id:proj,
-    pm_inspection_id:pm,
+    pm_inspection_ref:pm,
     reported_by:reported,
     body_plate_no:finalBody,
     problems_encountered:problems,
@@ -233,7 +235,7 @@ async function uploadPhotos(requestId){
       file_path:path,
       file_name:file.name,
       caption:null,
-      uploaded_by:null
+      uploaded_by:state.userId
     });
     if(row.error)throw row.error;
   }
@@ -364,8 +366,14 @@ function renderDetailActions(){
 async function updateWorkflow(id,next,extra={}){
   const payload={status:next,...extra};
 
-  if(next==="PENDING APPROVAL")payload.reviewed_at=new Date().toISOString();
-  if(next==="APPROVED")payload.approved_at=new Date().toISOString();
+  if(next==="PENDING APPROVAL"){
+    payload.reviewed_at=new Date().toISOString();
+    payload.reviewed_by=state.userId;
+  }
+  if(next==="APPROVED"){
+    payload.approved_at=new Date().toISOString();
+    payload.approved_by=state.userId;
+  }
   if(next==="IN PROGRESS")payload.repair_date_started=new Date().toISOString();
   if(next==="COMPLETED")payload.repair_date_completed=new Date().toISOString();
   if(next==="CLOSED")payload.received_at=new Date().toISOString();
