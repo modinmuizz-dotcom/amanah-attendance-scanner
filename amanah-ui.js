@@ -77,7 +77,70 @@
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
     oldHeaders.forEach(el=>{ if(el && !el.id?.startsWith('amanah')) el.style.setProperty('display','none','important'); });
 
+
+    function moduleHeroConfig(){
+      const file=(location.pathname.split('/').pop()||'dashboard.html').toLowerCase();
+      const map={
+        'dashboard.html':{
+          kicker:'SYSTEM OVERVIEW',
+          title:'DASHBOARD',
+          desc:'Monitor AMANAH projects, workforce, equipment and daily operations from one place.',
+          badge:'Management Dashboard'
+        },
+        'admin.html':{
+          kicker:'MASTER DATA CONTROL',
+          title:'MASTER DATA',
+          desc:'Manage employees, equipment and projects used by the AMANAH construction management system.',
+          badge:'Master Data Center'
+        },
+        'attendance.html':{
+          kicker:'WORKFORCE CONTROL',
+          title:'ATTENDANCE MANAGEMENT',
+          desc:'View and monitor AMANAH attendance, working hours and fuel usage.',
+          badge:'Attendance Control'
+        },
+        'reports.html':{
+          kicker:'REPORTING & ANALYTICS',
+          title:'ATTENDANCE REPORTS',
+          desc:'Analyze AMANAH attendance, working hours and fuel usage with filters and report exports.',
+          badge:'Attendance Analytics'
+        }
+      };
+      return map[file] || null;
+    }
+
+    function ensureModuleHero(){
+      if(document.querySelector('.amanah-common-page-hero') || document.querySelector('.amanah-common-active .hero')) return;
+      const cfg=moduleHeroConfig();
+      if(!cfg) return;
+      const host=document.querySelector('main') || document.querySelector('.container') || document.querySelector('.page');
+      if(!host) return;
+
+      const hero=document.createElement('section');
+      hero.className='amanah-common-page-hero';
+      hero.innerHTML=
+        '<div><div class="kicker">'+cfg.kicker+'</div>'+
+        '<h1>'+cfg.title+'</h1>'+
+        '<p>'+cfg.desc+'</p></div>'+
+        '<div class="hero-card"><small>System Module</small><strong>'+cfg.badge+'</strong></div>';
+      
+      host.insertBefore(hero,host.firstElementChild);
+
+      const hideSelectors={
+        'dashboard.html':['.heading'],
+        'admin.html':['.page-heading'],
+        'attendance.html':['.heading'],
+        'reports.html':['main.container > h1','main.container > .subtitle']
+      };
+      const file=(location.pathname.split('/').pop()||'dashboard.html').toLowerCase();
+      (hideSelectors[file]||[]).forEach(sel=>{
+        document.querySelectorAll(sel).forEach(el=>el.style.display='none');
+      });
+    }
+
     const sidebar=document.createElement('aside');
+    ensureModuleHero();
+
     sidebar.id='amanahSidebar';
     const current=getCurrentKey();
     sidebar.innerHTML=
