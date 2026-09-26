@@ -415,7 +415,7 @@ function renderEmployees() {
     body.innerHTML = `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="empty-row"
         >
           No employees found.
@@ -464,6 +464,12 @@ function renderEmployees() {
           ${escapeHtml(
             employee.status
           )}
+        </td>
+
+        <td>
+          ₱${Number(
+            employee.hourly_rate ?? 0
+          ).toFixed(2)}
         </td>
 
         <td>
@@ -560,7 +566,7 @@ function renderEquipment() {
     body.innerHTML = `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="empty-row"
         >
           No equipment found.
@@ -609,6 +615,12 @@ function renderEquipment() {
           ${escapeHtml(
             equipment.status
           )}
+        </td>
+
+        <td>
+          ₱${Number(
+            equipment.hourly_rate ?? 0
+          ).toFixed(2)}
         </td>
 
         <td>
@@ -958,6 +970,15 @@ function openEmployeeModal(
         values.date_hired,
         false,
         'date'
+      )}
+
+      ${field(
+        'Hourly Rate',
+        'hourly_rate',
+        values.hourly_rate,
+        false,
+        'number',
+        '0.00'
       )}
 
       ${selectField(
@@ -1375,6 +1396,13 @@ async function saveEmployee(
       values.date_hired ||
       null,
 
+    hourly_rate:
+      values.hourly_rate === ''
+        ? 0
+        : Number(
+            values.hourly_rate
+          ),
+
     status:
       values.status || 'ACTIVE'
 
@@ -1451,6 +1479,13 @@ async function saveEquipment(
     plate_number:
       values.plate_number.trim() ||
       null,
+
+    hourly_rate:
+      values.hourly_rate === ''
+        ? 0
+        : Number(
+            values.hourly_rate
+          ),
 
     status:
       values.status || 'ACTIVE'
