@@ -1240,3 +1240,101 @@ th {
     min-height:470px;
   }
 }
+
+
+/* =====================================================
+   AMANAH LOGIN — PREMIUM CONSTRUCTION AMBIENT BACKGROUND
+   ===================================================== */
+
+.admin-login-screen{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(900px 520px at 6% 8%, rgba(37,99,235,.18), transparent 58%),
+    radial-gradient(760px 520px at 96% 88%, rgba(16,185,129,.14), transparent 58%),
+    radial-gradient(520px 420px at 86% 10%, rgba(247,201,74,.10), transparent 62%),
+    linear-gradient(135deg,#e9eff8 0%,#f8fafc 42%,#eef4f5 100%);
+}
+
+/* blueprint-style technical grid */
+.admin-login-screen::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.68;
+  background-image:
+    linear-gradient(rgba(30,64,175,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(30,64,175,.045) 1px,transparent 1px),
+    linear-gradient(rgba(15,23,42,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(15,23,42,.018) 1px,transparent 1px);
+  background-size:48px 48px,48px 48px,12px 12px,12px 12px;
+  mask-image:linear-gradient(
+    180deg,
+    rgba(0,0,0,.98) 0%,
+    rgba(0,0,0,.82) 58%,
+    rgba(0,0,0,.32) 100%
+  );
+}
+
+/* subtle architectural diagonals */
+.admin-login-screen::after{
+  content:"";
+  position:absolute;
+  inset:-12%;
+  pointer-events:none;
+  opacity:.45;
+  background:
+    linear-gradient(118deg,transparent 0 24%,rgba(37,99,235,.055) 24.2%,transparent 24.55%),
+    linear-gradient(118deg,transparent 0 52%,rgba(15,23,42,.035) 52.2%,transparent 52.45%),
+    linear-gradient(118deg,transparent 0 77%,rgba(22,163,74,.045) 77.2%,transparent 77.45%);
+  transform:rotate(-3deg);
+}
+
+/* floating construction beacons */
+.admin-login-screen{
+  --bg-blue:rgba(37,99,235,.18);
+  --bg-green:rgba(22,163,74,.14);
+  --bg-gold:rgba(247,201,74,.12);
+}
+
+.admin-login-shell{
+  box-shadow:
+    0 45px 110px rgba(15,23,42,.17),
+    0 10px 30px rgba(15,23,42,.08),
+    0 0 90px rgba(37,99,235,.07);
+}
+
+/* Better separation from the bright background */
+.admin-login-visual,
+.admin-login-form-panel{
+  position:relative;
+}
+
+/* soft light spill around the login card */
+.admin-login-visual::before{
+  content:"";
+  position:absolute;
+  inset:-80px -120px -80px -100px;
+  background:
+    radial-gradient(circle at 22% 22%,rgba(247,201,74,.08),transparent 24%),
+    radial-gradient(circle at 76% 76%,rgba(22,163,74,.07),transparent 27%);
+  pointer-events:none;
+  z-index:0;
+}
+
+.admin-login-form-panel::after{
+  content:"";
+  position:absolute;
+  width:420px;
+  height:420px;
+  right:-230px;
+  bottom:-210px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle,
+      rgba(37,99,235,.055) 0%,
+      rgba(37,99,235,.025) 34%,
+      transparent 68%);
+  pointer-events:none;
+}
