@@ -113,3 +113,87 @@ body.amanah-common-active{
   .amanah-common-active .container{width:calc(100% - 20px)}
   .amanah-common-active .page{padding:18px 10px 40px}
 }
+
+/* ===== Shared module hero — matches Equipment History ===== */
+.amanah-common-active .hero,
+.amanah-common-active .amanah-common-page-hero{
+  background:linear-gradient(115deg,#173b95 0%,#2563eb 65%,#2f6ee8 100%) !important;
+  color:#fff !important;
+  border-radius:18px;
+  padding:28px 30px;
+  display:flex;
+  justify-content:space-between;
+  gap:28px;
+  align-items:center;
+  margin:0 0 18px !important;
+  box-shadow:0 10px 30px rgba(37,99,235,.16);
+}
+.amanah-common-active .hero .kicker,
+.amanah-common-active .amanah-common-page-hero .kicker{
+  font-size:9px !important;
+  font-weight:900 !important;
+  letter-spacing:1.4px !important;
+  opacity:.78 !important;
+  text-transform:uppercase !important;
+  margin:0 0 8px !important;
+  color:#dbeafe !important;
+}
+.amanah-common-active .hero h1,
+.amanah-common-active .amanah-common-page-hero h1{
+  margin:0 !important;
+  color:#fff !important;
+  font-size:32px !important;
+  font-weight:900 !important;
+  letter-spacing:-.5px !important;
+}
+.amanah-common-active .hero p,
+.amanah-common-active .amanah-common-page-hero p{
+  margin:7px 0 0 !important;
+  max-width:760px !important;
+  line-height:1.45 !important;
+  color:#dbeafe !important;
+  font-size:12px !important;
+}
+.amanah-common-active .hero-card,
+.amanah-common-active .amanah-common-page-hero .hero-card{
+  background:#fff !important;
+  color:#15326f !important;
+  border-radius:12px !important;
+  padding:14px 16px !important;
+  min-width:205px !important;
+  box-shadow:none !important;
+}
+.amanah-common-active .hero-card small,
+.amanah-common-active .amanah-common-page-hero .hero-card small{
+  display:block !important;
+  color:#64748b !important;
+  font-weight:900 !important;
+  text-transform:uppercase !important;
+  font-size:8px !important;
+  letter-spacing:1px !important;
+}
+.amanah-common-active .hero-card strong,
+.amanah-common-active .amanah-common-page-hero .hero-card strong{
+  display:block !important;
+  margin-top:6px !important;
+  color:#15326f !important;
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+.amanah-common-active .amanah-common-page-hero{
+  min-height:136px;
+}
+@media(max-width:900px){
+  .amanah-common-active .hero,
+  .amanah-common-active .amanah-common-page-hero{
+    flex-direction:column;
+    align-items:stretch;
+    padding:23px 20px;
+    gap:16px;
+  }
+  .amanah-common-active .hero-card,
+  .amanah-common-active .amanah-common-page-hero .hero-card{
+    min-width:0 !important;
+    width:100%;
+  }
+}
