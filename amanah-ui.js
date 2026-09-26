@@ -163,7 +163,7 @@
     const title=nav.flatMap(g=>g.items.map(i=>[i[0],i[1]])).find(x=>x[0]===current)?.[1]||'Dashboard';
     topbar.innerHTML=
       '<div class="amanah-breadcrumb"><button class="amanah-icon-btn amanah-menu-toggle" id="amanahMenuToggle" aria-label="Open menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span>Construction Management System</span><span class="amanah-crumb-arrow">›</span><strong>'+title+'</strong></div>'+
-      '<div class="amanah-top-right"><div class="amanah-local-ai"><span class="amanah-ai-dot"></span>Local AI</div><button class="amanah-icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button><div class="amanah-top-avatar">SA</div><button class="amanah-icon-btn" id="amanahLogoutButton" title="Log out"><span style="font-size:16px">↪</span></button></div>';
+      '<div class="amanah-top-right"><div class="amanah-local-ai"><span class="amanah-ai-dot"></span>Local AI</div><button class="amanah-icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button><div class="amanah-top-avatar">SA</div></div>';
 
     const overlay=document.createElement('div');overlay.id='amanahMobileOverlay';
 
@@ -182,7 +182,7 @@
       sidebar.querySelectorAll('.amanah-nav-item').forEach(item=>item.style.display=(!q||item.textContent.toLowerCase().includes(q))?'flex':'none');
     });
 
-    document.getElementById('amanahLogoutButton')?.addEventListener('click',async()=>{
+    document.getElementById('amanahSidebarLogout')?.addEventListener('click',async()=>{
       const existing=document.getElementById('logoutButton');
       if(existing){
         existing.click();
