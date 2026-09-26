@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AMANAH Project Monitoring</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css?v=1"
+    >
+
+    <style>
+        .pm-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .pm-title {
+            margin-bottom: 25px;
+        }
+
+        .pm-title h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+
+        .pm-title p {
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        .pm-card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        .pm-card h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .pm-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .pm-field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .pm-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .pm-field label {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .pm-field input,
+        .pm-field select,
+        .pm-field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        .pm-field textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .pm-readonly {
+            background: #f8fafc;
+        }
+
+        .pm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .pm-button {
+            border: none;
+            border-radius: 10px;
+            padding: 13px 20px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .pm-button-primary {
+            background: #111827;
+            color: white;
+        }
+
+        .pm-button-secondary {
+            background: #e2e8f0;
+            color: #111827;
+        }
+
+        .pm-message {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: 600;
+        }
+
+        .pm-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .pm-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .pm-table-wrap {
+            overflow-x: auto;
+        }
+
+        .pm-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .pm-table th,
+        .pm-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .pm-table th {
+            background: #f8fafc;
+        }
+
+        .pm-progress {
+            font-weight: 700;
+        }
+
+        @media (max-width: 700px) {
+            .pm-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pm-field.full {
+                grid-column: auto;
+            }
+
+            .pm-actions {
+                flex-direction: column;
+            }
+
+            .pm-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-logo">A</div>
+
+        <div>
+            <div class="brand-title">
+                AMANAH CONSTRUCTION
+            </div>
+
+            <div class="brand-subtitle">
+                CONSTRUCTION MANAGEMENT SYSTEM
+            </div>
+        </div>
+    </div>
+
+    <div class="top-actions">
+
+        <button
+            class="btn-light"
+            onclick="location.href='dashboard.html'"
+        >
+            DASHBOARD
+        </button>
+
+        <button
+            class="btn-light"
+            onclick="location.href='admin.html'"
+        >
+            MASTER DATA
+        </button>
+
+        <button
+            class="btn-light"
+            onclick="location.href='attendance.html'"
+        >
+            ATTENDANCE
+        </button>
+
+        <button
+            class="btn-light"
+            onclick="location.href='reports.html'"
+        >
+            REPORTS
+        </button>
+
+        <button
+            class="btn-light"
+            id="logoutButton"
+        >
+            LOG OUT
+        </button>
+
+    </div>
+</header>
+
+
+<main class="pm-container">
+
+    <div class="pm-title">
+        <h1>PROJECT MONITORING</h1>
+
+        <p>
+            Monitor project progress and daily construction activities.
+        </p>
+    </div>
+
+
+    <div
+        id="successMessage"
+        class="pm-message pm-success"
+    ></div>
+
+    <div
+        id="errorMessage"
+        class="pm-message pm-error"
+    ></div>
+
+
+    <!-- PROJECT SELECTION -->
+
+    <section class="pm-card">
+
+        <h2>PROJECT INFORMATION</h2>
+
+        <div class="pm-grid">
+
+            <div class="pm-field full">
+
+                <label>
+                    Project
+                </label>
+
+                <select id="projectSelect">
+
+                    <option value="">
+                        Select project
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Project ID
+                </label>
+
+                <input
+                    id="projectId"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Project Name
+                </label>
+
+                <input
+                    id="projectName"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Client
+                </label>
+
+                <input
+                    id="client"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Location
+                </label>
+
+                <input
+                    id="location"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Site Engineer
+                </label>
+
+                <input
+                    id="siteEngineer"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Current Progress (%)
+                </label>
+
+                <input
+                    id="currentProgress"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Contract Amount
+                </label>
+
+                <input
+                    id="contractAmount"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Status
+                </label>
+
+                <input
+                    id="projectStatus"
+                    class="pm-readonly"
+                    readonly
+                >
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- DAILY ACTIVITY -->
+
+    <section class="pm-card">
+
+        <h2>ADD DAILY PROJECT ACTIVITY</h2>
+
+        <div class="pm-grid">
+
+            <div class="pm-field">
+
+                <label>
+                    Activity Date
+                </label>
+
+                <input
+                    type="date"
+                    id="activityDate"
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Activity
+                </label>
+
+                <input
+                    id="activity"
+                    placeholder="Example: Concrete Pouring"
+                >
+
+            </div>
+
+
+            <div class="pm-field full">
+
+                <label>
+                    Description
+                </label>
+
+                <textarea
+                    id="description"
+                    placeholder="Describe today's activity..."
+                ></textarea>
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Manpower
+                </label>
+
+                <input
+                    type="number"
+                    id="manpower"
+                    min="0"
+                    value="0"
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Equipment
+                </label>
+
+                <input
+                    id="equipment"
+                    placeholder="Example: Excavator, Dump Truck"
+                >
+
+            </div>
+
+
+            <div class="pm-field">
+
+                <label>
+                    Accomplishment (%)
+                </label>
+
+                <input
+                    type="number"
+                    id="accomplishment"
+                    min="0"
+                    max="100"
+                    value="0"
+                >
+
+            </div>
+
+
+            <div class="pm-field full">
+
+                <label>
+                    Remarks
+                </label>
+
+                <textarea
+                    id="remarks"
+                    placeholder="Additional remarks..."
+                ></textarea>
+
+            </div>
+
+        </div>
+
+
+        <div class="pm-actions">
+
+            <button
+                class="pm-button pm-button-secondary"
+                id="clearActivityButton"
+            >
+                CLEAR
+            </button>
+
+            <button
+                class="pm-button pm-button-primary"
+                id="saveActivityButton"
+            >
+                SAVE ACTIVITY
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- HISTORY -->
+
+    <section class="pm-card">
+
+        <h2>PROJECT ACTIVITY HISTORY</h2>
+
+        <div class="pm-table-wrap">
+
+            <table class="pm-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+
+                        <th>Activity</th>
+
+                        <th>Description</th>
+
+                        <th>Manpower</th>
+
+                        <th>Equipment</th>
+
+                        <th>Progress</th>
+
+                        <th>Remarks</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="activityBody">
+
+                    <tr>
+
+                        <td colspan="7">
+                            Select a project.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+    src="project-monitoring.js?v=1"
+></script>
+
+</body>
+</html>
