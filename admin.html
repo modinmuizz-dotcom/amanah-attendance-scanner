@@ -27,74 +27,119 @@
 
   <section
     id="loginScreen"
-    class="screen"
+    class="screen admin-login-screen"
   >
 
-    <div class="login-card">
+    <div class="admin-login-shell">
 
-      <div class="brand-box">
-        <div class="brand-logo">
-          A
+      <div class="admin-login-visual">
+        <div class="visual-grid"></div>
+        <div class="visual-orb orb-one"></div>
+        <div class="visual-orb orb-two"></div>
+
+        <div class="secure-chip">
+          <span class="pulse-dot"></span>
+          SECURE ADMIN ACCESS
         </div>
 
-        <div>
-          <div class="brand-title">
-            AMANAH CONSTRUCTION
-          </div>
+        <div class="login-logo-wrap">
+          <img
+            class="login-company-logo"
+            src="assets/amanah-logo.svg"
+            alt="AMANAH Construction Services"
+          >
+        </div>
 
-          <div class="brand-subtitle">
-            CONSTRUCTION MANAGEMENT SYSTEM
-          </div>
+        <div class="visual-copy">
+          <div class="visual-kicker">AMANAH CONSTRUCTION SERVICES</div>
+          <h2>BUILD SMART.<br>OPERATE BETTER.</h2>
+          <p>
+            Construction management, workforce control,
+            equipment lifecycle and project operations in one system.
+          </p>
+        </div>
+
+        <div class="visual-meta">
+          <span>AMANAH CMS</span>
+          <span>•</span>
+          <span>ADMINISTRATOR PORTAL</span>
         </div>
       </div>
 
-      <h1>
-        ADMIN LOGIN
-      </h1>
+      <div class="admin-login-form-panel">
 
-      <p class="muted">
-        Sign in to manage employees, equipment and projects.
-      </p>
+        <div class="form-topline">
+          <span class="topline-line"></span>
+          <span>CONTROL CENTER</span>
+        </div>
 
-      <form id="loginForm">
+        <div class="form-heading">
+          <div class="mini-logo">
+            <img src="assets/amanah-logo.svg" alt="">
+          </div>
+          <div>
+            <div class="form-brand-title">AMANAH CONSTRUCTION</div>
+            <div class="form-brand-subtitle">CONSTRUCTION MANAGEMENT SYSTEM</div>
+          </div>
+        </div>
 
-        <label>
-          Email
-        </label>
+        <div class="login-title-block">
+          <div class="login-eyebrow">ADMINISTRATOR SIGN IN</div>
+          <h1>Welcome back.</h1>
+          <p>Sign in to access the AMANAH management command center.</p>
+        </div>
 
-        <input
-          id="loginEmail"
-          type="email"
-          required
-          autocomplete="email"
-          placeholder="Enter administrator email"
-        >
+        <form id="loginForm">
 
-        <label>
-          Password
-        </label>
+          <div class="login-field">
+            <label for="loginEmail">EMAIL ADDRESS</label>
+            <div class="input-shell">
+              <span class="input-icon">✉</span>
+              <input
+                id="loginEmail"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="administrator@amanah.local"
+              >
+            </div>
+          </div>
 
-        <input
-          id="loginPassword"
-          type="password"
-          required
-          autocomplete="current-password"
-          placeholder="Enter password"
-        >
+          <div class="login-field">
+            <label for="loginPassword">PASSWORD</label>
+            <div class="input-shell">
+              <span class="input-icon">●</span>
+              <input
+                id="loginPassword"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="Enter your password"
+              >
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          class="button primary"
-        >
-          SIGN IN
-        </button>
+          <button
+            type="submit"
+            class="button primary admin-sign-in"
+          >
+            <span>SIGN IN TO AMANAH</span>
+            <span class="button-arrow">→</span>
+          </button>
 
-      </form>
+        </form>
 
-      <div
-        id="loginMessage"
-        class="message hidden"
-      ></div>
+        <div
+          id="loginMessage"
+          class="message hidden"
+        ></div>
+
+        <div class="login-footer">
+          <span><span class="status-dot"></span> SYSTEM READY</span>
+          <span>AUTHORIZED PERSONNEL ONLY</span>
+        </div>
+
+      </div>
 
     </div>
 
