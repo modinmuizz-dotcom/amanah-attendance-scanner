@@ -35,7 +35,7 @@
    ===================================================== */
 
 const SUPABASE_URL =
-  'https://bafmycjinxomufhkjvy.supabase.co';
+  'https://bafmycjninxomufhkjvy.supabase.co';
 
 const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
