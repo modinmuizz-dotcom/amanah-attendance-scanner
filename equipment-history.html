@@ -51,6 +51,20 @@ a{text-decoration:none;color:inherit}
 .nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nav-chevron{margin-left:auto;opacity:.7}
 .sidebar-bottom{padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-logout{
+  width:100%;
+  min-height:38px;
+  margin-top:9px;
+  border:0;
+  border-radius:8px;
+  background:#fff;
+  color:#111827;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.sidebar-logout:hover{background:#e5edff;color:#1d4ed8}
+
 .status-row{display:flex;align-items:center;gap:8px;padding:0 8px 10px;color:#d1d5db;font-size:10px}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#22c55e}
 .user-card{
@@ -197,6 +211,7 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
         <div><div class="user-name">Super Admin</div><div class="user-role">Administrator</div></div>
         <div class="user-gear">⚙</div>
       </div>
+      <button class="sidebar-logout" id="sidebarLogoutButton">LOG OUT</button>
     </div>
   </aside>
 
@@ -222,7 +237,6 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
         </div>
         <div class="hero-side">
           <div class="hero-badge"><div class="hero-badge-label">System Module</div><div class="hero-badge-value">Equipment Lifecycle History</div></div>
-          <button class="hero-btn" id="logoutButton">LOG OUT</button>
         </div>
       </section>
 
