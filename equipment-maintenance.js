@@ -159,7 +159,7 @@ function populateSelectors() {
 async function loadRecords() {
   const result = await supabaseClient
     .from("equipment_maintenance")
-    .select("maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,equipment:equipment_id(equipment_name),project:project_id(project_name)")
+    .select("maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,equipment(equipment_name),projects(project_name)")
     .order("maintenance_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -214,7 +214,7 @@ function render() {
       row.equipment?.equipment_name || row.equipment_id;
 
     const projectName =
-      row.project?.project_name || row.project_id || "—";
+      row.projects?.project_name || row.project_id || "—";
 
     return (
       "<tr>" +
