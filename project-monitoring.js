@@ -161,6 +161,72 @@ async function loadProjects() {
 
 
 /* =========================================================
+   LOAD EQUIPMENT
+   ========================================================= */
+
+async function loadEquipment() {
+
+    const select =
+        document.getElementById("equipment");
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("equipment")
+            .select(`
+                equipment_id,
+                equipment_name,
+                equipment_type,
+                plate_number,
+                status
+            `)
+            .eq("status", "ACTIVE")
+            .order("equipment_name", {
+                ascending: true
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        state.equipment = data || [];
+
+        select.innerHTML = `
+            <option value="">
+                Select equipment
+            </option>
+        `;
+
+        state.equipment.forEach(item => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                item.equipment_id;
+
+            option.textContent =
+                `${item.equipment_name} — ${item.equipment_id}`;
+
+            select.appendChild(option);
+
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(
+            "Could not load equipment: " +
+            error.message
+        );
+    }
+}
+
+/* =========================================================
    PROJECT SELECTION
    ========================================================= */
 
@@ -426,8 +492,25 @@ async function saveActivity() {
         );
 
 
-    const equipment =
-        document.getElementById("equipment").value.trim();
+   const equipmentId =
+    document.getElementById("equipment").value;
+
+const selectedEquipment =
+    state.equipment.find(
+        item => item.equipment_id === equipmentId
+    );
+
+if (!selectedEquipment) {
+
+    showError(
+        "Please select the equipment used."
+    );
+
+    return;
+}
+
+const equipment =
+    selectedEquipment.equipment_name;
 
 
     const accomplishment =
@@ -667,6 +750,7 @@ document.addEventListener(
 
 
         await loadProjects();
+await loadEquipment();
 
     }
 );
