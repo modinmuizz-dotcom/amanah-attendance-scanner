@@ -16,7 +16,7 @@
    ========================================================= */
 
 const SUPABASE_URL =
-  'https://bafmycjinxomufhkjvy.supabase.co';
+  'https://bafmycjninxomufhkjvy.supabase.co';
 
 /*
  * COPY THE SAME PUBLISHABLE KEY FROM YOUR CURRENT app.js
