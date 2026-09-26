@@ -1,18 +1,13 @@
 /* =========================================================
    AMANAH PROJECT MONITORING
+   MULTI-EQUIPMENT VERSION
    ========================================================= */
 
 const SUPABASE_URL =
     "https://bafmycjninxomufhkjvy.supabase.co";
 
-/*
- * IMPORTANT:
- * Put the SAME publishable key already used by your
- * working admin.js / app.js here.
- */
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
-
 
 const supabaseClient =
     window.supabase.createClient(
@@ -21,10 +16,15 @@ const supabaseClient =
     );
 
 
+/* =========================================================
+   STATE
+   ========================================================= */
+
 const state = {
     projects: [],
     equipment: [],
-    selectedProject: null
+    selectedProject: null,
+    selectedEquipmentIds: new Set()
 };
 
 
@@ -70,7 +70,10 @@ function clearMessages() {
 
 function escapeHtml(value) {
 
-    if (value === null || value === undefined) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return "";
     }
 
@@ -116,21 +119,18 @@ async function loadProjects() {
                 ascending: true
             });
 
-
         if (error) {
             throw error;
         }
 
-
-        state.projects = data || [];
-
+        state.projects =
+            data || [];
 
         select.innerHTML = `
             <option value="">
                 Select project
             </option>
         `;
-
 
         state.projects.forEach(project => {
 
@@ -146,7 +146,6 @@ async function loadProjects() {
             select.appendChild(option);
 
         });
-
 
     } catch (error) {
 
@@ -165,9 +164,6 @@ async function loadProjects() {
    ========================================================= */
 
 async function loadEquipment() {
-
-    const select =
-        document.getElementById("equipment");
 
     try {
 
@@ -192,32 +188,26 @@ async function loadEquipment() {
             throw error;
         }
 
-        state.equipment = data || [];
+        state.equipment =
+            data || [];
 
-        select.innerHTML = `
-            <option value="">
-                Select equipment
-            </option>
-        `;
-
-        state.equipment.forEach(item => {
-
-            const option =
-                document.createElement("option");
-
-            option.value =
-                item.equipment_id;
-
-            option.textContent =
-                `${item.equipment_name} — ${item.equipment_id}`;
-
-            select.appendChild(option);
-
-        });
+        renderEquipmentList();
 
     } catch (error) {
 
         console.error(error);
+
+        const list =
+            document.getElementById("equipmentList");
+
+        if (list) {
+
+            list.innerHTML = `
+                <div class="pm-equipment-empty">
+                    Could not load equipment.
+                </div>
+            `;
+        }
 
         showError(
             "Could not load equipment: " +
@@ -226,6 +216,243 @@ async function loadEquipment() {
     }
 }
 
+
+/* =========================================================
+   RENDER EQUIPMENT LIST
+   ========================================================= */
+
+function renderEquipmentList() {
+
+    const list =
+        document.getElementById("equipmentList");
+
+    if (!list) {
+        return;
+    }
+
+    const searchInput =
+        document.getElementById("equipmentSearch");
+
+    const search =
+        (searchInput?.value || "")
+            .trim()
+            .toLowerCase();
+
+    const filtered =
+        state.equipment.filter(item => {
+
+            const text = [
+                item.equipment_id,
+                item.equipment_name,
+                item.equipment_type,
+                item.plate_number
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+
+            return text.includes(search);
+        });
+
+
+    if (!filtered.length) {
+
+        list.innerHTML = `
+            <div class="pm-equipment-empty">
+                No equipment found.
+            </div>
+        `;
+
+        updateEquipmentSummary();
+        return;
+    }
+
+
+    list.innerHTML =
+        filtered.map(item => {
+
+            const checked =
+                state.selectedEquipmentIds
+                    .has(item.equipment_id);
+
+            return `
+                <label
+                    class="pm-equipment-option"
+                    data-equipment-search="${escapeHtml(
+                        [
+                            item.equipment_id,
+                            item.equipment_name,
+                            item.equipment_type,
+                            item.plate_number
+                        ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toLowerCase()
+                    )}"
+                >
+
+                    <input
+                        type="checkbox"
+                        class="equipment-checkbox"
+                        value="${escapeHtml(item.equipment_id)}"
+                        ${checked ? "checked" : ""}
+                    >
+
+                    <span class="pm-equipment-checkmark">
+                        ${checked ? "✓" : ""}
+                    </span>
+
+                    <span class="pm-equipment-info">
+
+                        <strong>
+                            ${escapeHtml(item.equipment_name)}
+                        </strong>
+
+                        <small>
+                            ${escapeHtml(item.equipment_id)}
+                            ${
+                                item.equipment_type
+                                    ? " • " +
+                                      escapeHtml(item.equipment_type)
+                                    : ""
+                            }
+                            ${
+                                item.plate_number
+                                    ? " • Plate " +
+                                      escapeHtml(item.plate_number)
+                                    : ""
+                            }
+                        </small>
+
+                    </span>
+
+                </label>
+            `;
+
+        }).join("");
+
+
+    list.querySelectorAll(
+        ".equipment-checkbox"
+    ).forEach(checkbox => {
+
+        checkbox.addEventListener(
+            "change",
+            function () {
+
+                const id =
+                    this.value;
+
+                if (this.checked) {
+
+                    state.selectedEquipmentIds
+                        .add(id);
+
+                } else {
+
+                    state.selectedEquipmentIds
+                        .delete(id);
+                }
+
+                renderEquipmentList();
+            }
+        );
+
+    });
+
+
+    updateEquipmentSummary();
+}
+
+
+/* =========================================================
+   EQUIPMENT SUMMARY
+   ========================================================= */
+
+function updateEquipmentSummary() {
+
+    const summary =
+        document.getElementById(
+            "equipmentSelectedSummary"
+        );
+
+    if (!summary) {
+        return;
+    }
+
+    const count =
+        state.selectedEquipmentIds.size;
+
+
+    if (count === 0) {
+
+        summary.textContent =
+            "No equipment selected.";
+
+        summary.classList.remove(
+            "has-selection"
+        );
+
+        return;
+    }
+
+
+    summary.textContent =
+        `${count} equipment ${
+            count === 1
+                ? "selected"
+                : "selected"
+        }.`;
+
+    summary.classList.add(
+        "has-selection"
+    );
+}
+
+
+/* =========================================================
+   SELECT ALL EQUIPMENT
+   ========================================================= */
+
+function selectAllEquipment() {
+
+    state.equipment.forEach(item => {
+
+        state.selectedEquipmentIds
+            .add(item.equipment_id);
+
+    });
+
+    renderEquipmentList();
+}
+
+
+/* =========================================================
+   CLEAR EQUIPMENT
+   ========================================================= */
+
+function clearSelectedEquipment() {
+
+    state.selectedEquipmentIds.clear();
+
+    renderEquipmentList();
+}
+
+
+/* =========================================================
+   GET SELECTED EQUIPMENT
+   ========================================================= */
+
+function getSelectedEquipment() {
+
+    return state.equipment.filter(
+        item =>
+            state.selectedEquipmentIds
+                .has(item.equipment_id)
+    );
+}
+
+
 /* =========================================================
    PROJECT SELECTION
    ========================================================= */
@@ -233,12 +460,15 @@ async function loadEquipment() {
 function handleProjectChange() {
 
     const id =
-        document.getElementById("projectSelect").value;
+        document
+            .getElementById("projectSelect")
+            .value;
 
 
     const project =
         state.projects.find(
-            item => item.project_id === id
+            item =>
+                item.project_id === id
         );
 
 
@@ -296,9 +526,15 @@ function handleProjectChange() {
         project.status || "";
 
 
-    loadActivities(project.project_id);
+    loadActivities(
+        project.project_id
+    );
 }
 
+
+/* =========================================================
+   CLEAR PROJECT INFORMATION
+   ========================================================= */
 
 function clearProjectInformation() {
 
@@ -311,12 +547,17 @@ function clearProjectInformation() {
         "currentProgress",
         "contractAmount",
         "projectStatus"
-    ].forEach(id => {
+    ]
+    .forEach(id => {
 
-        document.getElementById(id).value = "";
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.value = "";
+        }
 
     });
-
 }
 
 
@@ -327,7 +568,9 @@ function clearProjectInformation() {
 async function loadActivities(projectId) {
 
     const body =
-        document.getElementById("activityBody");
+        document.getElementById(
+            "activityBody"
+        );
 
 
     body.innerHTML = `
@@ -356,10 +599,16 @@ async function loadActivities(projectId) {
                 accomplishment,
                 remarks
             `)
-            .eq("project_id", projectId)
-            .order("activity_date", {
-                ascending: false
-            });
+            .eq(
+                "project_id",
+                projectId
+            )
+            .order(
+                "activity_date",
+                {
+                    ascending: false
+                }
+            );
 
 
         if (error) {
@@ -367,12 +616,15 @@ async function loadActivities(projectId) {
         }
 
 
-        renderActivities(data || []);
+        renderActivities(
+            data || []
+        );
 
 
     } catch (error) {
 
         console.error(error);
+
 
         body.innerHTML = `
             <tr>
@@ -381,6 +633,7 @@ async function loadActivities(projectId) {
                 </td>
             </tr>
         `;
+
 
         showError(
             "Could not load project activities: " +
@@ -397,7 +650,9 @@ async function loadActivities(projectId) {
 function renderActivities(rows) {
 
     const body =
-        document.getElementById("activityBody");
+        document.getElementById(
+            "activityBody"
+        );
 
 
     if (!rows.length) {
@@ -420,38 +675,53 @@ function renderActivities(rows) {
             <tr>
 
                 <td>
-                    ${escapeHtml(row.activity_date || "")}
+                    ${escapeHtml(
+                        row.activity_date || ""
+                    )}
                 </td>
 
                 <td>
                     <strong>
-                        ${escapeHtml(row.activity || "")}
+                        ${escapeHtml(
+                            row.activity || ""
+                        )}
                     </strong>
                 </td>
 
                 <td>
-                    ${escapeHtml(row.description || "")}
+                    ${escapeHtml(
+                        row.description || ""
+                    )}
                 </td>
 
                 <td>
-                    ${escapeHtml(row.manpower ?? 0)}
+                    ${escapeHtml(
+                        row.manpower ?? 0
+                    )}
                 </td>
 
                 <td>
-                    ${escapeHtml(row.equipment || "")}
+                    ${escapeHtml(
+                        row.equipment || ""
+                    )}
                 </td>
 
                 <td class="pm-progress">
-                    ${escapeHtml(row.accomplishment ?? 0)}%
+                    ${escapeHtml(
+                        row.accomplishment ?? 0
+                    )}%
                 </td>
 
                 <td>
-                    ${escapeHtml(row.remarks || "")}
+                    ${escapeHtml(
+                        row.remarks || ""
+                    )}
                 </td>
 
             </tr>
 
-        `).join("");
+        `)
+        .join("");
 }
 
 
@@ -475,53 +745,67 @@ async function saveActivity() {
 
 
     const activityDate =
-        document.getElementById("activityDate").value;
+        document
+            .getElementById(
+                "activityDate"
+            )
+            .value;
 
 
     const activity =
-        document.getElementById("activity").value.trim();
+        document
+            .getElementById(
+                "activity"
+            )
+            .value
+            .trim();
 
 
     const description =
-        document.getElementById("description").value.trim();
+        document
+            .getElementById(
+                "description"
+            )
+            .value
+            .trim();
 
 
     const manpower =
         Number(
-            document.getElementById("manpower").value || 0
+            document
+                .getElementById(
+                    "manpower"
+                )
+                .value || 0
         );
 
 
-   const equipmentId =
-    document.getElementById("equipment").value;
-
-const selectedEquipment =
-    state.equipment.find(
-        item => item.equipment_id === equipmentId
-    );
-
-if (!selectedEquipment) {
-
-    showError(
-        "Please select the equipment used."
-    );
-
-    return;
-}
-
-const equipment =
-    selectedEquipment.equipment_name;
+    const selectedEquipment =
+        getSelectedEquipment();
 
 
     const accomplishment =
         Number(
-            document.getElementById("accomplishment").value || 0
+            document
+                .getElementById(
+                    "accomplishment"
+                )
+                .value || 0
         );
 
 
     const remarks =
-        document.getElementById("remarks").value.trim();
+        document
+            .getElementById(
+                "remarks"
+            )
+            .value
+            .trim();
 
+
+    /* -------------------------------------------------------
+       VALIDATION
+       ------------------------------------------------------- */
 
     if (!activityDate) {
 
@@ -543,7 +827,22 @@ const equipment =
     }
 
 
-    if (accomplishment < 0 || accomplishment > 100) {
+    if (
+        selectedEquipment.length === 0
+    ) {
+
+        showError(
+            "Please select at least one equipment."
+        );
+
+        return;
+    }
+
+
+    if (
+        accomplishment < 0 ||
+        accomplishment > 100
+    ) {
 
         showError(
             "Accomplishment must be between 0 and 100."
@@ -553,27 +852,48 @@ const equipment =
     }
 
 
+    const equipmentNames =
+        selectedEquipment
+            .map(
+                item =>
+                    item.equipment_name
+            )
+            .join(", ");
+
+
     const button =
-        document.getElementById("saveActivityButton");
+        document.getElementById(
+            "saveActivityButton"
+        );
 
 
     button.disabled = true;
-    button.textContent = "SAVING...";
+    button.textContent =
+        "SAVING...";
 
 
     try {
 
+        /* ---------------------------------------------------
+           1. CREATE PROJECT ACTIVITY
+           --------------------------------------------------- */
+
         const {
-            error
+            data: activityRow,
+            error: activityError
         } = await supabaseClient
             .from("project_activities")
             .insert({
 
                 project_id:
-                    state.selectedProject.project_id,
+                    state
+                        .selectedProject
+                        .project_id,
 
                 project_name:
-                    state.selectedProject.project_name,
+                    state
+                        .selectedProject
+                        .project_name,
 
                 activity_date:
                     activityDate,
@@ -587,38 +907,105 @@ const equipment =
                 manpower:
                     manpower,
 
+                /*
+                 * Keep this existing field for
+                 * compatibility and reporting.
+                 */
                 equipment:
-                    equipment || null,
+                    equipmentNames,
 
                 accomplishment:
                     accomplishment,
 
                 remarks:
                     remarks || null
-            });
+
+            })
+            .select(
+                "activity_id"
+            )
+            .single();
 
 
-        if (error) {
-            throw error;
+        if (activityError) {
+            throw activityError;
         }
 
 
+        if (!activityRow?.activity_id) {
+
+            throw new Error(
+                "Activity was saved but no activity ID was returned."
+            );
+        }
+
+
+        /* ---------------------------------------------------
+           2. SAVE EACH EQUIPMENT RELATIONSHIP
+           --------------------------------------------------- */
+
+        const equipmentRows =
+            selectedEquipment.map(
+                item => ({
+
+                    activity_id:
+                        activityRow.activity_id,
+
+                    equipment_id:
+                        item.equipment_id
+
+                })
+            );
+
+
+        const {
+            error: equipmentError
+        } = await supabaseClient
+            .from(
+                "project_activity_equipment"
+            )
+            .insert(
+                equipmentRows
+            );
+
+
+        if (equipmentError) {
+
+            console.error(
+                "Equipment relationship error:",
+                equipmentError
+            );
+
+            throw new Error(
+                "Activity was saved, but the equipment assignments could not be saved: " +
+                equipmentError.message
+            );
+        }
+
+
+        /* ---------------------------------------------------
+           3. SUCCESS
+           --------------------------------------------------- */
+
         showSuccess(
-            "Project activity saved successfully."
+            `Project activity saved successfully with ${selectedEquipment.length} equipment.`
         );
 
 
         clearActivityForm();
 
 
-        loadActivities(
-            state.selectedProject.project_id
+        await loadActivities(
+            state
+                .selectedProject
+                .project_id
         );
 
 
     } catch (error) {
 
         console.error(error);
+
 
         showError(
             "Could not save project activity: " +
@@ -629,14 +1016,15 @@ const equipment =
     } finally {
 
         button.disabled = false;
-        button.textContent = "SAVE ACTIVITY";
 
+        button.textContent =
+            "SAVE ACTIVITY";
     }
 }
 
 
 /* =========================================================
-   CLEAR ACTIVITY
+   CLEAR ACTIVITY FORM
    ========================================================= */
 
 function clearActivityForm() {
@@ -647,32 +1035,51 @@ function clearActivityForm() {
             .slice(0, 10);
 
 
-    document.getElementById("activityDate")
-        .value = today;
+    document.getElementById(
+        "activityDate"
+    ).value = today;
 
 
-    document.getElementById("activity")
-        .value = "";
+    document.getElementById(
+        "activity"
+    ).value = "";
 
 
-    document.getElementById("description")
-        .value = "";
+    document.getElementById(
+        "description"
+    ).value = "";
 
 
-    document.getElementById("manpower")
-        .value = "0";
+    document.getElementById(
+        "manpower"
+    ).value = "0";
 
 
-    document.getElementById("equipment")
-        .value = "";
+    state.selectedEquipmentIds
+        .clear();
 
 
-    document.getElementById("accomplishment")
-        .value = "0";
+    const equipmentSearch =
+        document.getElementById(
+            "equipmentSearch"
+        );
+
+    if (equipmentSearch) {
+        equipmentSearch.value = "";
+    }
 
 
-    document.getElementById("remarks")
-        .value = "";
+    renderEquipmentList();
+
+
+    document.getElementById(
+        "accomplishment"
+    ).value = "0";
+
+
+    document.getElementById(
+        "remarks"
+    ).value = "";
 }
 
 
@@ -684,7 +1091,8 @@ async function logout() {
 
     await supabaseClient.auth.signOut();
 
-    location.href = "index.html";
+    location.href =
+        "index.html";
 }
 
 
@@ -696,61 +1104,161 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        const {
-            data: {
-                session
+        try {
+
+            const {
+                data: {
+                    session
+                }
+            } = await supabaseClient
+                .auth
+                .getSession();
+
+
+            if (!session) {
+
+                location.href =
+                    "index.html";
+
+                return;
             }
-        } = await supabaseClient.auth.getSession();
 
 
-        if (!session) {
+            /* ------------------------------------------------
+               PROJECT EVENTS
+               ------------------------------------------------ */
 
-            location.href = "index.html";
+            document
+                .getElementById(
+                    "projectSelect"
+                )
+                .addEventListener(
+                    "change",
+                    handleProjectChange
+                );
 
-            return;
+
+            /* ------------------------------------------------
+               ACTIVITY BUTTONS
+               ------------------------------------------------ */
+
+            document
+                .getElementById(
+                    "saveActivityButton"
+                )
+                .addEventListener(
+                    "click",
+                    saveActivity
+                );
+
+
+            document
+                .getElementById(
+                    "clearActivityButton"
+                )
+                .addEventListener(
+                    "click",
+                    clearActivityForm
+                );
+
+
+            /* ------------------------------------------------
+               EQUIPMENT EVENTS
+               ------------------------------------------------ */
+
+            const equipmentSearch =
+                document.getElementById(
+                    "equipmentSearch"
+                );
+
+            if (equipmentSearch) {
+
+                equipmentSearch
+                    .addEventListener(
+                        "input",
+                        renderEquipmentList
+                    );
+            }
+
+
+            const selectAllEquipmentButton =
+                document.getElementById(
+                    "selectAllEquipmentButton"
+                );
+
+            if (selectAllEquipmentButton) {
+
+                selectAllEquipmentButton
+                    .addEventListener(
+                        "click",
+                        selectAllEquipment
+                    );
+            }
+
+
+            const clearEquipmentButton =
+                document.getElementById(
+                    "clearEquipmentButton"
+                );
+
+            if (clearEquipmentButton) {
+
+                clearEquipmentButton
+                    .addEventListener(
+                        "click",
+                        clearSelectedEquipment
+                    );
+            }
+
+
+            /* ------------------------------------------------
+               LOGOUT
+               ------------------------------------------------ */
+
+            document
+                .getElementById(
+                    "logoutButton"
+                )
+                .addEventListener(
+                    "click",
+                    logout
+                );
+
+
+            /* ------------------------------------------------
+               DEFAULT DATE
+               ------------------------------------------------ */
+
+            const today =
+                new Date()
+                    .toISOString()
+                    .slice(0, 10);
+
+
+            document.getElementById(
+                "activityDate"
+            ).value = today;
+
+
+            /* ------------------------------------------------
+               LOAD MASTER DATA
+               ------------------------------------------------ */
+
+            await Promise.all([
+                loadProjects(),
+                loadEquipment()
+            ]);
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                "Could not initialize Project Monitoring: " +
+                error.message
+            );
         }
-
-
-        document.getElementById("projectSelect")
-            .addEventListener(
-                "change",
-                handleProjectChange
-            );
-
-
-        document.getElementById("saveActivityButton")
-            .addEventListener(
-                "click",
-                saveActivity
-            );
-
-
-        document.getElementById("clearActivityButton")
-            .addEventListener(
-                "click",
-                clearActivityForm
-            );
-
-
-        document.getElementById("logoutButton")
-            .addEventListener(
-                "click",
-                logout
-            );
-
-
-        const today =
-            new Date()
-                .toISOString()
-                .slice(0, 10);
-
-
-        document.getElementById("activityDate")
-            .value = today;
-
-
-        await loadProjects();
-await loadEquipment();
 
     }
 );
