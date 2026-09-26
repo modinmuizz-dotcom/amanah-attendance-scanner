@@ -23,6 +23,7 @@ const supabaseClient =
 
 const state = {
     projects: [],
+    equipment: [],
     selectedProject: null
 };
 
