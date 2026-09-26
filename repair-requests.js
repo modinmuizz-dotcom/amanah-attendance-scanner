@@ -325,8 +325,142 @@ async function openDetail(id){
     ? state.selectedRequest.items.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong> — '+escapeHtml(x.material_or_spare_part||"")+' '+escapeHtml(x.quantity??"")+' '+escapeHtml(x.unit||"")+'</div>').join("")
     : '<div class="empty">No work/material lines yet.</div>';
 
+  const repairBox=document.createElement("section");
+  repairBox.className="card";
+  repairBox.style.marginTop="16px";
+  repairBox.style.padding="14px";
+
+  if(r.data.status==="IN PROGRESS"){
+    repairBox.innerHTML=`
+      <div class="toolbar">
+        <div>
+          <h2 style="font-size:15px">REPAIR EXECUTION & PHOTO EVIDENCE</h2>
+          <p class="subtitle">Record who is repairing the equipment and attach BEFORE / DURING / AFTER evidence.</p>
+        </div>
+      </div>
+      <div class="detail-grid" style="margin-top:12px">
+        <div class="field">
+          <label>Repaired By</label>
+          <input class="input" id="repairByInput" value="${escapeHtml(r.data.repaired_by||"")}" placeholder="Name of mechanic / repair team">
+        </div>
+        <div class="field">
+          <label>Photo Category</label>
+          <select class="select" id="repairPhotoCategory">
+            <option>REPAIR BEFORE</option>
+            <option>REPAIR DURING</option>
+            <option>REPAIR AFTER</option>
+          </select>
+        </div>
+      </div>
+      <div class="upload-row" style="margin-top:12px">
+        <div class="field" style="grid-column:1/-1">
+          <label>Add Repair Photo</label>
+          <input class="input" type="file" id="repairPhotoInput" accept="image/*" multiple capture="environment">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-gray" type="button" id="saveRepairDetails">SAVE REPAIR DETAILS</button>
+        <button class="btn btn-blue" type="button" id="uploadRepairPhotos">UPLOAD REPAIR PHOTOS</button>
+      </div>
+      <div style="margin-top:10px;color:#64748b;font-size:11px">
+        REPAIR BEFORE: ${state.selectedRequest.photos.filter(x=>x.photo_category==="REPAIR BEFORE").length}
+        &nbsp; | &nbsp;
+        REPAIR DURING: ${state.selectedRequest.photos.filter(x=>x.photo_category==="REPAIR DURING").length}
+        &nbsp; | &nbsp;
+        REPAIR AFTER: ${state.selectedRequest.photos.filter(x=>x.photo_category==="REPAIR AFTER").length}
+      </div>`;
+  }else{
+    repairBox.innerHTML=`
+      <div class="toolbar">
+        <div>
+          <h2 style="font-size:15px">REPAIR EXECUTION</h2>
+          <p class="subtitle">Repair execution details and photographic evidence.</p>
+        </div>
+      </div>
+      <div class="detail-grid" style="margin-top:12px">
+        <div class="detail-box"><h3>Repaired By</h3><div class="detail-text">${escapeHtml(r.data.repaired_by||"Not recorded")}</div></div>
+        <div class="detail-box"><h3>Repair Started</h3><div class="detail-text">${escapeHtml(r.data.repair_date_started||"Not started")}</div></div>
+        <div class="detail-box"><h3>Repair Completed</h3><div class="detail-text">${escapeHtml(r.data.repair_date_completed||"Not completed")}</div></div>
+        <div class="detail-box"><h3>After Photo Count</h3><div class="detail-text">${state.selectedRequest.photos.filter(x=>x.photo_category==="REPAIR AFTER").length}</div></div>
+      </div>`;
+  }
+
+  detail.querySelector("#detailActions").parentElement.before(repairBox);
+
+  wireRepairExecutionHandlers(r.data, state.selectedRequest.photos);
+
   renderDetailActions();
   $("detailModal").classList.add("open");
+}
+
+async function uploadRepairPhotos(request){
+  const input=document.getElementById("repairPhotoInput");
+  const category=document.getElementById("repairPhotoCategory")?.value;
+  if(!input || !input.files.length) throw new Error("Please choose at least one repair photo.");
+  if(!category) throw new Error("Please select a repair photo category.");
+
+  for(const file of [...input.files]){
+    const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const path=request.repair_request_id+"/"+crypto.randomUUID()+"-"+safe;
+
+    const upload=await supabaseClient.storage
+      .from("repair-evidence")
+      .upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
+
+    if(upload.error) throw upload.error;
+
+    const row=await supabaseClient.from("repair_request_photos").insert({
+      repair_request_id:request.repair_request_id,
+      photo_category:category,
+      file_path:path,
+      file_name:file.name,
+      caption:null,
+      uploaded_by:state.userId
+    });
+
+    if(row.error) throw row.error;
+  }
+
+  await openDetail(request.repair_request_id);
+  showMessage("Repair photo evidence uploaded successfully.","success");
+}
+
+async function saveRepairDetails(request){
+  const repairedBy=document.getElementById("repairByInput")?.value.trim()||null;
+
+  const r=await supabaseClient
+    .from("repair_requests")
+    .update({repaired_by:repairedBy})
+    .eq("repair_request_id",request.repair_request_id);
+
+  if(r.error) throw r.error;
+
+  await openDetail(request.repair_request_id);
+  showMessage("Repair details saved successfully.","success");
+}
+
+function wireRepairExecutionHandlers(request,photos){
+  const save=document.getElementById("saveRepairDetails");
+  if(save){
+    save.addEventListener("click",async()=>{
+      try{
+        await saveRepairDetails(request);
+      }catch(e){
+        showMessage(e.message||"Unable to save repair details.","error");
+      }
+    });
+  }
+
+  const upload=document.getElementById("uploadRepairPhotos");
+  if(upload){
+    upload.addEventListener("click",async()=>{
+      try{
+        await uploadRepairPhotos(request);
+      }catch(e){
+        showMessage(e.message||"Unable to upload repair photos.","error");
+      }
+    });
+  }
 }
 
 function renderDetailActions(){
@@ -437,6 +571,19 @@ function renderDetailActions(){
   const completeRepair=document.getElementById("completeRepairButton");
   if(completeRepair){
     completeRepair.addEventListener("click",async()=>{
+      const repairedBy=(state.selectedRequest.request.repaired_by||"").trim();
+      const afterPhotos=state.selectedRequest.photos.filter(x=>x.photo_category==="REPAIR AFTER").length;
+
+      if(!repairedBy){
+        showMessage("Please record Repaired By before completing the repair.","error");
+        return;
+      }
+
+      if(afterPhotos===0){
+        showMessage("A REPAIR AFTER photo is required before the repair can be marked COMPLETED.","error");
+        return;
+      }
+
       await setStatus(r.repair_request_id,"COMPLETED");
     });
   }
