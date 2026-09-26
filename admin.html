@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    AMANAH Construction Management System
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+</head>
+
+<body>
+
+  <!-- =====================================================
+       LOGIN
+       ===================================================== -->
+
+  <section
+    id="loginScreen"
+    class="screen"
+  >
+
+    <div class="login-card">
+
+      <div class="brand-box">
+        <div class="brand-logo">
+          A
+        </div>
+
+        <div>
+          <div class="brand-title">
+            AMANAH CONSTRUCTION
+          </div>
+
+          <div class="brand-subtitle">
+            CONSTRUCTION MANAGEMENT SYSTEM
+          </div>
+        </div>
+      </div>
+
+      <h1>
+        ADMIN LOGIN
+      </h1>
+
+      <p class="muted">
+        Sign in to manage employees, equipment and projects.
+      </p>
+
+      <form id="loginForm">
+
+        <label>
+          Email
+        </label>
+
+        <input
+          id="loginEmail"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="Enter administrator email"
+        >
+
+        <label>
+          Password
+        </label>
+
+        <input
+          id="loginPassword"
+          type="password"
+          required
+          autocomplete="current-password"
+          placeholder="Enter password"
+        >
+
+        <button
+          type="submit"
+          class="button primary"
+        >
+          SIGN IN
+        </button>
+
+      </form>
+
+      <div
+        id="loginMessage"
+        class="message hidden"
+      ></div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       ADMIN APP
+       ===================================================== -->
+
+  <section
+    id="adminApp"
+    class="hidden"
+  >
+
+    <header class="topbar">
+
+      <div class="topbar-brand">
+
+        <div class="brand-logo small">
+          A
+        </div>
+
+        <div>
+          <div class="brand-title">
+            AMANAH CONSTRUCTION
+          </div>
+
+          <div class="brand-subtitle">
+            CONSTRUCTION MANAGEMENT SYSTEM
+          </div>
+        </div>
+
+      </div>
+
+      <div class="topbar-actions">
+
+        <span
+          id="loggedInUser"
+          class="user-label"
+        ></span>
+
+        <button
+          id="logoutButton"
+          class="button secondary"
+        >
+          LOG OUT
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <main class="container">
+
+      <div
+        id="globalMessage"
+        class="message hidden"
+      ></div>
+
+
+      <!-- =================================================
+           PAGE TITLE
+           ================================================= -->
+
+      <section class="page-heading">
+
+        <div>
+
+          <h1>
+            MASTER DATA
+          </h1>
+
+          <p>
+            Manage the data used by the AMANAH system.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
+           NAVIGATION
+           ================================================= -->
+
+      <div class="tabs">
+
+        <button
+          class="tab-button active"
+          data-tab="employeesTab"
+        >
+          EMPLOYEES
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="equipmentTab"
+        >
+          EQUIPMENT
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="projectsTab"
+        >
+          PROJECTS
+        </button>
+
+      </div>
+
+
+      <!-- =================================================
+           EMPLOYEES
+           ================================================= -->
+
+      <section
+        id="employeesTab"
+        class="tab-panel active"
+      >
+
+        <div class="section-card">
+
+          <div class="section-header">
+
+            <div>
+              <h2>
+                EMPLOYEE MASTER
+              </h2>
+
+              <p>
+                Add and manage employees, operators and drivers.
+              </p>
+            </div>
+
+            <button
+              id="addEmployeeButton"
+              class="button primary"
+            >
+              + ADD EMPLOYEE
+            </button>
+
+          </div>
+
+
+          <div class="search-row">
+
+            <input
+              id="employeeSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search employee name or ID..."
+            >
+
+          </div>
+
+
+          <div class="table-wrapper">
+
+            <table>
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Employee ID
+                  </th>
+
+                  <th>
+                    Employee Name
+                  </th>
+
+                  <th>
+                    Position
+                  </th>
+
+                  <th>
+                    Department
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
+                  <th>
+                    ACTION
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody
+                id="employeesTableBody"
+              ></tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
+           EQUIPMENT
+           ================================================= -->
+
+      <section
+        id="equipmentTab"
+        class="tab-panel"
+      >
+
+        <div class="section-card">
+
+          <div class="section-header">
+
+            <div>
+              <h2>
+                EQUIPMENT MASTER
+              </h2>
+
+              <p>
+                Manage trucks, heavy equipment and machines.
+              </p>
+            </div>
+
+            <button
+              id="addEquipmentButton"
+              class="button primary"
+            >
+              + ADD EQUIPMENT
+            </button>
+
+          </div>
+
+
+          <div class="search-row">
+
+            <input
+              id="equipmentSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search equipment..."
+            >
+
+          </div>
+
+
+          <div class="table-wrapper">
+
+            <table>
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Equipment ID
+                  </th>
+
+                  <th>
+                    Equipment Name
+                  </th>
+
+                  <th>
+                    Type
+                  </th>
+
+                  <th>
+                    Plate Number
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
+                  <th>
+                    ACTION
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody
+                id="equipmentTableBody"
+              ></tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
+           PROJECTS
+           ================================================= -->
+
+      <section
+        id="projectsTab"
+        class="tab-panel"
+      >
+
+        <div class="section-card">
+
+          <div class="section-header">
+
+            <div>
+              <h2>
+                PROJECT MASTER
+              </h2>
+
+              <p>
+                Manage construction projects.
+              </p>
+            </div>
+
+            <button
+              id="addProjectButton"
+              class="button primary"
+            >
+              + ADD PROJECT
+            </button>
+
+          </div>
+
+
+          <div class="search-row">
+
+            <input
+              id="projectSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search project..."
+            >
+
+          </div>
+
+
+          <div class="table-wrapper">
+
+            <table>
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Project ID
+                  </th>
+
+                  <th>
+                    Project Name
+                  </th>
+
+                  <th>
+                    Client
+                  </th>
+
+                  <th>
+                    Location
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
+                  <th>
+                    ACTION
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody
+                id="projectsTableBody"
+              ></tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </section>
+
+
+  <!-- =====================================================
+       MODAL
+       ===================================================== -->
+
+  <div
+    id="modal"
+    class="modal hidden"
+  >
+
+    <div class="modal-card">
+
+      <div class="modal-header">
+
+        <h2 id="modalTitle">
+          Add Record
+        </h2>
+
+        <button
+          id="closeModalButton"
+          class="close-button"
+          type="button"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <form id="recordForm">
+
+        <div
+          id="formFields"
+          class="form-grid"
+        ></div>
+
+
+        <div class="modal-actions">
+
+          <button
+            type="button"
+            id="cancelModalButton"
+            class="button secondary"
+          >
+            CANCEL
+          </button>
+
+          <button
+            type="submit"
+            class="button primary"
+          >
+            SAVE
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script src="admin.js?v=1"></script>
+
+</body>
+</html>
