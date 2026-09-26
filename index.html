@@ -321,7 +321,7 @@
         </div>
 
         <label>
-          Quantity
+          Quantity (Liters)
         </label>
 
         <input
@@ -330,37 +330,38 @@
           type="number"
           min="0"
           step="0.01"
-          placeholder="Enter quantity"
+          placeholder="Enter liters used"
         >
 
-        <label>
-          Unit
-        </label>
-
-        <select
-          id="fuelUnit"
-          class="select-input"
-        >
-          <option value="Liter">
-            Liter
-          </option>
-
-          <option value="Gallon">
-            Gallon
-          </option>
-        </select>
+        <div class="small-note">
+          AMANAH records fuel in liters only.
+        </div>
 
         <label>
-          Fuel Price / Amount
+          Fuel Price / Liter
         </label>
 
         <input
-          id="fuelAmount"
+          id="fuelPricePerLiter"
           class="text-input"
           type="number"
           min="0"
           step="0.01"
-          placeholder="Enter fuel price / amount"
+          placeholder="Enter fuel price per liter"
+        >
+
+        <label>
+          Total Fuel Cost
+        </label>
+
+        <input
+          id="fuelTotal"
+          class="text-input"
+          type="number"
+          min="0"
+          step="0.01"
+          value="0.00"
+          readonly
         >
 
         <button
@@ -399,7 +400,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 
 </body>
 </html>
