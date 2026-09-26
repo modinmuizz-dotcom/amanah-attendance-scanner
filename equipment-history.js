@@ -48,7 +48,7 @@ function filtered(){
   const p=$("projectFilter").value;
   const s=$("statusFilter").value;
   return state.rows.filter(x=>{
-    const hay=[x.repair_form_no,x.equipment_name,x.equipment_id,x.plate_number,x.project_name,x.problem‌s_encountered,x.repaired_by].join(" ").toLowerCase();
+    const hay=[x.repair_form_no,x.equipment_name,x.equipment_id,x.plate_number,x.project_name,x.problems_encountered,x.repaired_by].join(" ").toLowerCase();
     return (!q||hay.includes(q))&&(!e||x.equipment_id===e)&&(!p||x.project_id===p)&&(!s||x.status===s);
   });
 }
