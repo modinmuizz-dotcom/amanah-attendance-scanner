@@ -11,7 +11,7 @@ const SUPABASE_URL =
  * working admin.js / app.js here.
  */
 const SUPABASE_PUBLISHABLE_KEY =
-    "PASTE_YOUR_EXISTING_PUBLISHABLE_KEY_HERE";
+    "https://bafmycjninxomufhkjvy.supabase.co";
 
 
 const supabaseClient =
