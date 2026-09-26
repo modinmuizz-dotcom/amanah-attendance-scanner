@@ -266,8 +266,28 @@ async function openDetail(id){
       <div class="detail-box"><h3>Equipment</h3><div class="detail-text"><strong>${escapeHtml(eq?.equipment_name||r.data.equipment_id)}</strong>\nPlate: ${escapeHtml(r.data.body_plate_no||eq?.plate_number||"—")}</div></div>
       <div class="detail-box"><h3>Project</h3><div class="detail-text">${escapeHtml(project?.project_name||r.data.project_id||"No project assigned")}</div></div>
       <div class="detail-box" style="grid-column:1/-1"><h3>Problems Encountered (Sira)</h3><div class="detail-text">${escapeHtml(r.data.problems_encountered)}</div></div>
-      <div class="detail-box"><h3>Reviewer Evidence Check</h3><div class="check-row"><input type="checkbox" id="reviewEvidence" ${r.data.reviewer_evidence_reviewed?"checked":""}> <label for="reviewEvidence">Photo evidence reviewed</label></div><div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.reviewed_at?"Reviewed at "+escapeHtml(r.data.reviewed_at):"Not yet reviewed"}</div></div>
-      <div class="detail-box"><h3>Approver Evidence Check</h3><div class="check-row"><input type="checkbox" id="approveEvidence" ${r.data.approver_evidence_reviewed?"checked":""}> <label for="approveEvidence">Photo evidence reviewed</label></div><div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.approved_at?"Approved at "+escapeHtml(r.data.approved_at):"Not yet approved"}</div></div>
+      <div class="detail-box">
+        <h3>Reviewer Evidence Check</h3>
+        ${r.data.status === "PENDING REVIEW"
+          ? '<div class="check-row"><input type="checkbox" id="reviewEvidence"> <label for="reviewEvidence">Photo evidence reviewed</label></div>'
+          : '<div style="font-weight:800;color:#64748b">' +
+            (r.data.reviewer_evidence_reviewed ? "✓ Evidence reviewed" : "Not yet required") +
+            '</div>'}
+        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.reviewed_at
+          ? "Reviewed at " + escapeHtml(r.data.reviewed_at)
+          : "Reviewer check is required at Pending Review."}</div>
+      </div>
+      <div class="detail-box">
+        <h3>Approver Evidence Check</h3>
+        ${r.data.status === "PENDING APPROVAL"
+          ? '<div class="check-row"><input type="checkbox" id="approveEvidence"> <label for="approveEvidence">Photo evidence reviewed</label></div>'
+          : '<div style="font-weight:800;color:#64748b">' +
+            (r.data.approver_evidence_reviewed ? "✓ Evidence reviewed" : "Not yet required") +
+            '</div>'}
+        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.approved_at
+          ? "Approved at " + escapeHtml(r.data.approved_at)
+          : "Approver check is required at Pending Approval."}</div>
+      </div>
     </div>
 
     <section class="card" style="margin-top:16px;padding:14px">
