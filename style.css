@@ -454,8 +454,15 @@ label {
   font-size: 12px;
   font-weight: 900;
   color: #334155;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   letter-spacing: 0.2px;
+}
+
+.activity-evidence-help {
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .activity-photo-grid {
