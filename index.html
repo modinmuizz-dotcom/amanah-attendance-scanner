@@ -2,145 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>AMANAH Construction Attendance</title>
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+  <link rel="stylesheet" href="style.css?v=9">
 
-  <meta
-    name="theme-color"
-    content="#111827"
-  >
-
-  <title>
-    AMANAH Construction Attendance
-  </title>
-
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
-
-  <script
-  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
-></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-
   <main class="app">
 
     <header class="top-header">
-
-      <div class="brand-mark">
-        A
-      </div>
-
+      <div class="brand-mark">A</div>
       <div>
-        <div class="company-name">
-          AMANAH CONSTRUCTION
-        </div>
-
-        <div class="system-name">
-          CONSTRUCTION MANAGEMENT SYSTEM
-        </div>
+        <div class="company-name">AMANAH CONSTRUCTION</div>
+        <div class="system-name">CONSTRUCTION MANAGEMENT SYSTEM</div>
       </div>
-
     </header>
 
-
-    <!-- ============================================
-         STATUS
-         ============================================ -->
-
-    <div
-      id="statusMessage"
-      class="status-message info"
-    >
+    <div id="statusMessage" class="status-message info">
       Starting...
     </div>
 
-
-    <!-- ============================================
-         SCANNER SCREEN
-         ============================================ -->
-
-    <section
-      id="scannerScreen"
-      class="app-screen"
-    >
-
+    <!-- ==========================================
+         STATION SCANNER
+         ========================================== -->
+    <section id="scannerScreen" class="app-screen">
       <div class="card">
-
-        <div class="card-title">
-          ATTENDANCE STATION
-        </div>
-
+        <div class="card-title">ATTENDANCE STATION</div>
         <div class="card-subtitle">
           Scan the one permanent AMANAH company QR code.
         </div>
 
-       <div class="camera-container">
+        <div class="camera-container">
+          <video
+            id="cameraVideo"
+            class="camera-video"
+            autoplay
+            muted
+            playsinline
+          ></video>
 
-  <video
-    id="cameraVideo"
-    class="camera-video"
-    autoplay
-    muted
-    playsinline
-  ></video>
+          <canvas id="cameraCanvas" hidden></canvas>
+        </div>
 
-  <canvas
-    id="cameraCanvas"
-    hidden
-  ></canvas>
+        <button
+          id="startCameraButton"
+          class="primary-button full-button"
+          type="button"
+        >
+          OPEN CAMERA
+        </button>
 
-</div>
-
-<button
-  id="startCameraButton"
-  class="primary-button full-button"
-  type="button"
->
-  OPEN CAMERA
-</button>
-
-<div class="scanner-note">
-  Tap OPEN CAMERA to start the iPhone camera.
-  Scan the permanent AMANAH QR only.
-  There are no employee QR codes.
-</div>
-
+        <div class="scanner-note">
+          Scan the permanent AMANAH station QR only.
+          There are no employee QR codes.
+        </div>
       </div>
-
     </section>
 
+    <!-- ==========================================
+         ATTENDANCE WORKFLOW
+         ========================================== -->
+    <section id="attendanceScreen" class="app-screen" hidden>
 
-    <!-- ============================================
-         ATTENDANCE SCREEN
-         ============================================ -->
-
-    <section
-      id="attendanceScreen"
-      class="app-screen"
-      hidden
-    >
-
-      <!-- EMPLOYEE -->
-
+      <!-- WHO ARE YOU -->
       <div class="card">
-
-        <div class="step-number">
-          1
-        </div>
-
-        <div class="card-title">
-          WHO ARE YOU?
-        </div>
-
+        <div class="step-number">1</div>
+        <div class="card-title">WHO ARE YOU?</div>
         <div class="card-subtitle">
-          Select your name from the employee database.
+          Select your name for TIME IN or TIME OUT.
         </div>
 
         <input
@@ -151,101 +86,102 @@
           autocomplete="off"
         >
 
-        <select
-          id="employeeSelect"
-          class="select-input"
-        >
-          <option value="">
-            Select employee / operator / driver
-          </option>
+        <select id="employeeSelect" class="select-input">
+          <option value="">Select employee / operator / driver</option>
         </select>
-
       </div>
-
 
       <!-- ACTIVE ATTENDANCE -->
+      <div id="activeAttendance" class="active-card" hidden></div>
 
-      <div
-        id="activeAttendance"
-        class="active-card"
-        hidden
-      ></div>
+      <!-- ==========================
+           TIME IN DETAILS
+           ========================== -->
+      <div id="timeInDetails">
 
+        <!-- EQUIPMENT -->
+        <div class="card">
+          <div class="step-number">2</div>
+          <div class="card-title">WHAT EQUIPMENT ARE YOU USING?</div>
 
-      <!-- EQUIPMENT -->
+          <input
+            id="equipmentSearch"
+            class="search-input"
+            type="search"
+            placeholder="Search equipment..."
+            autocomplete="off"
+          >
 
-      <div class="card">
+          <select id="equipmentSelect" class="select-input">
+            <option value="">Select equipment</option>
+          </select>
 
-        <div class="step-number">
-          2
+          <div id="equipmentMeterInfo" class="meter-info" hidden></div>
         </div>
 
-        <div class="card-title">
-          WHAT EQUIPMENT ARE YOU USING?
+        <!-- PROJECT / LOCATION -->
+        <div class="card">
+          <div class="step-number">3</div>
+          <div class="card-title">WHAT PROJECT / LOCATION ARE YOU IN?</div>
+          <div class="card-subtitle">
+            Choose a registered project or type the specific location.
+          </div>
+
+          <input
+            id="projectInput"
+            class="text-input"
+            list="projectOptions"
+            type="text"
+            placeholder="Search project or type location..."
+            autocomplete="off"
+          >
+
+          <datalist id="projectOptions"></datalist>
+
+          <div id="projectMatchNote" class="field-note">
+            Registered projects are available in the search list. Custom locations are allowed.
+          </div>
         </div>
 
-        <input
-          id="equipmentSearch"
-          class="search-input"
-          type="search"
-          placeholder="Search equipment..."
-          autocomplete="off"
-        >
+        <!-- METER IN -->
+        <div class="card">
+          <div class="step-number">4</div>
+          <div class="card-title">METER READING — TIME IN</div>
 
-        <select
-          id="equipmentSelect"
-          class="select-input"
-        >
-          <option value="">
-            Select equipment
-          </option>
-        </select>
+          <div class="meter-grid">
+            <div>
+              <label for="meterIn">Meter In</label>
+              <input
+                id="meterIn"
+                class="text-input"
+                type="number"
+                min="0"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="Enter meter reading"
+              >
+            </div>
+
+            <div>
+              <label>Meter Type</label>
+              <div id="meterTypeIn" class="meter-type-box">Select equipment first</div>
+            </div>
+          </div>
+
+          <div id="meterInNote" class="field-note">
+            Trucks use ODOMETER. Other equipment uses HOUR METER.
+          </div>
+        </div>
 
       </div>
 
-
-      <!-- PROJECT -->
-
-      <div class="card">
-
-        <div class="step-number">
-          3
-        </div>
-
-        <div class="card-title">
-          WHAT PROJECT ARE YOU WORKING ON?
-        </div>
-
-        <input
-          id="projectSearch"
-          class="search-input"
-          type="search"
-          placeholder="Search project..."
-          autocomplete="off"
-        >
-
-        <select
-          id="projectSelect"
-          class="select-input"
-        >
-          <option value="">
-            Select project
-          </option>
-        </select>
-
-      </div>
-
-
-      <!-- IN / OUT -->
-
+      <!-- ==========================
+           ATTENDANCE ACTIONS
+           ========================== -->
       <div class="card action-card">
-
-        <div class="card-title">
-          ATTENDANCE
-        </div>
+        <div class="card-title">ATTENDANCE</div>
 
         <div class="button-row">
-
           <button
             id="inButton"
             class="action-button in-button"
@@ -263,30 +199,100 @@
           >
             TIME OUT
           </button>
-
         </div>
 
         <div class="small-note">
-          Fuel will only be requested when TIME OUT is selected.
+          TIME OUT automatically retrieves the employee's active equipment and project.
+        </div>
+      </div>
+
+      <!-- ==========================
+           TIME OUT DETAILS
+           ========================== -->
+      <div id="outDetails" hidden>
+
+        <!-- METER OUT -->
+        <div class="card out-card">
+          <div class="step-number out-step">1</div>
+          <div class="card-title">METER READING — TIME OUT</div>
+          <div class="card-subtitle">
+            Enter the final meter reading. It cannot be lower than Meter In.
+          </div>
+
+          <div id="outMeterSummary" class="meter-summary"></div>
+
+          <label for="meterOut">Meter Out</label>
+          <input
+            id="meterOut"
+            class="text-input"
+            type="number"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="Enter meter out"
+          >
+
+          <div id="meterOutNote" class="field-note"></div>
+        </div>
+
+        <!-- ACTIVITIES -->
+        <div class="card activity-card">
+          <div class="step-number out-step">2</div>
+          <div class="card-title">WHAT SPECIFIC ACTIVITY DID YOU DO?</div>
+          <div class="card-subtitle">
+            Add one or more activities completed during this attendance.
+          </div>
+
+          <div id="activityList"></div>
+
+          <button
+            id="addActivityButton"
+            class="secondary-button full-button"
+            type="button"
+          >
+            + ADD ACTIVITY
+          </button>
+
+          <div class="field-note">
+            Categories: HAULING, DELIVERY, TRIP, LOADS, CLEARING,
+            SLOPE, CLEARING AND HAULING, ROAD REPAIR, BATCHING, OTHER.
+            No UNIT field is required.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="button-row">
+            <button
+              id="cancelOutButton"
+              class="secondary-button"
+              type="button"
+            >
+              CANCEL TIME OUT
+            </button>
+
+            <button
+              id="continueOutButton"
+              class="primary-button"
+              type="button"
+            >
+              CONTINUE TO FUEL
+            </button>
+          </div>
         </div>
 
       </div>
 
-
-      <!-- FUEL QUESTION -->
-
-      <div
-        id="fuelQuestion"
-        class="card fuel-card"
-        hidden
-      >
-
-        <div class="card-title">
-          DID YOU FUEL THE EQUIPMENT?
+      <!-- ==========================
+           FUEL QUESTION
+           ========================== -->
+      <div id="fuelQuestion" class="card fuel-card" hidden>
+        <div class="step-number out-step">3</div>
+        <div class="card-title">DID YOU FUEL THE EQUIPMENT?</div>
+        <div class="card-subtitle">
+          Fuel is requested only during TIME OUT.
         </div>
 
         <div class="button-row">
-
           <button
             id="fuelNoButton"
             class="secondary-button"
@@ -302,58 +308,38 @@
           >
             YES, FUELED
           </button>
-
         </div>
-
       </div>
 
+      <!-- ==========================
+           FUEL DETAILS
+           ========================== -->
+      <div id="fuelForm" class="card fuel-card" hidden>
+        <div class="card-title">FUEL DETAILS</div>
 
-      <!-- FUEL FORM -->
-
-      <div
-        id="fuelForm"
-        class="card"
-        hidden
-      >
-
-        <div class="card-title">
-          FUEL DETAILS
-        </div>
-
-        <label>
-          Quantity (Liters)
-        </label>
-
+        <label for="fuelQuantity">Quantity (Liters)</label>
         <input
           id="fuelQuantity"
           class="text-input"
           type="number"
           min="0"
           step="0.01"
+          inputmode="decimal"
           placeholder="Enter liters used"
         >
 
-        <div class="small-note">
-          AMANAH records fuel in liters only.
-        </div>
-
-        <label>
-          Fuel Price / Liter
-        </label>
-
+        <label for="fuelPricePerLiter">Fuel Price / Liter</label>
         <input
           id="fuelPricePerLiter"
           class="text-input"
           type="number"
           min="0"
           step="0.01"
+          inputmode="decimal"
           placeholder="Enter fuel price per liter"
         >
 
-        <label>
-          Total Fuel Cost
-        </label>
-
+        <label for="fuelTotal">Total Fuel Cost</label>
         <input
           id="fuelTotal"
           class="text-input"
@@ -364,6 +350,10 @@
           readonly
         >
 
+        <div class="small-note">
+          AMANAH records fuel in liters only.
+        </div>
+
         <button
           id="fuelConfirmButton"
           class="primary-button full-button"
@@ -371,20 +361,10 @@
         >
           COMPLETE TIME OUT
         </button>
-
       </div>
 
-
       <!-- RESULT -->
-
-      <div
-        id="resultBox"
-        class="result-card"
-        hidden
-      ></div>
-
-
-      <!-- RESTART -->
+      <div id="resultBox" class="result-card" hidden></div>
 
       <button
         id="restartScannerButton"
@@ -395,12 +375,8 @@
       </button>
 
     </section>
-
   </main>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=8"></script>
-
+  <script src="app.js?v=9"></script>
 </body>
 </html>
