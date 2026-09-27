@@ -208,8 +208,18 @@ function setupButtons() {
   );
 
   bindInput(
-    'projectInput',
-    projectInputChanged
+    'projectSearch',
+    filterProjects
+  );
+
+  bindInput(
+    'customProjectInput',
+    customProjectChanged
+  );
+
+  bindChange(
+    'projectSelect',
+    projectChanged
   );
 
   bindChange(
@@ -1059,7 +1069,15 @@ function employeeChanged() {
   );
 
   clearElementValue(
-    'projectInput'
+    'projectSearch'
+  );
+
+  clearElementValue(
+    'projectSelect'
+  );
+
+  clearElementValue(
+    'customProjectInput'
   );
 
   clearElementValue(
@@ -1336,112 +1354,297 @@ function getMeterUnit(
 
 function buildProjectList() {
 
-  const list =
-    $('projectOptions');
+  const select =
+    $('projectSelect');
 
-  if (!list) {
+  if (!select) {
     return;
   }
 
-  list.innerHTML = '';
+  const selectedId =
+    state.selectedProject &&
+    !state.selectedProject.custom &&
+    state.selectedProject.project_id
+      ? String(
+          state.selectedProject.project_id
+        )
+      : '';
+
+  select.innerHTML = '';
+
+  appendOption(
+    select,
+    '',
+    'Select project / location'
+  );
 
   state.projects.forEach(
     function (project) {
-
-      const option =
-        document.createElement('option');
-
-      option.value =
-        project.project_name || '';
-
-      option.label =
-        project.location
-          ? String(project.location)
-          : '';
-
-      list.appendChild(option);
+      addProjectOption(
+        select,
+        project
+      );
     }
+  );
+
+  if (selectedId) {
+    select.value = selectedId;
+  }
+
+  updateProjectLocationInfo();
+}
+
+
+function addProjectOption(
+  select,
+  project
+) {
+
+  if (!project.project_id) {
+    return;
+  }
+
+  const projectName =
+    String(
+      project.project_name || ''
+    ).trim();
+
+  const location =
+    String(
+      project.location || ''
+    ).trim();
+
+  const label =
+    location
+      ? projectName +
+        ' — ' +
+        location
+      : projectName;
+
+  appendOption(
+    select,
+    project.project_id,
+    label
   );
 }
 
 
-function projectInputChanged() {
+function filterProjects() {
 
   const input =
-    $('projectInput');
+    $('projectSearch');
+
+  const select =
+    $('projectSelect');
+
+  if (!select) {
+    return;
+  }
+
+  const search =
+    input && input.value
+      ? input.value.toLowerCase().trim()
+      : '';
+
+  const selectedId =
+    select.value || '';
+
+  select.innerHTML = '';
+
+  appendOption(
+    select,
+    '',
+    'Select project / location'
+  );
+
+  state.projects
+    .filter(
+      function (project) {
+
+        const text =
+          [
+            project.project_id,
+            project.project_name,
+            project.location,
+            project.client
+          ]
+          .join(' ')
+          .toLowerCase();
+
+        return text.includes(search);
+      }
+    )
+    .forEach(
+      function (project) {
+        addProjectOption(
+          select,
+          project
+        );
+      }
+    );
+
+  if (selectedId) {
+    select.value = selectedId;
+  }
+
+  updateProjectLocationInfo();
+}
+
+
+function projectChanged() {
+
+  const select =
+    $('projectSelect');
+
+  const id =
+    select
+      ? select.value
+      : '';
+
+  if (!id) {
+
+    state.selectedProject = null;
+
+    updateProjectLocationInfo();
+    updateButtons();
+    return;
+  }
+
+  state.selectedProject =
+    state.projects.find(
+      function (project) {
+        return (
+          String(
+            project.project_id
+          ) ===
+          String(id)
+        );
+      }
+    ) || null;
+
+  const customInput =
+    $('customProjectInput');
+
+  if (customInput) {
+    customInput.value = '';
+  }
+
+  updateProjectLocationInfo();
+  updateButtons();
+}
+
+
+function customProjectChanged() {
+
+  const input =
+    $('customProjectInput');
 
   const value =
     input
       ? input.value.trim()
       : '';
 
+  const select =
+    $('projectSelect');
+
   if (!value) {
 
-    state.selectedProject = null;
-
-    const note =
-      $('projectMatchNote');
-
-    if (note) {
-      note.textContent =
-        'Registered projects are available in the search list. Custom locations are allowed.';
+    if (
+      select &&
+      select.value
+    ) {
+      projectChanged();
+    } else {
+      state.selectedProject = null;
+      updateProjectLocationInfo();
+      updateButtons();
     }
 
-    updateButtons();
     return;
   }
 
-  const master =
-    state.projects.find(
-      function (project) {
-        return (
-          String(
-            project.project_name || ''
-          )
-          .trim()
-          .toLowerCase() ===
-          value.toLowerCase()
-        );
-      }
-    );
-
-  if (master) {
-
-    state.selectedProject =
-      master;
-
-    const note =
-      $('projectMatchNote');
-
-    if (note) {
-      note.textContent =
-        'Registered project selected: ' +
-        (
-          master.location
-            ? master.location
-            : 'registered project'
-        );
-    }
-
-  } else {
-
-    state.selectedProject = {
-      project_id: null,
-      project_name: value,
-      location: value,
-      custom: true
-    };
-
-    const note =
-      $('projectMatchNote');
-
-    if (note) {
-      note.textContent =
-        'Custom project / location will be saved exactly as entered.';
-    }
+  if (select) {
+    select.value = '';
   }
 
+  state.selectedProject = {
+    project_id: null,
+    project_name: value,
+    location: value,
+    custom: true
+  };
+
+  const note =
+    $('projectMatchNote');
+
+  if (note) {
+    note.textContent =
+      'Custom project / location will be saved exactly as entered.';
+  }
+
+  updateProjectLocationInfo();
   updateButtons();
+}
+
+
+function updateProjectLocationInfo() {
+
+  const info =
+    $('projectLocationInfo');
+
+  const note =
+    $('projectMatchNote');
+
+  if (!info) {
+    return;
+  }
+
+  const project =
+    state.selectedProject;
+
+  if (!project) {
+
+    info.hidden = true;
+    info.innerHTML = '';
+
+    if (note) {
+      note.textContent =
+        'Registered projects remain available in the dropdown above. Use CUSTOM PROJECT / LOCATION only when needed.';
+    }
+
+    return;
+  }
+
+  const isCustom =
+    project.custom === true;
+
+  const location =
+    String(
+      project.location ||
+      project.project_name ||
+      ''
+    ).trim();
+
+  info.hidden = false;
+
+  info.innerHTML =
+    '<strong>' +
+      escapeHtml(
+        isCustom
+          ? 'CUSTOM LOCATION'
+          : 'PROJECT LOCATION'
+      ) +
+    '</strong><br>' +
+    escapeHtml(
+      location || 'No location supplied'
+    );
+
+  if (note) {
+    note.textContent =
+      isCustom
+        ? 'Custom project / location will be saved exactly as entered.'
+        : 'Registered project selected. The registered project ID and location will be saved.';
+  }
 }
 
 
@@ -1812,11 +2015,49 @@ async function timeIn() {
 
 
     const result =
-      await supabaseClient
-        .from('attendance')
-        .insert(insertData)
-        .select()
-        .single();
+      await supabaseClient.rpc(
+        'record_attendance_time_in',
+        {
+          p_employee_id:
+            String(
+              employee.employee_id
+            ),
+
+          p_employee_name:
+            employee.employee_name,
+
+          p_attendance_date:
+            attendanceDate,
+
+          p_time_in:
+            timeInValue,
+
+          p_equipment_id:
+            String(
+              equipment.equipment_id
+            ),
+
+          p_equipment_name:
+            equipment.equipment_name,
+
+          p_project_id:
+            projectId
+              ? String(projectId)
+              : null,
+
+          p_project_name:
+            project.project_name,
+
+          p_meter_type:
+            meterType,
+
+          p_meter_in:
+            meterIn,
+
+          p_meter_unit:
+            meterUnit
+        }
+      );
 
 
     if (result.error) {
@@ -3250,7 +3491,15 @@ function resetOutWorkflowForNewAttendance() {
   );
 
   clearElementValue(
-    'projectInput'
+    'projectSearch'
+  );
+
+  clearElementValue(
+    'projectSelect'
+  );
+
+  clearElementValue(
+    'customProjectInput'
   );
 
   clearElementValue(
@@ -3355,7 +3604,15 @@ async function restartScanner() {
   );
 
   clearElementValue(
-    'projectInput'
+    'projectSearch'
+  );
+
+  clearElementValue(
+    'projectSelect'
+  );
+
+  clearElementValue(
+    'customProjectInput'
   );
 
   clearElementValue(
