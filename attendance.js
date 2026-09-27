@@ -21,6 +21,8 @@ const supabaseClient =
 
 let allAttendance = [];
 
+let activityByAttendanceId = new Map();
+
 
 /* =========================================================
    MESSAGE
@@ -280,17 +282,14 @@ async function loadAttendance() {
 
   clearMessage();
 
-
   try {
 
     const loggedIn =
       await requireSession();
 
-
     if (!loggedIn) {
       return;
     }
-
 
     const {
       data,
@@ -302,31 +301,29 @@ async function loadAttendance() {
         .order(
           'attendance_date',
           {
-            ascending:
-              false
+            ascending: false
           }
         )
         .order(
           'time_in',
           {
-            ascending:
-              false
+            ascending: false
           }
         )
         .limit(1000);
-
 
     if (error) {
       throw error;
     }
 
-
     allAttendance =
       data || [];
 
+    await loadAttendanceActivities(
+      allAttendance
+    );
 
     applyFilters();
-
 
   } catch (error) {
 
@@ -334,30 +331,102 @@ async function loadAttendance() {
       error
     );
 
-
     showMessage(
       error.message ||
       'Unable to load attendance.'
     );
 
-
     document
       .getElementById(
         'attendanceBody'
       )
-      .innerHTML = `
-        <tr>
-          <td
-            colspan="10"
-            class="empty"
-          >
-            Unable to load attendance.
-          </td>
-        </tr>
-      `;
+      .innerHTML =
+      '<tr>' +
+        '<td colspan="14" class="empty">' +
+          'Unable to load attendance.' +
+        '</td>' +
+      '</tr>';
 
   }
 
+}
+
+
+async function loadAttendanceActivities(
+  rows
+) {
+
+  activityByAttendanceId =
+    new Map();
+
+  const ids =
+    rows
+      .map(
+        row =>
+          String(
+            row.attendance_id || ''
+          )
+      )
+      .filter(Boolean);
+
+  if (!ids.length) {
+    return;
+  }
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from('attendance_activities')
+        .select(
+          'attendance_id,activity_category,activity_description,quantity'
+        )
+        .in(
+          'attendance_id',
+          ids
+        );
+
+    if (error) {
+
+      console.warn(
+        'Attendance activities:',
+        error.message
+      );
+
+      return;
+    }
+
+    (data || []).forEach(
+      function (activity) {
+
+        const id =
+          String(
+            activity.attendance_id || ''
+          );
+
+        if (!activityByAttendanceId.has(id)) {
+          activityByAttendanceId.set(
+            id,
+            []
+          );
+        }
+
+        activityByAttendanceId
+          .get(id)
+          .push(activity);
+      }
+    );
+
+  } catch (error) {
+
+    console.warn(
+      'Unable to load activity records:',
+      error
+    );
+  }
 }
 
 
@@ -607,24 +676,17 @@ function renderAttendance(
       'attendanceBody'
     );
 
-
   if (!rows.length) {
 
-    body.innerHTML = `
-      <tr>
-        <td
-          colspan="10"
-          class="empty"
-        >
-          No attendance records found.
-        </td>
-      </tr>
-    `;
+    body.innerHTML =
+      '<tr>' +
+        '<td colspan="14" class="empty">' +
+          'No attendance records found.' +
+        '</td>' +
+      '</tr>';
 
     return;
-
   }
-
 
   body.innerHTML =
     rows
@@ -637,149 +699,194 @@ function renderAttendance(
               ''
             ).toUpperCase();
 
-
           let statusClass =
             'status-other';
 
-
-          if (
-            status === 'IN'
-          ) {
-
-            statusClass =
-              'status-in';
-
+          if (status === 'IN') {
+            statusClass = 'status-in';
+          } else if (status === 'COMPLETED') {
+            statusClass = 'status-completed';
           }
-          else if (
-            status ===
-            'COMPLETED'
-          ) {
-
-            statusClass =
-              'status-completed';
-
-          }
-
 
           const totalHours =
-            row.total_hours ===
-              null ||
-            row.total_hours ===
-              undefined
+            row.total_hours === null ||
+            row.total_hours === undefined
               ? '-'
               : Number(
                   row.total_hours
                 ).toFixed(2);
 
+          const meterIn =
+            row.meter_in === null ||
+            row.meter_in === undefined
+              ? '-'
+              : Number(
+                  row.meter_in
+                ).toFixed(2);
 
-          return `
-            <tr>
+          const meterOut =
+            row.meter_out === null ||
+            row.meter_out === undefined
+              ? '-'
+              : Number(
+                  row.meter_out
+                ).toFixed(2);
 
-              <td>
-                ${escapeHtml(
-                  row.attendance_id
-                )}
-              </td>
+          const meterUsed =
+            row.meter_used === null ||
+            row.meter_used === undefined
+              ? '-'
+              : Number(
+                  row.meter_used
+                ).toFixed(2);
 
-              <td>
-                <strong>
-                  ${escapeHtml(
-                    row.employee_name
-                  )}
-                </strong>
+          const meterUnit =
+            row.meter_unit || '';
 
-                <br>
+          const activities =
+            activityByAttendanceId.get(
+              String(
+                row.attendance_id || ''
+              )
+            ) || [];
 
-                <small>
-                  ${escapeHtml(
-                    row.employee_id
-                  )}
-                </small>
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  row.equipment_name
-                )}
-
-                <br>
-
-                <small>
-                  ${escapeHtml(
-                    row.equipment_id
-                  )}
-                </small>
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  row.project_name
-                )}
-
-                <br>
-
-                <small>
-                  ${escapeHtml(
-                    row.project_id
-                  )}
-                </small>
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  formatDate(
-                    row.attendance_date
+          const activitySummary =
+            activities.length
+              ? activities
+                  .map(
+                    activity =>
+                      escapeHtml(
+                        activity.activity_category
+                      ) +
+                      ': ' +
+                      escapeHtml(
+                        activity.activity_description
+                      ) +
+                      ' (' +
+                      escapeHtml(
+                        Number(
+                          activity.quantity || 0
+                        ).toFixed(2)
+                      ) +
+                      ')'
                   )
-                )}
-              </td>
+                  .join('<br>')
+              : '-';
 
-              <td>
-                ${escapeHtml(
-                  formatTime(
-                    row.time_in
-                  )
-                )}
-              </td>
+          return (
+            '<tr>' +
 
-              <td>
-                ${escapeHtml(
-                  formatTime(
-                    row.time_out
-                  )
-                )}
-              </td>
+              '<td>' +
+                escapeHtml(row.attendance_id) +
+              '</td>' +
 
-              <td>
-                ${escapeHtml(
-                  totalHours
-                )}
-              </td>
+              '<td>' +
+                '<strong>' +
+                  escapeHtml(row.employee_name) +
+                '</strong>' +
+                '<br><small>' +
+                  escapeHtml(row.employee_id) +
+                '</small>' +
+              '</td>' +
 
-              <td>
-                ${formatFuel(row)}
-              </td>
+              '<td>' +
+                escapeHtml(row.equipment_name) +
+                '<br><small>' +
+                  escapeHtml(row.equipment_id) +
+                '</small>' +
+              '</td>' +
 
-              <td
-                class="
-                  status
-                  ${statusClass}
-                "
-              >
-                ${escapeHtml(
-                  status
-                )}
-              </td>
+              '<td>' +
+                escapeHtml(row.project_name) +
+                '<br><small>' +
+                  escapeHtml(
+                    row.project_id ||
+                    (
+                      row.project_name
+                        ? 'CUSTOM / LOCATION'
+                        : ''
+                    )
+                  ) +
+                '</small>' +
+              '</td>' +
 
-            </tr>
-          `;
+              '<td>' +
+                escapeHtml(
+                  formatDate(row.attendance_date)
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(
+                  formatTime(row.time_in)
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(meterIn) +
+                (
+                  meterUnit
+                    ? '<br><small>' +
+                      escapeHtml(meterUnit) +
+                      '</small>'
+                    : ''
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(
+                  formatTime(row.time_out)
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(meterOut) +
+                (
+                  meterUnit
+                    ? '<br><small>' +
+                      escapeHtml(meterUnit) +
+                      '</small>'
+                    : ''
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(meterUsed) +
+                (
+                  meterUnit
+                    ? '<br><small>' +
+                      escapeHtml(meterUnit) +
+                      '</small>'
+                    : ''
+                ) +
+              '</td>' +
+
+              '<td>' +
+                escapeHtml(totalHours) +
+              '</td>' +
+
+              '<td>' +
+                activitySummary +
+              '</td>' +
+
+              '<td>' +
+                formatFuel(row) +
+              '</td>' +
+
+              '<td class="status ' +
+                statusClass +
+              '">' +
+                escapeHtml(status) +
+              '</td>' +
+
+            '</tr>'
+          );
 
         }
       )
       .join('');
 
 }
-
-
 /* =========================================================
    CLEAR FILTERS
    ========================================================= */
