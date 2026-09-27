@@ -2609,7 +2609,7 @@ function addActivityRow(
           '>' +
 
           '<div class="activity-photo-status activity-photo-status-1">' +
-            'Take a clear photo showing the activity.' +
+            'Take a clear photo or choose one from Photos.' +
           '</div>' +
 
         '</div>' +
@@ -2633,7 +2633,7 @@ function addActivityRow(
           '>' +
 
           '<div class="activity-photo-status activity-photo-status-2">' +
-            'Add a second proof photo when useful.' +
+            'Add a second proof photo or choose one from Photos.' +
           '</div>' +
 
         '</div>' +
@@ -2737,7 +2737,7 @@ function bindActivityPhotoPreview(
           status.textContent =
             photoNumber === 1
               ? 'Take a clear photo showing the activity.'
-              : 'Add a second proof photo when useful.';
+              : 'Add a second proof photo or choose one from Photos.';
         }
 
         return;
@@ -3189,6 +3189,16 @@ async function uploadSingleActivityPhoto(
 
 
   if (uploadResult.error) {
+
+    if (
+      String(
+        uploadResult.error.message || ''
+      ).toLowerCase().includes('bucket not found')
+    ) {
+      throw new Error(
+        'Photo storage bucket "attendance-activity-evidence" is missing. Run the AMANAH activity photo storage SQL migration first.'
+      );
+    }
 
     throw new Error(
       'Photo upload failed: ' +
@@ -3775,6 +3785,16 @@ async function uploadFuelEvidence(
 
   if (uploadResult.error) {
 
+    if (
+      String(
+        uploadResult.error.message || ''
+      ).toLowerCase().includes('bucket not found')
+    ) {
+      throw new Error(
+        'Fuel photo storage bucket "attendance-fuel-evidence" is missing. Run the AMANAH fuel photo SQL migration first.'
+      );
+    }
+
     throw new Error(
       'Fuel photo upload failed: ' +
       uploadResult.error.message
@@ -3814,7 +3834,7 @@ function fuelPhotoChanged() {
 
     if (status) {
       status.textContent =
-        'Optional: attach a photo of the fuel receipt, fuel meter, or the equipment being fueled.';
+        'Optional: attach a photo of the fuel receipt, fuel meter, or the equipment being fueled. On a phone, you can take a new photo or choose one from Photos.';
     }
 
     return;
