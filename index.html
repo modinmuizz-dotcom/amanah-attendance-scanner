@@ -124,22 +124,38 @@
           <div class="step-number">3</div>
           <div class="card-title">WHAT PROJECT / LOCATION ARE YOU IN?</div>
           <div class="card-subtitle">
-            Choose a registered project or type the specific location.
+            Select from the registered project dropdown. The project location is shown with it.
+            You can also type a specific project / location if it is not registered.
           </div>
 
           <input
-            id="projectInput"
-            class="text-input"
-            list="projectOptions"
-            type="text"
-            placeholder="Search project or type location..."
+            id="projectSearch"
+            class="search-input"
+            type="search"
+            placeholder="Search project name or location..."
             autocomplete="off"
           >
 
-          <datalist id="projectOptions"></datalist>
+          <select
+            id="projectSelect"
+            class="select-input"
+          >
+            <option value="">Select project / location</option>
+          </select>
+
+          <div id="projectLocationInfo" class="project-location-info" hidden></div>
+
+          <label for="customProjectInput">CUSTOM PROJECT / LOCATION</label>
+          <input
+            id="customProjectInput"
+            class="text-input"
+            type="text"
+            placeholder="Type the specific project / location..."
+            autocomplete="off"
+          >
 
           <div id="projectMatchNote" class="field-note">
-            Registered projects are available in the search list. Custom locations are allowed.
+            Registered projects remain available in the dropdown above. Use CUSTOM PROJECT / LOCATION only when needed.
           </div>
         </div>
 
@@ -377,6 +393,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
