@@ -8,7 +8,8 @@ body {
   padding: 0;
   min-height: 100%;
   font-family: Arial, Helvetica, sans-serif;
-  background: #f3f4f6;
+  background:
+    radial-gradient(circle at top, #eef2ff 0%, #f8fafc 42%, #eef2f7 100%);
   color: #111827;
 }
 
@@ -33,9 +34,13 @@ button:disabled {
 
 .app {
   width: 100%;
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
   padding: 18px;
+}
+
+.app-screen {
+  width: 100%;
 }
 
 
@@ -47,11 +52,14 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #111827;
+  background:
+    linear-gradient(135deg, #111827 0%, #1f2937 55%, #0f172a 100%);
   color: white;
   padding: 18px;
   border-radius: 18px;
   margin-bottom: 14px;
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.16);
 }
 
 .brand-mark {
@@ -65,6 +73,7 @@ button:disabled {
   justify-content: center;
   font-size: 24px;
   font-weight: 800;
+  flex: 0 0 auto;
 }
 
 .company-name {
@@ -90,6 +99,7 @@ button:disabled {
   margin-bottom: 14px;
   font-size: 14px;
   font-weight: 700;
+  border: 1px solid transparent;
 }
 
 .status-message.info {
@@ -100,11 +110,13 @@ button:disabled {
 .status-message.success {
   background: #dcfce7;
   color: #166534;
+  border-color: #bbf7d0;
 }
 
 .status-message.error {
   background: #fee2e2;
   color: #991b1b;
+  border-color: #fecaca;
 }
 
 
@@ -120,7 +132,8 @@ button:disabled {
   padding: 18px;
   margin-bottom: 14px;
   box-shadow:
-    0 5px 20px rgba(0, 0, 0, 0.06);
+    0 7px 22px rgba(15, 23, 42, 0.07);
+  border: 1px solid #e5e7eb;
 }
 
 .card-title {
@@ -133,6 +146,7 @@ button:disabled {
   font-size: 13px;
   color: #6b7280;
   margin-bottom: 15px;
+  line-height: 1.45;
 }
 
 .step-number {
@@ -148,21 +162,32 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+.out-step {
+  background: #dc2626;
+}
+
 
 /* ==========================================
    QR READER
    ========================================== */
 
-.reader {
+.camera-container {
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   margin: 0 auto;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 18px;
+  background: #020617;
+  aspect-ratio: 4 / 3;
+  position: relative;
 }
 
-.reader video {
-  border-radius: 16px !important;
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #020617;
 }
 
 .scanner-note {
@@ -170,6 +195,7 @@ button:disabled {
   font-size: 12px;
   color: #6b7280;
   margin-top: 13px;
+  line-height: 1.5;
 }
 
 
@@ -212,7 +238,7 @@ label {
 
 .active-card {
   border: 2px solid #16a34a;
-  background: #f0fdf4;
+  background: linear-gradient(180deg, #f0fdf4, #ecfdf5);
 }
 
 .active-title {
@@ -226,6 +252,63 @@ label {
   font-size: 13px;
   margin-top: 7px;
   color: #374151;
+}
+
+
+/* ==========================================
+   METER
+   ========================================== */
+
+.meter-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.meter-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.meter-type-box {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.field-note {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.meter-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.out-card {
+  border-color: #fecaca;
+  background: #fffafa;
 }
 
 
@@ -283,6 +366,73 @@ label {
   margin-bottom: 20px;
 }
 
+.small-note {
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+
+/* ==========================================
+   ACTIVITIES
+   ========================================== */
+
+.activity-card {
+  border-color: #c7d2fe;
+  background: linear-gradient(180deg, #ffffff, #f8faff);
+}
+
+.activity-row {
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #ffffff;
+}
+
+.activity-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.activity-number {
+  font-size: 12px;
+  font-weight: 900;
+  color: #475569;
+  letter-spacing: 0.4px;
+}
+
+.activity-remove {
+  border: 0;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 9px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.8fr) minmax(110px, 0.7fr);
+  gap: 10px;
+}
+
+.activity-grid .text-input,
+.activity-grid .select-input {
+  margin-bottom: 0;
+}
+
+.activity-quantity {
+  text-align: right;
+}
+
 
 /* ==========================================
    FUEL
@@ -290,13 +440,7 @@ label {
 
 .fuel-card {
   border: 2px solid #f59e0b;
-}
-
-.small-note {
-  font-size: 12px;
-  color: #6b7280;
-  text-align: center;
-  margin-top: 10px;
+  background: linear-gradient(180deg, #fffdf7, #ffffff);
 }
 
 
@@ -319,6 +463,7 @@ label {
 .result-item {
   font-size: 13px;
   margin-bottom: 8px;
+  line-height: 1.45;
 }
 
 
@@ -326,7 +471,7 @@ label {
    MOBILE
    ========================================== */
 
-@media (max-width: 600px) {
+@media (max-width: 650px) {
 
   .app {
     padding: 10px;
@@ -352,7 +497,17 @@ label {
     border-radius: 15px;
   }
 
-  .button-row {
+  .button-row,
+  .meter-grid,
+  .activity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .activity-quantity {
+    text-align: left;
+  }
+
+  .camera-container {
+    border-radius: 14px;
   }
 }
