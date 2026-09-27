@@ -754,21 +754,48 @@ function renderAttendance(
             activities.length
               ? activities
                   .map(
-                    activity =>
-                      escapeHtml(
-                        activity.activity_category
-                      ) +
-                      ': ' +
-                      escapeHtml(
-                        activity.activity_description
-                      ) +
-                      ' (' +
-                      escapeHtml(
-                        Number(
-                          activity.quantity || 0
-                        ).toFixed(2)
-                      ) +
-                      ')'
+                    activity => {
+
+                      const evidenceCount =
+                        (
+                          activity.photo_1_path
+                            ? 1
+                            : 0
+                        ) +
+                        (
+                          activity.photo_2_path
+                            ? 1
+                            : 0
+                        );
+
+                      return (
+                        escapeHtml(
+                          activity.activity_category
+                        ) +
+                        ': ' +
+                        escapeHtml(
+                          activity.activity_description
+                        ) +
+                        ' (' +
+                        escapeHtml(
+                          Number(
+                            activity.quantity || 0
+                          ).toFixed(2)
+                        ) +
+                        ') — ' +
+                        escapeHtml(
+                          String(
+                            evidenceCount
+                          )
+                        ) +
+                        ' photo' +
+                        (
+                          evidenceCount === 1
+                            ? ''
+                            : 's'
+                        )
+                      );
+                    }
                   )
                   .join('<br>')
               : '-';
