@@ -444,6 +444,94 @@ label {
   text-align: right;
 }
 
+.activity-evidence {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.activity-evidence-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #334155;
+  margin-bottom: 8px;
+  letter-spacing: 0.2px;
+}
+
+.activity-photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.activity-photo-box {
+  position: relative;
+  min-width: 0;
+}
+
+.activity-photo-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px dashed #94a3b8;
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.activity-photo-label.required {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.activity-photo-label.optional {
+  border-color: #cbd5e1;
+}
+
+.activity-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.activity-photo-preview {
+  margin-top: 8px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #dbe3f0;
+  background: #f8fafc;
+  display: none;
+}
+
+.activity-photo-status {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.activity-evidence-note {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 
 /* ==========================================
    FUEL
@@ -516,6 +604,10 @@ label {
 
   .activity-quantity {
     text-align: left;
+  }
+
+  .activity-photo-grid {
+    grid-template-columns: 1fr;
   }
 
   .camera-container {
