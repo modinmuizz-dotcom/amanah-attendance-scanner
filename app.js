@@ -904,6 +904,13 @@ function buildEmployeeList() {
     return;
   }
 
+  const selectedId =
+    state.selectedEmployee
+      ? String(
+          state.selectedEmployee.employee_id
+        )
+      : '';
+
   select.innerHTML = '';
 
   appendOption(
@@ -920,6 +927,11 @@ function buildEmployeeList() {
       );
     }
   );
+
+  if (selectedId) {
+    select.value =
+      selectedId;
+  }
 }
 
 
