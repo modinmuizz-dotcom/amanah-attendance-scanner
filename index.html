@@ -377,6 +377,37 @@
           AMANAH records fuel in liters only.
         </div>
 
+        <div class="fuel-evidence">
+          <div class="fuel-evidence-title">
+            FUEL PHOTO EVIDENCE — OPTIONAL
+          </div>
+
+          <label class="fuel-photo-label">
+            <span>📷 ATTACH FUEL PHOTO</span>
+            <input
+              id="fuelPhoto"
+              class="fuel-photo-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+            >
+          </label>
+
+          <img
+            id="fuelPhotoPreview"
+            class="fuel-photo-preview"
+            alt="Fuel evidence preview"
+          >
+
+          <div
+            id="fuelPhotoStatus"
+            class="fuel-photo-status"
+          >
+            Optional: attach a photo of the fuel receipt, fuel meter,
+            or the equipment being fueled.
+          </div>
+        </div>
+
         <button
           id="fuelConfirmButton"
           class="primary-button full-button"
@@ -400,6 +431,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
