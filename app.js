@@ -101,6 +101,7 @@ const state = {
 
   lastMeterOut: null,
   lastActivities: [],
+  lastFuelPhotoPath: null,
 
   lastQrData: '',
   lastQrTime: 0
@@ -240,6 +241,11 @@ function setupButtons() {
   bindInput(
     'fuelPricePerLiter',
     updateFuelTotal
+  );
+
+  bindChange(
+    'fuelPhoto',
+    fuelPhotoChanged
   );
 }
 
@@ -3423,6 +3429,13 @@ async function completeTimeOut(
   let fuelUnit = null;
   let fuelAmount = null;
 
+  const fuelPhoto =
+    $('fuelPhoto') &&
+    $('fuelPhoto').files &&
+    $('fuelPhoto').files[0]
+      ? $('fuelPhoto').files[0]
+      : null;
+
   if (useFuel) {
 
     const quantity =
@@ -3459,6 +3472,32 @@ async function completeTimeOut(
       return;
     }
 
+    if (
+      fuelPhoto &&
+      !fuelPhoto.type.startsWith('image/')
+    ) {
+
+      setStatus(
+        'Fuel photo must be an image.',
+        'error'
+      );
+
+      return;
+    }
+
+    if (
+      fuelPhoto &&
+      fuelPhoto.size > 10 * 1024 * 1024
+    ) {
+
+      setStatus(
+        'Fuel photo is larger than 10 MB. Please choose a smaller photo.',
+        'error'
+      );
+
+      return;
+    }
+
     fuelQuantity = quantity;
     fuelUnit = 'Liter';
     fuelAmount =
@@ -3485,7 +3524,6 @@ async function completeTimeOut(
       await supabaseClient.rpc(
         'complete_attendance',
         {
-
           p_attendance_id:
             active.attendance_id,
 
@@ -3545,14 +3583,113 @@ async function completeTimeOut(
       );
     }
 
+
+    /*
+      Fuel photo is intentionally OPTIONAL.
+      TIME OUT succeeds even when the photo is omitted.
+    */
+
+    let fuelPhotoMessage = '';
+    let fuelPhotoPath = null;
+
+    if (
+      useFuel &&
+      fuelPhoto
+    ) {
+
+      try {
+
+        setStatus(
+          'TIME OUT recorded. Uploading fuel photo...',
+          'info'
+        );
+
+        fuelPhotoPath =
+          await uploadFuelEvidence(
+            String(
+              active.attendance_id
+            ),
+            fuelPhoto
+          );
+
+        const attachResult =
+          await supabaseClient.rpc(
+            'attach_fuel_evidence',
+            {
+              p_attendance_id:
+                String(
+                  active.attendance_id
+                ),
+
+              p_employee_id:
+                String(
+                  employee.employee_id
+                ),
+
+              p_photo_path:
+                fuelPhotoPath
+            }
+          );
+
+        if (attachResult.error) {
+          throw new Error(
+            attachResult.error.message
+          );
+        }
+
+        const attached =
+          Array.isArray(
+            attachResult.data
+          )
+            ? attachResult.data[0]
+            : attachResult.data;
+
+        if (
+          !attached ||
+          attached.success !== true
+        ) {
+          throw new Error(
+            attached &&
+            attached.error
+              ? attached.error
+              : 'Fuel photo could not be linked.'
+          );
+        }
+
+        state.lastFuelPhotoPath =
+          fuelPhotoPath;
+
+        fuelPhotoMessage =
+          ' Fuel photo attached.';
+
+      } catch (photoError) {
+
+        console.error(
+          'FUEL PHOTO ERROR:',
+          photoError
+        );
+
+        fuelPhotoMessage =
+          ' TIME OUT was recorded, but the optional fuel photo could not be saved.';
+      }
+
+    } else {
+
+      state.lastFuelPhotoPath =
+        null;
+    }
+
+
     const completedAttendance =
       buildCompletedAttendance(
         completed,
         active
       );
 
+
     setStatus(
-      '✓ TIME OUT recorded successfully.',
+      '✓ TIME OUT recorded successfully.' +
+      fuelPhotoMessage,
       'success'
     );
 
@@ -3586,6 +3723,150 @@ async function completeTimeOut(
   } finally {
 
     setBusy(false);
+  }
+}
+
+
+async function uploadFuelEvidence(
+  attendanceId,
+  file
+) {
+
+  const safeAttendanceId =
+    String(
+      attendanceId
+    )
+    .replace(
+      /[^a-zA-Z0-9_-]/g,
+      '_'
+    );
+
+  const extension =
+    getImageExtension(file);
+
+  const path =
+    'attendance/' +
+    safeAttendanceId +
+    '/fuel-' +
+    String(
+      Date.now()
+    ) +
+    extension;
+
+
+  const uploadResult =
+    await supabaseClient
+      .storage
+      .from(
+        'attendance-fuel-evidence'
+      )
+      .upload(
+        path,
+        file,
+        {
+          cacheControl: '3600',
+          upsert: false,
+          contentType:
+            file.type ||
+            'image/jpeg'
+        }
+      );
+
+
+  if (uploadResult.error) {
+
+    throw new Error(
+      'Fuel photo upload failed: ' +
+      uploadResult.error.message
+    );
+  }
+
+
+  return path;
+}
+
+
+function fuelPhotoChanged() {
+
+  const input =
+    $('fuelPhoto');
+
+  const preview =
+    $('fuelPhotoPreview');
+
+  const status =
+    $('fuelPhotoStatus');
+
+  const file =
+    input &&
+    input.files &&
+    input.files[0]
+      ? input.files[0]
+      : null;
+
+  if (!file) {
+
+    if (preview) {
+      preview.removeAttribute('src');
+      preview.style.display =
+        'none';
+    }
+
+    if (status) {
+      status.textContent =
+        'Optional: attach a photo of the fuel receipt, fuel meter, or the equipment being fueled.';
+    }
+
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+
+    input.value = '';
+
+    setStatus(
+      'Fuel photo must be an image.',
+      'error'
+    );
+
+    return;
+  }
+
+  if (
+    file.size >
+    10 * 1024 * 1024
+  ) {
+
+    input.value = '';
+
+    setStatus(
+      'Fuel photo is larger than 10 MB. Please choose a smaller photo.',
+      'error'
+    );
+
+    return;
+  }
+
+  if (preview) {
+
+    preview.src =
+      URL.createObjectURL(
+        file
+      );
+
+    preview.style.display =
+      'block';
+  }
+
+  if (status) {
+
+    status.textContent =
+      file.name +
+      ' • ' +
+      formatFileSize(
+        file.size
+      ) +
+      ' • Optional';
   }
 }
 
@@ -3991,6 +4272,13 @@ function showResult(
         ) +
         '</strong>' +
       '</div>';
+
+    if (state.lastFuelPhotoPath) {
+      html +=
+        '<div class="result-item">' +
+          'Fuel Photo: <strong>ATTACHED</strong>' +
+        '</div>';
+    }
   }
 
   box.innerHTML = html;
@@ -4033,6 +4321,9 @@ function resetOutWorkflowForNewAttendance() {
   }
 
   clearFuelInputs();
+  clearFuelPhoto();
+
+  state.lastFuelPhotoPath = null;
 
   state.selectedEquipment = null;
   state.selectedProject = null;
@@ -4105,6 +4396,7 @@ async function restartScanner() {
   state.outPrepared = false;
   state.lastMeterOut = null;
   state.lastActivities = [];
+  state.lastFuelPhotoPath = null;
   state.lastQrData = '';
   state.lastQrTime = 0;
 
@@ -4328,6 +4620,36 @@ function clearFuelInputs() {
     total.value = '0.00';
   }
 }
+
+
+function clearFuelPhoto() {
+
+  const input =
+    $('fuelPhoto');
+
+  const preview =
+    $('fuelPhotoPreview');
+
+  const status =
+    $('fuelPhotoStatus');
+
+  if (input) {
+    input.value = '';
+  }
+
+  if (preview) {
+    preview.removeAttribute('src');
+    preview.style.display =
+      'none';
+  }
+
+  if (status) {
+    status.textContent =
+      'Optional: attach a photo of the fuel receipt, fuel meter, or the equipment being fueled.';
+  }
+}
+
+
 
 
 function resetFuel() {
