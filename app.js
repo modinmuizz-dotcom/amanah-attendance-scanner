@@ -2319,7 +2319,51 @@ async function prepareTimeOut() {
 
   setBusy(true);
 
+  let uploadedEvidence = [];
+
   try {
+
+    setStatus(
+      'Uploading activity photo evidence...',
+      'info'
+    );
+
+    uploadedEvidence =
+      await uploadActivityEvidence(
+        String(
+          active.attendance_id
+        ),
+        activities.rows
+      );
+
+    const rpcActivities =
+      uploadedEvidence.map(
+        function (activity) {
+
+          return {
+            activity_category:
+              activity.activity_category,
+
+            activity_description:
+              activity.activity_description,
+
+            quantity:
+              activity.quantity,
+
+            photo_1_path:
+              activity.photo_1_path,
+
+            photo_2_path:
+              activity.photo_2_path
+          };
+        }
+      );
+
+
+    setStatus(
+      'Saving meter, activities and photo evidence...',
+      'info'
+    );
 
     const rpcResult =
       await supabaseClient.rpc(
@@ -2339,7 +2383,7 @@ async function prepareTimeOut() {
             meterOut,
 
           p_activities:
-            activities.rows
+            rpcActivities
         }
       );
 
@@ -2369,8 +2413,42 @@ async function prepareTimeOut() {
 
     state.outPrepared = true;
     state.lastMeterOut = meterOut;
+
     state.lastActivities =
-      activities.rows;
+      uploadedEvidence.map(
+        function (activity) {
+
+          return {
+            activity_category:
+              activity.activity_category,
+
+            activity_description:
+              activity.activity_description,
+
+            quantity:
+              activity.quantity,
+
+            photo_1_path:
+              activity.photo_1_path,
+
+            photo_2_path:
+              activity.photo_2_path,
+
+            photo_count:
+              (
+                activity.photo_1_path
+                  ? 1
+                  : 0
+              ) +
+              (
+                activity.photo_2_path
+                  ? 1
+                  : 0
+              )
+          };
+        }
+      );
+
 
     hideElement(
       'outDetails',
@@ -2383,7 +2461,7 @@ async function prepareTimeOut() {
     );
 
     setStatus(
-      '✓ Meter Out and activities recorded. Did you fuel the equipment?',
+      '✓ Meter Out, activities and photo evidence recorded. Did you fuel the equipment?',
       'success'
     );
 
@@ -2402,10 +2480,16 @@ async function prepareTimeOut() {
       'TIME OUT preparation failed: ' +
       (
         error.message ||
-        'Unknown error'
+        'Unable to save activity evidence.'
       ),
       'error'
     );
+
+    /*
+      Photo uploads are intentionally kept if the database step
+      fails. This prevents deleting evidence after a temporary
+      database/network problem.
+    */
 
   } finally {
 
@@ -2490,7 +2574,68 @@ function addActivityRow(
         '"' +
       '>' +
 
+    '</div>' +
+
+    '<div class="activity-evidence">' +
+
+      '<div class="activity-evidence-title">' +
+        'PHOTO EVIDENCE — 1 REQUIRED + 1 OPTIONAL' +
+      '</div>' +
+
+      '<div class="activity-photo-grid">' +
+
+        '<div class="activity-photo-box">' +
+
+          '<label class="activity-photo-label required">' +
+            '<span>📷 PHOTO 1 — REQUIRED</span>' +
+
+            '<input ' +
+              'class="activity-photo-input activity-photo-1" ' +
+              'type="file" ' +
+              'accept="image/*" ' +
+              'capture="environment"' +
+            '>' +
+          '</label>' +
+
+          '<img ' +
+            'class="activity-photo-preview activity-photo-preview-1" ' +
+            'alt="Activity evidence photo 1"' +
+          '>' +
+
+          '<div class="activity-photo-status activity-photo-status-1">' +
+            'Take a clear photo showing the activity.' +
+          '</div>' +
+
+        '</div>' +
+
+        '<div class="activity-photo-box">' +
+
+          '<label class="activity-photo-label optional">' +
+            '<span>📷 PHOTO 2 — OPTIONAL</span>' +
+
+            '<input ' +
+              'class="activity-photo-input activity-photo-2" ' +
+              'type="file" ' +
+              'accept="image/*" ' +
+              'capture="environment"' +
+            '>' +
+          '</label>' +
+
+          '<img ' +
+            'class="activity-photo-preview activity-photo-preview-2" ' +
+            'alt="Activity evidence photo 2"' +
+          '>' +
+
+          '<div class="activity-photo-status activity-photo-status-2">' +
+            'Add a second proof photo when useful.' +
+          '</div>' +
+
+        '</div>' +
+
+      '</div>' +
+
     '</div>';
+
 
   const remove =
     row.querySelector(
@@ -2510,9 +2655,141 @@ function addActivityRow(
     );
   }
 
+
+  const photo1 =
+    row.querySelector(
+      '.activity-photo-1'
+    );
+
+  const photo2 =
+    row.querySelector(
+      '.activity-photo-2'
+    );
+
+  bindActivityPhotoPreview(
+    photo1,
+    row,
+    1
+  );
+
+  bindActivityPhotoPreview(
+    photo2,
+    row,
+    2
+  );
+
+
   list.appendChild(row);
 
   refreshActivityLabels();
+}
+
+
+function bindActivityPhotoPreview(
+  input,
+  row,
+  photoNumber
+) {
+
+  if (!input) {
+    return;
+  }
+
+  input.addEventListener(
+    'change',
+    function () {
+
+      const file =
+        input.files &&
+        input.files[0]
+          ? input.files[0]
+          : null;
+
+      const preview =
+        row.querySelector(
+          photoNumber === 1
+            ? '.activity-photo-preview-1'
+            : '.activity-photo-preview-2'
+        );
+
+      const status =
+        row.querySelector(
+          photoNumber === 1
+            ? '.activity-photo-status-1'
+            : '.activity-photo-status-2'
+        );
+
+      if (!file) {
+
+        if (preview) {
+          preview.removeAttribute('src');
+          preview.style.display =
+            'none';
+        }
+
+        if (status) {
+          status.textContent =
+            photoNumber === 1
+              ? 'Take a clear photo showing the activity.'
+              : 'Add a second proof photo when useful.';
+        }
+
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+
+        input.value = '';
+
+        setStatus(
+          'Photo ' +
+          String(photoNumber) +
+          ' for this activity must be an image.',
+          'error'
+        );
+
+        return;
+      }
+
+      const maxBytes =
+        10 * 1024 * 1024;
+
+      if (file.size > maxBytes) {
+
+        input.value = '';
+
+        setStatus(
+          'Activity photo ' +
+          String(photoNumber) +
+          ' is larger than 10 MB. Please choose a smaller photo.',
+          'error'
+        );
+
+        return;
+      }
+
+      if (preview) {
+
+        preview.src =
+          URL.createObjectURL(
+            file
+          );
+
+        preview.style.display =
+          'block';
+      }
+
+      if (status) {
+
+        status.textContent =
+          file.name +
+          ' • ' +
+          formatFileSize(
+            file.size
+          );
+      }
+    }
+  );
 }
 
 
@@ -2639,6 +2916,16 @@ function collectActivities() {
         '.activity-quantity'
       );
 
+    const photo1 =
+      row.querySelector(
+        '.activity-photo-1'
+      );
+
+    const photo2 =
+      row.querySelector(
+        '.activity-photo-2'
+      );
+
     const activityCategory =
       category
         ? category.value.trim()
@@ -2653,6 +2940,21 @@ function collectActivities() {
       quantity
         ? parseFloat(quantity.value)
         : NaN;
+
+    const file1 =
+      photo1 &&
+      photo1.files &&
+      photo1.files[0]
+        ? photo1.files[0]
+        : null;
+
+    const file2 =
+      photo2 &&
+      photo2.files &&
+      photo2.files[0]
+        ? photo2.files[0]
+        : null;
+
 
     if (!activityCategory) {
 
@@ -2690,6 +2992,44 @@ function collectActivities() {
       };
     }
 
+    if (!file1) {
+
+      return {
+        valid: false,
+        message:
+          'Take at least 1 photo for Activity ' +
+          String(i + 1) +
+          '.'
+      };
+    }
+
+    if (
+      !file1.type.startsWith('image/')
+    ) {
+
+      return {
+        valid: false,
+        message:
+          'Photo 1 for Activity ' +
+          String(i + 1) +
+          ' must be an image.'
+      };
+    }
+
+    if (
+      file2 &&
+      !file2.type.startsWith('image/')
+    ) {
+
+      return {
+        valid: false,
+        message:
+          'Photo 2 for Activity ' +
+          String(i + 1) +
+          ' must be an image.'
+      };
+    }
+
     output.push({
       activity_category:
         activityCategory,
@@ -2698,7 +3038,13 @@ function collectActivities() {
         activityDescription,
 
       quantity:
-        activityQuantity
+        activityQuantity,
+
+      photo1File:
+        file1,
+
+      photo2File:
+        file2
     });
   }
 
@@ -2715,6 +3061,202 @@ function collectActivities() {
     valid: true,
     rows: output
   };
+}
+
+
+async function uploadActivityEvidence(
+  attendanceId,
+  rows
+) {
+
+  const safeAttendanceId =
+    String(
+      attendanceId
+    )
+    .replace(
+      /[^a-zA-Z0-9_-]/g,
+      '_'
+    );
+
+  const uploaded = [];
+
+  for (
+    let index = 0;
+    index < rows.length;
+    index += 1
+  ) {
+
+    const row =
+      rows[index];
+
+    const baseName =
+      'attendance/' +
+      safeAttendanceId +
+      '/activity-' +
+      String(index + 1) +
+      '-' +
+      String(
+        Date.now()
+      );
+
+
+    const photoPaths = {
+      photo_1_path: null,
+      photo_2_path: null
+    };
+
+
+    if (row.photo1File) {
+
+      photoPaths.photo_1_path =
+        await uploadSingleActivityPhoto(
+          row.photo1File,
+          baseName + '-1'
+        );
+    }
+
+
+    if (row.photo2File) {
+
+      photoPaths.photo_2_path =
+        await uploadSingleActivityPhoto(
+          row.photo2File,
+          baseName + '-2'
+        );
+    }
+
+
+    uploaded.push({
+
+      activity_category:
+        row.activity_category,
+
+      activity_description:
+        row.activity_description,
+
+      quantity:
+        row.quantity,
+
+      photo_1_path:
+        photoPaths.photo_1_path,
+
+      photo_2_path:
+        photoPaths.photo_2_path
+    });
+  }
+
+
+  return uploaded;
+}
+
+
+async function uploadSingleActivityPhoto(
+  file,
+  basePath
+) {
+
+  const extension =
+    getImageExtension(file);
+
+  const path =
+    basePath +
+    extension;
+
+
+  const uploadResult =
+    await supabaseClient
+      .storage
+      .from(
+        'attendance-activity-evidence'
+      )
+      .upload(
+        path,
+        file,
+        {
+          cacheControl: '3600',
+          upsert: false,
+          contentType:
+            file.type ||
+            'image/jpeg'
+        }
+      );
+
+
+  if (uploadResult.error) {
+
+    throw new Error(
+      'Photo upload failed: ' +
+      uploadResult.error.message
+    );
+  }
+
+
+  return path;
+}
+
+
+function getImageExtension(
+  file
+) {
+
+  const type =
+    String(
+      file &&
+      file.type
+        ? file.type
+        : ''
+    ).toLowerCase();
+
+  if (
+    type === 'image/png'
+  ) {
+    return '.png';
+  }
+
+  if (
+    type === 'image/webp'
+  ) {
+    return '.webp';
+  }
+
+  if (
+    type === 'image/heic'
+  ) {
+    return '.heic';
+  }
+
+  if (
+    type === 'image/heif'
+  ) {
+    return '.heif';
+  }
+
+  return '.jpg';
+}
+
+
+function formatFileSize(
+  bytes
+) {
+
+  const number =
+    Number(bytes);
+
+  if (!Number.isFinite(number)) {
+    return '';
+  }
+
+  if (number < 1024 * 1024) {
+    return (
+      (number / 1024).toFixed(0) +
+      ' KB'
+    );
+  }
+
+  return (
+    (number / (1024 * 1024)).toFixed(2) +
+    ' MB'
+  );
 }
 
 
@@ -3403,6 +3945,11 @@ function showResult(
     attendance.activities.forEach(
       function (activity, index) {
 
+        const photoCount =
+          Number(
+            activity.photo_count || 0
+          );
+
         html +=
           String(index + 1) +
           '. ' +
@@ -3418,6 +3965,14 @@ function showResult(
             formatNumber(
               activity.quantity
             )
+          ) +
+          ' — Evidence: ' +
+          String(photoCount) +
+          ' photo' +
+          (
+            photoCount === 1
+              ? ''
+              : 's'
           ) +
           '<br>';
       }
