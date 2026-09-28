@@ -13,7 +13,6 @@
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar'],
-      ['progress','Project Progress','project-monitoring.html','chart'],
       ['documents','Documents','reports.html','file'],
     ]},
     {section:'WORKFORCE',items:[
@@ -59,7 +58,6 @@
     if(file==='equipment-maintenance.html') return 'maintenance';
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
-    if(file==='project-monitoring.html') return 'progress';
     if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
