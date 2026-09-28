@@ -1032,15 +1032,6 @@ function openEquipmentModal(
         values.plate_number
       )}
 
-      ${field(
-        'Hourly Rate',
-        'hourly_rate',
-        values.hourly_rate,
-        false,
-        'number',
-        '0.00'
-      )}
-
       ${selectField(
         'Status',
         'status',
@@ -1466,13 +1457,6 @@ async function saveEquipment(
     plate_number:
       values.plate_number.trim() ||
       null,
-
-    hourly_rate:
-      values.hourly_rate === ''
-        ? 0
-        : Number(
-            values.hourly_rate
-          ),
 
     status:
       values.status || 'ACTIVE'
