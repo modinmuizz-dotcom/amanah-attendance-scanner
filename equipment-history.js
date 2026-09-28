@@ -146,9 +146,10 @@ function printEquipmentHistory(){
 *{box-sizing:border-box}
 body{margin:0;background:#fff;color:#0f172a;font-family:Arial,Helvetica,sans-serif}
 .page{max-width:1100px;margin:0 auto;padding:28px}
-.brand{border-bottom:4px solid #2563eb;padding-bottom:14px;margin-bottom:20px}
-.brand h1{margin:0;font-size:24px;letter-spacing:.5px}
-.brand p{margin:4px 0 0;color:#64748b;font-size:11px}
+.brand{border-bottom:4px solid #2563eb;padding-bottom:14px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand-copy h1{margin:0;font-size:24px;letter-spacing:.5px}
+.brand-copy p{margin:4px 0 0;color:#64748b;font-size:11px}
+.brand-logo{width:82px;height:82px;object-fit:contain;flex:0 0 82px}
 .report-title{margin:0 0 4px;font-size:22px}
 .report-subtitle{color:#64748b;font-size:12px}
 .detail-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-top:16px}
@@ -178,7 +179,7 @@ th{background:#f1f5f9;text-transform:uppercase;font-size:8px}
 </head>
 <body>
 <div class="page">
-  <div class="brand"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div>
+  <div class="brand"><div class="brand-copy"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div><img class="brand-logo" src="https://modinmuizz-dotcom.github.io/amanah-attendance-scanner/assets/amanah-logo.svg" alt="AMANAH Construction Services logo"></div>
   <h2 class="report-title">${escapeHtml(title)}</h2>
   <div class="report-subtitle">${escapeHtml(subtitle)}</div>
   ${content}
