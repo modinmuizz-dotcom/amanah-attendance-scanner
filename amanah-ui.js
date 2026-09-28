@@ -17,7 +17,6 @@
     ]},
     {section:'WORKFORCE',items:[
       ['attendance','Attendance','attendance.html','calendar'],
-      ['qr','QR Attendance','attendance.html','qr'],
     ]},
     {section:'EQUIPMENT',items:[
       ['equipment','Equipment','admin.html','truck'],
