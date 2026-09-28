@@ -8,7 +8,7 @@
       ['dashboard','Dashboard','dashboard.html','grid'],
     ]},
     {section:'ADMIN SECTION',items:[
-      ['employees','Employee Master','admin.html','user'],
+      ['employees','Master Data','admin.html','user'],
       ['roles','Roles & Permissions','admin.html','shield'],
     ]},
     {section:'PROJECT MANAGEMENT',items:[
@@ -27,7 +27,6 @@
     {section:'RESOURCES',items:[
       ['materials','Materials & Inventory','project-cost.html','box'],
       ['purchasing','Purchasing','purchasing.html','briefcase'],
-      ['suppliers','Suppliers','suppliers.html','users'],
     ]},
     {section:'REPORTING',items:[
       ['reports','Reports','reports.html','report'],
