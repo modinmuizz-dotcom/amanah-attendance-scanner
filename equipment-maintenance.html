@@ -17,7 +17,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.metric{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.metric-label{font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase}.metric-value{margin-top:7px;font-size:24px;font-weight:900}
 .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1100px}th,td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:12px}th{background:#f8fafc;color:#334155;font-weight:900;text-transform:uppercase;font-size:10px}.tag{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:900}.empty{text-align:center;color:#64748b;padding:28px}
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.58);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal-backdrop.open{display:flex}.modal{background:#fff;width:min(720px,100%);max-height:92vh;overflow:auto;border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(15,23,42,.28)}.modal-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}.modal-header h3{margin:0;font-size:22px}.close{border:0;background:#f1f5f9;width:38px;height:38px;border-radius:50%;font-size:20px;font-weight:900}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.full{grid-column:1/-1}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.calculated{background:#ecfdf5;border-color:#bbf7d0;color:#166534;font-weight:900}
-@media(max-width:900px){.topbar{padding:10px 16px}.hero{flex-direction:column;align-items:stretch}.filters,.summary,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.hero-card{min-width:0}}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.maintenance-photo-card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#f8fafc}.maintenance-photo-card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}.maintenance-photo-meta{padding:9px 10px;font-size:10px;color:#334155}.photo-empty,.photo-error{padding:20px;text-align:center;color:#64748b;background:#f8fafc;border-radius:12px}.photo-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap}.photo-help{color:#64748b;font-size:12px}@media(max-width:900px){.photo-grid{grid-template-columns:1fr 1fr}.topbar{padding:10px 16px}.hero{flex-direction:column;align-items:stretch}.filters,.summary,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.hero-card{min-width:0}}
 </style>
   <link rel="stylesheet" href="amanah-ui.css?v=4">
 </head>
@@ -92,7 +92,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 
 <div id="modalBackdrop" class="modal-backdrop">
   <div class="modal">
-    <div class="modal-header"><h3>ADD MAINTENANCE</h3><button class="close" id="closeModal" type="button">×</button></div>
+    <div class="modal-header"><h3 id="modalTitle">ADD MAINTENANCE</h3><button class="close" id="closeModal" type="button">×</button></div>
     <form id="recordForm">
       <div class="form-grid">
         <div class="field"><label for="maintenanceDate">Date</label><input class="input" type="date" id="maintenanceDate" required></div>
@@ -120,8 +120,28 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   </div>
 </div>
 
+<div id="photoBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>MAINTENANCE PHOTOS</h3>
+      <button class="close" id="closePhotoModal" type="button">×</button>
+    </div>
+    <div class="photo-help">Attach maintenance evidence such as the damaged part, replacement, service work, receipt, or completed maintenance.</div>
+    <div id="maintenancePhotoGrid" class="photo-grid"></div>
+    <div class="field full" style="margin-top:16px">
+      <label for="photoFileInput">ATTACH PHOTOS</label>
+      <input class="input" id="photoFileInput" type="file" accept="image/*" multiple>
+    </div>
+    <div id="photoUploadMessage" class="photo-help">Choose one or more photos, then upload them.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" id="closePhotoButton">CLOSE</button>
+      <button class="btn-green" type="button" id="uploadPhotosButton">UPLOAD PHOTOS</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="equipment-maintenance-fix-20260928.js?v=1"></script>
+<script src="equipment-maintenance-fix-20260928.js?v=2"></script>
 <script src="amanah-ui.js?v=3"></script>
 </body>
 </html>
