@@ -253,7 +253,7 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
 
       <section class="metrics">
         <div class="metric"><div class="metric-label">Equipment</div><div class="metric-value" id="metricEquipment">0</div></div>
-        <div class="metric"><div class="metric-label">PM Records</div><div class="metric-value" id="metricPM">0</div></div>
+        <div class="metric"><div class="metric-label">Maintenance Records</div><div class="metric-value" id="metricMaintenance">0</div></div><div class="metric"><div class="metric-label">PM Records</div><div class="metric-value" id="metricPM">0</div></div>
         <div class="metric"><div class="metric-label">Repair Records</div><div class="metric-value" id="metricRepairs">0</div></div>
         <div class="metric"><div class="metric-label">Open Repairs</div><div class="metric-value" id="metricOpen">0</div></div>
         <div class="metric"><div class="metric-label">Repair Cost</div><div class="metric-value" id="metricCost">₱0.00</div></div>
@@ -268,6 +268,18 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
           <table class="summary-table">
             <thead><tr><th>Equipment</th><th>Status</th><th>PM Records</th><th>Repairs</th><th>Open</th><th>Closed</th><th>Total Repair Cost</th><th>Last Repair</th><th>ACTION</th></tr></thead>
             <tbody id="summaryBody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><h2>MAINTENANCE HISTORY REGISTER</h2><p>Every preventive-maintenance and equipment expense recorded for AMANAH equipment.</p></div>
+        </div>
+        <div class="table-wrap">
+          <table class="maintenance-table">
+            <thead><tr><th>Date</th><th>Equipment</th><th>Project</th><th>Type</th><th>Description</th><th>Supplier / Shop</th><th>Qty</th><th>Unit</th><th>Total</th><th>Reference</th></tr></thead>
+            <tbody id="maintenanceBody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -314,6 +326,6 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
   }
 })();
 </script>
-<script src="equipment-history.js?v=3"></script>
+<script src="equipment-history.js?v=4"></script>
 </body>
 </html>
