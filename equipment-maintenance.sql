@@ -90,70 +90,149 @@ before update on public.equipment_maintenance
 for each row
 execute function public.set_equipment_maintenance_updated_at();
 
-create or replace function public.sync_equipment_maintenance_project_cost()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  equipment_name text;
-  ref text;
-begin
-  if tg_op = 'DELETE' then
-    delete from public.project_cost_entries
-    where reference_id = 'AUTO-MAINTENANCE:' || old.maintenance_id::text;
-    return old;
-  end if;
+/*
+  AMANAH EQUIPMENT MAINTENANCE - AMBIGUOUS equipment_name FIX
+  ------------------------------------------------------------
+  Fixes the maintenance -> project cost trigger.
 
-  ref := 'AUTO-MAINTENANCE:' || new.maintenance_id::text;
+  PostgreSQL was seeing:
+      equipment_name
+  as both:
+      - the local PL/pgSQL variable
+      - public.equipment.equipment_name
 
-  delete from public.project_cost_entries
-  where reference_id = ref;
+  The trigger now uses a qualified table alias and a differently
+  named variable.
+*/
 
-  if new.project_id is null or coalesce(new.total_amount,0) <= 0 then
-    return new;
-  end if;
 
-  select equipment_name
-    into equipment_name
-  from public.equipment
-  where equipment_id = new.equipment_id
-  limit 1;
+CREATE OR REPLACE FUNCTION public.sync_equipment_maintenance_project_cost()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
 
-  insert into public.project_cost_entries
+DECLARE
+  v_equipment_name text;
+  v_reference text;
+BEGIN
+
+  /*
+    DELETE
+  */
+  IF TG_OP = 'DELETE' THEN
+
+    DELETE FROM public.project_cost_entries
+    WHERE reference_id =
+      'AUTO-MAINTENANCE:' ||
+      OLD.maintenance_id::text;
+
+    RETURN OLD;
+
+  END IF;
+
+
+  v_reference :=
+    'AUTO-MAINTENANCE:' ||
+    NEW.maintenance_id::text;
+
+
+  /*
+    Remove any previous automatically-created
+    project cost row before rebuilding it.
+  */
+  DELETE FROM public.project_cost_entries
+  WHERE reference_id = v_reference;
+
+
+  /*
+    No project or zero cost:
+    nothing should be added to project cost.
+  */
+  IF NEW.project_id IS NULL
+     OR COALESCE(NEW.total_amount, 0) <= 0 THEN
+
+    RETURN NEW;
+
+  END IF;
+
+
+  /*
+    IMPORTANT:
+    Qualify the equipment table so PostgreSQL does not
+    confuse the column with the PL/pgSQL variable.
+  */
+  SELECT e.equipment_name
+    INTO v_equipment_name
+  FROM public.equipment AS e
+  WHERE e.equipment_id =
+        NEW.equipment_id
+  LIMIT 1;
+
+
+  /*
+    Create the automatic Project Cost entry.
+  */
+  INSERT INTO public.project_cost_entries
   (
-    project_id, cost_date, cost_type, description,
-    quantity, unit, unit_cost, amount, reference_id, notes
+    project_id,
+    cost_date,
+    cost_type,
+    description,
+    quantity,
+    unit,
+    unit_cost,
+    amount,
+    reference_id,
+    notes
   )
-  values
+  VALUES
   (
-    new.project_id,
-    new.maintenance_date,
+    NEW.project_id,
+    NEW.maintenance_date,
     'EQUIPMENT',
-    'Equipment ' || new.maintenance_type || ' - ' ||
-      coalesce(equipment_name,new.equipment_id) || ' - ' ||
-      new.description,
-    new.quantity,
-    new.unit,
-    new.unit_cost,
-    new.total_amount,
-    ref,
+    'Equipment ' ||
+      NEW.maintenance_type ||
+      ' - ' ||
+      COALESCE(
+        v_equipment_name,
+        NEW.equipment_id
+      ) ||
+      ' - ' ||
+      NEW.description,
+    NEW.quantity,
+    NEW.unit,
+    NEW.unit_cost,
+    NEW.total_amount,
+    v_reference,
     'Automatically generated from Equipment Maintenance.'
   );
 
-  return new;
-end;
-$$;
 
-drop trigger if exists trg_equipment_maintenance_project_cost
-  on public.equipment_maintenance;
+  RETURN NEW;
 
-create trigger trg_equipment_maintenance_project_cost
-after insert or update or delete
-on public.equipment_maintenance
-for each row
-execute function public.sync_equipment_maintenance_project_cost();
+END;
+$function$;
+
+
+/*
+  Recreate the trigger to ensure it points to
+  the corrected function.
+*/
+
+DROP TRIGGER IF EXISTS
+  trg_equipment_maintenance_project_cost
+ON public.equipment_maintenance;
+
+
+CREATE TRIGGER
+  trg_equipment_maintenance_project_cost
+AFTER INSERT OR UPDATE OR DELETE
+ON public.equipment_maintenance
+FOR EACH ROW
+EXECUTE FUNCTION
+  public.sync_equipment_maintenance_project_cost();
 
 create unique index if not exists idx_project_cost_auto_maintenance_unique
 on public.project_cost_entries(reference_id)
