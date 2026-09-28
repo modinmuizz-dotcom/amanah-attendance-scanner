@@ -21,11 +21,11 @@
 .btn{min-height:42px;padding:10px 14px;border:0;border-radius:10px;font-size:11px;font-weight:900}.btn.blue{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}.btn.green{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}.btn.gray{background:var(--gray100);color:var(--gray700);border:1px solid var(--gray200)}.btn.red{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
 .table-wrap{overflow:auto}.table{width:100%;min-width:1100px;border-collapse:collapse}.table th,.table td{padding:12px 13px;border-bottom:1px solid var(--gray200);text-align:left;vertical-align:top;font-size:12px}.table th{background:#f8fafc;color:var(--gray500);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.table tbody tr:hover td{background:#fbfdff}
 .badge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900}.b-draft{background:#f1f5f9;color:#475569}.b-sub{background:#eff6ff;color:#1d4ed8}.b-review{background:#fff7ed;color:#c2410c}.b-approved{background:#dcfce7;color:#166534}.b-rejected{background:#fee2e2;color:#b91c1c}.b-ordered{background:#ede9fe;color:#6d28d9}.b-received{background:#ecfdf5;color:#15803d}.b-cancel{background:#f1f5f9;color:#475569}
-.row-actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.blue{background:#dbeafe;color:#1d4ed8}.mini.green{background:#dcfce7;color:#166534}.mini.red{background:#fee2e2;color:#b91c1c}.mini.gray{background:#eef2f7;color:#475569}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.blue{background:#dbeafe;color:#1d4ed8}.mini.green{background:#dcfce7;color:#166534}.mini.red{background:#fee2e2;color:#b91c1c}.mini.gray{background:#eef2f7;color:#475569}.mini.print{background:#e0f2fe;color:#0369a1}.mini.edit{background:#dbeafe;color:#1d4ed8}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.full{grid-column:1/-1}.form-section{padding:20px 22px}.section-label{font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--gray700);text-transform:uppercase;margin:20px 0 10px}.items-box{border:1px solid var(--gray200);border-radius:14px;overflow:hidden}.items-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;background:var(--gray50);border-bottom:1px solid var(--gray200)}.item-row{display:grid;grid-template-columns:minmax(145px,1.45fr) minmax(125px,1.25fr) minmax(72px,.55fr) minmax(68px,.5fr) minmax(100px,.8fr) minmax(100px,.8fr) 34px;gap:8px;align-items:end;padding:10px;border-bottom:1px solid var(--gray200)}.item-row>*{min-width:0}.item-row input{min-width:0}.item-total{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item-row:last-child{border-bottom:0}.remove-item{width:34px;height:42px;border:0;border-radius:8px;background:#fee2e2;color:#b91c1c;font-weight:900}.item-total{min-height:44px;display:flex;align-items:center;padding:0 10px;background:#f8fafc;border:1px solid var(--gray200);border-radius:10px;font-weight:900}
 .total-box{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px}.total-box strong{font-size:20px}
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:1000;align-items:center;justify-content:center;padding:18px}.modal{width:min(980px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.25)}.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:18px}.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}.modal-actions{padding:16px 20px;border-top:1px solid var(--gray200);display:flex;justify-content:flex-end;gap:10px}
-.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.detail-card{padding:13px;border:1px solid var(--gray200);border-radius:12px;background:#fff}.detail-card label{display:block;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}.detail-card strong,.detail-card div{font-size:13px;font-weight:800;line-height:1.45}.empty{padding:35px;text-align:center;color:#94a3b8;font-weight:700}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.print-actions{display:flex;gap:8px;flex-wrap:wrap}.detail-card{padding:13px;border:1px solid var(--gray200);border-radius:12px;background:#fff}.detail-card label{display:block;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}.detail-card strong,.detail-card div{font-size:13px;font-weight:800;line-height:1.45}.empty{padding:35px;text-align:center;color:#94a3b8;font-weight:700}
 @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.item-row{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:1fr 1fr}}@media(max-width:700px){.hero{flex-direction:column;align-items:stretch}.hero-chip{min-width:0}.metrics{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.item-row{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.tabs{overflow:auto}.toolbar{align-items:stretch}.message{min-width:0}.confirm-modal{max-width:calc(100% - 24px)}}
 </style>
 </head>
@@ -122,13 +122,13 @@
   <div class="modal">
     <div class="modal-head"><h3 id="detailTitle">PURCHASE REQUEST DETAILS</h3><button class="modal-x" id="closeDetail" type="button">×</button></div>
     <div class="form-section" id="detailBody"></div>
-    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
+    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="poModal">
   <div class="modal">
-    <div class="modal-head"><div><h3>CREATE PURCHASE ORDER</h3><div id="poFromRequest" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div></div><button class="modal-x" id="closePo" type="button">×</button></div>
+    <div class="modal-head"><div><h3 id="poModalTitle">CREATE PURCHASE ORDER</h3><div id="poFromRequest" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div></div><button class="modal-x" id="closePo" type="button">×</button></div>
     <div class="form-section">
       <div class="form-grid">
         <div class="field"><label>Supplier Name</label><input id="poSupplier" placeholder="Supplier / vendor name"></div>
@@ -149,7 +149,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=2"></script>
+<script src="purchasing.js?v=3"></script>
 <script src="amanah-ui.js?v=5"></script>
 </body>
 </html>
