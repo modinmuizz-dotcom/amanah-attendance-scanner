@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null};
+const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -27,6 +27,9 @@ async function init(){
   document.getElementById("closeModal").addEventListener("click",closeModal);
   document.getElementById("cancelModal").addEventListener("click",closeModal);
   document.getElementById("saveStatus").addEventListener("click",saveStatus);
+  document.getElementById("calendarPrev").addEventListener("click",()=>changeCalendarMonth(-1));
+  document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
+  document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
 }
 async function loadProjects(){
@@ -78,7 +81,92 @@ function renderTables(){
   document.getElementById("equipmentTable").innerHTML=assignments.length?assignments.map(({a,e})=>'<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc((a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—"))+'</td><td><strong>'+esc(e.equipment_name)+'</strong><br><small style="color:#64748b">'+esc(e.equipment_id)+" • "+esc(e.plate_number||"")+'</small></td><td>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</td><td><strong>'+esc(a.activity||"")+'</strong></td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td></tr>').join(""):'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px">No equipment schedules found.</td></tr>';
 
   document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
+  renderCalendar();
 }
+
+function changeCalendarMonth(delta){
+  state.calendarMonth=new Date(state.calendarMonth.getFullYear(),state.calendarMonth.getMonth()+delta,1);
+  renderCalendar();
+}
+
+function calendarStatusClass(status){
+  return {"PLANNED":"planned","IN PROGRESS":"status-progress","DONE":"status-done","NOT DONE":"status-notdone","CANCELLED":"status-cancel"}[status] || "planned";
+}
+
+function renderCalendar(){
+  const grid=document.getElementById("calendarGrid");
+  const label=document.getElementById("calendarMonthLabel");
+  if(!grid||!label)return;
+
+  const year=state.calendarMonth.getFullYear();
+  const month=state.calendarMonth.getMonth();
+  label.textContent=state.calendarMonth.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+
+  const weekdays=["SUN","MON","TUE","WED","THU","FRI","SAT"];
+  const first=new Date(year,month,1);
+  const startDay=first.getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const prevDays=new Date(year,month,0).getDate();
+
+  const q=(document.getElementById("fSearch")?.value||"").toLowerCase().trim();
+  const filterProject=document.getElementById("fProject")?.value||"";
+  const filterStatus=document.getElementById("fStatus")?.value||"";
+  const filtered=state.activities.filter(a=>{
+    const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
+    const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
+    return (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||a.activity_status===filterStatus);
+  });
+
+  let out=weekdays.map(d=>'<div class="calendar-weekday">'+d+'</div>').join("");
+
+  const totalCells=Math.ceil((startDay+daysInMonth)/7)*7;
+  const todayStr=today();
+
+  for(let cell=0;cell<totalCells;cell++){
+    const dayNum=cell-startDay+1;
+    let cellDate,muted=false,displayDay;
+
+    if(dayNum<1){
+      const d=prevDays+dayNum;
+      cellDate=year+"-"+String(month).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+      muted=true;displayDay=d;
+    }else if(dayNum>daysInMonth){
+      const d=dayNum-daysInMonth;
+      const nextDate=new Date(year,month+1,d);
+      cellDate=nextDate.toISOString().slice(0,10);
+      muted=true;displayDay=d;
+    }else{
+      cellDate=year+"-"+String(month+1).padStart(2,"0")+"-"+String(dayNum).padStart(2,"0");
+      displayDay=dayNum;
+    }
+
+    const dayActs=filtered.filter(a=>a.activity_date===cellDate).sort((a,b)=>{
+      const aa=a.scheduled_start||"9999";const bb=b.scheduled_start||"9999";
+      return aa.localeCompare(bb);
+    });
+
+    const events=dayActs.slice(0,4).map(a=>{
+      const time=(a.scheduled_start?fmtTime(a.scheduled_start):"")+" "+(a.scheduled_end?("– "+fmtTime(a.scheduled_end)):"");
+      const statusCls=calendarStatusClass(a.activity_status);
+      return '<button type="button" class="calendar-event '+statusCls+'" data-cal-update="'+esc(a.activity_id)+'">'+
+        '<div class="calendar-event-time">'+esc(time||"ALL DAY")+'</div>'+
+        '<div class="calendar-event-name">'+esc(a.activity||"Activity")+'</div>'+
+        '<div class="calendar-event-project">'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</div>'+
+      '</button>';
+    }).join("");
+
+    const more=dayActs.length>4?'<div class="calendar-more">+'+(dayActs.length-4)+' more</div>':"";
+
+    out+='<div class="calendar-day '+(muted?"muted ":"")+(cellDate===todayStr?"today":"")+'>'+
+      '<div class="calendar-day-number"><span>'+displayDay+'</span>'+(dayActs.length?'<em class="calendar-more">'+dayActs.length+' task'+(dayActs.length>1?"s":"")+'</em>':"")+'</div>'+
+      (events||'<div style="height:4px"></div>')+more+
+    '</div>';
+  }
+
+  grid.innerHTML=out;
+  document.querySelectorAll("[data-cal-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.calUpdate)));
+}
+
 async function saveSchedule(){
   clearMsg();
   const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
