@@ -131,7 +131,7 @@
     <div class="modal-head"><div><h3 id="poModalTitle">CREATE PURCHASE ORDER</h3><div id="poFromRequest" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div></div><button class="modal-x" id="closePo" type="button">×</button></div>
     <div class="form-section">
       <div class="form-grid">
-        <div class="field"><label>Supplier Name</label><input id="poSupplier" placeholder="Supplier / vendor name"></div>
+        <div class="field"><label>Supplier Name</label><select id="poSupplier"><option value="">SELECT REGISTERED SUPPLIER</option></select><div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">Manage registered suppliers from the Suppliers module.</div></div>
         <div class="field"><label>Supplier Contact</label><input id="poSupplierContact" placeholder="Contact number / email"></div>
         <div class="field full"><label>Supplier Address</label><input id="poSupplierAddress" placeholder="Supplier address"></div>
         <div class="field"><label>PO Date</label><input id="poDate" type="date"></div>
@@ -149,7 +149,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=6"></script>
+<script src="purchasing.js?v=7"></script>
 <script src="amanah-ui.js?v=5"></script>
 </body>
 </html>
