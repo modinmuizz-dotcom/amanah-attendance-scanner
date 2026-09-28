@@ -1016,6 +1016,25 @@
 }
 
     /* =========================================================
+       ACTIVITY STATUS PILLS
+       ========================================================= */
+    .pm-status-pill{
+      display:inline-flex;
+      align-items:center;
+      padding:6px 9px;
+      border-radius:999px;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.04em;
+      white-space:nowrap;
+    }
+    .status-planned{background:#eff6ff;color:#1d4ed8}
+    .status-progress{background:#fff7ed;color:#c2410c}
+    .status-done{background:#ecfdf5;color:#15803d}
+    .status-notdone{background:#fef2f2;color:#b91c1c}
+    .status-cancelled{background:#f1f5f9;color:#475569}
+
+    /* =========================================================
    MULTI-EQUIPMENT SELECTOR
    ========================================================= */
 
@@ -1445,7 +1464,7 @@
 
       <div class="pm-actions">
         <button class="pm-button pm-button-secondary" id="clearActivityButton">CLEAR</button>
-        <button class="pm-button pm-button-primary" id="saveActivityButton">SAVE ACTIVITY</button>
+        <button class="pm-button pm-button-primary" id="saveActivityButton">SAVE SCHEDULE</button>
       </div>
     </section>
 
@@ -1472,8 +1491,7 @@
               <th>Priority</th>
               <th>Status</th>
               <th>Progress</th>
-              <th>Remarks</th>
-              <th>Action</th>
+              <th>Remarks / Schedule</th>
             </tr>
           </thead>
           <tbody id="activityBody">
@@ -1487,7 +1505,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-monitoring.js?v=5"></script>
+  <script src="project-monitoring.js?v=6"></script>
 <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
