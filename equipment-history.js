@@ -179,13 +179,31 @@ th{background:#f1f5f9;text-transform:uppercase;font-size:8px}
 </head>
 <body>
 <div class="page">
-  <div class="brand"><div class="brand-copy"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div><img class="brand-logo" src="https://modinmuizz-dotcom.github.io/amanah-attendance-scanner/assets/amanah-logo.svg" alt="AMANAH Construction Services logo"></div>
+  <div class="brand"><div class="brand-copy"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div><img class="brand-logo" src="https://modinmuizz-dotcom.github.io/amanah-attendance-scanner/assets/amanah-logo-print.svg" alt="AMANAH Construction Services logo"></div>
   <h2 class="report-title">${escapeHtml(title)}</h2>
   <div class="report-subtitle">${escapeHtml(subtitle)}</div>
   ${content}
   <div class="footer"><span>AMANAH CMS</span><span>Generated ${new Date().toLocaleString("en-PH")}</span></div>
 </div>
-<script>window.onload=function(){setTimeout(function(){window.print();},250);};window.onafterprint=function(){setTimeout(function(){window.close();},250);};</script>
+<script>
+(function(){
+  function printNow(){setTimeout(function(){window.print();},300);}
+  window.addEventListener("load",function(){
+    const logo=document.querySelector(".brand-logo");
+    if(!logo){printNow();return;}
+    if(typeof logo.decode==="function"){
+      logo.decode().catch(function(){}).finally(printNow);
+    }else if(logo.complete){
+      printNow();
+    }else{
+      logo.addEventListener("load",printNow,{once:true});
+      logo.addEventListener("error",printNow,{once:true});
+      setTimeout(printNow,1200);
+    }
+  });
+  window.onafterprint=function(){setTimeout(function(){window.close();},250);};
+})();
+</script>
 </body>
 </html>`);
   w.document.close();
