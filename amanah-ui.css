@@ -79,18 +79,20 @@ body.amanah-common-active{
   min-height:calc(100vh - 56px);
 }
 .amanah-common-active .container{
-  width:min(1400px,94%);
+  width:calc(100% - 24px) !important;
+  max-width:1600px !important;
   margin-left:auto !important;
   margin-right:auto !important;
 }
 .amanah-common-active .page{
-  max-width:1260px;
-  margin:0 auto;
-  padding:26px 26px 60px;
+  width:calc(100% - 24px) !important;
+  max-width:1600px !important;
+  margin:0 auto !important;
+  padding:18px 12px 50px !important;
 }
 .amanah-common-active .app{
   max-width:none !important;
-  width:auto !important;
+  width:calc(100% - 24px) !important;
   margin:0 auto !important;
   padding:0 !important;
 }
@@ -110,8 +112,8 @@ body.amanah-common-active{
 }
 @media(max-width:600px){
   #amanahTopbar .amanah-breadcrumb{font-size:10px}
-  .amanah-common-active .container{width:calc(100% - 20px)}
-  .amanah-common-active .page{padding:18px 10px 40px}
+  .amanah-common-active .container{width:calc(100% - 16px) !important}
+  .amanah-common-active .page{width:calc(100% - 16px) !important;padding:14px 8px 36px !important}
 }
 
 /* ===== Shared module hero — matches Equipment History ===== */
