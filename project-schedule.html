@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>AMANAH Project & Equipment Schedule</title>
+  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <style>
+    :root{
+      --navy:#0f172a;--blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--greenSoft:#ecfdf5;
+      --red:#dc2626;--redSoft:#fef2f2;--orange:#ea580c;--orangeSoft:#fff7ed;
+      --gray25:#fcfcfd;--gray50:#f8fafc;--gray100:#f1f5f9;--gray200:#e2e8f0;
+      --gray300:#cbd5e1;--gray500:#64748b;--gray700:#334155;--shadow:0 12px 30px rgba(15,23,42,.07);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%);color:var(--navy);font-family:Arial,Helvetica,sans-serif}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .schedule-wrap{width:min(1280px,calc(100% - 36px));margin:0 auto;padding:30px 0 60px}
+    .schedule-hero{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:20px}
+    .schedule-title h1{margin:0;font-size:38px;font-weight:900;letter-spacing:-.03em}
+    .schedule-title p{margin:8px 0 0;color:var(--gray500);max-width:760px;line-height:1.6}
+    .schedule-badge{padding:14px 16px;border-radius:16px;background:#fff;border:1px solid var(--gray200);box-shadow:0 3px 10px rgba(15,23,42,.05);min-width:210px}
+    .schedule-badge small{display:block;color:var(--gray500);font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+    .schedule-badge strong{display:block;margin-top:5px;font-size:18px}
+    .notice{display:none;padding:13px 15px;border-radius:13px;margin-bottom:18px;font-weight:800}
+    .notice.ok{background:var(--greenSoft);color:#166534;border:1px solid #bbf7d0}.notice.err{background:var(--redSoft);color:#991b1b;border:1px solid #fecaca}
+    .panel{background:#fff;border:1px solid var(--gray200);border-radius:18px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+    .panel-head{padding:20px 22px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+    .panel-head h2{margin:0;font-size:20px;font-weight:900}.panel-head p{margin:6px 0 0;color:var(--gray500);font-size:13px}
+    .tag{padding:7px 10px;border-radius:999px;background:var(--gray100);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--gray700)}
+    .form{padding:22px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.full{grid-column:1/-1}
+    .field label{display:block;margin:0 0 7px;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--gray700)}
+    .field input,.field select,.field textarea,.filter input,.filter select{width:100%;min-height:46px;padding:11px 13px;border:1px solid var(--gray300);border-radius:11px;background:#fff;color:var(--navy);outline:none}
+    .field textarea{min-height:95px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus,.filter input:focus,.filter select:focus{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(37,99,235,.10)}
+    .helper{margin-top:7px;color:var(--gray500);font-size:12px;line-height:1.5}
+    .equipment-box{border:1px solid var(--gray200);border-radius:14px;overflow:hidden}
+    .equipment-tools{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:10px;background:var(--gray50);border-bottom:1px solid var(--gray200)}
+    .equipment-tools input{min-height:42px;border:1px solid var(--gray300);border-radius:10px;padding:10px 12px}
+    .tool-btn{min-height:42px;padding:0 12px;border-radius:10px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;font-weight:900;font-size:11px}
+    .tool-btn.gray{border-color:var(--gray300);background:#fff;color:var(--gray700)}
+    .equipment-list{max-height:245px;overflow:auto;padding:8px}
+    .equip-row{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:11px;cursor:pointer}
+    .equip-row:hover{background:#f8fafc}.equip-row input{width:18px;height:18px}
+    .equip-row strong{display:block;font-size:13px}.equip-row small{color:var(--gray500);font-size:11px}
+    .equipment-summary{padding:10px 12px;background:var(--gray50);border-top:1px solid var(--gray200);font-size:12px;font-weight:800;color:var(--gray500)}
+    .equipment-summary.has{background:var(--greenSoft);color:#15803d}
+    .actions{display:flex;justify-content:flex-end;gap:10px;padding:0 22px 22px}
+    .btn{min-height:44px;padding:11px 17px;border:0;border-radius:11px;font-size:12px;font-weight:900}.btn.green{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}.btn.gray{background:var(--gray100);color:var(--gray700);border:1px solid var(--gray200)}.btn.blue{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:18px 22px 0}
+    .metric{padding:15px;border:1px solid var(--gray200);border-radius:14px;background:#fff}.metric small{display:block;color:var(--gray500);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.metric strong{display:block;margin-top:7px;font-size:27px}
+    .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:10px;padding:18px 22px;border-bottom:1px solid var(--gray200)}
+    .filter label{display:block;margin-bottom:6px;color:var(--gray500);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+    .table-wrap{overflow:auto}.table{width:100%;min-width:1100px;border-collapse:collapse}.table th,.table td{padding:13px 14px;border-bottom:1px solid var(--gray200);text-align:left;vertical-align:top;font-size:12px}.table th{background:#f8fafc;color:var(--gray500);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.table td strong{color:var(--navy)}.table tbody tr:hover td{background:#fbfdff}
+    .pill{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em}.planned{background:#eff6ff;color:#1d4ed8}.progress{background:#fff7ed;color:#c2410c}.done{background:#ecfdf5;color:#15803d}.notdone{background:#fef2f2;color:#b91c1c}.cancel{background:#f1f5f9;color:#475569}
+    .equip-list-text{max-width:300px;white-space:normal;line-height:1.4}
+    .row-actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.blue{background:#dbeafe;color:#1d4ed8}.mini.green{background:#dcfce7;color:#166534}.mini.red{background:#fee2e2;color:#b91c1c}.mini.gray{background:#eef2f7;color:#475569}
+    .subtable-title{padding:18px 22px 0;font-size:14px;font-weight:900}
+    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:1000;align-items:center;justify-content:center;padding:18px}
+    .modal{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.25);overflow:hidden}.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:18px}.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}.modal-body{padding:20px}.modal-actions{padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px}
+    @media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.schedule-hero{flex-direction:column;align-items:stretch}.schedule-badge{min-width:0}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+    @media(max-width:650px){.schedule-wrap{width:min(100% - 20px,1280px)}.panel-head{flex-direction:column}.metrics{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.equipment-tools{grid-template-columns:1fr}.actions{flex-direction:column}.btn{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="schedule-wrap">
+    <section class="schedule-hero">
+      <div class="schedule-title">
+        <div style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:900;letter-spacing:.1em">PROJECT PLANNING</div>
+        <h1>PROJECT & EQUIPMENT SCHEDULE</h1>
+        <p>Plan each site activity, assign the exact equipment required, and let the site engineer update every task as Planned, In Progress, Done, or Not Done.</p>
+      </div>
+      <div class="schedule-badge"><small>System Module</small><strong>Site Schedule Control</strong></div>
+    </section>
+
+    <div id="ok" class="notice ok"></div>
+    <div id="err" class="notice err"></div>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>CREATE ACTIVITY SCHEDULE</h2><p>This is the planning step. Select the project and the exact equipment needed on site.</p></div><span class="tag">ENGINEER</span></div>
+      <div class="form">
+        <div class="grid">
+          <div class="field"><label>Project</label><select id="project"></select></div>
+          <div class="field"><label>Activity Date</label><input type="date" id="activityDate"></div>
+          <div class="field"><label>Start Time</label><input type="time" id="startTime"></div>
+          <div class="field"><label>End Time</label><input type="time" id="endTime"></div>
+          <div class="field"><label>Activity</label><input id="activity" placeholder="Example: Hauling limestone"></div>
+          <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
+          <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
+          <div class="field"><label>Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
+          <div class="field"><label>Initial Status</label><input value="PLANNED" readonly style="background:#eff6ff;color:#1d4ed8;font-weight:900"></div>
+          <div class="field full"><label>Equipment Required on Site</label>
+            <div class="equipment-box">
+              <div class="equipment-tools">
+                <input id="equipmentSearch" placeholder="Search equipment..." autocomplete="off">
+                <button class="tool-btn" id="allEquipment" type="button">SELECT ALL</button>
+                <button class="tool-btn gray" id="clearEquipment" type="button">CLEAR</button>
+              </div>
+              <div id="equipmentList" class="equipment-list"><div style="padding:20px;text-align:center;color:#64748b">Loading equipment...</div></div>
+              <div id="equipmentSummary" class="equipment-summary">No equipment selected.</div>
+            </div>
+            <div class="helper">Only the equipment selected here will appear on the equipment schedule for this activity.</div>
+          </div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn gray" id="clearForm">CLEAR</button><button class="btn green" id="saveSchedule">SAVE SCHEDULE</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="metrics">
+        <div class="metric"><small>Scheduled Activities</small><strong id="mScheduled">0</strong></div>
+        <div class="metric"><small>Equipment Assignments</small><strong id="mEquip">0</strong></div>
+        <div class="metric"><small>In Progress</small><strong id="mProgress">0</strong></div>
+        <div class="metric"><small>Completed</small><strong id="mDone">0</strong></div>
+      </div>
+      <div class="filters">
+        <div class="filter"><label>Search</label><input id="fSearch" placeholder="Activity / project / equipment"></div>
+        <div class="filter"><label>Date</label><input type="date" id="fDate"></div>
+        <div class="filter"><label>Project</label><select id="fProject"></select></div>
+        <div class="filter"><label>Status</label><select id="fStatus"><option value="">ALL STATUS</option><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select></div>
+        <div class="filter" style="display:flex;align-items:end"><button class="btn gray" id="clearFilters" style="width:100%">CLEAR</button></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>ACTIVITY SCHEDULE</h2><p>Engineer-controlled activity list with status tracking.</p></div><span class="tag">ACTIVITY</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Date</th><th>Time</th><th>Project</th><th>Activity</th><th>Description</th><th>Equipment</th><th>Priority</th><th>Status</th><th>Progress</th><th>Action</th></tr></thead>
+          <tbody id="activityTable"><tr><td colspan="10" style="text-align:center;color:#94a3b8">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>EQUIPMENT SCHEDULE</h2><p>Every selected equipment assignment for planned site activities.</p></div><span class="tag">EQUIPMENT</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Date</th><th>Time</th><th>Equipment</th><th>Project</th><th>Activity</th><th>Priority</th><th>Status</th></tr></thead>
+          <tbody id="equipmentTable"><tr><td colspan="7" style="text-align:center;color:#94a3b8">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="statusModal">
+    <div class="modal">
+      <div class="modal-head"><h3>UPDATE ACTIVITY STATUS</h3><button class="modal-x" id="closeModal">×</button></div>
+      <div class="modal-body">
+        <div id="modalActivityName" style="font-weight:900;font-size:16px;margin-bottom:16px"></div>
+        <div class="grid">
+          <div class="field"><label>Status</label><select id="modalStatus"><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select></div>
+          <div class="field"><label>Progress (%)</label><input type="number" id="modalProgress" min="0" max="100" value="0"></div>
+          <div class="field full"><label>Completion / Status Remarks</label><textarea id="modalRemarks" placeholder="Explain what was completed, delayed, or not done..."></textarea></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn gray" id="cancelModal">CANCEL</button><button class="btn blue" id="saveStatus">SAVE STATUS</button></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="project-schedule.js?v=1"></script>
+  <script src="amanah-ui.js?v=4"></script>
+</body>
+</html>
