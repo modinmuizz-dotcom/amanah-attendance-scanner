@@ -11,6 +11,8 @@ function formatDate(v){if(!v)return "—";const s=String(v).slice(0,10);const p=
 function showMessage(msg,type="info"){const b=$("message");b.textContent=msg;b.className="message "+type;b.style.display="block";window.scrollTo({top:0,behavior:"smooth"});}
 function statusPill(status){const c=String(status||"").toLowerCase().replaceAll(" ","-");return '<span class="pill '+escapeHtml(c)+'">'+escapeHtml(status||"")+"</span>";}
 function equipmentPill(status){const c=String(status||"").toLowerCase()==="active"?"active":"inactive";return '<span class="pill '+c+'">'+escapeHtml(status||"")+"</span>";}
+function equipmentNameById(id){const x=state.equipment.find(e=>e.equipment_id===id);return x?.equipment_name||id||"—";}
+function projectNameById(id){const x=state.projects.find(p=>p.project_id===id);return x?.project_name||id||"—";}
 
 async function requireSession(){const r=await supabaseClient.auth.getSession();if(r.error)throw r.error;if(!r.data?.session){location.href="index.html";return false;}return true;}
 
