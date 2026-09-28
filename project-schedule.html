@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f172a">
-  <title>AMANAH Project & Equipment Schedule</title>
+  <title>AMANAH Activity Calendar</title>
   <link rel="stylesheet" href="style.css?v=4">
   <link rel="stylesheet" href="amanah-ui.css?v=4">
   <style>
@@ -61,8 +61,44 @@
     .subtable-title{padding:18px 22px 0;font-size:14px;font-weight:900}
     .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:1000;align-items:center;justify-content:center;padding:18px}
     .modal{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.25);overflow:hidden}.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:18px}.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}.modal-body{padding:20px}.modal-actions{padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px}
+ 
+    /* ===== ACTIVITY CALENDAR ===== */
+    .calendar-panel{margin-bottom:20px}
+    .calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--gray200);flex-wrap:wrap}
+    .calendar-title{display:flex;align-items:center;gap:12px}
+    .calendar-title strong{font-size:20px;font-weight:900;min-width:210px}
+    .calendar-nav{display:flex;align-items:center;gap:8px}
+    .cal-btn{min-height:40px;padding:0 13px;border:1px solid var(--gray300);border-radius:10px;background:#fff;color:var(--gray700);font-size:11px;font-weight:900}
+    .cal-btn:hover{background:var(--gray50)}
+    .cal-btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+    .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-left:1px solid var(--gray200);border-top:1px solid var(--gray200)}
+    .calendar-weekday{padding:10px 9px;background:#f8fafc;color:#64748b;border-right:1px solid var(--gray200);border-bottom:1px solid var(--gray200);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-align:center}
+    .calendar-day{min-height:145px;padding:8px;border-right:1px solid var(--gray200);border-bottom:1px solid var(--gray200);background:#fff;overflow:hidden}
+    .calendar-day.muted{background:#fbfbfc;color:#94a3b8}
+    .calendar-day.today{background:linear-gradient(180deg,#eff6ff 0%,#fff 48%)}
+    .calendar-day-number{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:11px;font-weight:900;color:#334155}
+    .calendar-day-number span{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:8px}
+    .calendar-day.today .calendar-day-number span{background:#2563eb;color:#fff}
+    .calendar-more{font-size:9px;color:#64748b;font-weight:800}
+    .calendar-event{display:block;width:100%;margin:5px 0;padding:7px 8px;border-radius:9px;border:1px solid #dbeafe;background:#eff6ff;color:#1e3a8a;text-align:left;cursor:pointer}
+    .calendar-event:hover{border-color:#93c5fd;box-shadow:0 4px 10px rgba(37,99,235,.10)}
+    .calendar-event-time{font-size:9px;font-weight:900;color:#1d4ed8;margin-bottom:3px}
+    .calendar-event-name{font-size:10px;font-weight:900;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .calendar-event-project{font-size:9px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .calendar-event.status-progress{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .calendar-event.status-progress .calendar-event-time{color:#c2410c}
+    .calendar-event.status-done{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+    .calendar-event.status-done .calendar-event-time{color:#15803d}
+    .calendar-event.status-notdone{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+    .calendar-event.status-notdone .calendar-event-time{color:#b91c1c}
+    .calendar-event.status-cancel{background:#f1f5f9;border-color:#e2e8f0;color:#475569}
+    .calendar-empty{padding:25px;text-align:center;color:#94a3b8;font-weight:700}
+    .calendar-legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 22px;border-top:1px solid var(--gray200);color:#64748b;font-size:10px;font-weight:800}
+    .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px}
+    .legend-planned{background:#2563eb}.legend-progress{background:#ea580c}.legend-done{background:#16a34a}.legend-notdone{background:#dc2626}.legend-cancel{background:#94a3b8}
+
     @media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.schedule-hero{flex-direction:column;align-items:stretch}.schedule-badge{min-width:0}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
-    @media(max-width:650px){.schedule-wrap{width:min(100% - 20px,1280px)}.panel-head{flex-direction:column}.metrics{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.equipment-tools{grid-template-columns:1fr}.actions{flex-direction:column}.btn{width:100%}}
+    @media(max-width:650px){.calendar-toolbar{padding:14px}.calendar-day{min-height:125px;padding:6px}.calendar-title{width:100%;justify-content:space-between}.calendar-title strong{min-width:0;font-size:17px}.calendar-event{padding:6px}.calendar-event-project{display:none}.schedule-wrap{width:min(100% - 20px,1280px)}.panel-head{flex-direction:column}.metrics{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.equipment-tools{grid-template-columns:1fr}.actions{flex-direction:column}.btn{width:100%}}
   </style>
 </head>
 <body>
@@ -70,14 +106,46 @@
     <section class="schedule-hero">
       <div class="schedule-title">
         <div style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:900;letter-spacing:.1em">PROJECT PLANNING</div>
-        <h1>PROJECT & EQUIPMENT SCHEDULE</h1>
-        <p>Plan each site activity, assign the exact equipment required, and let the site engineer update every task as Planned, In Progress, Done, or Not Done.</p>
+        <h1>ACTIVITY CALENDAR</h1>
+        <p>Plan each site activity on a calendar, assign the exact equipment required on site, and let the site engineer update every task as Planned, In Progress, Done, or Not Done.</p>
       </div>
-      <div class="schedule-badge"><small>System Module</small><strong>Site Schedule Control</strong></div>
+      <div class="schedule-badge"><small>System Module</small><strong>Activity Calendar Control</strong></div>
     </section>
 
     <div id="ok" class="notice ok"></div>
     <div id="err" class="notice err"></div>
+
+
+    <section class="panel calendar-panel">
+      <div class="panel-head">
+        <div>
+          <h2>ACTIVITY CALENDAR</h2>
+          <p>See all scheduled site activities by date and quickly open a task to update its status.</p>
+        </div>
+        <span class="tag">CALENDAR</span>
+      </div>
+
+      <div class="calendar-toolbar">
+        <div class="calendar-title">
+          <button class="cal-btn" id="calendarPrev" type="button">‹</button>
+          <strong id="calendarMonthLabel">MONTH YEAR</strong>
+          <button class="cal-btn" id="calendarNext" type="button">›</button>
+        </div>
+        <div class="calendar-nav">
+          <button class="cal-btn primary" id="calendarToday" type="button">TODAY</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid" id="calendarGrid"></div>
+
+      <div class="calendar-legend">
+        <span><i class="legend-dot legend-planned"></i>PLANNED</span>
+        <span><i class="legend-dot legend-progress"></i>IN PROGRESS</span>
+        <span><i class="legend-dot legend-done"></i>DONE</span>
+        <span><i class="legend-dot legend-notdone"></i>NOT DONE</span>
+        <span><i class="legend-dot legend-cancel"></i>CANCELLED</span>
+      </div>
+    </section>
 
     <section class="panel">
       <div class="panel-head"><div><h2>CREATE ACTIVITY SCHEDULE</h2><p>This is the planning step. Select the project and the exact equipment needed on site.</p></div><span class="tag">ENGINEER</span></div>
@@ -162,7 +230,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=1"></script>
+  <script src="project-schedule.js?v=2"></script>
   <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
