@@ -197,8 +197,12 @@ async function openRequestEdit(id){
 async function deletePurchaseRequest(id){
  const r=state.requests.find(x=>x.purchase_request_id===id);if(!r)return;
  const confirmed=await showConfirm("DELETE PURCHASE REQUEST","This will permanently delete "+r.request_no+" and all requested material lines. This action cannot be undone.","DELETE REQUEST",true);if(!confirmed)return;
- const {error}=await supabaseClient.from("purchase_requests").delete().eq("purchase_request_id",id);if(error)return msg("Could not delete "+r.request_no+": "+error.message,"err");
- msg(r.request_no+" deleted successfully.");await Promise.all([loadRequests(),loadOrders()]);renderAll();
+ const {data,error}=await supabaseClient.from("purchase_requests").delete().eq("purchase_request_id",id).select("purchase_request_id").maybeSingle();
+ if(error){console.error("Purchase Request delete failed:",error);return msg("Could not delete "+r.request_no+". Please verify the Purchasing DELETE permission in Supabase.","err");}
+ if(!data)return msg(r.request_no+" was not deleted. No matching record was removed. Please verify the Supabase DELETE policy.","err");
+ msg(r.request_no+" deleted successfully.");
+ await Promise.allSettled([loadRequests(),loadOrders()]);
+ renderAll();
 }
 function printPurchaseRequest(id){
  const r=state.requests.find(x=>x.purchase_request_id===id);if(!r)return;const items=state.requestItems.filter(x=>x.purchase_request_id===id);
@@ -262,10 +266,18 @@ async function openPODetails(id){
 }
 async function deletePurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
- const confirmed=await showConfirm("DELETE PURCHASE ORDER","This will permanently delete "+o.po_no+" and its order lines. The linked Purchase Request will be returned to APPROVED.","DELETE PURCHASE ORDER",true);if(!confirmed)return;
- const {error}=await supabaseClient.from("purchase_orders").delete().eq("purchase_order_id",id);if(error)return msg("Could not delete "+o.po_no+": "+error.message,"err");
- if(o.purchase_request_id)await supabaseClient.from("purchase_requests").update({status:"APPROVED"}).eq("purchase_request_id",o.purchase_request_id);
- msg(o.po_no+" deleted successfully.");await Promise.all([loadRequests(),loadOrders()]);renderAll();
+ const confirmed=await showConfirm("DELETE PURCHASE ORDER","This will permanently delete "+o.po_no+" and its order lines. The linked Purchase Request will be returned to APPROVED.","DELETE PURCHASE ORDER",true);
+ if(!confirmed)return;
+ const {data,error}=await supabaseClient.from("purchase_orders").delete().eq("purchase_order_id",id).select("purchase_order_id").maybeSingle();
+ if(error){console.error("Purchase Order delete failed:",error);return msg("Could not delete "+o.po_no+". Please verify the Purchasing DELETE permission in Supabase.","err");}
+ if(!data)return msg(o.po_no+" was not deleted. No matching record was removed. Please verify the Supabase DELETE policy.","err");
+ if(o.purchase_request_id){
+   const {error:updateError}=await supabaseClient.from("purchase_requests").update({status:"APPROVED"}).eq("purchase_request_id",o.purchase_request_id);
+   if(updateError)console.warn("Purchase Request status restore failed:",updateError);
+ }
+ msg(o.po_no+" deleted successfully.");
+ await Promise.allSettled([loadRequests(),loadOrders()]);
+ renderAll();
 }
 function printPurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;const items=state.orderItems.filter(x=>x.purchase_order_id===id);
