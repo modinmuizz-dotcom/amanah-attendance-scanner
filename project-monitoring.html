@@ -1317,20 +1317,30 @@
     <section class="pm-card activity-card">
       <div class="pm-card-header">
         <div class="pm-card-heading">
-          <h2>ADD DAILY PROJECT ACTIVITY</h2>
-          <p class="pm-card-subtitle">Record the work completed on site for the selected project.</p>
+          <h2>SCHEDULE DAILY PROJECT ACTIVITY</h2>
+          <p class="pm-card-subtitle">Plan the work that must happen on site, assign the exact equipment required, and track completion from the Project Schedule module.</p>
         </div>
         
       </div>
 
       <div class="activity-intro">
-        <strong>Tip:</strong> Enter the actual activity performed, manpower used, equipment involved, accomplishment percentage, and any important remarks for the day.
+        <strong>Planning process:</strong> Select the site project, schedule the work time, choose the exact equipment needed, and save it as PLANNED. The engineer can later mark the activity IN PROGRESS, DONE, NOT DONE, or CANCELLED from the Project & Equipment Schedule module.
       </div>
 
       <div class="pm-grid">
         <div class="pm-field">
-          <label for="activityDate">Activity Date</label>
+          <label for="activityDate">Schedule Date</label>
           <input type="date" id="activityDate">
+        </div>
+
+        <div class="pm-field">
+          <label for="startTime">Start Time</label>
+          <input type="time" id="startTime">
+        </div>
+
+        <div class="pm-field">
+          <label for="endTime">End Time</label>
+          <input type="time" id="endTime">
         </div>
 
         <div class="pm-field">
@@ -1348,8 +1358,23 @@
           <input type="number" id="manpower" min="0" value="0">
         </div>
 
+        <div class="pm-field">
+          <label for="priority">Priority</label>
+          <select id="priority">
+            <option value="LOW">LOW</option>
+            <option value="NORMAL" selected>NORMAL</option>
+            <option value="HIGH">HIGH</option>
+            <option value="URGENT">URGENT</option>
+          </select>
+        </div>
+
+        <div class="pm-field">
+          <label>Initial Status</label>
+          <input class="pm-readonly" value="PLANNED" readonly>
+        </div>
+
         <div class="pm-field full">
-  <label>EQUIPMENT USED</label>
+  <label>EQUIPMENT REQUIRED ON SITE</label>
 
   <div class="pm-equipment-box">
 
@@ -1408,8 +1433,8 @@
 </div>
 
         <div class="pm-field">
-          <label for="accomplishment">Accomplishment (%)</label>
-          <input type="number" id="accomplishment" min="0" max="100" value="0">
+          <label for="accomplishment">Initial Progress (%)</label>
+          <input type="number" id="accomplishment" min="0" max="100" value="0" readonly>
         </div>
 
         <div class="pm-field full">
@@ -1428,8 +1453,8 @@
     <section class="pm-card history-card">
       <div class="pm-card-header">
         <div class="pm-card-heading">
-          <h2>PROJECT ACTIVITY HISTORY</h2>
-          <p class="pm-card-subtitle">Review previously recorded project activities for the selected project.</p>
+          <h2>PROJECT ACTIVITY SCHEDULE & HISTORY</h2>
+          <p class="pm-card-subtitle">Review planned site activities, assigned equipment, status, and completion progress for the selected project.</p>
         </div>
         <div class="pm-section-tag">Activity Log</div>
       </div>
@@ -1439,17 +1464,21 @@
           <thead>
             <tr>
               <th>Date</th>
+              <th>Time</th>
               <th>Activity</th>
               <th>Description</th>
               <th>Manpower</th>
               <th>Equipment</th>
+              <th>Priority</th>
+              <th>Status</th>
               <th>Progress</th>
               <th>Remarks</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="activityBody">
             <tr>
-              <td colspan="7">Select a project.</td>
+              <td colspan="10">Select a project.</td>
             </tr>
           </tbody>
         </table>
@@ -1459,6 +1488,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="project-monitoring.js?v=5"></script>
-<script src="amanah-ui.js?v=3"></script>
+<script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
