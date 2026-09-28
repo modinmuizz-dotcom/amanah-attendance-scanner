@@ -270,9 +270,7 @@ function render() {
           "<button class=\"btn-action\" type=\"button\" onclick=\"editRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">EDIT</button>" +
-          "<button class=\"btn-action btn-photo\" type=\"button\" onclick=\"openPhotoModal('" +
-            escapeHtml(row.maintenance_id) +
-            "')\">PHOTOS</button>" +
+
           "<button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">DELETE</button>" +
