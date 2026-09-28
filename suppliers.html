@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>AMANAH Supplier Master</title>
+<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="amanah-ui.css?v=5">
+<style>
+:root{--navy:#0f172a;--blue:#2563eb;--green:#16a34a;--red:#dc2626;--gray50:#f8fafc;--gray100:#f1f5f9;--gray200:#e2e8f0;--gray300:#cbd5e1;--gray500:#64748b;--gray700:#334155;--shadow:0 12px 30px rgba(15,23,42,.07)}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#f8fafc,#eef2f7);color:var(--navy);font-family:Arial,Helvetica,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.page{width:min(1280px,calc(100% - 36px));margin:0 auto;padding:30px 0 60px}
+.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:20px}
+.kicker{display:inline-flex;padding:7px 11px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:900;letter-spacing:.1em}
+.hero h1{margin:10px 0 0;font-size:38px;font-weight:900;letter-spacing:-.03em}
+.hero p{margin:8px 0 0;color:var(--gray500);max-width:820px;line-height:1.55}
+.hero-card{padding:14px 16px;background:#fff;border:1px solid var(--gray200);border-radius:16px;min-width:230px}
+.hero-card small{display:block;color:var(--gray500);font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.hero-card strong{display:block;margin-top:5px;font-size:17px}
+.notice{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1300;min-width:min(520px,calc(100% - 32px));max-width:620px;padding:17px 20px;border-radius:14px;text-align:center;background:#fff;box-shadow:0 22px 70px rgba(15,23,42,.24);font-size:13px;font-weight:800;line-height:1.5}
+.notice.success{color:#166534;border:1px solid #bbf7d0}.notice.error{color:#991b1b;border:1px solid #fecaca}.notice::before{display:block;margin-bottom:5px;font-size:10px;font-weight:900;letter-spacing:.12em}.notice.success::before{content:"SUPPLIER MASTER"} .notice.error::before{content:"ACTION REQUIRED"}
+.shade{display:none;position:fixed;inset:0;z-index:1250;background:rgba(15,23,42,.5);backdrop-filter:blur(2px)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.metric{background:#fff;border:1px solid var(--gray200);border-radius:16px;padding:17px;box-shadow:var(--shadow)}
+.metric small{display:block;color:var(--gray500);font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.metric strong{display:block;margin-top:7px;font-size:27px}
+.panel{background:#fff;border:1px solid var(--gray200);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:20px 22px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.panel-head h2{margin:0;font-size:20px;font-weight:900}
+.panel-head p{margin:6px 0 0;color:var(--gray500);font-size:12px}
+.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:16px 22px}
+.filters{display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:10px;flex:1}
+.field label{display:block;margin-bottom:7px;font-size:10px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--gray700)}
+.field input,.field select,.field textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--gray300);border-radius:10px;background:#fff;color:var(--navy);outline:none}
+.field textarea{min-height:90px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.btn{min-height:42px;padding:10px 14px;border:0;border-radius:10px;font-size:11px;font-weight:900}
+.btn.blue{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}.btn.green{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}.btn.gray{background:var(--gray100);color:var(--gray700);border:1px solid var(--gray200)}.btn.red{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+.table-wrap{overflow:auto}
+.table{width:100%;min-width:1050px;border-collapse:collapse}
+.table th,.table td{padding:12px 13px;border-bottom:1px solid var(--gray200);text-align:left;vertical-align:top;font-size:12px}
+.table th{background:var(--gray50);color:var(--gray500);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.badge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900}
+.active{background:#dcfce7;color:#166534}.inactive{background:#f1f5f9;color:#475569}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.edit{background:#dbeafe;color:#1d4ed8}.mini.deactivate{background:#fff7ed;color:#c2410c}.mini.activate{background:#dcfce7;color:#166534}.mini.delete{background:#fee2e2;color:#b91c1c}
+.empty{padding:35px;text-align:center;color:#94a3b8;font-weight:700}
+.modal-backdrop{display:none;position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.62);backdrop-filter:blur(3px)}
+.modal{width:min(820px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.28)}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{margin:0;font-size:18px}
+.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}
+.modal-body{padding:20px}
+.modal-actions{padding:16px 20px;border-top:1px solid var(--gray200);display:flex;justify-content:flex-end;gap:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}
+.confirm-modal{width:min(500px,100%);background:#fff;border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.28);overflow:hidden}
+.confirm-body{padding:22px;color:#475569;font-size:13px;line-height:1.55}
+@media(max-width:1000px){.filters{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.page{width:min(100% - 20px,1280px)}.hero{flex-direction:column;align-items:stretch}.metrics,.form-grid,.filters{grid-template-columns:1fr}.full{grid-column:auto}.notice{min-width:calc(100% - 24px)}}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="hero">
+    <div>
+      <div class="kicker">SUPPLIER MASTER CONTROL</div>
+      <h1>SUPPLIERS</h1>
+      <p>Register and maintain the suppliers used by AMANAH Purchasing. Registered suppliers can later be selected directly when preparing Purchase Orders.</p>
+    </div>
+    <div class="hero-card"><small>System Module</small><strong>Supplier Master</strong></div>
+  </section>
+
+  <div id="notice" class="notice"></div>
+  <div id="shade" class="shade"></div>
+
+  <section class="metrics">
+    <div class="metric"><small>Total Suppliers</small><strong id="metricTotal">0</strong></div>
+    <div class="metric"><small>Active Suppliers</small><strong id="metricActive">0</strong></div>
+    <div class="metric"><small>Inactive Suppliers</small><strong id="metricInactive">0</strong></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>SUPPLIER MASTER</h2><p>Maintain the official supplier list for AMANAH procurement.</p></div>
+      <button class="btn green" id="addSupplier" type="button">+ ADD SUPPLIER</button>
+    </div>
+    <div class="toolbar">
+      <div class="filters">
+        <div class="field"><label>Search</label><input id="searchSupplier" placeholder="Supplier / code / contact person"></div>
+        <div class="field"><label>Status</label><select id="filterStatus"><option value="">ALL STATUS</option><option>ACTIVE</option><option>INACTIVE</option></select></div>
+        <div class="field"><label>Type</label><select id="filterType"><option value="">ALL TYPES</option><option>MATERIAL SUPPLIER</option><option>EQUIPMENT SUPPLIER</option><option>SERVICE SUPPLIER</option><option>GENERAL SUPPLIER</option></select></div>
+        <div class="field"><button class="btn gray" id="clearFilters" type="button">CLEAR</button></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Supplier Code</th><th>Supplier Name</th><th>Type</th><th>Contact Person</th><th>Contact No.</th><th>Email</th><th>Payment Terms</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="supplierBody"><tr><td colspan="9" class="empty">Loading suppliers...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="supplierModal">
+  <div class="modal">
+    <div class="modal-head"><div><h3 id="modalTitle">ADD SUPPLIER</h3><div style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700">Enter the supplier's official business information.</div></div><button class="modal-x" id="closeSupplier" type="button">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Supplier Name *</label><input id="supplierName" placeholder="Example: ABC Construction Supply"></div>
+        <div class="field"><label>Supplier Type *</label><select id="supplierType"><option>MATERIAL SUPPLIER</option><option>EQUIPMENT SUPPLIER</option><option>SERVICE SUPPLIER</option><option>GENERAL SUPPLIER</option></select></div>
+        <div class="field"><label>Contact Person</label><input id="contactPerson" placeholder="Contact person"></div>
+        <div class="field"><label>Contact No.</label><input id="contactNo" placeholder="09xxxxxxxxx"></div>
+        <div class="field"><label>Email</label><input id="email" type="email" placeholder="supplier@example.com"></div>
+        <div class="field"><label>TIN</label><input id="tin" placeholder="Tax Identification Number"></div>
+        <div class="field full"><label>Business Address</label><textarea id="address" placeholder="Complete supplier business address"></textarea></div>
+        <div class="field"><label>Payment Terms</label><input id="paymentTerms" placeholder="Example: 30 DAYS"></div>
+        <div class="field"><label>Delivery Terms</label><input id="deliveryTerms" placeholder="Example: DELIVER TO PROJECT SITE"></div>
+        <div class="field full"><label>Notes</label><textarea id="notes" placeholder="Additional supplier information"></textarea></div>
+        <div class="field"><label>Status</label><select id="supplierStatus"><option>ACTIVE</option><option>INACTIVE</option></select></div>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn gray" id="cancelSupplier" type="button">CANCEL</button><button class="btn green" id="saveSupplier" type="button">SAVE SUPPLIER</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="confirm-modal">
+    <div class="modal-head"><h3 id="confirmTitle">CONFIRM ACTION</h3><button class="modal-x" id="closeConfirm" type="button">×</button></div>
+    <div class="confirm-body" id="confirmMessage">Please confirm this action.</div>
+    <div class="modal-actions"><button class="btn gray" id="cancelConfirm" type="button">CANCEL</button><button class="btn red" id="acceptConfirm" type="button">CONFIRM</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="suppliers.js?v=1"></script>
+<script src="amanah-ui.js?v=5"></script>
+</body>
+</html>
