@@ -114,7 +114,7 @@ IS 'Engineer remarks entered when the activity status is updated.';
 -- scheduling fields and completion status.
 ALTER TABLE public.project_activities ENABLE ROW LEVEL SECURITY;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -130,6 +130,6 @@ BEGIN
       USING (true)
       WITH CHECK (true);
   END IF;
-END $;
+END $$;
 
 COMMIT;
