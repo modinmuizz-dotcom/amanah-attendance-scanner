@@ -14,9 +14,18 @@ function clearMsg(){const el=document.getElementById("message");el.className="me
 function fmtDate(v){if(!v)return "—";return new Date(v+"T00:00:00").toLocaleDateString();}
 
 async function init(){
- const {data:{session}}=await supabaseClient.auth.getSession(); if(!session){location.href="admin.html";return;}
- document.getElementById("requestDate").value=today(); document.getElementById("poDate").value=today();
- bind(); await Promise.all([loadProjects(),loadEmployees(),loadRequests(),loadOrders()]); renderAll();
+ const {data:{session}}=await supabaseClient.auth.getSession();
+ if(!session){location.href="admin.html";return;}
+ document.getElementById("requestDate").value=today();
+ document.getElementById("poDate").value=today();
+ bind();
+ const results=await Promise.allSettled([loadProjects(),loadEmployees(),loadRequests(),loadOrders()]);
+ const failed=results.filter(r=>r.status==="rejected");
+ renderAll();
+ if(failed.length){
+   console.error("AMANAH Purchasing initialization errors:",failed.map(x=>x.reason));
+   msg("Purchasing loaded with "+failed.length+" data service error(s). Please refresh or check the affected Supabase table/policy.","err");
+ }
 }
 function bind(){
  document.getElementById("tabRequests").addEventListener("click",()=>switchTab("requests"));
@@ -39,15 +48,30 @@ function bind(){
 }
 function switchTab(tab){state.activeTab=tab;document.getElementById("requestsPanel").style.display=tab==="requests"?"block":"none";document.getElementById("ordersPanel").style.display=tab==="orders"?"block":"none";document.getElementById("tabRequests").classList.toggle("active",tab==="requests");document.getElementById("tabOrders").classList.toggle("active",tab==="orders");}
 async function loadProjects(){
- const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name"); if(error)throw error; state.projects=data||[];
- const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+" — "+esc(p.location||"")+"</option>").join("");
- ["requestProject"].forEach(id=>document.getElementById(id).innerHTML=opts);
- const filter='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+"</option>").join("");
- document.getElementById("prProject").innerHTML=filter;document.getElementById("poProject").innerHTML=filter;
+ let data,error;
+ ({data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name"));
+ if(error){
+   console.warn("Project location query failed; retrying without location.",error);
+   ({data,error}=await supabaseClient.from("projects").select("project_id,project_name").order("project_name"));
+ }
+ if(error)throw error;
+ state.projects=data||[];
+ const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+(p.location?" — "+esc(p.location):"")+'</option>').join("");
+ document.getElementById("requestProject").innerHTML=opts;
+ const filter='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+'</option>').join("");
+ document.getElementById("prProject").innerHTML=filter;
+ document.getElementById("poProject").innerHTML=filter;
 }
 async function loadEmployees(){
- const {data,error}=await supabaseClient.from("employees").select("*").order("employee_name"); if(error)throw error;state.employees=data||[];
- document.getElementById("requester").innerHTML='<option value="">SELECT SITE ENGINEER</option>'+state.employees.map(e=>'<option value="'+esc(e.employee_id)+'" data-name="'+esc(e.employee_name)+'" data-position="'+esc(e.position||"")+'">'+esc(e.employee_name)+" — "+esc(e.position||"")+"</option>").join("");
+ let data,error;
+ ({data,error}=await supabaseClient.from("employees").select("employee_id,employee_name,position").order("employee_name"));
+ if(error){
+   console.warn("Employee position query failed; retrying basic employee fields.",error);
+   ({data,error}=await supabaseClient.from("employees").select("employee_id,employee_name").order("employee_name"));
+ }
+ if(error)throw error;
+ state.employees=data||[];
+ document.getElementById("requester").innerHTML='<option value="">SELECT SITE ENGINEER</option>'+state.employees.map(e=>'<option value="'+esc(e.employee_id)+'">'+esc(e.employee_name)+(e.position?" — "+esc(e.position):"")+'</option>').join("");
 }
 async function loadRequests(){
  const {data,error}=await supabaseClient.from("purchase_requests").select("*").order("request_date",{ascending:false}).order("created_at",{ascending:false}); if(error)throw error;
