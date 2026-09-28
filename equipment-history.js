@@ -179,7 +179,7 @@ th{background:#f1f5f9;text-transform:uppercase;font-size:8px}
 </head>
 <body>
 <div class="page">
-  <div class="brand"><div class="brand-copy"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div><img class="brand-logo" src="https://modinmuizz-dotcom.github.io/amanah-attendance-scanner/assets/amanah-logo.svg" alt="AMANAH Construction Services logo"></div>
+  <div class="brand"><div class="brand-copy"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div><img class="brand-logo" src="https://modinmuizz-dotcom.github.io/amanah-attendance-scanner/assets/amanah-logo-print.svg" alt="AMANAH Construction Services logo"></div>
   <h2 class="report-title">${escapeHtml(title)}</h2>
   <div class="report-subtitle">${escapeHtml(subtitle)}</div>
   ${content}
