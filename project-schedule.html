@@ -77,6 +77,19 @@
     .detail-progress-head{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:900}
     .detail-progress-track{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}
     .detail-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#16a34a);border-radius:999px}
+    .detail-progress-editor{margin-top:12px;padding:12px;border:1px dashed #bfdbfe;border-radius:12px;background:#eff6ff}
+    .detail-progress-editor-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .detail-progress-editor-title{font-size:10px;font-weight:900;letter-spacing:.08em;color:#1d4ed8;text-transform:uppercase}
+    .detail-progress-value{font-size:18px;font-weight:900;color:#0f172a}
+    .detail-progress-controls{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+    .detail-progress-range{width:100%;accent-color:#2563eb}
+    .detail-progress-number{width:100%;min-height:42px;padding:9px 10px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#0f172a;font-weight:900;text-align:center}
+    .detail-progress-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+    .detail-progress-quick button{border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:8px;padding:6px 9px;font-size:10px;font-weight:900}
+    .detail-progress-quick button:hover{background:#dbeafe}
+    .detail-progress-actions{display:flex;justify-content:flex-end;margin-top:10px}
+    .detail-progress-save{min-height:38px;padding:9px 13px;border:0;border-radius:9px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:10px;font-weight:900}
+    .detail-progress-save:disabled{opacity:.65;cursor:wait}
     .detail-remark{margin-top:16px;padding:13px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--gray200)}
     .detail-remark label{display:block;margin-bottom:6px;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
     .detail-remark p{margin:0;color:#334155;font-size:12px;line-height:1.55;white-space:pre-wrap}
@@ -269,6 +282,30 @@
         <div class="detail-progress">
           <div class="detail-progress-head"><span>ACTIVITY PROGRESS</span><strong id="detailProgressText">0%</strong></div>
           <div class="detail-progress-track"><div class="detail-progress-fill" id="detailProgressFill" style="width:0%"></div></div>
+
+          <div class="detail-progress-editor">
+            <div class="detail-progress-editor-head">
+              <span class="detail-progress-editor-title">ENGINEER PROGRESS UPDATE</span>
+              <span class="detail-progress-value" id="detailProgressEditorValue">0%</span>
+            </div>
+            <div class="detail-progress-controls">
+              <input class="detail-progress-range" id="detailProgressRange" type="range" min="0" max="100" step="1" value="0" aria-label="Activity progress percentage">
+              <input class="detail-progress-number" id="detailProgressNumber" type="number" min="0" max="100" step="1" value="0" aria-label="Activity progress percentage">
+            </div>
+            <div class="detail-progress-quick">
+              <button type="button" data-progress-quick="0">0%</button>
+              <button type="button" data-progress-quick="25">25%</button>
+              <button type="button" data-progress-quick="50">50%</button>
+              <button type="button" data-progress-quick="75">75%</button>
+              <button type="button" data-progress-quick="100">100%</button>
+            </div>
+            <div style="margin-top:8px;color:#64748b;font-size:10px;font-weight:700">
+              Save the current percentage. 1–99% automatically sets the activity to IN PROGRESS; 100% marks it DONE.
+            </div>
+            <div class="detail-progress-actions">
+              <button class="detail-progress-save" id="saveDetailProgress" type="button">SAVE PROGRESS</button>
+            </div>
+          </div>
         </div>
 
         <div class="detail-remark">
@@ -344,7 +381,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=4"></script>
+  <script src="project-schedule.js?v=5"></script>
   <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
