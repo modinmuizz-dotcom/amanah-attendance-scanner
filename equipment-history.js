@@ -108,10 +108,10 @@ async function openEquipmentHistory(equipmentId){
         '<div class="detail-item"><label>Total Repair Cost</label><div>'+money(summary?.total_repair_cost)+'</div></div>'+
       '</div></div>'+
     '</div>'+
-    '<div class="modal-section"><h3>PREVENTIVE MAINTENANCE RECORDS</h3>'+
-      (pm.length?'<div class="table-wrap"><table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th><th>Reference</th></tr></thead><tbody>'+
-        pm.map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td>'+escapeHtml(x.maintenance_type)+'</td><td>'+escapeHtml(x.description)+'</td><td>'+escapeHtml(x.quantity)+'</td><td>'+escapeHtml(x.unit)+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join("")+
-      '</tbody></table></div>':'<div class="empty">No preventive-maintenance records found for this equipment.</div>')+
+    '<div class="modal-section"><h3>MAINTENANCE RECORDS</h3>'+
+      (state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).length?'<div class="table-wrap"><table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Project</th><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th><th>Reference</th></tr></thead><tbody>'+
+        state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td>'+escapeHtml(x.maintenance_type)+'</td><td>'+escapeHtml(x.project_name||"—")+'</td><td>'+escapeHtml(x.description)+'</td><td>'+escapeHtml(x.quantity)+'</td><td>'+escapeHtml(x.unit)+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join("")+
+      '</tbody></table></div>':'<div class="empty">No maintenance records found for this equipment.</div>')+
     '</div>'+
     '<div class="modal-section"><h3>REPAIR HISTORY</h3>'+
       (repairs.length?'<div class="table-wrap"><table class="mini-table"><thead><tr><th>Repair No.</th><th>Date</th><th>Project</th><th>Problem</th><th>Status</th><th>Cost</th><th>Photo Evidence</th><th>ACTION</th></tr></thead><tbody>'+
