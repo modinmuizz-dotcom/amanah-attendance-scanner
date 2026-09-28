@@ -13,7 +13,6 @@
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar'],
-      ['documents','Documents','reports.html','file'],
     ]},
     {section:'WORKFORCE',items:[
       ['attendance','Attendance','attendance.html','calendar'],
