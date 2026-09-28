@@ -27,6 +27,7 @@
     {section:'RESOURCES',items:[
       ['materials','Materials & Inventory','project-cost.html','box'],
       ['purchasing','Purchasing','purchasing.html','briefcase'],
+      ['suppliers','Suppliers','suppliers.html','users'],
     ]},
     {section:'REPORTING',items:[
       ['reports','Reports','reports.html','report'],
@@ -58,6 +59,7 @@
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
     if(file==='purchasing.html') return 'purchasing';
+    if(file==='suppliers.html') return 'suppliers';
     if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
