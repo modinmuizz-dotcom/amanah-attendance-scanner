@@ -17,7 +17,10 @@ const supabaseClient =
 const state = {
   equipment: [],
   projects: [],
-  records: []
+  records: [],
+  editingId: null,
+  photoMaintenanceId: null,
+  selectedPhotos: []
 };
 
 function $(id) {
@@ -262,9 +265,17 @@ function render() {
         "<td>" + money(row.unit_cost) + "</td>" +
         "<td><strong>" + money(row.total_amount) + "</strong></td>" +
         "<td>" + escapeHtml(row.reference_no || "—") + "</td>" +
-        "<td><button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
-          escapeHtml(row.maintenance_id) +
-          "')\">DELETE</button></td>" +
+        "<td class=\"action-buttons\">" +
+          "<button class=\"btn-action\" type=\"button\" onclick=\"editRecord('" +
+            escapeHtml(row.maintenance_id) +
+            "')\">EDIT</button>" +
+          "<button class=\"btn-action btn-photo\" type=\"button\" onclick=\"openPhotoModal('" +
+            escapeHtml(row.maintenance_id) +
+            "')\">PHOTOS</button>" +
+          "<button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
+            escapeHtml(row.maintenance_id) +
+            "')\">DELETE</button>" +
+        "</td>" +
       "</tr>"
     );
   }).join("");
@@ -292,14 +303,82 @@ function resetForm() {
   $("projectId").value = "";
 }
 
-function openModal() {
+function openModal(record = null) {
   clearMessage();
+
+  state.editingId =
+    record?.maintenance_id || null;
+
   resetForm();
+
+  if (record) {
+    $("modalTitle").textContent = "EDIT MAINTENANCE";
+
+    $("maintenanceDate").value =
+      record.maintenance_date || "";
+
+    $("maintenanceType").value =
+      record.maintenance_type || "PREVENTIVE MAINTENANCE";
+
+    $("equipmentId").value =
+      record.equipment_id || "";
+
+    $("projectId").value =
+      record.project_id || "";
+
+    $("description").value =
+      record.description || "";
+
+    $("supplierShop").value =
+      record.supplier_shop || "";
+
+    $("referenceNo").value =
+      record.reference_no || "";
+
+    $("quantity").value =
+      record.quantity ?? 1;
+
+    $("unit").value =
+      record.unit || "LOT";
+
+    $("unitCost").value =
+      record.unit_cost ?? 0;
+
+    $("totalAmount").value =
+      Number(record.total_amount || 0).toFixed(2);
+
+    $("remarks").value =
+      record.remarks || "";
+
+    $("saveButton").textContent =
+      "UPDATE MAINTENANCE";
+  } else {
+    $("modalTitle").textContent = "ADD MAINTENANCE";
+    $("saveButton").textContent = "SAVE MAINTENANCE";
+  }
+
   $("modalBackdrop").classList.add("open");
 }
 
 function closeModal() {
+  state.editingId = null;
   $("modalBackdrop").classList.remove("open");
+}
+
+function editRecord(id) {
+  const record = state.records.find(
+    row => row.maintenance_id === id
+  );
+
+  if (!record) {
+    showMessage(
+      "Maintenance record could not be found.",
+      "error"
+    );
+    return;
+  }
+
+  openModal(record);
 }
 
 async function saveRecord(event) {
@@ -308,7 +387,16 @@ async function saveRecord(event) {
 
   const button = $("saveButton");
   button.disabled = true;
-  button.textContent = "SAVING...";
+  const editingRecordId =
+    state.editingId;
+
+  const isEditing =
+    !!editingRecordId;
+
+  button.textContent =
+    isEditing
+      ? "UPDATING..."
+      : "SAVING...";
 
   try {
     const payload = {
@@ -325,40 +413,311 @@ async function saveRecord(event) {
       remarks: $("remarks").value.trim() || null
     };
 
-    if (!payload.equipment_id) throw new Error("Please select equipment.");
-    if (!payload.maintenance_date) throw new Error("Please select the date.");
-    if (!payload.description) throw new Error("Please enter a description.");
-    if (payload.quantity < 0) throw new Error("Quantity cannot be negative.");
-    if (payload.unit_cost < 0) throw new Error("Unit cost cannot be negative.");
+    if (!payload.equipment_id)
+      throw new Error("Please select equipment.");
 
-    const result = await supabaseClient
-      .from("equipment_maintenance")
-      .insert(payload)
-      .select()
-      .single();
+    if (!payload.maintenance_date)
+      throw new Error("Please select the date.");
 
-    if (result.error) throw result.error;
+    if (!payload.description)
+      throw new Error("Please enter a description.");
 
-    closeModal();
+    if (payload.quantity < 0)
+      throw new Error("Quantity cannot be negative.");
 
-    showMessage(
-      payload.project_id
-        ? "Maintenance saved successfully. The project Equipment cost was updated automatically."
-        : "Maintenance saved successfully.",
-      "success"
-    );
+    if (payload.unit_cost < 0)
+      throw new Error("Unit cost cannot be negative.");
+
+    const totalAmount =
+      Number(payload.quantity || 0) *
+      Number(payload.unit_cost || 0);
+
+    if (state.editingId) {
+      const result =
+        await supabaseClient
+          .from("equipment_maintenance")
+          .update({
+            ...payload,
+            total_amount: totalAmount
+          })
+          .eq(
+            "maintenance_id",
+            editingRecordId
+          );
+
+      if (result.error)
+        throw result.error;
+
+      closeModal();
+
+      showMessage(
+        payload.project_id
+          ? "Maintenance updated successfully. Project Equipment cost was synchronized automatically."
+          : "Maintenance updated successfully.",
+        "success"
+      );
+
+    } else {
+      const result =
+        await supabaseClient
+          .from("equipment_maintenance")
+          .insert({
+            ...payload,
+            total_amount: totalAmount
+          })
+          .select()
+          .single();
+
+      if (result.error)
+        throw result.error;
+
+      closeModal();
+
+      showMessage(
+        payload.project_id
+          ? "Maintenance saved successfully. The project Equipment cost was updated automatically."
+          : "Maintenance saved successfully.",
+        "success"
+      );
+    }
 
     await loadRecords();
 
   } catch (error) {
     console.error(error);
+
     showMessage(
-      error.message || "Unable to save maintenance record.",
+      error.message ||
+        "Unable to save maintenance record.",
       "error"
     );
+
   } finally {
     button.disabled = false;
-    button.textContent = "SAVE MAINTENANCE";
+    button.textContent =
+      isEditing
+        ? "UPDATE MAINTENANCE"
+        : "SAVE MAINTENANCE";
+  }
+}
+
+
+async function openPhotoModal(maintenanceId) {
+  state.photoMaintenanceId =
+    maintenanceId;
+
+  state.selectedPhotos = [];
+
+  $("photoFileInput").value = "";
+  $("photoUploadMessage").textContent =
+    "Choose one or more photos, then upload them.";
+
+  $("photoBackdrop").classList.add("open");
+
+  await loadMaintenancePhotos(
+    maintenanceId
+  );
+}
+
+function closePhotoModal() {
+  $("photoBackdrop").classList.remove("open");
+  state.photoMaintenanceId = null;
+  state.selectedPhotos = [];
+}
+
+async function loadMaintenancePhotos(
+  maintenanceId
+) {
+  const box =
+    $("maintenancePhotoGrid");
+
+  box.innerHTML =
+    '<div class="photo-empty">Loading photos...</div>';
+
+  const result =
+    await supabaseClient
+      .from(
+        "equipment_maintenance_photos"
+      )
+      .select(
+        "photo_id,maintenance_id,storage_path,caption,created_at"
+      )
+      .eq(
+        "maintenance_id",
+        String(maintenanceId)
+      )
+      .order(
+        "created_at",
+        { ascending: true }
+      );
+
+  if (result.error) {
+    box.innerHTML =
+      '<div class="photo-error">' +
+      escapeHtml(
+        result.error.message
+      ) +
+      "</div>";
+    return;
+  }
+
+  if (!result.data?.length) {
+    box.innerHTML =
+      '<div class="photo-empty">No maintenance photos attached yet.</div>';
+    return;
+  }
+
+  const cards = [];
+
+  for (const photo of result.data) {
+    const signed =
+      await supabaseClient.storage
+        .from(
+          "equipment-maintenance-evidence"
+        )
+        .createSignedUrl(
+          photo.storage_path,
+          60 * 60
+        );
+
+    if (signed.error) {
+      cards.push(
+        '<div class="maintenance-photo-card">' +
+        '<div class="photo-error">Photo unavailable</div>' +
+        "</div>"
+      );
+      continue;
+    }
+
+    cards.push(
+      '<div class="maintenance-photo-card">' +
+        '<img src="' +
+          escapeHtml(
+            signed.data.signedUrl
+          ) +
+          '" alt="Maintenance evidence">' +
+        '<div class="maintenance-photo-meta">' +
+          '<strong>MAINTENANCE PHOTO</strong>' +
+        '</div>' +
+      "</div>"
+    );
+  }
+
+  box.innerHTML = cards.join("");
+}
+
+function handleMaintenancePhotoSelection(event) {
+  state.selectedPhotos =
+    Array.from(
+      event.target.files || []
+    );
+
+  if (!state.selectedPhotos.length) {
+    $("photoUploadMessage").textContent =
+      "Choose one or more photos, then upload them.";
+    return;
+  }
+
+  $("photoUploadMessage").textContent =
+    state.selectedPhotos.length +
+    " photo" +
+    (
+      state.selectedPhotos.length === 1
+        ? ""
+        : "s"
+    ) +
+    " selected.";
+}
+
+async function uploadMaintenancePhotos() {
+  if (!state.photoMaintenanceId) {
+    throw new Error(
+      "Maintenance record not selected."
+    );
+  }
+
+  if (!state.selectedPhotos.length) {
+    throw new Error(
+      "Please choose at least one photo."
+    );
+  }
+
+  const button =
+    $("uploadPhotosButton");
+
+  button.disabled = true;
+  button.textContent =
+    "UPLOADING...";
+
+  try {
+    for (const file of state.selectedPhotos) {
+      const ext =
+        (
+          file.name.split(".").pop() ||
+          "jpg"
+        )
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+      const path =
+        "maintenance/" +
+        String(state.photoMaintenanceId) +
+        "/" +
+        crypto.randomUUID() +
+        "." +
+        ext;
+
+      const upload =
+        await supabaseClient.storage
+          .from(
+            "equipment-maintenance-evidence"
+          )
+          .upload(
+            path,
+            file,
+            {
+              cacheControl: "3600",
+              upsert: false,
+              contentType:
+                file.type ||
+                "image/jpeg"
+            }
+          );
+
+      if (upload.error)
+        throw upload.error;
+
+      const insert =
+        await supabaseClient
+          .from(
+            "equipment_maintenance_photos"
+          )
+          .insert({
+            maintenance_id:
+              String(
+                state.photoMaintenanceId
+              ),
+            storage_path: path
+          });
+
+      if (insert.error)
+        throw insert.error;
+    }
+
+    state.selectedPhotos = [];
+    $("photoFileInput").value = "";
+
+    $("photoUploadMessage").textContent =
+      "Photos uploaded successfully.";
+
+    await loadMaintenancePhotos(
+      state.photoMaintenanceId
+    );
+
+  } finally {
+    button.disabled = false;
+    button.textContent =
+      "UPLOAD PHOTOS";
   }
 }
 
@@ -411,6 +770,42 @@ $("addButton").addEventListener("click", openModal);
 $("closeModal").addEventListener("click", closeModal);
 $("cancelButton").addEventListener("click", closeModal);
 $("recordForm").addEventListener("submit", saveRecord);
+$("photoFileInput").addEventListener(
+  "change",
+  handleMaintenancePhotoSelection
+);
+$("uploadPhotosButton").addEventListener(
+  "click",
+  async function () {
+    try {
+      await uploadMaintenancePhotos();
+    } catch (error) {
+      console.error(error);
+      $("photoUploadMessage").textContent =
+        error.message ||
+        "Unable to upload photos.";
+    }
+  }
+);
+$("closePhotoModal").addEventListener(
+  "click",
+  closePhotoModal
+);
+$("closePhotoButton").addEventListener(
+  "click",
+  closePhotoModal
+);
+$("photoBackdrop").addEventListener(
+  "click",
+  function (event) {
+    if (
+      event.target ===
+      $("photoBackdrop")
+    ) {
+      closePhotoModal();
+    }
+  }
+);
 $("quantity").addEventListener("input", calculateTotal);
 $("unitCost").addEventListener("input", calculateTotal);
 
