@@ -315,22 +315,20 @@ function resetMaintenancePhotos() {
   }
 }
 
-function handleMaintenanceFormPhotos(event) {
+function renderPendingMaintenancePhotos() {
   clearPhotoPreviews();
 
-  state.selectedPhotos =
-    Array.from(event.target.files || []).filter(file =>
-      file.type.startsWith("image/")
-    );
-
   const preview = $("maintenancePhotoPreview");
+  const summary = $("maintenancePhotoSummary");
 
   if (!state.selectedPhotos.length) {
     preview.innerHTML =
       '<div class="photo-empty-inline">No photos selected.</div>';
 
-    $("maintenancePhotoSummary").textContent =
-      "Optional: attach maintenance evidence before saving.";
+    if (summary) {
+      summary.textContent =
+        "Optional: attach maintenance evidence before saving.";
+    }
 
     return;
   }
@@ -349,11 +347,54 @@ function handleMaintenanceFormPhotos(event) {
       '</div>'
     ).join("");
 
-  $("maintenancePhotoSummary").textContent =
-    state.selectedPhotos.length +
-    " photo" +
-    (state.selectedPhotos.length === 1 ? "" : "s") +
-    " selected. Remove any photo you want to change, then choose a new photo.";
+  if (summary) {
+    summary.textContent =
+      state.selectedPhotos.length +
+      " photo" +
+      (state.selectedPhotos.length === 1 ? "" : "s") +
+      " selected. Remove any photo you want to change, then choose a new photo. Existing selected photos stay attached.";
+  }
+}
+
+function handleMaintenanceFormPhotos(event) {
+  const incomingPhotos =
+    Array.from(event.target.files || []).filter(file =>
+      file.type.startsWith("image/")
+    );
+
+  if (!incomingPhotos.length) {
+    if (event.target) {
+      event.target.value = "";
+    }
+    return;
+  }
+
+  const existingKeys = new Set(
+    state.selectedPhotos.map(file =>
+      file.name + "|" + file.size + "|" + file.lastModified
+    )
+  );
+
+  incomingPhotos.forEach(file => {
+    const key =
+      file.name + "|" + file.size + "|" + file.lastModified;
+
+    if (!existingKeys.has(key)) {
+      state.selectedPhotos.push(file);
+      existingKeys.add(key);
+    }
+  });
+
+  /*
+    The native file input only contains the most recently selected
+    FileList. We keep the full selection in state so selecting a
+    new photo ADDS to the current photos instead of replacing them.
+    Clearing the input also allows the user to choose the same file
+    again later if needed.
+  */
+  event.target.value = "";
+
+  renderPendingMaintenancePhotos();
 }
 
 function removePendingPhoto(index) {
@@ -366,43 +407,16 @@ function removePendingPhoto(index) {
 
   state.selectedPhotos.splice(index, 1);
 
-  clearPhotoPreviews();
+  /*
+    Re-render from state so removing PHOTO 2 leaves PHOTO 1 intact,
+    and the next newly selected photo becomes the next available slot.
+  */
+  renderPendingMaintenancePhotos();
 
-  const preview = $("maintenancePhotoPreview");
-
-  if (!state.selectedPhotos.length) {
-    preview.innerHTML =
-      '<div class="photo-empty-inline">No photos selected.</div>';
-
-    $("maintenancePhotoSummary").textContent =
-      "Optional: attach maintenance evidence before saving.";
-
-    if ($("maintenancePhotoInput")) {
-      $("maintenancePhotoInput").value = "";
-    }
-
-    return;
+  const input = $("maintenancePhotoInput");
+  if (input) {
+    input.value = "";
   }
-
-  state.photoPreviewUrls =
-    state.selectedPhotos.map(file =>
-      URL.createObjectURL(file)
-    );
-
-  preview.innerHTML =
-    state.photoPreviewUrls.map((url, photoIndex) =>
-      '<div class="inline-photo-card">' +
-        '<img src="' + escapeHtml(url) + '" alt="Selected maintenance photo">' +
-        '<div class="inline-photo-label">PHOTO ' + (photoIndex + 1) + '</div>' +
-        '<button class="photo-remove-button" type="button" onclick="removePendingPhoto(' + photoIndex + ')">REMOVE</button>' +
-      '</div>'
-    ).join("");
-
-  $("maintenancePhotoSummary").textContent =
-    state.selectedPhotos.length +
-    " photo" +
-    (state.selectedPhotos.length === 1 ? "" : "s") +
-    " selected. Remove any photo you want to change, then choose a new photo.";
 }
 
 function resetForm() {
