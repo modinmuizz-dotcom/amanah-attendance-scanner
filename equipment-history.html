@@ -136,7 +136,7 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
 .mini-table{width:100%;border-collapse:collapse;min-width:0}.mini-table th,.mini-table td{padding:8px 6px;font-size:10px}.mini-table th{font-size:8px}
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}.modal-backdrop.open{display:flex}
 .modal{background:#fff;width:min(1080px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:20px;box-shadow:0 25px 80px rgba(15,23,42,.32)}
-.modal-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:16px}.modal-head h2{margin:0;font-size:20px}.close{border:0;background:#e2e8f0;width:36px;height:36px;border-radius:50%;font-size:21px;font-weight:900}
+.modal-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:16px}.modal-head h2{margin:0;font-size:20px}.modal-head-actions{display:flex;align-items:center;gap:8px}.close{border:0;background:#e2e8f0;width:36px;height:36px;border-radius:50%;font-size:21px;font-weight:900}.btn-print{background:#2563eb;color:#fff;min-height:36px;padding:0 13px}.btn-print:hover{background:#1d4ed8}
 .photo-counts{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.photo-count{background:#fff;border:1px solid #dbeafe;border-radius:8px;padding:6px 8px;font-size:9px;font-weight:900;color:#1e40af}
 .modal-section{margin-top:16px}.modal-section h3{margin:0 0 8px;font-size:13px}.repair-link{border:0;background:#2563eb;color:#fff;border-radius:7px;padding:6px 9px;font-size:9px;font-weight:900}
 
@@ -152,6 +152,7 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
   .topbar-right{gap:7px}
   .hero{padding:22px;flex-direction:column}.hero-side{width:100%;flex-direction:row;justify-content:flex-end}
 }
+@media print{body *{visibility:hidden!important}.print-only{visibility:visible!important}.print-only *{visibility:visible!important}.print-only{position:static!important;width:auto!important;max-height:none!important;overflow:visible!important}.print-only .modal-head-actions,.print-only .close{display:none!important}}
 @media(max-width:700px){
   .metrics{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.hero h1{font-size:27px}
   .hero-side{justify-content:stretch}.hero-badge{flex:1}
@@ -301,7 +302,13 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
 
 <div id="historyModal" class="modal-backdrop">
   <div class="modal">
-    <div class="modal-head"><div><h2 id="modalTitle">Equipment History</h2><div id="modalSubtitle" class="muted"></div></div><button class="close" id="closeModal" type="button">×</button></div>
+    <div class="modal-head">
+  <div><h2 id="modalTitle">Equipment History</h2><div id="modalSubtitle" class="muted"></div></div>
+  <div class="modal-head-actions">
+    <button class="btn btn-print" id="printEquipmentHistory" type="button">PRINT / SAVE PDF</button>
+    <button class="close" id="closeModal" type="button">×</button>
+  </div>
+</div>
     <div id="modalContent"></div>
   </div>
 </div>
