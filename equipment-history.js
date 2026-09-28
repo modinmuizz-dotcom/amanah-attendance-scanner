@@ -129,6 +129,67 @@ async function openEquipmentHistory(equipmentId){
 
 function closeModal(){$("historyModal").classList.remove("open");}
 
+function printEquipmentHistory(){
+  const title=$("modalTitle").textContent.trim()||"Equipment History";
+  const subtitle=$("modalSubtitle").textContent.trim();
+  const content=$("modalContent").innerHTML;
+  const w=window.open("","_blank","width=1100,height=850");
+  if(!w){showMessage("Please allow pop-ups for AMANAH to print the equipment history.","error");return;}
+  w.document.open();
+  w.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${escapeHtml(title)} - AMANAH Equipment History</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:#0f172a;font-family:Arial,Helvetica,sans-serif}
+.page{max-width:1100px;margin:0 auto;padding:28px}
+.brand{border-bottom:4px solid #2563eb;padding-bottom:14px;margin-bottom:20px}
+.brand h1{margin:0;font-size:24px;letter-spacing:.5px}
+.brand p{margin:4px 0 0;color:#64748b;font-size:11px}
+.report-title{margin:0 0 4px;font-size:22px}
+.report-subtitle{color:#64748b;font-size:12px}
+.detail-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;margin-top:16px}
+.detail-card{background:#f8fafc;border:1px solid #dbe3ef;border-radius:10px;padding:14px}
+.detail-card h3,.modal-section h3{margin:0 0 9px;font-size:12px}
+.detail-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.detail-item{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px}
+.detail-item label{display:block;font-size:8px;color:#64748b;text-transform:uppercase;margin-bottom:4px}
+.detail-item div{font-size:11px;font-weight:800}
+.modal-section{margin-top:16px}
+.table-wrap{width:100%;overflow:visible}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #dbe3ef;padding:7px;font-size:9px;text-align:left;vertical-align:top}
+th{background:#f1f5f9;text-transform:uppercase;font-size:8px}
+.money{font-weight:900;white-space:nowrap}
+.muted{color:#64748b}
+.strong{font-weight:900}
+.pill{display:inline-flex;border-radius:999px;padding:3px 7px;font-size:8px;font-weight:900;background:#e2e8f0}
+.pill.active,.pill.closed{background:#dcfce7;color:#166534}
+.pill.in-progress{background:#fef3c7;color:#92400e}
+.photo-counts{display:flex;flex-wrap:wrap;gap:4px}
+.photo-count{background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:3px 5px;font-size:8px;font-weight:900;color:#1e40af}
+.footer{margin-top:22px;padding-top:10px;border-top:1px solid #e5e7eb;color:#94a3b8;font-size:8px;display:flex;justify-content:space-between}
+@media print{@page{size:A4 portrait;margin:10mm}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+@media(max-width:800px){.detail-grid,.detail-list{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="brand"><h1>AMANAH CONSTRUCTION SERVICES</h1><p>Construction Management System • Equipment Lifecycle History Report</p></div>
+  <h2 class="report-title">${escapeHtml(title)}</h2>
+  <div class="report-subtitle">${escapeHtml(subtitle)}</div>
+  ${content}
+  <div class="footer"><span>AMANAH CMS</span><span>Generated ${new Date().toLocaleString("en-PH")}</span></div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},250);};window.onafterprint=function(){setTimeout(function(){window.close();},250);};</script>
+</body>
+</html>`);
+  w.document.close();
+}
+
 function goToRepair(id){if(id)location.href="repair-requests.html?id="+encodeURIComponent(id);}
 
 document.addEventListener("input",e=>{if(["searchInput"].includes(e.target.id))render();});
@@ -138,6 +199,7 @@ $("historyBody").addEventListener("click",e=>{const b=e.target.closest("[data-vi
 $("modalContent").addEventListener("click",e=>{const b=e.target.closest("[data-view-repair]");if(b)goToRepair(b.dataset.viewRepair);});
 $("refreshButton").addEventListener("click",async()=>{try{await loadMaster();await loadData();showMessage("Equipment history refreshed.","success");}catch(e){console.error(e);showMessage(e.message||"Unable to refresh equipment history.","error");}});
 $("closeModal").addEventListener("click",closeModal);
+$("printEquipmentHistory").addEventListener("click",printEquipmentHistory);
 $("historyModal").addEventListener("click",e=>{if(e.target===$("historyModal"))closeModal();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 $("sidebarLogoutButton").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.href="index.html";});
