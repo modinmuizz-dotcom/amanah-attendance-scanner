@@ -13,6 +13,7 @@
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['projects','Projects','project-monitoring.html','briefcase'],
+      ['schedule','Project Schedule','project-schedule.html','calendar'],
       ['progress','Project Progress','project-monitoring.html','chart'],
       ['documents','Documents','reports.html','file'],
     ]},
@@ -60,6 +61,7 @@
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
     if(file==='project-monitoring.html') return 'projects';
+    if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
     if(file==='admin.html') return 'employees';
