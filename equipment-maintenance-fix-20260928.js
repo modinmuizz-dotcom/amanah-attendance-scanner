@@ -935,9 +935,22 @@ async function deleteRecord(id) {
 
   if (!record) return;
 
-  const ok = window.confirm(
-    "Delete this maintenance record? Any automatic project Equipment cost linked to it will also be removed."
-  );
+  const details = [
+    "Are you sure you want to delete this specific maintenance?",
+    "",
+    "Date: " + (record.maintenance_date || "—"),
+    "Equipment: " + equipmentNameById(record.equipment_id),
+    "Type: " + (record.maintenance_type || "—"),
+    "Description: " + (record.description || "—"),
+    "Total: ₱" + Number(record.total_amount || 0).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }),
+    "",
+    "Any automatic Project Equipment Cost linked to this maintenance will also be removed."
+  ].join("\n");
+
+  const ok = window.confirm(details);
 
   if (!ok) return;
 
