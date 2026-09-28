@@ -344,7 +344,8 @@ function handleMaintenanceFormPhotos(event) {
     state.photoPreviewUrls.map((url, index) =>
       '<div class="inline-photo-card">' +
         '<img src="' + escapeHtml(url) + '" alt="Selected maintenance photo">' +
-        '<div>PHOTO ' + (index + 1) + '</div>' +
+        '<div class="inline-photo-label">PHOTO ' + (index + 1) + '</div>' +
+        '<button class="photo-remove-button" type="button" onclick="removePendingPhoto(' + index + ')">REMOVE</button>' +
       '</div>'
     ).join("");
 
@@ -352,7 +353,56 @@ function handleMaintenanceFormPhotos(event) {
     state.selectedPhotos.length +
     " photo" +
     (state.selectedPhotos.length === 1 ? "" : "s") +
-    " selected. You can take a photo or choose from Photos.";
+    " selected. Remove any photo you want to change, then choose a new photo.";
+}
+
+function removePendingPhoto(index) {
+  if (
+    index < 0 ||
+    index >= state.selectedPhotos.length
+  ) {
+    return;
+  }
+
+  state.selectedPhotos.splice(index, 1);
+
+  clearPhotoPreviews();
+
+  const preview = $("maintenancePhotoPreview");
+
+  if (!state.selectedPhotos.length) {
+    preview.innerHTML =
+      '<div class="photo-empty-inline">No photos selected.</div>';
+
+    $("maintenancePhotoSummary").textContent =
+      "Optional: attach maintenance evidence before saving.";
+
+    if ($("maintenancePhotoInput")) {
+      $("maintenancePhotoInput").value = "";
+    }
+
+    return;
+  }
+
+  state.photoPreviewUrls =
+    state.selectedPhotos.map(file =>
+      URL.createObjectURL(file)
+    );
+
+  preview.innerHTML =
+    state.photoPreviewUrls.map((url, photoIndex) =>
+      '<div class="inline-photo-card">' +
+        '<img src="' + escapeHtml(url) + '" alt="Selected maintenance photo">' +
+        '<div class="inline-photo-label">PHOTO ' + (photoIndex + 1) + '</div>' +
+        '<button class="photo-remove-button" type="button" onclick="removePendingPhoto(' + photoIndex + ')">REMOVE</button>' +
+      '</div>'
+    ).join("");
+
+  $("maintenancePhotoSummary").textContent =
+    state.selectedPhotos.length +
+    " photo" +
+    (state.selectedPhotos.length === 1 ? "" : "s") +
+    " selected. Remove any photo you want to change, then choose a new photo.";
 }
 
 function resetForm() {
@@ -565,16 +615,82 @@ async function loadExistingMaintenancePhotos(maintenanceId) {
     }
 
     cards.push(
-      '<div class="inline-photo-card">' +
+      '<div class="inline-photo-card" data-photo-id="' +
+        escapeHtml(photo.photo_id) +
+      '">' +
         '<img src="' +
         escapeHtml(signed.data.signedUrl) +
         '" alt="Existing maintenance photo">' +
-        '<div>ATTACHED PHOTO</div>' +
+        '<div class="inline-photo-label">ATTACHED PHOTO</div>' +
+        '<button class="photo-delete-button" type="button" onclick="deleteExistingMaintenancePhoto(\'' +
+          escapeHtml(photo.photo_id) +
+        '\', \'' +
+          escapeHtml(photo.storage_path) +
+        '\')">DELETE PHOTO</button>' +
       '</div>'
     );
   }
 
   box.innerHTML = cards.join("");
+}
+
+async function deleteExistingMaintenancePhoto(photoId, storagePath) {
+  if (!photoId || !storagePath) return;
+
+  const card =
+    document.querySelector(
+      '[data-photo-id="' + photoId.replace(/"/g, '\\\"') + '"]'
+    );
+
+  const ok =
+    window.confirm(
+      "Delete this maintenance photo? This cannot be undone."
+    );
+
+  if (!ok) return;
+
+  try {
+    const storageResult =
+      await supabaseClient.storage
+        .from("equipment-maintenance-evidence")
+        .remove([storagePath]);
+
+    if (storageResult.error) {
+      throw storageResult.error;
+    }
+
+    const dbResult =
+      await supabaseClient
+        .from("equipment_maintenance_photos")
+        .delete()
+        .eq("photo_id", photoId);
+
+    if (dbResult.error) {
+      throw dbResult.error;
+    }
+
+    if (card) {
+      card.remove();
+    }
+
+    const box = $("existingMaintenancePhotos");
+
+    if (
+      box &&
+      !box.querySelector(".inline-photo-card")
+    ) {
+      box.innerHTML =
+        '<div class="photo-empty-inline">No photos attached to this maintenance record yet. Choose a new photo above to add replacement evidence.</div>';
+    }
+
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      error.message ||
+      "Unable to delete the maintenance photo.",
+      "error"
+    );
+  }
 }
 
 async function saveRecord(event) {
