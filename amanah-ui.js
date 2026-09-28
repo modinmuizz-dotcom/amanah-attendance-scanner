@@ -73,7 +73,7 @@
 
     const style=document.createElement('link');
     style.rel='stylesheet';
-    style.href='amanah-ui.css?v=3';
+    style.href='amanah-ui.css?v=4';
     document.head.appendChild(style);
 
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
