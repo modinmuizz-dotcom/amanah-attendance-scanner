@@ -43,6 +43,7 @@ const state = {
   employees: [],
   equipment: [],
   projects: [],
+  suppliers: [],
 
   activeTab: 'employeesTab',
 
@@ -267,12 +268,14 @@ async function loadAllData() {
     await Promise.all([
       loadEmployees(),
       loadEquipment(),
-      loadProjects()
+      loadProjects(),
+      loadSuppliers()
     ]);
 
     renderEmployees();
     renderEquipment();
     renderProjects();
+    renderSuppliers();
 
     hideMessage(
       'globalMessage'
@@ -366,6 +369,159 @@ async function loadProjects() {
 
   state.projects =
     data || [];
+
+}
+
+
+async function loadSuppliers() {
+
+  const { data, error } =
+    await supabaseClient
+      .from('suppliers')
+      .select('*')
+      .order('supplier_name', { ascending: true });
+
+  if (error) {
+    throw new Error(
+      `Suppliers: ${error.message}`
+    );
+  }
+
+  state.suppliers = data || [];
+
+}
+
+
+function renderSuppliers() {
+
+  const search =
+    document
+      .getElementById('supplierSearch')
+      .value
+      .trim()
+      .toLowerCase();
+
+  const rows =
+    state.suppliers.filter(
+      supplier => {
+
+        const text =
+          [
+            supplier.supplier_code,
+            supplier.supplier_name,
+            supplier.contact_person,
+            supplier.contact_number,
+            supplier.email,
+            supplier.address,
+            supplier.tin,
+            supplier.status
+          ]
+          .join(' ')
+          .toLowerCase();
+
+        return text.includes(search);
+
+      }
+    );
+
+  const body =
+    document.getElementById(
+      'suppliersTableBody'
+    );
+
+  if (!rows.length) {
+
+    body.innerHTML = `
+      <tr>
+        <td
+          colspan="7"
+          class="empty-row"
+        >
+          No suppliers found.
+        </td>
+      </tr>
+    `;
+
+    return;
+
+  }
+
+  body.innerHTML =
+    rows.map(supplier => `
+
+      <tr>
+
+        <td>
+          ${escapeHtml(supplier.supplier_code)}
+        </td>
+
+        <td>
+          ${escapeHtml(supplier.supplier_name)}
+        </td>
+
+        <td>
+          ${escapeHtml(supplier.contact_person)}
+        </td>
+
+        <td>
+          ${escapeHtml(supplier.contact_number)}
+        </td>
+
+        <td>
+          ${escapeHtml(supplier.email)}
+        </td>
+
+        <td class="${supplier.status === 'ACTIVE'
+          ? 'status-active'
+          : 'status-inactive'}">
+          ${escapeHtml(supplier.status)}
+        </td>
+
+        <td>
+
+          <div class="action-buttons">
+
+            <button
+              class="small-button edit-button"
+              onclick="editSupplier('${encodeURIComponent(
+                supplier.supplier_id
+              )}')"
+            >
+              EDIT
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `).join('');
+
+}
+
+
+function editSupplier(encodedId) {
+
+  const id =
+    decodeURIComponent(
+      encodedId
+    );
+
+  const supplier =
+    state.suppliers.find(
+      item =>
+        item.supplier_id === id
+    );
+
+  if (!supplier) {
+    return;
+  }
+
+  openSupplierModal(
+    'edit',
+    supplier
+  );
 
 }
 
@@ -812,6 +968,172 @@ function editProject(encodedId) {
 }
 
 
+function openSupplierModal(
+  mode,
+  record = null
+) {
+
+  const values =
+    record || {};
+
+  document
+    .getElementById(
+      'formFields'
+    )
+    .innerHTML = `
+
+      ${field(
+        'Supplier Code',
+        'supplier_code',
+        values.supplier_code,
+        true
+      )}
+
+      ${field(
+        'Supplier Name',
+        'supplier_name',
+        values.supplier_name,
+        true
+      )}
+
+      ${field(
+        'Contact Person',
+        'contact_person',
+        values.contact_person
+      )}
+
+      ${field(
+        'Contact Number',
+        'contact_number',
+        values.contact_number
+      )}
+
+      ${field(
+        'Email Address',
+        'email',
+        values.email,
+        false,
+        'email'
+      )}
+
+      ${field(
+        'Address',
+        'address',
+        values.address
+      )}
+
+      ${field(
+        'TIN',
+        'tin',
+        values.tin
+      )}
+
+      ${selectField(
+        'Status',
+        'status',
+        ['ACTIVE', 'INACTIVE'],
+        values.status || 'ACTIVE'
+      )}
+
+    `;
+
+  openModal(
+    mode === 'add'
+      ? 'ADD SUPPLIER'
+      : 'EDIT SUPPLIER',
+    'supplier',
+    mode,
+    record
+  );
+
+}
+
+
+async function saveSupplier(
+  values
+) {
+
+  const payload = {
+
+    supplier_code:
+      values.supplier_code.trim(),
+
+    supplier_name:
+      values.supplier_name.trim(),
+
+    contact_person:
+      values.contact_person.trim() ||
+      null,
+
+    contact_number:
+      values.contact_number.trim() ||
+      null,
+
+    email:
+      values.email.trim() ||
+      null,
+
+    address:
+      values.address.trim() ||
+      null,
+
+    tin:
+      values.tin.trim() ||
+      null,
+
+    status:
+      values.status || 'ACTIVE'
+
+  };
+
+  if (
+    state.modalMode ===
+    'add'
+  ) {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from('suppliers')
+        .insert(
+          payload
+        );
+
+    if (error) {
+      throw new Error(
+        `Supplier: ${error.message}`
+      );
+    }
+
+  } else {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from('suppliers')
+        .update({
+          ...payload,
+          updated_at:
+            new Date().toISOString()
+        })
+        .eq(
+          'supplier_id',
+          state.editId
+        );
+
+    if (error) {
+      throw new Error(
+        `Supplier: ${error.message}`
+      );
+    }
+
+  }
+
+}
+
+
 /* =========================================================
    MODAL
    ========================================================= */
@@ -899,6 +1221,10 @@ function getRecordId(
 
   if (type === 'project') {
     return record.project_id;
+  }
+
+  if (type === 'supplier') {
+    return record.supplier_id;
   }
 
   return null;
@@ -1313,6 +1639,17 @@ async function saveRecord(event) {
     ) {
 
       await saveProject(
+        values
+      );
+
+    }
+
+    else if (
+      state.modalType ===
+      'supplier'
+    ) {
+
+      await saveSupplier(
         values
       );
 
@@ -1750,6 +2087,18 @@ function setupEvents() {
         )
     );
 
+  document
+    .getElementById(
+      'addSupplierButton'
+    )
+    .addEventListener(
+      'click',
+      () =>
+        openSupplierModal(
+          'add'
+        )
+    );
+
 
   document
     .getElementById(
@@ -1778,6 +2127,15 @@ function setupEvents() {
     .addEventListener(
       'input',
       renderProjects
+    );
+
+  document
+    .getElementById(
+      'supplierSearch'
+    )
+    .addEventListener(
+      'input',
+      renderSuppliers
     );
 
 
