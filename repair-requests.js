@@ -154,8 +154,13 @@ function getItems(){
 }
 
 function renderSelectedFiles(){
-  const names=state.selectedFiles.map((f,i)=> (i+1)+". "+f.name+" ("+Math.round(f.size/1024)+" KB)").join("\n");
-  $("selectedPhotos").textContent=names?names:"No photos selected yet.";
+  const summary=state.selectedFiles.map((f,i)=>
+    "Photo " + (i+1) + " attached • " +
+    Math.max(1, Math.round(f.size/1024)) + " KB"
+  ).join("\n");
+
+  $("selectedPhotos").textContent =
+    summary || "No photos selected yet.";
 }
 
 function openNewRequest(){
@@ -332,7 +337,11 @@ async function openDetail(id){
       const signed=await supabaseClient.storage.from("repair-evidence").createSignedUrl(ph.file_path,600);
       const card=document.createElement("div");card.className="photo-card";
       const src=signed.data?.signedUrl||"";
-      card.innerHTML='<img src="'+escapeHtml(src)+'" alt="'+escapeHtml(ph.file_name)+'"><div class="photo-meta"><strong>'+escapeHtml(ph.photo_category)+'</strong><small>'+escapeHtml(ph.file_name)+'</small></div>';
+      card.innerHTML=
+        '<img src="'+escapeHtml(src)+'" alt="Repair evidence photo">' +
+        '<div class="photo-meta">' +
+          '<strong>'+escapeHtml(ph.photo_category)+'</strong>' +
+        '</div>';
       pg.appendChild(card);
     }
   }
