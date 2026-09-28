@@ -12,8 +12,7 @@
       ['roles','Roles & Permissions','admin.html','shield'],
     ]},
     {section:'PROJECT MANAGEMENT',items:[
-      ['projects','Projects','project-monitoring.html','briefcase'],
-      ['schedule','Project Schedule','project-schedule.html','calendar'],
+      ['schedule','Activity Calendar','project-schedule.html','calendar'],
       ['progress','Project Progress','project-monitoring.html','chart'],
       ['documents','Documents','reports.html','file'],
     ]},
@@ -60,7 +59,7 @@
     if(file==='equipment-maintenance.html') return 'maintenance';
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
-    if(file==='project-monitoring.html') return 'projects';
+    if(file==='project-monitoring.html') return 'progress';
     if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
