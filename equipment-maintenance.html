@@ -9,7 +9,23 @@
 button,input,select,textarea{font:inherit}button{cursor:pointer}
 .topbar{min-height:66px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 30px;position:sticky;top:0;z-index:20}
 .brand{display:flex;align-items:center;gap:10px;min-width:230px}.brand-logo{width:40px;height:40px;border-radius:10px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900}.brand-title{font-size:14px;font-weight:900}.brand-subtitle{font-size:9px;opacity:.72;margin-top:2px}
-.top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.btn-light,.btn-primary,.btn-secondary,.btn-danger,.btn-green{border:0;border-radius:9px;min-height:38px;padding:0 14px;font-weight:800}.btn-light,.btn-secondary{background:#fff;color:#111827}.btn-primary{background:#111827;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-danger{background:#dc2626;color:#fff;min-height:34px;padding:0 12px;font-size:11px}.btn-action{border:0;border-radius:8px;min-height:34px;padding:0 12px;font-weight:900;font-size:11px;color:#fff;box-shadow:0 3px 8px rgba(15,23,42,.14)}.btn-edit{background:#2563eb}.btn-photo{background:#059669}.btn-action:hover,.btn-danger:hover{transform:translateY(-1px);filter:brightness(1.04)}.action-buttons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.btn-light,.btn-primary,.btn-secondary,.btn-danger,.btn-green{border:0;border-radius:9px;min-height:38px;padding:0 14px;font-weight:800}.btn-light,.btn-secondary{background:#fff;color:#111827}.btn-primary{background:#111827;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-danger{background:#dc2626;color:#fff;min-height:34px;padding:0 12px;font-size:11px}.btn-action{border:0;border-radius:8px;min-height:34px;padding:0 12px;font-weight:900;font-size:11px;color:#fff;box-shadow:0 3px 8px rgba(15,23,42,.14)}.btn-action.btn-edit{background:#2563eb!important;color:#fff!important}.btn-action.btn-edit:hover{background:#1d4ed8!important}.btn-photo{background:#059669}.btn-action:hover,.btn-danger:hover{transform:translateY(-1px);filter:brightness(1.04)}.action-buttons{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.confirm-modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.62);display:none;align-items:center;justify-content:center;padding:20px;z-index:120}
+.confirm-modal-backdrop.open{display:flex}
+.confirm-modal{width:min(520px,100%);background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.35);padding:24px;animation:confirmPop .16s ease-out}
+@keyframes confirmPop{from{transform:translateY(8px) scale(.98);opacity:.6}to{transform:translateY(0) scale(1);opacity:1}}
+.confirm-icon{width:52px;height:52px;border-radius:14px;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;margin-bottom:14px}
+.confirm-title{font-size:20px;font-weight:900;color:#0f172a}
+.confirm-subtitle{font-size:13px;color:#64748b;margin-top:6px;line-height:1.5}
+.confirm-details{margin-top:16px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:14px;padding:12px}
+.confirm-details>div{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:12px}
+.confirm-details>div:last-child{border-bottom:0}
+.confirm-details span{color:#64748b;font-weight:800}.confirm-details strong{color:#0f172a;text-align:right}
+.confirm-warning{margin-top:12px;padding:11px 12px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:11px;font-weight:800;line-height:1.45}
+.confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.confirm-cancel{border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:10px;min-height:42px;padding:0 16px;font-weight:900}
+.confirm-delete{border:0;background:#dc2626;color:#fff;border-radius:10px;min-height:42px;padding:0 18px;font-weight:900;box-shadow:0 5px 12px rgba(220,38,38,.22)}
+.confirm-delete:hover{background:#b91c1c}
 .page{max-width:1160px;margin:0 auto;padding:34px 24px 70px}.hero{display:flex;justify-content:space-between;gap:30px;align-items:flex-end;margin-bottom:24px}.kicker{color:#1d4ed8;font-size:11px;font-weight:900;letter-spacing:1.2px;margin-bottom:8px}.hero h1{margin:0;font-size:clamp(30px,4vw,46px);letter-spacing:-.8px}.hero p{color:#64748b;max-width:760px;line-height:1.5;margin:8px 0 0}.hero-card{background:#fff;border-radius:18px;padding:18px 22px;min-width:220px;box-shadow:0 8px 28px rgba(15,23,42,.06)}.hero-card-label{color:#64748b;text-transform:uppercase;font-size:9px;font-weight:900;letter-spacing:1px}.hero-card-value{font-size:18px;font-weight:900;margin-top:8px}
 .message{display:none;padding:13px 16px;border-radius:12px;font-weight:800;margin-bottom:18px}.message.success{display:block;background:#dcfce7;color:#166534}.message.error{display:block;background:#fee2e2;color:#991b1b}.message.info{display:block;background:#e0f2fe;color:#075985}
 .card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 28px rgba(15,23,42,.06);margin-bottom:20px}.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}.card-header h2{margin:0;font-size:18px}.subtitle{margin:6px 0 0;color:#64748b;font-size:13px}
@@ -145,6 +161,18 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   </div>
 </div>
 
+<div id="deleteConfirmBackdrop" class="confirm-modal-backdrop" aria-hidden="true">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+    <div class="confirm-icon">!</div>
+    <div id="deleteConfirmTitle" class="confirm-title">DELETE MAINTENANCE</div>
+    <div id="deleteConfirmText" class="confirm-subtitle"></div>
+    <div class="confirm-actions">
+      <button id="deleteConfirmNo" class="confirm-cancel" type="button">CANCEL</button>
+      <button id="deleteConfirmYes" class="confirm-delete" type="button">DELETE MAINTENANCE</button>
+    </div>
+  </div>
+</div>
+
 <div id="photoBackdrop" class="modal-backdrop">
   <div class="modal">
     <div class="modal-header">
@@ -166,7 +194,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="equipment-maintenance-fix-20260928.js?v=3"></script>
+<script src="equipment-maintenance-fix-20260928.js?v=4"></script>
 <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
