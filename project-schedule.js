@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -27,6 +27,10 @@ async function init(){
   document.getElementById("closeModal").addEventListener("click",closeModal);
   document.getElementById("cancelModal").addEventListener("click",closeModal);
   document.getElementById("saveStatus").addEventListener("click",saveStatus);
+  document.getElementById("closeDetailModal").addEventListener("click",closeDetailModal);
+  document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
+  document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
+  document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -172,7 +176,7 @@ function renderCalendar(){
   }
 
   grid.innerHTML=out;
-  document.querySelectorAll("[data-cal-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.calUpdate)));
+  document.querySelectorAll("[data-cal-update]").forEach(btn=>btn.addEventListener("click",()=>openDetailsModal(btn.dataset.calUpdate)));
 }
 
 async function saveSchedule(){
@@ -300,6 +304,44 @@ async function saveEditSchedule(){
     btn.disabled=false;
     btn.textContent="SAVE CHANGES";
   }
+}
+
+function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}
+function formatActivityDate(date){
+  if(!date)return "—";
+  const d=new Date(date+"T00:00:00");
+  return d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+}
+function openDetailsModal(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  state.detailActivityId=id;
+  const equipment=equipmentFor(id);
+  const equipmentText=equipment.length
+    ? equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", ")
+    : (a.equipment||"—");
+  const progress=Math.max(0,Math.min(100,Number(a.accomplishment||0)));
+  const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
+  document.getElementById("detailActivityName").textContent=a.activity||"Activity";
+  document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
+  document.getElementById("detailStatus").textContent=a.activity_status||"PLANNED";
+  document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
+  document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
+  document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+  document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
+  document.getElementById("detailTime").textContent=time;
+  document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
+  document.getElementById("detailEquipment").textContent=equipmentText;
+  document.getElementById("detailDescription").textContent=a.description||"No description provided.";
+  document.getElementById("detailProgressText").textContent=progress+"%";
+  document.getElementById("detailProgressFill").style.width=progress+"%";
+  document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
+  document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
+  document.getElementById("detailModal").style.display="flex";
+}
+function closeDetailModal(){
+  state.detailActivityId=null;
+  document.getElementById("detailModal").style.display="none";
 }
 function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=a.activity_status||"PLANNED";document.getElementById("modalProgress").value=a.accomplishment??0;document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
 function closeModal(){state.editingActivityId=null;document.getElementById("statusModal").style.display="none";}
