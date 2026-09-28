@@ -2690,7 +2690,6 @@ function addActivityRow(
               'class="activity-photo-input activity-photo-1" ' +
               'type="file" ' +
               'accept="image/*" ' +
-              'capture="environment"' +
             '>' +
           '</label>' +
 
@@ -2714,7 +2713,6 @@ function addActivityRow(
               'class="activity-photo-input activity-photo-2" ' +
               'type="file" ' +
               'accept="image/*" ' +
-              'capture="environment"' +
             '>' +
           '</label>' +
 
