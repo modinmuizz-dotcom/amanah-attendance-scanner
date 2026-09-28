@@ -2260,6 +2260,9 @@ function showOutMeterSummary() {
 
 async function prepareTimeOut() {
 
+  const button =
+    $('continueOutButton');
+
   const active =
     getActiveAttendance();
 
@@ -2323,23 +2326,30 @@ async function prepareTimeOut() {
     return;
   }
 
-  setBusy(true);
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'PROCESSING...';
+  }
 
-  let uploadedEvidence = [];
+  setBusy(true);
 
   try {
 
     setStatus(
-      'Uploading activity photo evidence...',
+      'Preparing TIME OUT...',
       'info'
     );
 
-    uploadedEvidence =
-      await uploadActivityEvidence(
-        String(
-          active.attendance_id
+    const uploadedEvidence =
+      await withTimeout(
+        uploadActivityEvidence(
+          String(
+            active.attendance_id
+          ),
+          activities.rows
         ),
-        activities.rows
+        60000,
+        'Photo upload is taking too long. Check your internet connection and try again.'
       );
 
     const rpcActivities =
@@ -2367,31 +2377,36 @@ async function prepareTimeOut() {
 
 
     setStatus(
-      'Saving meter, activities and photo evidence...',
+      'Saving Meter Out and activity records...',
       'info'
     );
 
     const rpcResult =
-      await supabaseClient.rpc(
-        'prepare_attendance_out',
-        {
-          p_attendance_id:
-            String(
-              active.attendance_id
-            ),
+      await withTimeout(
+        supabaseClient.rpc(
+          'prepare_attendance_out',
+          {
+            p_attendance_id:
+              String(
+                active.attendance_id
+              ),
 
-          p_employee_id:
-            String(
-              employee.employee_id
-            ),
+            p_employee_id:
+              String(
+                employee.employee_id
+              ),
 
-          p_meter_out:
-            meterOut,
+            p_meter_out:
+              meterOut,
 
-          p_activities:
-            rpcActivities
-        }
+            p_activities:
+              rpcActivities
+          }
+        ),
+        30000,
+        'The attendance server did not respond. Please try again.'
       );
+
 
     if (rpcResult.error) {
       throw new Error(
@@ -2399,10 +2414,12 @@ async function prepareTimeOut() {
       );
     }
 
+
     const result =
       Array.isArray(rpcResult.data)
         ? rpcResult.data[0]
         : rpcResult.data;
+
 
     if (!result) {
       throw new Error(
@@ -2410,12 +2427,14 @@ async function prepareTimeOut() {
       );
     }
 
+
     if (result.success !== true) {
       throw new Error(
         result.error ||
         'TIME OUT preparation was not completed.'
       );
     }
+
 
     state.outPrepared = true;
     state.lastMeterOut = meterOut;
@@ -2466,14 +2485,17 @@ async function prepareTimeOut() {
       false
     );
 
+
     setStatus(
-      '✓ Meter Out, activities and photo evidence recorded. Did you fuel the equipment?',
+      '✓ Meter Out and activities saved. Did you fuel the equipment?',
       'success'
     );
+
 
     scrollToElement(
       'fuelQuestion'
     );
+
 
   } catch (error) {
 
@@ -2486,21 +2508,90 @@ async function prepareTimeOut() {
       'TIME OUT preparation failed: ' +
       (
         error.message ||
-        'Unable to save activity evidence.'
+        'Please try again.'
       ),
       'error'
     );
 
     /*
-      Photo uploads are intentionally kept if the database step
-      fails. This prevents deleting evidence after a temporary
-      database/network problem.
+      Keep TIME OUT form visible so the user can retry.
     */
+
+    state.outPrepared = false;
+
+    hideElement(
+      'outDetails',
+      false
+    );
+
+    hideElement(
+      'fuelQuestion',
+      true
+    );
+
 
   } finally {
 
     setBusy(false);
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'CONTINUE TO FUEL';
+    }
   }
+}
+
+
+function withTimeout(
+  promise,
+  milliseconds,
+  message
+) {
+
+  let timer = null;
+
+  const timeoutPromise =
+    new Promise(
+      function (_, reject) {
+
+        timer =
+          setTimeout(
+            function () {
+
+              reject(
+                new Error(
+                  message
+                )
+              );
+
+            },
+            milliseconds
+          );
+
+      }
+    );
+
+  return Promise.race([
+    promise.then(
+      function (value) {
+
+        if (timer) {
+          clearTimeout(timer);
+        }
+
+        return value;
+      },
+      function (error) {
+
+        if (timer) {
+          clearTimeout(timer);
+        }
+
+        throw error;
+      }
+    ),
+    timeoutPromise
+  ]);
 }
 
 
