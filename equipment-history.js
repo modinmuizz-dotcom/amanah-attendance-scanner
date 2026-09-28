@@ -56,7 +56,7 @@ function render(){
   $("summaryBody").innerHTML=f.summary.length?f.summary.map(x=>{
     const pmCount=state.pmRecords.filter(pm=>pm.equipment_id===x.equipment_id).length;
     return '<tr>'+
-      '<td><div class="strong">'+escapeHtml(x.equipment_name||x.equipment_id)+'</div><div class="muted">'+escapeHtml(x.equipment_id)+'</div></td>'+
+      '<td><div class="strong">'+escapeHtml(equipmentNameById(x.equipment_id))+'</div><div class="muted">'+escapeHtml(x.equipment_id)+'</div></td>'+
       '<td>'+equipmentPill(x.status)+'</td>'+
       '<td>'+pmCount+'</td>'+
       '<td>'+Number(x.total_repair_requests||0)+'</td>'+
@@ -68,7 +68,7 @@ function render(){
     '</tr>';
   }).join(""):'<tr><td colspan="9" class="empty">No equipment found.</td></tr>';
 
-  if($("maintenanceBody")) $("maintenanceBody").innerHTML=f.maintenance.length?f.maintenance.map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td><div class="strong">'+escapeHtml(x.equipment_name||x.equipment_id)+'</div><div class="muted">'+escapeHtml(x.equipment_id||"")+'</div></td><td>'+escapeHtml(x.project_name||"—")+'</td><td>'+statusPill(x.maintenance_type)+'</td><td>'+escapeHtml(x.description||"")+'</td><td>'+escapeHtml(x.supplier_shop||"—")+'</td><td>'+escapeHtml(x.quantity??"")+'</td><td>'+escapeHtml(x.unit||"")+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join(""):'<tr><td colspan="10" class="empty">No maintenance records found for the selected filters.</td></tr>';
+  if($("maintenanceBody")) $("maintenanceBody").innerHTML=f.maintenance.length?f.maintenance.map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td><div class="strong">'+escapeHtml(x.equipment_name||x.equipment_id)+'</div><div class="muted">'+escapeHtml(x.equipment_id||"")+'</div></td><td>'+escapeHtml(projectNameById(x.project_id))+'</td><td>'+statusPill(x.maintenance_type)+'</td><td>'+escapeHtml(x.description||"")+'</td><td>'+escapeHtml(x.supplier_shop||"—")+'</td><td>'+escapeHtml(x.quantity??"")+'</td><td>'+escapeHtml(x.unit||"")+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join(""):'<tr><td colspan="10" class="empty">No maintenance records found for the selected filters.</td></tr>';
 
   $("historyBody").innerHTML=f.repairs.length?f.repairs.map(x=>
     '<tr>'+
@@ -110,7 +110,7 @@ async function openEquipmentHistory(equipmentId){
     '</div>'+
     '<div class="modal-section"><h3>MAINTENANCE RECORDS</h3>'+
       (state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).length?'<div class="table-wrap"><table class="mini-table"><thead><tr><th>Date</th><th>Type</th><th>Project</th><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th><th>Reference</th></tr></thead><tbody>'+
-        state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td>'+escapeHtml(x.maintenance_type)+'</td><td>'+escapeHtml(x.project_name||"—")+'</td><td>'+escapeHtml(x.description)+'</td><td>'+escapeHtml(x.quantity)+'</td><td>'+escapeHtml(x.unit)+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join("")+
+        state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td>'+escapeHtml(x.maintenance_type)+'</td><td>'+escapeHtml(projectNameById(x.project_id))+'</td><td>'+escapeHtml(x.description)+'</td><td>'+escapeHtml(x.quantity)+'</td><td>'+escapeHtml(x.unit)+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join("")+
       '</tbody></table></div>':'<div class="empty">No maintenance records found for this equipment.</div>')+
     '</div>'+
     '<div class="modal-section"><h3>REPAIR HISTORY</h3>'+
