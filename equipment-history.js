@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={equipment:[],projects:[],summary:[],repairs:[],pmRecords:[]};
+const state={equipment:[],projects:[],summary:[],repairs:[],maintenanceRecords:[],pmRecords:[]};
 
 function $(id){return document.getElementById(id);}
 function escapeHtml(v){if(v===null||v===undefined)return "";return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
@@ -28,7 +28,7 @@ async function loadData(){
     supabaseClient.from("equipment_maintenance").select("maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,created_at").order("maintenance_date",{ascending:false}).order("created_at",{ascending:false})
   ]);
   if(s.error)throw s.error;if(r.error)throw r.error;if(m.error)throw m.error;
-  state.summary=s.data||[];state.repairs=r.data||[];state.pmRecords=(m.data||[]).filter(x=>String(x.maintenance_type||"").toUpperCase()==="PREVENTIVE MAINTENANCE");
+  state.summary=s.data||[];state.repairs=r.data||[];state.maintenanceRecords=m.data||[];state.pmRecords=state.maintenanceRecords.filter(x=>String(x.maintenance_type||"").toUpperCase()==="PREVENTIVE MAINTENANCE");
   render();
 }
 
@@ -39,14 +39,16 @@ function filters(){
     return (!q||hay.includes(q))&&(!e||x.equipment_id===e)&&(!p||x.project_id===p)&&(!st||x.status===st);
   });
   const pm=state.pmRecords.filter(x=>{const hay=[x.description,x.equipment_id,x.project_id].join(" ").toLowerCase();return (!q||hay.includes(q))&&(!e||x.equipment_id===e)&&(!p||x.project_id===p);});
+  const maintenance=state.maintenanceRecords.filter(x=>{const hay=[x.description,x.equipment_id,x.project_id,x.maintenance_type,x.supplier_shop,x.reference_no].join(" ").toLowerCase();return (!q||hay.includes(q))&&(!e||x.equipment_id===e)&&(!p||x.project_id===p);});
   let summary=state.summary.filter(x=>{const hay=[x.equipment_name,x.equipment_id,x.plate_number,x.equipment_type].join(" ").toLowerCase();return (!q||hay.includes(q))&&(!e||x.equipment_id===e);});
-  return {repairs,pm,summary};
+  return {repairs,pm,maintenance,summary};
 }
 
 function render(){
   const f=filters();
   $("metricEquipment").textContent=f.summary.length;
   $("metricPM").textContent=f.pm.length;
+  if($("metricMaintenance")) $("metricMaintenance").textContent=f.maintenance.length;
   $("metricRepairs").textContent=f.repairs.length;
   $("metricOpen").textContent=f.repairs.filter(x=>x.status!=="CLOSED").length;
   $("metricCost").textContent=money(f.repairs.reduce((s,x)=>s+Number(x.total_repair_cost||0),0));
@@ -65,6 +67,8 @@ function render(){
       '<td><button class="btn btn-primary" type="button" data-view-equipment="'+escapeHtml(x.equipment_id)+'">VIEW HISTORY</button></td>'+
     '</tr>';
   }).join(""):'<tr><td colspan="9" class="empty">No equipment found.</td></tr>';
+
+  if($("maintenanceBody")) $("maintenanceBody").innerHTML=f.maintenance.length?f.maintenance.map(x=>'<tr><td>'+formatDate(x.maintenance_date)+'</td><td><div class="strong">'+escapeHtml(x.equipment_name||x.equipment_id)+'</div><div class="muted">'+escapeHtml(x.equipment_id||"")+'</div></td><td>'+escapeHtml(x.project_name||"—")+'</td><td>'+statusPill(x.maintenance_type)+'</td><td>'+escapeHtml(x.description||"")+'</td><td>'+escapeHtml(x.supplier_shop||"—")+'</td><td>'+escapeHtml(x.quantity??"")+'</td><td>'+escapeHtml(x.unit||"")+'</td><td class="money">'+money(x.total_amount)+'</td><td>'+escapeHtml(x.reference_no||"—")+'</td></tr>').join(""):'<tr><td colspan="10" class="empty">No maintenance records found for the selected filters.</td></tr>';
 
   $("historyBody").innerHTML=f.repairs.length?f.repairs.map(x=>
     '<tr>'+
