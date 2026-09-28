@@ -20,7 +20,8 @@ const state = {
   records: [],
   editingId: null,
   photoMaintenanceId: null,
-  selectedPhotos: []
+  selectedPhotos: [],
+  photoPreviewUrls: []
 };
 
 function $(id) {
@@ -287,6 +288,75 @@ function calculateTotal() {
   $("totalAmount").value = (quantity * unitCost).toFixed(2);
 }
 
+function clearPhotoPreviews() {
+  state.photoPreviewUrls.forEach(url => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (_) {}
+  });
+
+  state.photoPreviewUrls = [];
+}
+
+function resetMaintenancePhotos() {
+  clearPhotoPreviews();
+  state.selectedPhotos = [];
+
+  if ($("maintenancePhotoInput")) {
+    $("maintenancePhotoInput").value = "";
+  }
+
+  if ($("maintenancePhotoPreview")) {
+    $("maintenancePhotoPreview").innerHTML =
+      '<div class="photo-empty-inline">No photos selected.</div>';
+  }
+
+  if ($("maintenancePhotoSummary")) {
+    $("maintenancePhotoSummary").textContent =
+      "Optional: attach maintenance evidence before saving.";
+  }
+}
+
+function handleMaintenanceFormPhotos(event) {
+  clearPhotoPreviews();
+
+  state.selectedPhotos =
+    Array.from(event.target.files || []).filter(file =>
+      file.type.startsWith("image/")
+    );
+
+  const preview = $("maintenancePhotoPreview");
+
+  if (!state.selectedPhotos.length) {
+    preview.innerHTML =
+      '<div class="photo-empty-inline">No photos selected.</div>';
+
+    $("maintenancePhotoSummary").textContent =
+      "Optional: attach maintenance evidence before saving.";
+
+    return;
+  }
+
+  state.photoPreviewUrls =
+    state.selectedPhotos.map(file =>
+      URL.createObjectURL(file)
+    );
+
+  preview.innerHTML =
+    state.photoPreviewUrls.map((url, index) =>
+      '<div class="inline-photo-card">' +
+        '<img src="' + escapeHtml(url) + '" alt="Selected maintenance photo">' +
+        '<div>PHOTO ' + (index + 1) + '</div>' +
+      '</div>'
+    ).join("");
+
+  $("maintenancePhotoSummary").textContent =
+    state.selectedPhotos.length +
+    " photo" +
+    (state.selectedPhotos.length === 1 ? "" : "s") +
+    " selected. You can take a photo or choose from Photos.";
+}
+
 function resetForm() {
   $("recordForm").reset();
   $("maintenanceDate").value = localDateValue();
@@ -301,6 +371,13 @@ function resetForm() {
   }
 
   $("projectId").value = "";
+
+  resetMaintenancePhotos();
+
+  if ($("existingMaintenancePhotos")) {
+    $("existingMaintenancePhotos").innerHTML = "";
+    $("existingMaintenancePhotosWrap").style.display = "none";
+  }
 }
 
 function openModal(record = null) {
@@ -352,16 +429,23 @@ function openModal(record = null) {
 
     $("saveButton").textContent =
       "UPDATE MAINTENANCE";
+
+    $("modalBackdrop").classList.add("open");
+
+    loadExistingMaintenancePhotos(
+      record.maintenance_id
+    );
+
   } else {
     $("modalTitle").textContent = "ADD MAINTENANCE";
     $("saveButton").textContent = "SAVE MAINTENANCE";
+    $("modalBackdrop").classList.add("open");
   }
-
-  $("modalBackdrop").classList.add("open");
 }
 
 function closeModal() {
   state.editingId = null;
+  resetMaintenancePhotos();
   $("modalBackdrop").classList.remove("open");
 }
 
@@ -379,6 +463,120 @@ function editRecord(id) {
   }
 
   openModal(record);
+}
+
+async function uploadPhotosForMaintenance(maintenanceId) {
+  if (!maintenanceId || !state.selectedPhotos.length) {
+    return;
+  }
+
+  for (const file of state.selectedPhotos) {
+    const ext =
+      (
+        file.name.split(".").pop() ||
+        "jpg"
+      )
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "") || "jpg";
+
+    const path =
+      "maintenance/" +
+      String(maintenanceId) +
+      "/" +
+      crypto.randomUUID() +
+      "." +
+      ext;
+
+    const upload =
+      await supabaseClient.storage
+        .from("equipment-maintenance-evidence")
+        .upload(
+          path,
+          file,
+          {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type || "image/jpeg"
+          }
+        );
+
+    if (upload.error) {
+      throw upload.error;
+    }
+
+    const insert =
+      await supabaseClient
+        .from("equipment_maintenance_photos")
+        .insert({
+          maintenance_id: String(maintenanceId),
+          storage_path: path
+        });
+
+    if (insert.error) {
+      throw insert.error;
+    }
+  }
+
+  resetMaintenancePhotos();
+}
+
+async function loadExistingMaintenancePhotos(maintenanceId) {
+  const wrap = $("existingMaintenancePhotosWrap");
+  const box = $("existingMaintenancePhotos");
+
+  if (!wrap || !box) return;
+
+  wrap.style.display = "block";
+  box.innerHTML =
+    '<div class="photo-empty-inline">Loading existing photos...</div>';
+
+  const result =
+    await supabaseClient
+      .from("equipment_maintenance_photos")
+      .select("photo_id,storage_path,created_at")
+      .eq("maintenance_id", String(maintenanceId))
+      .order("created_at", { ascending: true });
+
+  if (result.error) {
+    box.innerHTML =
+      '<div class="photo-error-inline">' +
+      escapeHtml(result.error.message) +
+      "</div>";
+    return;
+  }
+
+  if (!result.data?.length) {
+    box.innerHTML =
+      '<div class="photo-empty-inline">No photos attached to this maintenance record yet.</div>';
+    return;
+  }
+
+  const cards = [];
+
+  for (const photo of result.data) {
+    const signed =
+      await supabaseClient.storage
+        .from("equipment-maintenance-evidence")
+        .createSignedUrl(photo.storage_path, 60 * 60);
+
+    if (signed.error) {
+      cards.push(
+        '<div class="inline-photo-card"><div class="photo-error-inline">Photo unavailable</div></div>'
+      );
+      continue;
+    }
+
+    cards.push(
+      '<div class="inline-photo-card">' +
+        '<img src="' +
+        escapeHtml(signed.data.signedUrl) +
+        '" alt="Existing maintenance photo">' +
+        '<div>ATTACHED PHOTO</div>' +
+      '</div>'
+    );
+  }
+
+  box.innerHTML = cards.join("");
 }
 
 async function saveRecord(event) {
@@ -448,6 +646,10 @@ async function saveRecord(event) {
       if (result.error)
         throw result.error;
 
+      await uploadPhotosForMaintenance(
+        editingRecordId
+      );
+
       closeModal();
 
       showMessage(
@@ -470,6 +672,13 @@ async function saveRecord(event) {
 
       if (result.error)
         throw result.error;
+
+      const maintenanceId =
+        result.data?.maintenance_id;
+
+      await uploadPhotosForMaintenance(
+        maintenanceId
+      );
 
       closeModal();
 
@@ -770,6 +979,10 @@ $("addButton").addEventListener("click", openModal);
 $("closeModal").addEventListener("click", closeModal);
 $("cancelButton").addEventListener("click", closeModal);
 $("recordForm").addEventListener("submit", saveRecord);
+$("maintenancePhotoInput").addEventListener(
+  "change",
+  handleMaintenanceFormPhotos
+);
 $("photoFileInput").addEventListener(
   "change",
   handleMaintenancePhotoSelection
