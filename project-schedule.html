@@ -61,6 +61,27 @@
     .subtable-title{padding:18px 22px 0;font-size:14px;font-weight:900}
     .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:1000;align-items:center;justify-content:center;padding:18px}
     .modal{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.25);overflow:hidden}.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:18px}.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}.modal-body{padding:20px}.modal-actions{padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px}
+    .detail-modal{width:min(720px,100%);max-height:92vh;overflow:auto}
+    .detail-hero{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--gray200);border-radius:14px;background:linear-gradient(135deg,#f8fafc,#fff);margin-bottom:16px}
+    .detail-hero-title{font-size:20px;font-weight:900;letter-spacing:-.02em}
+    .detail-hero-sub{margin-top:5px;color:var(--gray500);font-size:12px;font-weight:700}
+    .detail-badges{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    .detail-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:10px;font-weight:900;letter-spacing:.05em}
+    .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .detail-card{padding:13px 14px;border:1px solid var(--gray200);border-radius:12px;background:#fff}
+    .detail-card.full{grid-column:1/-1}
+    .detail-card label{display:block;margin-bottom:5px;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .detail-card strong,.detail-card div.value{display:block;color:var(--navy);font-size:13px;font-weight:800;line-height:1.45}
+    .detail-description{white-space:pre-wrap}
+    .detail-progress{margin-top:16px;padding:14px;border:1px solid var(--gray200);border-radius:12px;background:#f8fafc}
+    .detail-progress-head{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:900}
+    .detail-progress-track{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}
+    .detail-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#16a34a);border-radius:999px}
+    .detail-remark{margin-top:16px;padding:13px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--gray200)}
+    .detail-remark label{display:block;margin-bottom:6px;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .detail-remark p{margin:0;color:#334155;font-size:12px;line-height:1.55;white-space:pre-wrap}
+    @media(max-width:650px){.detail-grid{grid-template-columns:1fr}.detail-card.full{grid-column:auto}.detail-hero{flex-direction:column}.detail-badges{justify-content:flex-start}.detail-modal{max-height:96vh}}
+
  
     /* ===== ACTIVITY CALENDAR ===== */
     .calendar-panel{margin-bottom:20px}
@@ -214,6 +235,57 @@
     </section>
   </main>
 
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal detail-modal">
+      <div class="modal-head">
+        <div>
+          <h3>ACTIVITY DETAILS</h3>
+          <div style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700">Full details for the selected calendar activity.</div>
+        </div>
+        <button class="modal-x" id="closeDetailModal" type="button">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-hero">
+          <div>
+            <div class="detail-hero-title" id="detailActivityName">Activity</div>
+            <div class="detail-hero-sub" id="detailProjectName">Project</div>
+          </div>
+          <div class="detail-badges">
+            <span class="detail-badge" id="detailStatus"></span>
+            <span class="detail-badge" id="detailPriority"></span>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-card"><label>Project</label><div class="value" id="detailProject"></div></div>
+          <div class="detail-card"><label>Project Location</label><div class="value" id="detailLocation"></div></div>
+          <div class="detail-card"><label>Activity Date</label><div class="value" id="detailDate"></div></div>
+          <div class="detail-card"><label>Scheduled Time</label><div class="value" id="detailTime"></div></div>
+          <div class="detail-card"><label>Manpower</label><div class="value" id="detailManpower"></div></div>
+          <div class="detail-card"><label>Equipment Required</label><div class="value" id="detailEquipment"></div></div>
+          <div class="detail-card full"><label>Description</label><div class="value detail-description" id="detailDescription"></div></div>
+        </div>
+
+        <div class="detail-progress">
+          <div class="detail-progress-head"><span>ACTIVITY PROGRESS</span><strong id="detailProgressText">0%</strong></div>
+          <div class="detail-progress-track"><div class="detail-progress-fill" id="detailProgressFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="detail-remark">
+          <label>Completion / Status Remarks</label>
+          <p id="detailRemarks">No remarks recorded.</p>
+        </div>
+
+        <div style="margin-top:12px;color:#64748b;font-size:10px;font-weight:800" id="detailCompletedAt"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn gray" id="closeDetailButton" type="button">CLOSE</button>
+        <button class="btn blue" id="detailEditButton" type="button">✎ EDIT ACTIVITY</button>
+        <button class="btn blue" id="detailUpdateButton" type="button">UPDATE STATUS</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="statusModal">
     <div class="modal">
       <div class="modal-head"><h3>UPDATE ACTIVITY STATUS</h3><button class="modal-x" id="closeModal">×</button></div>
@@ -272,7 +344,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=3"></script>
+  <script src="project-schedule.js?v=4"></script>
   <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
