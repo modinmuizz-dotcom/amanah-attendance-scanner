@@ -91,9 +91,9 @@ async function saveSchedule(){
   const p=state.projects.find(x=>x.project_id===pid);
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SAVING...";
   try{
-    const {data,rowErr}=await supabaseClient.from("project_activities").insert({project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,manpower,equipment:state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),accomplishment:0,remarks:null,activity_status:"PLANNED",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null}).select("activity_id").single();
-    if(rowErr)throw rowErr;
-    const rel=Array.from(state.selectedEquipment).map(equipment_id=>({activity_id:rowErr?.activity_id||data.activity_id,equipment_id}));
+    const {data,error:insertError}=await supabaseClient.from("project_activities").insert({project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,manpower,equipment:state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),accomplishment:0,remarks:null,activity_status:"PLANNED",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null}).select("activity_id").single();
+    if(insertError)throw insertError;
+    const rel=Array.from(state.selectedEquipment).map(equipment_id=>({activity_id:data.activity_id,equipment_id}));
     const {error}=await supabaseClient.from("project_activity_equipment").insert(rel);if(error)throw error;
     msg("ok","Activity scheduled successfully. The selected equipment is now reserved on the equipment schedule.");
     clearForm();await loadActivities();
