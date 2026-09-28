@@ -157,9 +157,21 @@ function populateSelectors() {
 }
 
 async function loadRecords() {
+  /*
+    Do not embed equipment/projects in the maintenance query.
+
+    The previous PostgREST relation query could surface:
+      "column reference \"equipment_name\" is ambiguous"
+
+    The master data is already loaded above, so we can safely
+    resolve names by ID on the client without relying on embedded
+    relationship aliases.
+  */
   const result = await supabaseClient
     .from("equipment_maintenance")
-    .select("maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,equipment(equipment_name),projects(project_name)")
+    .select(
+      "maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,created_at"
+    )
     .order("maintenance_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -167,6 +179,26 @@ async function loadRecords() {
 
   state.records = result.data || [];
   render();
+}
+
+function equipmentNameById(id) {
+  const item = state.equipment.find(
+    row => row.equipment_id === id
+  );
+
+  return item
+    ? item.equipment_name
+    : id || "—";
+}
+
+function projectNameById(id) {
+  const item = state.projects.find(
+    row => row.project_id === id
+  );
+
+  return item
+    ? item.project_name
+    : id || "—";
 }
 
 function filteredRecords() {
@@ -211,10 +243,10 @@ function render() {
 
   body.innerHTML = records.map(row => {
     const equipmentName =
-      row.equipment?.equipment_name || row.equipment_id;
+      equipmentNameById(row.equipment_id);
 
     const projectName =
-      row.projects?.project_name || row.project_id || "—";
+      projectNameById(row.project_id);
 
     return (
       "<tr>" +
