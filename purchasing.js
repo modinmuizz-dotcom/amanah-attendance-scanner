@@ -96,8 +96,8 @@ function renderPrItems(){
  const host=document.getElementById("prItems");
  host.innerHTML=state.prDraftItems.map((it,i)=>'<div class="item-row"><div class="field"><label>Material</label><input data-pr-field="material_name" data-i="'+i+'" value="'+esc(it.material_name)+'" placeholder="Example: Cement"></div><div class="field"><label>Specifications</label><input data-pr-field="specifications" data-i="'+i+'" value="'+esc(it.specifications)+'" placeholder="Brand / grade / size"></div><div class="field"><label>Quantity</label><input data-pr-field="quantity" data-i="'+i+'" type="number" min="0.001" step="0.001" value="'+esc(it.quantity)+'"></div><div class="field"><label>Unit</label><input data-pr-field="unit" data-i="'+i+'" value="'+esc(it.unit)+'" placeholder="PCS"></div><div><label>&nbsp;</label><button class="remove-item" type="button" data-remove-pr="'+i+'">×</button></div></div>').join("");
  host.querySelectorAll("[data-pr-field]").forEach(el=>el.addEventListener("input",()=>{const i=Number(el.dataset.i),f=el.dataset.prField;state.prDraftItems[i][f]=f==="quantity"?Number(el.value||0):el.value;}));
- host.querySelectorAll("[data-remove-pr]").forEach(el=>el.addEventListener("click",()=>{state.prDraftItems.splice(Number(el.dataset.removePr),1);if(!state.prDraftItems.length)state.prDraftItems.push({material_name:"",specifications:"",quantity:1,unit:"PCS",estimated_unit_cost:0});renderPrItems();}));
- updatePrTotal();
+ host.querySelectorAll("[data-remove-pr]").forEach(el=>el.addEventListener("click",()=>{state.prDraftItems.splice(Number(el.dataset.removePr),1);if(!state.prDraftItems.length)state.prDraftItems.push({material_name:"",specifications:"",quantity:1,unit:"PCS"});renderPrItems();}));
+
 }
 async function saveRequest(){
  const projectId=document.getElementById("requestProject").value,reqId=document.getElementById("requester").value,requestDate=document.getElementById("requestDate").value,neededBy=document.getElementById("neededBy").value,priority=document.getElementById("requestPriority").value,purpose=document.getElementById("requestPurpose").value.trim(),remarks=document.getElementById("requestRemarks").value.trim();
@@ -147,7 +147,7 @@ function renderPoItems(){
  document.querySelectorAll("[data-po-field]").forEach(el=>el.addEventListener("input",()=>{const i=Number(el.dataset.i),f=el.dataset.poField;items[i][f]=(f==="quantity"||f==="unit_price")?Number(el.value||0):el.value;updatePoTotal();}));
  updatePoTotal();
 }
-function updatePoTotal(){const items=state.poDraftRequest?.items||[];const total=items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price??0)),0);items.forEach((x,i)=>{const el=document.querySelector('[data-po-total="'+i+'"]');if(el)el.textContent=money(Number(x.quantity||0)*Number(x.unit_price??x.estimated_unit_cost??0));});document.getElementById("poSubtotal").textContent=money(total);}
+function updatePoTotal(){const items=state.poDraftRequest?.items||[];const total=items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price??0)),0);items.forEach((x,i)=>{const el=document.querySelector('[data-po-total="'+i+'"]');if(el)el.textContent=money(Number(x.quantity||0)*Number(x.unit_price??0));});document.getElementById("poSubtotal").textContent=money(total);}
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;}
 async function savePurchaseOrder(){
  const d=state.poDraftRequest;if(!d)return;const supplier=document.getElementById("poSupplier").value.trim(),contact=document.getElementById("poSupplierContact").value.trim(),address=document.getElementById("poSupplierAddress").value.trim(),poDate=document.getElementById("poDate").value,delivery=document.getElementById("poDelivery").value,payment=document.getElementById("poPaymentTerms").value.trim(),deliveryTerms=document.getElementById("poDeliveryTerms").value.trim(),remarks=document.getElementById("poRemarks").value.trim();
