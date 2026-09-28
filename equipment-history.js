@@ -13,6 +13,8 @@ function statusPill(status){const c=String(status||"").toLowerCase().replaceAll(
 function equipmentPill(status){const c=String(status||"").toLowerCase()==="active"?"active":"inactive";return '<span class="pill '+c+'">'+escapeHtml(status||"")+"</span>";}
 function equipmentNameById(id){const x=state.equipment.find(e=>e.equipment_id===id);return x?.equipment_name||id||"—";}
 function projectNameById(id){const x=state.projects.find(p=>p.project_id===id);return x?.project_name||id||"—";}
+function maintenanceCostForEquipment(id){return state.maintenanceRecords.filter(x=>x.equipment_id===id).reduce((s,x)=>s+Number(x.total_amount||0),0);}
+function combinedCostForEquipment(id,repairCost=null){const r=repairCost===null?Number(state.summary.find(x=>x.equipment_id===id)?.total_repair_cost||0):Number(repairCost||0);return r+maintenanceCostForEquipment(id);}
 
 async function requireSession(){const r=await supabaseClient.auth.getSession();if(r.error)throw r.error;if(!r.data?.session){location.href="index.html";return false;}return true;}
 
@@ -53,7 +55,7 @@ function render(){
   if($("metricMaintenance")) $("metricMaintenance").textContent=f.maintenance.length;
   $("metricRepairs").textContent=f.repairs.length;
   $("metricOpen").textContent=f.repairs.filter(x=>x.status!=="CLOSED").length;
-  $("metricCost").textContent=money(f.repairs.reduce((s,x)=>s+Number(x.total_repair_cost||0),0));
+  $("metricCost").textContent=money(f.repairs.reduce((s,x)=>s+Number(x.total_repair_cost||0),0)+f.maintenance.reduce((s,x)=>s+Number(x.total_amount||0),0));
 
   $("summaryBody").innerHTML=f.summary.length?f.summary.map(x=>{
     const pmCount=state.pmRecords.filter(pm=>pm.equipment_id===x.equipment_id).length;
@@ -64,7 +66,7 @@ function render(){
       '<td>'+Number(x.total_repair_requests||0)+'</td>'+
       '<td>'+Number(x.open_repairs||0)+'</td>'+
       '<td>'+Number(x.closed_repairs||0)+'</td>'+
-      '<td class="money">'+money(x.total_repair_cost)+'</td>'+
+      '<td class="money">'+money(combinedCostForEquipment(x.equipment_id,x.total_repair_cost))+'</td>'+
       '<td>'+formatDate(x.last_repair_completed)+'</td>'+
       '<td><button class="btn btn-primary" type="button" data-view-equipment="'+escapeHtml(x.equipment_id)+'">VIEW HISTORY</button></td>'+
     '</tr>';
@@ -104,10 +106,11 @@ async function openEquipmentHistory(equipmentId){
         '<div class="detail-item"><label>Status</label><div>'+equipmentPill(eq.status)+'</div></div>'+
       '</div></div>'+
       '<div class="detail-card"><h3>MAINTENANCE SUMMARY</h3><div class="detail-list">'+
+        '<div class="detail-item"><label>Maintenance Records</label><div>'+state.maintenanceRecords.filter(x=>x.equipment_id===equipmentId).length+'</div></div>'+
         '<div class="detail-item"><label>PM Records</label><div>'+pm.length+'</div></div>'+
         '<div class="detail-item"><label>Repair Requests</label><div>'+Number(summary?.total_repair_requests||repairs.length)+'</div></div>'+
         '<div class="detail-item"><label>Open Repairs</label><div>'+Number(summary?.open_repairs||0)+'</div></div>'+
-        '<div class="detail-item"><label>Total Repair Cost</label><div>'+money(summary?.total_repair_cost)+'</div></div>'+
+        '<div class="detail-item"><label>Total Maintenance &amp; Repair Cost</label><div>'+money(combinedCostForEquipment(equipmentId,summary?.total_repair_cost))+'</div></div>'+
       '</div></div>'+
     '</div>'+
     '<div class="modal-section"><h3>MAINTENANCE RECORDS</h3>'+
