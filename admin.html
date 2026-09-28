@@ -16,7 +16,7 @@
     rel="stylesheet"
     href="admin.css"
   >
-  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=5">
 </head>
 
 <body>
@@ -287,6 +287,13 @@
           data-tab="projectsTab"
         >
           PROJECTS
+        </button>
+
+        <button
+          class="tab-button"
+          data-tab="suppliersTab"
+        >
+          SUPPLIERS
         </button>
 
       </div>
@@ -577,6 +584,38 @@
 
       </section>
 
+
+      <!-- SUPPLIERS -->
+      <section id="suppliersTab" class="tab-panel">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h2>SUPPLIER MASTER</h2>
+              <p>Register and manage purchasing suppliers and vendors.</p>
+            </div>
+            <button id="addSupplierButton" class="button primary">+ ADD SUPPLIER</button>
+          </div>
+          <div class="search-row">
+            <input id="supplierSearch" class="search-input" type="search" placeholder="Search supplier name, code or contact...">
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Supplier Code</th>
+                  <th>Supplier Name</th>
+                  <th>Contact Person</th>
+                  <th>Contact Number</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="suppliersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </main>
 
   </section>
@@ -648,7 +687,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=2"></script>
+  <script src="admin.js?v=3"></script>
 
 <script src="amanah-ui.js?v=3"></script>
 </body>
