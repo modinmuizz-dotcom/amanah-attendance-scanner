@@ -273,16 +273,89 @@ function printPurchaseOrder(id){
  openPrintWindow("PURCHASE ORDER",o.po_no,o.project_name,o.project_location,o.requester_name,"",o.po_date,o.expected_delivery_date,rows,"SUPPLIER PURCHASE ORDER",o.supplier_name,o.supplier_contact,o.supplier_address,o.payment_terms,o.delivery_terms,o.remarks,o.grand_total);
 }
 function openPrintWindow(title,docNo,project,location,requester,requesterPosition,date,needed,rows,subtitle,supplier,supplierContact,supplierAddress,paymentTerms,deliveryTerms,remarks,grandTotal){
- const w=window.open("","_blank","width=1000,height=800");if(!w)return;
- const isPO=title==="PURCHASE ORDER";
- w.document.write('<!doctype html><html><head><title>'+esc(title)+' '+esc(docNo)+'</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;padding:36px}.header{display:flex;justify-content:space-between;border-bottom:3px solid #0f172a;padding-bottom:16px;margin-bottom:20px}.brand{font-size:24px;font-weight:900;letter-spacing:.04em}.muted{color:#64748b;font-size:11px}.doc{text-align:right}.doc h1{margin:0;font-size:20px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.box{border:1px solid #cbd5e1;border-radius:8px;padding:10px}.box label{display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;margin-bottom:4px}.box strong{font-size:12px}.items{width:100%;border-collapse:collapse;margin-top:12px}.items th,.items td{border:1px solid #cbd5e1;padding:9px;font-size:11px;text-align:left}.items th{background:#f1f5f9;font-size:9px;text-transform:uppercase;letter-spacing:.06em}.total{text-align:right;margin-top:14px;font-size:16px;font-weight:900}.footer{margin-top:42px;display:grid;grid-template-columns:1fr 1fr;gap:30px}.sig{border-top:1px solid #94a3b8;padding-top:6px;font-size:10px}.remark{margin-top:16px;border:1px solid #cbd5e1;padding:10px}.actions{margin-top:24px;text-align:center}@media print{.actions{display:none}body{padding:20px}}</style></head><body>');
- w.document.write('<div class="header"><div><div class="brand">AMANAH CONSTRUCTION SERVICES</div><div class="muted">CONSTRUCTION MANAGEMENT SYSTEM</div></div><div class="doc"><h1>'+esc(title)+'</h1><div class="muted">'+esc(docNo)+'</div></div></div>');
- w.document.write('<div class="meta"><div class="box"><label>Project</label><strong>'+esc(project||"—")+'</strong><div class="muted">'+esc(location||"")+'</div></div><div class="box"><label>Requester</label><strong>'+esc(requester||"—")+'</strong><div class="muted">'+esc(requesterPosition||"")+'</div></div><div class="box"><label>Document Date</label><strong>'+esc(fmtDate(date))+'</strong></div><div class="box"><label>'+ (isPO?"Expected Delivery":"Needed By") +'</label><strong>'+esc(fmtDate(needed))+'</strong></div></div>');
- if(isPO)w.document.write('<div class="meta"><div class="box"><label>Supplier</label><strong>'+esc(supplier||"—")+'</strong><div class="muted">'+esc(supplierContact||"")+'<br>'+esc(supplierAddress||"")+'</div></div><div class="box"><label>Payment / Delivery Terms</label><strong>'+esc(paymentTerms||"—")+'</strong><div class="muted">'+esc(deliveryTerms||"—")+'</div></div></div>');
- w.document.write('<h3 style="font-size:13px;margin:20px 0 6px">'+esc(subtitle)+'</h3><table class="items"><thead><tr>'+(isPO?'<th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th>':'<th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th>')+'</tr></thead><tbody>'+rows+'</tbody></table>');
- if(isPO)w.document.write('<div class="total">GRAND TOTAL: '+money(grandTotal)+'</div>');
- if(remarks)w.document.write('<div class="remark"><strong style="font-size:10px">REMARKS</strong><div style="margin-top:5px;font-size:11px;white-space:pre-wrap">'+esc(remarks)+'</div></div>');
- w.document.write('<div class="footer"><div class="sig">REQUESTED / PREPARED BY<br><br><strong>'+esc(requester||"")+'</strong></div><div class="sig">'+(isPO?"PURCHASING / APPROVAL":"PURCHASING REVIEW")+"<br><br><strong>AMANAH CONSTRUCTION SERVICES</strong></div></div><div class="actions"><button onclick="window.print()">PRINT / SAVE PDF</button></div></body></html>');
- w.document.close();w.focus();
+  const win=window.open("","_blank","width=1000,height=800");
+  if(!win){
+    msg("Please allow pop-ups for printable Purchasing documents.","err");
+    return;
+  }
+
+  const isPO=title==="PURCHASE ORDER";
+  const css=[
+    "body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:0;padding:34px}",
+    ".header{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #0f172a;padding-bottom:16px;margin-bottom:20px}",
+    ".brand{font-size:24px;font-weight:900;letter-spacing:.04em}",
+    ".muted{color:#64748b;font-size:11px}",
+    ".doc{text-align:right}.doc h1{margin:0;font-size:20px}",
+    ".meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}",
+    ".box{border:1px solid #cbd5e1;border-radius:8px;padding:10px}",
+    ".box label{display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;margin-bottom:4px}",
+    ".box strong{font-size:12px}",
+    ".items{width:100%;border-collapse:collapse;margin-top:12px}",
+    ".items th,.items td{border:1px solid #cbd5e1;padding:9px;font-size:11px;text-align:left}",
+    ".items th{background:#f1f5f9;font-size:9px;text-transform:uppercase;letter-spacing:.06em}",
+    ".total{text-align:right;margin-top:14px;font-size:16px;font-weight:900}",
+    ".footer{margin-top:42px;display:grid;grid-template-columns:1fr 1fr;gap:30px}",
+    ".sig{border-top:1px solid #94a3b8;padding-top:6px;font-size:10px}",
+    ".remark{margin-top:16px;border:1px solid #cbd5e1;padding:10px}",
+    ".actions{margin-top:24px;text-align:center}",
+    ".actions button{padding:10px 16px;font-weight:800}",
+    "@media print{.actions{display:none}body{padding:20px}}"
+  ].join("");
+
+  win.document.open();
+  win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+" "+esc(docNo)+'</title><style>'+css+'</style></head><body>');
+  win.document.write(
+    '<div class="header">'+
+      '<div><div class="brand">AMANAH CONSTRUCTION SERVICES</div><div class="muted">CONSTRUCTION MANAGEMENT SYSTEM</div></div>'+
+      '<div class="doc"><h1>'+esc(title)+'</h1><div class="muted">'+esc(docNo)+'</div></div>'+
+    '</div>'
+  );
+  win.document.write(
+    '<div class="meta">'+
+      '<div class="box"><label>Project</label><strong>'+esc(project||"—")+'</strong><div class="muted">'+esc(location||"")+'</div></div>'+
+      '<div class="box"><label>Requester</label><strong>'+esc(requester||"—")+'</strong><div class="muted">'+esc(requesterPosition||"")+'</div></div>'+
+      '<div class="box"><label>Document Date</label><strong>'+esc(fmtDate(date))+'</strong></div>'+
+      '<div class="box"><label>'+(isPO?"Expected Delivery":"Needed By")+'</label><strong>'+esc(fmtDate(needed))+'</strong></div>'+
+    '</div>'
+  );
+
+  if(isPO){
+    win.document.write(
+      '<div class="meta">'+
+        '<div class="box"><label>Supplier</label><strong>'+esc(supplier||"—")+'</strong><div class="muted">'+esc(supplierContact||"")+'<br>'+esc(supplierAddress||"")+'</div></div>'+
+        '<div class="box"><label>Payment / Delivery Terms</label><strong>'+esc(paymentTerms||"—")+'</strong><div class="muted">'+esc(deliveryTerms||"—")+'</div></div>'+
+      '</div>'
+    );
+  }
+
+  const columns=isPO
+    ?'<th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th>'
+    :'<th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th>';
+
+  win.document.write(
+    '<h3 style="font-size:13px;margin:20px 0 6px">'+esc(subtitle)+'</h3>'+
+    '<table class="items"><thead><tr>'+columns+'</tr></thead><tbody>'+rows+'</tbody></table>'
+  );
+
+  if(isPO){
+    win.document.write('<div class="total">GRAND TOTAL: '+money(grandTotal)+'</div>');
+  }
+
+  if(remarks){
+    win.document.write('<div class="remark"><strong style="font-size:10px">REMARKS</strong><div style="margin-top:5px;font-size:11px;white-space:pre-wrap">'+esc(remarks)+'</div></div>');
+  }
+
+  win.document.write(
+    '<div class="footer">'+
+      '<div class="sig">REQUESTED / PREPARED BY<br><br><strong>'+esc(requester||"")+'</strong></div>'+
+      '<div class="sig">'+(isPO?"PURCHASING / APPROVAL":"PURCHASING REVIEW")+'<br><br><strong>AMANAH CONSTRUCTION SERVICES</strong></div>'+
+    '</div>'+
+    '<div class="actions"><button onclick="window.print()">PRINT / SAVE PDF</button></div>'
+  );
+
+  win.document.write('</body></html>');
+  win.document.close();
+  win.focus();
 }
+
 document.addEventListener("DOMContentLoaded",()=>init().catch(e=>{console.error(e);msg("Could not initialize purchasing: "+e.message,"err");}));
