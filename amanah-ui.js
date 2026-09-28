@@ -26,6 +26,7 @@
     ]},
     {section:'RESOURCES',items:[
       ['materials','Materials & Inventory','project-cost.html','box'],
+      ['purchasing','Purchasing','purchasing.html','briefcase'],
     ]},
     {section:'REPORTING',items:[
       ['reports','Reports','reports.html','report'],
@@ -56,6 +57,7 @@
     if(file==='equipment-maintenance.html') return 'maintenance';
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
+    if(file==='purchasing.html') return 'purchasing';
     if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
@@ -68,7 +70,7 @@
 
     const style=document.createElement('link');
     style.rel='stylesheet';
-    style.href='amanah-ui.css?v=4';
+    style.href='amanah-ui.css?v=5';
     document.head.appendChild(style);
 
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
