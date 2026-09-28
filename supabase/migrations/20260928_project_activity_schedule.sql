@@ -109,4 +109,27 @@ IS 'Timestamp recorded when the activity is marked DONE.';
 COMMENT ON COLUMN public.project_activities.completion_remarks
 IS 'Engineer remarks entered when the activity status is updated.';
 
+
+-- Allow authenticated site engineers/admin users to update the
+-- scheduling fields and completion status.
+ALTER TABLE public.project_activities ENABLE ROW LEVEL SECURITY;
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'project_activities'
+      AND policyname = 'project_activities_authenticated_update'
+  ) THEN
+    CREATE POLICY project_activities_authenticated_update
+      ON public.project_activities
+      FOR UPDATE
+      TO authenticated
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $;
+
 COMMIT;
