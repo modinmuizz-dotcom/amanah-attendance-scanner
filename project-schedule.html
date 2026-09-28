@@ -57,7 +57,7 @@
     .table-wrap{overflow:auto}.table{width:100%;min-width:1100px;border-collapse:collapse}.table th,.table td{padding:13px 14px;border-bottom:1px solid var(--gray200);text-align:left;vertical-align:top;font-size:12px}.table th{background:#f8fafc;color:var(--gray500);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.table td strong{color:var(--navy)}.table tbody tr:hover td{background:#fbfdff}
     .pill{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em}.planned{background:#eff6ff;color:#1d4ed8}.progress{background:#fff7ed;color:#c2410c}.done{background:#ecfdf5;color:#15803d}.notdone{background:#fef2f2;color:#b91c1c}.cancel{background:#f1f5f9;color:#475569}
     .equip-list-text{max-width:300px;white-space:normal;line-height:1.4}
-    .row-actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.blue{background:#dbeafe;color:#1d4ed8}.mini.green{background:#dcfce7;color:#166534}.mini.red{background:#fee2e2;color:#b91c1c}.mini.gray{background:#eef2f7;color:#475569}
+    .row-actions{display:flex;gap:6px;flex-wrap:wrap}.mini{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900}.mini.blue{background:#dbeafe;color:#1d4ed8}.mini.edit{background:linear-gradient(135deg,#dbeafe,#eff6ff);color:#1d4ed8;border:1px solid #bfdbfe;box-shadow:0 2px 5px rgba(37,99,235,.08)}.mini.edit:hover{background:#dbeafe;transform:translateY(-1px);box-shadow:0 5px 12px rgba(37,99,235,.12)}.mini.green{background:#dcfce7;color:#166534}.mini.red{background:#fee2e2;color:#b91c1c}.mini.gray{background:#eef2f7;color:#475569}
     .subtable-title{padding:18px 22px 0;font-size:14px;font-weight:900}
     .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:1000;align-items:center;justify-content:center;padding:18px}
     .modal{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.25);overflow:hidden}.modal-head{padding:18px 20px;border-bottom:1px solid var(--gray200);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:18px}.modal-x{width:34px;height:34px;border:0;border-radius:50%;background:var(--gray100);font-weight:900}.modal-body{padding:20px}.modal-actions{padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px}
@@ -229,8 +229,50 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal" style="width:min(760px,100%);max-height:92vh;overflow:auto">
+      <div class="modal-head">
+        <div>
+          <h3>EDIT ACTIVITY SCHEDULE</h3>
+          <div style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700">Update the selected activity, schedule, priority, and equipment assignment.</div>
+        </div>
+        <button class="modal-x" id="closeEditModal" type="button">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid">
+          <div class="field"><label>Project</label><select id="editProject"></select></div>
+          <div class="field"><label>Activity Date</label><input type="date" id="editActivityDate"></div>
+          <div class="field"><label>Start Time</label><input type="time" id="editStartTime"></div>
+          <div class="field"><label>End Time</label><input type="time" id="editEndTime"></div>
+          <div class="field"><label>Activity</label><input id="editActivity" placeholder="Example: Hauling limestone"></div>
+          <div class="field"><label>Priority</label><select id="editPriority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
+          <div class="field full"><label>Description</label><textarea id="editDescription" placeholder="Describe the work that must be performed..."></textarea></div>
+          <div class="field"><label>Manpower</label><input type="number" id="editManpower" min="0" value="0"></div>
+          <div class="field"><label>Current Status</label><input id="editCurrentStatus" readonly style="background:#f8fafc;color:#334155;font-weight:900"></div>
+          <div class="field full">
+            <label>Equipment Required on Site</label>
+            <div class="equipment-box">
+              <div class="equipment-tools">
+                <input id="editEquipmentSearch" placeholder="Search equipment..." autocomplete="off">
+                <button class="tool-btn" id="editAllEquipment" type="button">SELECT ALL</button>
+                <button class="tool-btn gray" id="editClearEquipment" type="button">CLEAR</button>
+              </div>
+              <div id="editEquipmentList" class="equipment-list"><div style="padding:20px;text-align:center;color:#64748b">Loading equipment...</div></div>
+              <div id="editEquipmentSummary" class="equipment-summary">No equipment selected.</div>
+            </div>
+            <div class="helper">Changes here will update the equipment schedule for this activity.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn gray" id="cancelEditModal" type="button">CANCEL</button>
+        <button class="btn blue" id="saveEditSchedule" type="button">SAVE CHANGES</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=2"></script>
+  <script src="project-schedule.js?v=3"></script>
   <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
