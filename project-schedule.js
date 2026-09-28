@@ -31,6 +31,10 @@ async function init(){
   document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
   document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
   document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
+  document.getElementById("detailProgressRange").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
+  document.getElementById("detailProgressNumber").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
+  document.getElementById("saveDetailProgress").addEventListener("click",saveDetailProgress);
+  document.querySelectorAll("[data-progress-quick]").forEach(btn=>btn.addEventListener("click",()=>syncDetailProgressInputs(btn.dataset.progressQuick)));
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -312,6 +316,56 @@ function formatActivityDate(date){
   const d=new Date(date+"T00:00:00");
   return d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
 }
+function clampProgress(v){
+  const n=Number(v);
+  if(!Number.isFinite(n))return 0;
+  return Math.max(0,Math.min(100,Math.round(n)));
+}
+function syncDetailProgressInputs(value){
+  const p=clampProgress(value);
+  document.getElementById("detailProgressRange").value=p;
+  document.getElementById("detailProgressNumber").value=p;
+  document.getElementById("detailProgressEditorValue").textContent=p+"%";
+}
+async function saveDetailProgress(){
+  const id=state.detailActivityId;
+  if(!id)return;
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  const progress=clampProgress(document.getElementById("detailProgressNumber").value);
+  let nextStatus;
+  if(progress===100)nextStatus="DONE";
+  else if(progress>0)nextStatus="IN PROGRESS";
+  else nextStatus="PLANNED";
+
+  const payload={
+    accomplishment:progress,
+    activity_status:nextStatus,
+    completed_at:progress===100?new Date().toISOString():null
+  };
+  const btn=document.getElementById("saveDetailProgress");
+  btn.disabled=true;btn.textContent="SAVING...";
+  try{
+    const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",id);
+    if(error)throw error;
+    msg("ok","Activity progress saved at "+progress+"%. Status updated to "+nextStatus+".");
+    await loadActivities();
+    const refreshed=state.activities.find(x=>x.activity_id===id);
+    if(refreshed){
+      const p=clampProgress(refreshed.accomplishment||0);
+      document.getElementById("detailStatus").textContent=refreshed.activity_status||nextStatus;
+      document.getElementById("detailProgressText").textContent=p+"%";
+      document.getElementById("detailProgressFill").style.width=p+"%";
+      syncDetailProgressInputs(p);
+      document.getElementById("detailCompletedAt").textContent=refreshed.completed_at?"Completed at: "+new Date(refreshed.completed_at).toLocaleString():"";
+    }
+  }catch(e){
+    console.error(e);
+    msg("err","Could not save activity progress: "+e.message);
+  }finally{
+    btn.disabled=false;btn.textContent="SAVE PROGRESS";
+  }
+}
 function openDetailsModal(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
@@ -335,6 +389,7 @@ function openDetailsModal(id){
   document.getElementById("detailDescription").textContent=a.description||"No description provided.";
   document.getElementById("detailProgressText").textContent=progress+"%";
   document.getElementById("detailProgressFill").style.width=progress+"%";
+  syncDetailProgressInputs(progress);
   document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
   document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
   document.getElementById("detailModal").style.display="flex";
