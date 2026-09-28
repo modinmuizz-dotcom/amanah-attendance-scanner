@@ -267,7 +267,7 @@ function render() {
         "<td><strong>" + money(row.total_amount) + "</strong></td>" +
         "<td>" + escapeHtml(row.reference_no || "—") + "</td>" +
         "<td class=\"action-buttons\">" +
-          "<button class=\"btn-action\" type=\"button\" onclick=\"editRecord('" +
+          "<button class=\"btn-action btn-edit\" type=\"button\" onclick=\"editRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">EDIT</button>" +
 
@@ -928,6 +928,62 @@ async function uploadMaintenancePhotos() {
   }
 }
 
+function openDeleteConfirm(record) {
+  return new Promise(resolve => {
+    const backdrop = $("deleteConfirmBackdrop");
+    const confirmText = $("deleteConfirmText");
+
+    confirmText.innerHTML =
+      "Are you sure you want to delete this specific maintenance?" +
+      "<div class=\"confirm-details\">" +
+        "<div><span>Date</span><strong>" +
+          escapeHtml(record.maintenance_date || "—") +
+        "</strong></div>" +
+        "<div><span>Equipment</span><strong>" +
+          escapeHtml(equipmentNameById(record.equipment_id)) +
+        "</strong></div>" +
+        "<div><span>Type</span><strong>" +
+          escapeHtml(record.maintenance_type || "—") +
+        "</strong></div>" +
+        "<div><span>Description</span><strong>" +
+          escapeHtml(record.description || "—") +
+        "</strong></div>" +
+        "<div><span>Total</span><strong>" +
+          money(record.total_amount) +
+        "</strong></div>" +
+      "</div>" +
+      "<div class=\"confirm-warning\">" +
+        "Any automatic Project Equipment Cost linked to this maintenance will also be removed." +
+      "</div>";
+
+    backdrop.classList.add("open");
+
+    const finish = value => {
+      backdrop.classList.remove("open");
+      $("deleteConfirmYes").removeEventListener("click", yes);
+      $("deleteConfirmNo").removeEventListener("click", no);
+      backdrop.removeEventListener("click", outside);
+      document.removeEventListener("keydown", escape);
+
+      resolve(value);
+    };
+
+    const yes = () => finish(true);
+    const no = () => finish(false);
+    const outside = event => {
+      if (event.target === backdrop) finish(false);
+    };
+    const escape = event => {
+      if (event.key === "Escape") finish(false);
+    };
+
+    $("deleteConfirmYes").addEventListener("click", yes);
+    $("deleteConfirmNo").addEventListener("click", no);
+    backdrop.addEventListener("click", outside);
+    document.addEventListener("keydown", escape);
+  });
+}
+
 async function deleteRecord(id) {
   const record = state.records.find(
     row => row.maintenance_id === id
@@ -935,22 +991,7 @@ async function deleteRecord(id) {
 
   if (!record) return;
 
-  const details = [
-    "Are you sure you want to delete this specific maintenance?",
-    "",
-    "Date: " + (record.maintenance_date || "—"),
-    "Equipment: " + equipmentNameById(record.equipment_id),
-    "Type: " + (record.maintenance_type || "—"),
-    "Description: " + (record.description || "—"),
-    "Total: ₱" + Number(record.total_amount || 0).toLocaleString("en-PH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }),
-    "",
-    "Any automatic Project Equipment Cost linked to this maintenance will also be removed."
-  ].join("\n");
-
-  const ok = window.confirm(details);
+  const ok = await openDeleteConfirm(record);
 
   if (!ok) return;
 
