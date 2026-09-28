@@ -193,7 +193,7 @@
           <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field"><label>Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
-          <div class="field"><label>Initial Status</label><input value="PLANNED" readonly style="background:#eff6ff;color:#1d4ed8;font-weight:900"></div>
+          <div class="field"><label>Initial Status</label><select id="initialStatus" style="font-weight:900"><option selected>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select><div class="helper">Set the starting status for this activity when it is first scheduled.</div></div>
           <div class="field full"><label>Equipment Required on Site</label>
             <div class="equipment-box">
               <div class="equipment-tools">
@@ -381,7 +381,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=5"></script>
+  <script src="project-schedule.js?v=6"></script>
   <script src="amanah-ui.js?v=4"></script>
 </body>
 </html>
