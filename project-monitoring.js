@@ -575,7 +575,7 @@ async function loadActivities(projectId) {
 
     body.innerHTML = `
         <tr>
-            <td colspan="7">
+            <td colspan="10">
                 Loading...
             </td>
         </tr>
@@ -597,7 +597,13 @@ async function loadActivities(projectId) {
                 manpower,
                 equipment,
                 accomplishment,
-                remarks
+                remarks,
+                activity_status,
+                scheduled_start,
+                scheduled_end,
+                priority,
+                completed_at,
+                completion_remarks
             `)
             .eq(
                 "project_id",
@@ -659,7 +665,7 @@ function renderActivities(rows) {
 
         body.innerHTML = `
             <tr>
-                <td colspan="7">
+                <td colspan="10">
                     No project activities found.
                 </td>
             </tr>
@@ -670,57 +676,109 @@ function renderActivities(rows) {
 
 
     body.innerHTML =
-        rows.map(row => `
+        rows.map(row => {
 
-            <tr>
+            const startText = row.scheduled_start
+                ? new Date(row.scheduled_start).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+                : "—";
 
-                <td>
-                    ${escapeHtml(
-                        row.activity_date || ""
-                    )}
-                </td>
+            const endText = row.scheduled_end
+                ? new Date(row.scheduled_end).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+                : "—";
 
-                <td>
-                    <strong>
+            const status =
+                row.activity_status || "PLANNED";
+
+            const statusClass =
+                status === "DONE"
+                    ? "status-done"
+                    : status === "IN PROGRESS"
+                        ? "status-progress"
+                        : status === "NOT DONE"
+                            ? "status-notdone"
+                            : status === "CANCELLED"
+                                ? "status-cancelled"
+                                : "status-planned";
+
+            return `
+                <tr>
+
+                    <td>
                         ${escapeHtml(
-                            row.activity || ""
+                            row.activity_date || ""
                         )}
-                    </strong>
-                </td>
+                    </td>
 
-                <td>
-                    ${escapeHtml(
-                        row.description || ""
-                    )}
-                </td>
+                    <td>
+                        ${escapeHtml(
+                            startText
+                        )} –
+                        ${escapeHtml(
+                            endText
+                        )}
+                    </td>
 
-                <td>
-                    ${escapeHtml(
-                        row.manpower ?? 0
-                    )}
-                </td>
+                    <td>
+                        <strong>
+                            ${escapeHtml(
+                                row.activity || ""
+                            )}
+                        </strong>
+                    </td>
 
-                <td>
-                    ${escapeHtml(
-                        row.equipment || ""
-                    )}
-                </td>
+                    <td>
+                        ${escapeHtml(
+                            row.description || ""
+                        )}
+                    </td>
 
-                <td class="pm-progress">
-                    ${escapeHtml(
-                        row.accomplishment ?? 0
-                    )}%
-                </td>
+                    <td>
+                        ${escapeHtml(
+                            row.manpower ?? 0
+                        )}
+                    </td>
 
-                <td>
-                    ${escapeHtml(
-                        row.remarks || ""
-                    )}
-                </td>
+                    <td>
+                        ${escapeHtml(
+                            row.equipment || "—"
+                        )}
+                    </td>
 
-            </tr>
+                    <td>
+                        ${escapeHtml(
+                            row.priority || "NORMAL"
+                        )}
+                    </td>
 
-        `)
+                    <td>
+                        <span class="pm-status-pill ${statusClass}">
+                            ${escapeHtml(status)}
+                        </span>
+                    </td>
+
+                    <td class="pm-progress">
+                        ${escapeHtml(
+                            row.accomplishment ?? 0
+                        )}%
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            row.completion_remarks ||
+                            row.remarks ||
+                            ""
+                        )}
+                        <div style="margin-top:6px;">
+                            <a
+                              href="project-schedule.html"
+                              style="font-size:11px;font-weight:900;color:#2563eb;text-decoration:none;"
+                            >OPEN SCHEDULE</a>
+                        </div>
+                    </td>
+
+                </tr>
+            `;
+        })
         .join("");
 }
 
@@ -748,6 +806,30 @@ async function saveActivity() {
         document
             .getElementById(
                 "activityDate"
+            )
+            .value;
+
+
+    const startTime =
+        document
+            .getElementById(
+                "startTime"
+            )
+            .value;
+
+
+    const endTime =
+        document
+            .getElementById(
+                "endTime"
+            )
+            .value;
+
+
+    const priority =
+        document
+            .getElementById(
+                "priority"
             )
             .value;
 
@@ -827,6 +909,16 @@ async function saveActivity() {
     }
 
 
+    if (startTime && endTime && endTime < startTime) {
+
+        showError(
+            "End time cannot be earlier than start time."
+        );
+
+        return;
+    }
+
+
     if (
         selectedEquipment.length === 0
     ) {
@@ -859,6 +951,22 @@ async function saveActivity() {
                     item.equipment_name
             )
             .join(", ");
+
+
+    const scheduledStart =
+        startTime
+            ? new Date(
+                activityDate + "T" + startTime
+              ).toISOString()
+            : null;
+
+
+    const scheduledEnd =
+        endTime
+            ? new Date(
+                activityDate + "T" + endTime
+              ).toISOString()
+            : null;
 
 
     const button =
@@ -915,10 +1023,28 @@ async function saveActivity() {
                     equipmentNames,
 
                 accomplishment:
-                    accomplishment,
+                    0,
 
                 remarks:
-                    remarks || null
+                    remarks || null,
+
+                activity_status:
+                    "PLANNED",
+
+                scheduled_start:
+                    scheduledStart,
+
+                scheduled_end:
+                    scheduledEnd,
+
+                priority:
+                    priority,
+
+                completed_at:
+                    null,
+
+                completion_remarks:
+                    null
 
             })
             .select(
@@ -1043,6 +1169,21 @@ function clearActivityForm() {
     document.getElementById(
         "activity"
     ).value = "";
+
+
+    document.getElementById(
+        "startTime"
+    ).value = "";
+
+
+    document.getElementById(
+        "endTime"
+    ).value = "";
+
+
+    document.getElementById(
+        "priority"
+    ).value = "NORMAL";
 
 
     document.getElementById(
