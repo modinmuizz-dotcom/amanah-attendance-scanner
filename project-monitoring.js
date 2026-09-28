@@ -1144,7 +1144,7 @@ async function saveActivity() {
         button.disabled = false;
 
         button.textContent =
-            "SAVE ACTIVITY";
+            "SAVE SCHEDULE";
     }
 }
 
