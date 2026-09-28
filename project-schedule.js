@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -27,6 +27,12 @@ async function init(){
   document.getElementById("closeModal").addEventListener("click",closeModal);
   document.getElementById("cancelModal").addEventListener("click",closeModal);
   document.getElementById("saveStatus").addEventListener("click",saveStatus);
+  document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
+  document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
+  document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
+  document.getElementById("editEquipmentSearch").addEventListener("input",renderEditEquipment);
+  document.getElementById("editAllEquipment").addEventListener("click",()=>{state.equipment.forEach(e=>state.editingScheduleEquipment.add(e.equipment_id));renderEditEquipment();});
+  document.getElementById("editClearEquipment").addEventListener("click",()=>{state.editingScheduleEquipment.clear();renderEditEquipment();});
   document.getElementById("calendarPrev").addEventListener("click",()=>changeCalendarMonth(-1));
   document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
@@ -37,6 +43,7 @@ async function loadProjects(){
   if(error)throw error; state.projects=data||[];
   const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+" — "+esc(p.location||p.project_id)+"</option>").join("");
   document.getElementById("project").innerHTML=opts;
+  document.getElementById("editProject").innerHTML=opts;
   document.getElementById("fProject").innerHTML='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+'</option>').join("");
 }
 async function loadEquipment(){
@@ -73,13 +80,14 @@ function renderTables(){
 
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-    const action='<button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button>';
+    const action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button>';
     return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const assignments=rows.flatMap(a=>equipmentFor(a.activity_id).map(e=>({a,e})));
   document.getElementById("equipmentTable").innerHTML=assignments.length?assignments.map(({a,e})=>'<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc((a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—"))+'</td><td><strong>'+esc(e.equipment_name)+'</strong><br><small style="color:#64748b">'+esc(e.equipment_id)+" • "+esc(e.plate_number||"")+'</small></td><td>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</td><td><strong>'+esc(a.activity||"")+'</strong></td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td></tr>').join(""):'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px">No equipment schedules found.</td></tr>';
 
+  document.querySelectorAll("[data-edit]").forEach(btn=>btn.addEventListener("click",()=>openEditModal(btn.dataset.edit)));
   document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
   renderCalendar();
 }
@@ -188,6 +196,111 @@ async function saveSchedule(){
   }catch(e){console.error(e);msg("err","Could not save schedule: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";state.selectedEquipment.clear();renderEquipment();}
+
+function localDateInput(iso){
+  if(!iso)return "";
+  const d=new Date(iso);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function localTimeInput(iso){
+  if(!iso)return "";
+  const d=new Date(iso);
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function renderEditEquipment(){
+  const list=document.getElementById("editEquipmentList");
+  if(!list)return;
+  const q=(document.getElementById("editEquipmentSearch").value||"").toLowerCase().trim();
+  const rows=state.equipment.filter(e=>[e.equipment_id,e.equipment_name,e.equipment_type,e.plate_number].join(" ").toLowerCase().includes(q));
+  list.innerHTML=rows.length?rows.map(e=>'<label class="equip-row"><input type="checkbox" value="'+esc(e.equipment_id)+'" '+(state.editingScheduleEquipment.has(e.equipment_id)?"checked":"")+'> <span><strong>'+esc(e.equipment_name)+'</strong><small>'+esc(e.equipment_id)+" • "+esc(e.equipment_type||"")+" • "+esc(e.plate_number||"")+'</small></span></label>').join(""):'<div style="padding:20px;text-align:center;color:#64748b">No equipment found.</div>';
+  list.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.addEventListener("change",e=>{
+    if(e.target.checked)state.editingScheduleEquipment.add(e.target.value);
+    else state.editingScheduleEquipment.delete(e.target.value);
+    renderEditEquipment();
+  }));
+  const n=state.editingScheduleEquipment.size;
+  const summary=document.getElementById("editEquipmentSummary");
+  summary.textContent=n?n+" equipment selected.":"No equipment selected.";
+  summary.classList.toggle("has",!!n);
+}
+function openEditModal(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  state.editingScheduleId=id;
+  document.getElementById("editProject").value=a.project_id||"";
+  document.getElementById("editActivityDate").value=a.activity_date||localDateInput(a.scheduled_start);
+  document.getElementById("editStartTime").value=localTimeInput(a.scheduled_start);
+  document.getElementById("editEndTime").value=localTimeInput(a.scheduled_end);
+  document.getElementById("editActivity").value=a.activity||"";
+  document.getElementById("editPriority").value=a.priority||"NORMAL";
+  document.getElementById("editDescription").value=a.description||"";
+  document.getElementById("editManpower").value=a.manpower??0;
+  document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";
+  document.getElementById("editEquipmentSearch").value="";
+  state.editingScheduleEquipment=new Set(state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id));
+  renderEditEquipment();
+  document.getElementById("editModal").style.display="flex";
+}
+function closeEditModal(){
+  state.editingScheduleId=null;
+  state.editingScheduleEquipment.clear();
+  document.getElementById("editModal").style.display="none";
+}
+async function saveEditSchedule(){
+  if(!state.editingScheduleId)return;
+  clearMsg();
+  const id=state.editingScheduleId;
+  const pid=document.getElementById("editProject").value;
+  const date=document.getElementById("editActivityDate").value;
+  const start=document.getElementById("editStartTime").value;
+  const end=document.getElementById("editEndTime").value;
+  const activity=document.getElementById("editActivity").value.trim();
+  const description=document.getElementById("editDescription").value.trim();
+  const manpower=Number(document.getElementById("editManpower").value||0);
+  const priority=document.getElementById("editPriority").value;
+  if(!pid)return msg("err","Please select a project.");
+  if(!date)return msg("err","Please select the activity date.");
+  if(!activity)return msg("err","Please enter the activity.");
+  if(!state.editingScheduleEquipment.size)return msg("err","Please select the equipment required on site.");
+  const ss=isoFromLocal(date,start),se=isoFromLocal(date,end);
+  if(ss&&se&&new Date(se)<new Date(ss))return msg("err","End time cannot be earlier than start time.");
+  const p=state.projects.find(x=>x.project_id===pid);
+  const btn=document.getElementById("saveEditSchedule");
+  btn.disabled=true;btn.textContent="SAVING...";
+  try{
+    const payload={
+      project_id:pid,
+      project_name:p?.project_name||null,
+      activity_date:date,
+      activity,
+      description:description||null,
+      manpower,
+      equipment:state.equipment.filter(e=>state.editingScheduleEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),
+      scheduled_start:ss,
+      scheduled_end:se,
+      priority
+    };
+    const {error:updateError}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",id);
+    if(updateError)throw updateError;
+
+    const {error:deleteError}=await supabaseClient.from("project_activity_equipment").delete().eq("activity_id",id);
+    if(deleteError)throw deleteError;
+
+    const rel=Array.from(state.editingScheduleEquipment).map(equipment_id=>({activity_id:id,equipment_id}));
+    const {error:insertError}=await supabaseClient.from("project_activity_equipment").insert(rel);
+    if(insertError)throw insertError;
+
+    closeEditModal();
+    msg("ok","Activity schedule updated successfully.");
+    await loadActivities();
+  }catch(e){
+    console.error(e);
+    msg("err","Could not edit activity schedule: "+e.message);
+  }finally{
+    btn.disabled=false;
+    btn.textContent="SAVE CHANGES";
+  }
+}
 function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=a.activity_status||"PLANNED";document.getElementById("modalProgress").value=a.accomplishment??0;document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
 function closeModal(){state.editingActivityId=null;document.getElementById("statusModal").style.display="none";}
 document.getElementById("modalStatus").addEventListener("change",()=>{const s=document.getElementById("modalStatus").value;if(s==="DONE")document.getElementById("modalProgress").value=100;if(s==="NOT DONE"||s==="CANCELLED")document.getElementById("modalProgress").value=0;});
