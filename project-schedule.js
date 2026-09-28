@@ -19,6 +19,7 @@ async function init(){
   document.getElementById("activityDate").value=today();
   document.getElementById("clearForm").addEventListener("click",clearForm);
   document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
+  document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
   document.getElementById("equipmentSearch").addEventListener("input",renderEquipment);
   document.getElementById("allEquipment").addEventListener("click",()=>{state.equipment.forEach(e=>state.selectedEquipment.add(e.equipment_id));renderEquipment();});
   document.getElementById("clearEquipment").addEventListener("click",()=>{state.selectedEquipment.clear();renderEquipment();});
@@ -45,6 +46,7 @@ async function init(){
   document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
+  updateInitialStatusUI();
 }
 async function loadProjects(){
   const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name");
@@ -185,7 +187,7 @@ function renderCalendar(){
 
 async function saveSchedule(){
   clearMsg();
-  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
+  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value,initialStatus=document.getElementById("initialStatus").value;
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
   if(!activity)return msg("err","Please enter the activity.");
@@ -195,7 +197,7 @@ async function saveSchedule(){
   const p=state.projects.find(x=>x.project_id===pid);
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SAVING...";
   try{
-    const {data,error:insertError}=await supabaseClient.from("project_activities").insert({project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,manpower,equipment:state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),accomplishment:0,remarks:null,activity_status:"PLANNED",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null}).select("activity_id").single();
+    const {data,error:insertError}=await supabaseClient.from("project_activities").insert({project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,manpower,equipment:state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),accomplishment:initialStatus==="DONE"?100:0,remarks:null,activity_status:initialStatus,scheduled_start:ss,scheduled_end:se,priority,completed_at:initialStatus==="DONE"?new Date().toISOString():null,completion_remarks:null}).select("activity_id").single();
     if(insertError)throw insertError;
     const rel=Array.from(state.selectedEquipment).map(equipment_id=>({activity_id:data.activity_id,equipment_id}));
     const {error}=await supabaseClient.from("project_activity_equipment").insert(rel);if(error)throw error;
@@ -203,7 +205,8 @@ async function saveSchedule(){
     clearForm();await loadActivities();
   }catch(e){console.error(e);msg("err","Could not save schedule: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";state.selectedEquipment.clear();renderEquipment();}
+function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PLANNED";updateInitialStatusUI();state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
