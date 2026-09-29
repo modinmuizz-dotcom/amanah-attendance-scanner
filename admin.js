@@ -1437,10 +1437,10 @@ function renderProjectSpecificFields(type, details = {}) {
         <h3>ROAD ENGINEERING DETAILS</h3>
         <p>Enter the pavement dimensions. AMANAH calculates the pavement area automatically.</p>
         <div class="form-grid">
-          @@field('Length','road_length',details.road_length,false,'number','0')
-          @@field('Width','road_width',details.road_width,false,'number','0')
-          @@field('Thickness','road_thickness',details.road_thickness,false,'number','0')
-          @@calculatedField('Pavement Area','road_pavement_area',details.road_pavement_area,'LENGTH × WIDTH × THICKNESS')
+          ${field('Length','road_length',details.road_length,false,'number','0')}
+          ${field('Width','road_width',details.road_width,false,'number','0')}
+          ${field('Thickness','road_thickness',details.road_thickness,false,'number','0')}
+          ${calculatedField('Pavement Area','road_pavement_area',details.road_pavement_area,'LENGTH × WIDTH × THICKNESS')}
         </div>
       </div>`;
   }
@@ -1454,54 +1454,54 @@ function renderProjectSpecificFields(type, details = {}) {
         <div class="project-detail-section">
           <h3>FLOOR AREA</h3>
           <div class="form-grid">
-            @@field('Length','building_floor_length',details.building_floor_length,false,'number','0')
-            @@field('Width','building_floor_width',details.building_floor_width,false,'number','0')
-            @@field('Thickness','building_floor_thickness',details.building_floor_thickness,false,'number','0')
-            @@calculatedField('Floor Area','building_floor_area',details.building_floor_area,'LENGTH × WIDTH × THICKNESS')
+            ${field('Length','building_floor_length',details.building_floor_length,false,'number','0')}
+            ${field('Width','building_floor_width',details.building_floor_width,false,'number','0')}
+            ${field('Thickness','building_floor_thickness',details.building_floor_thickness,false,'number','0')}
+            ${calculatedField('Floor Area','building_floor_area',details.building_floor_area,'LENGTH × WIDTH × THICKNESS')}
           </div>
         </div>
 
         <div class="form-grid">
-          @@field('Height','building_height',details.building_height,false,'number','0')
+          ${field('Height','building_height',details.building_height,false,'number','0')}
         </div>
 
         <div class="project-detail-section">
           <h3>FOOTING</h3>
           <div class="form-grid">
-            @@field('Width','footing_width',details.footing_width,false,'number','0')
-            @@field('Length','footing_length',details.footing_length,false,'number','0')
-            @@field('Thickness','footing_thickness',details.footing_thickness,false,'number','0')
-            @@calculatedField('Footing','footing_quantity',details.footing_quantity,'WIDTH × LENGTH × THICKNESS')
+            ${field('Width','footing_width',details.footing_width,false,'number','0')}
+            ${field('Length','footing_length',details.footing_length,false,'number','0')}
+            ${field('Thickness','footing_thickness',details.footing_thickness,false,'number','0')}
+            ${calculatedField('Footing','footing_quantity',details.footing_quantity,'WIDTH × LENGTH × THICKNESS')}
           </div>
         </div>
 
         <div class="project-detail-section">
           <h3>COLUMN</h3>
           <div class="form-grid">
-            @@field('Width','column_width',details.column_width,false,'number','0')
-            @@field('Length','column_length',details.column_length,false,'number','0')
-            @@field('Height','column_height',details.column_height,false,'number','0')
-            @@calculatedField('Column','column_quantity',details.column_quantity,'WIDTH × LENGTH × HEIGHT')
+            ${field('Width','column_width',details.column_width,false,'number','0')}
+            ${field('Length','column_length',details.column_length,false,'number','0')}
+            ${field('Height','column_height',details.column_height,false,'number','0')}
+            ${calculatedField('Column','column_quantity',details.column_quantity,'WIDTH × LENGTH × HEIGHT')}
           </div>
         </div>
 
         <div class="project-detail-section">
           <h3>BEAM</h3>
           <div class="form-grid">
-            @@selectField('Beam Type','beam_type',['TIE BEAM','ROOF BEAM'],details.beam_type||'TIE BEAM')
-            @@field('Width','beam_width',details.beam_width,false,'number','0')
-            @@field('Length','beam_length',details.beam_length,false,'number','0')
-            @@field('Thickness','beam_thickness',details.beam_thickness,false,'number','0')
-            @@calculatedField('Beam Quantity','beam_quantity',details.beam_quantity,'WIDTH × LENGTH × THICKNESS')
+            ${selectField('Beam Type','beam_type',['TIE BEAM','ROOF BEAM'],details.beam_type||'TIE BEAM')}
+            ${field('Width','beam_width',details.beam_width,false,'number','0')}
+            ${field('Length','beam_length',details.beam_length,false,'number','0')}
+            ${field('Thickness','beam_thickness',details.beam_thickness,false,'number','0')}
+            ${calculatedField('Beam Quantity','beam_quantity',details.beam_quantity,'WIDTH × LENGTH × THICKNESS')}
           </div>
         </div>
 
         <div class="project-detail-section">
           <h3>WALL</h3>
           <div class="form-grid">
-            @@field('Height','wall_height',details.wall_height,false,'number','0')
-            @@field('Width','wall_width',details.wall_width,false,'number','0')
-            @@calculatedField('Wall','wall_quantity',details.wall_quantity,'HEIGHT × WIDTH')
+            ${field('Height','wall_height',details.wall_height,false,'number','0')}
+            ${field('Width','wall_width',details.wall_width,false,'number','0')}
+            ${calculatedField('Wall','wall_quantity',details.wall_quantity,'HEIGHT × WIDTH')}
           </div>
         </div>
       </div>`;
@@ -1513,14 +1513,14 @@ function renderProjectSpecificFields(type, details = {}) {
         <h3>FLOOD CONTROL ENGINEERING DETAILS</h3>
         <p>Slope ratio is defined by Rise and Run. No separate ratio text field is required.</p>
         <div class="form-grid">
-          @@field('Rise','flood_rise',details.flood_rise,false,'number','0')
-          @@field('Run','flood_run',details.flood_run,false,'number','0')
-          @@field('Width','flood_width',details.flood_width,false,'number','0')
-          @@calculatedField('Slope','flood_slope',details.flood_slope,'RISE ÷ RUN')
-          @@calculatedField('Slope Area','flood_slope_area',details.flood_slope_area,'(RISE ÷ RUN) × WIDTH')
-          @@field('Pile Cap Length','sheet_pile_cap_length',details.sheet_pile_cap_length,false,'number','0')
-          @@field('Sheet Pile Width','sheet_pile_width',details.sheet_pile_width,false,'number','0')
-          @@calculatedField('Sheet Pile Pieces','sheet_pile_pieces',details.sheet_pile_pieces,'PILE CAP LENGTH ÷ SHEET PILE WIDTH')
+          ${field('Rise','flood_rise',details.flood_rise,false,'number','0')}
+          ${field('Run','flood_run',details.flood_run,false,'number','0')}
+          ${field('Width','flood_width',details.flood_width,false,'number','0')}
+          ${calculatedField('Slope','flood_slope',details.flood_slope,'RISE ÷ RUN')}
+          ${calculatedField('Slope Area','flood_slope_area',details.flood_slope_area,'(RISE ÷ RUN) × WIDTH')}
+          ${field('Pile Cap Length','sheet_pile_cap_length',details.sheet_pile_cap_length,false,'number','0')}
+          ${field('Sheet Pile Width','sheet_pile_width',details.sheet_pile_width,false,'number','0')}
+          ${calculatedField('Sheet Pile Pieces','sheet_pile_pieces',details.sheet_pile_pieces,'PILE CAP LENGTH ÷ SHEET PILE WIDTH')}
         </div>
       </div>`;
   }
@@ -1534,45 +1534,45 @@ function renderProjectSpecificFields(type, details = {}) {
         <div class="project-detail-section">
           <h3>FLOOR AREA</h3>
           <div class="form-grid">
-            @@field('Length','covered_floor_length',details.covered_floor_length,false,'number','0')
-            @@field('Width','covered_floor_width',details.covered_floor_width,false,'number','0')
-            @@field('Thickness','covered_floor_thickness',details.covered_floor_thickness,false,'number','0')
-            @@calculatedField('Floor Area','covered_floor_area',details.covered_floor_area,'LENGTH × WIDTH × THICKNESS')
+            ${field('Length','covered_floor_length',details.covered_floor_length,false,'number','0')}
+            ${field('Width','covered_floor_width',details.covered_floor_width,false,'number','0')}
+            ${field('Thickness','covered_floor_thickness',details.covered_floor_thickness,false,'number','0')}
+            ${calculatedField('Floor Area','covered_floor_area',details.covered_floor_area,'LENGTH × WIDTH × THICKNESS')}
           </div>
         </div>
 
         <div class="form-grid">
-          @@field('Height','covered_height',details.covered_height,false,'number','0')
+          ${field('Height','covered_height',details.covered_height,false,'number','0')}
         </div>
 
         <div class="project-detail-section">
           <h3>FOOTING</h3>
           <div class="form-grid">
-            @@field('Width','covered_footing_width',details.covered_footing_width,false,'number','0')
-            @@field('Length','covered_footing_length',details.covered_footing_length,false,'number','0')
-            @@field('Thickness','covered_footing_thickness',details.covered_footing_thickness,false,'number','0')
-            @@calculatedField('Footing','covered_footing_quantity',details.covered_footing_quantity,'WIDTH × LENGTH × THICKNESS')
+            ${field('Width','covered_footing_width',details.covered_footing_width,false,'number','0')}
+            ${field('Length','covered_footing_length',details.covered_footing_length,false,'number','0')}
+            ${field('Thickness','covered_footing_thickness',details.covered_footing_thickness,false,'number','0')}
+            ${calculatedField('Footing','covered_footing_quantity',details.covered_footing_quantity,'WIDTH × LENGTH × THICKNESS')}
           </div>
         </div>
 
         <div class="project-detail-section">
           <h3>COLUMN</h3>
           <div class="form-grid">
-            @@field('Width','covered_column_width',details.covered_column_width,false,'number','0')
-            @@field('Length','covered_column_length',details.covered_column_length,false,'number','0')
-            @@field('Height','covered_column_height',details.covered_column_height,false,'number','0')
-            @@calculatedField('Column','covered_column_quantity',details.covered_column_quantity,'WIDTH × LENGTH × HEIGHT')
+            ${field('Width','covered_column_width',details.covered_column_width,false,'number','0')}
+            ${field('Length','covered_column_length',details.covered_column_length,false,'number','0')}
+            ${field('Height','covered_column_height',details.covered_column_height,false,'number','0')}
+            ${calculatedField('Column','covered_column_quantity',details.covered_column_quantity,'WIDTH × LENGTH × HEIGHT')}
           </div>
         </div>
 
         <div class="project-detail-section">
           <h3>BEAM</h3>
           <div class="form-grid">
-            @@selectField('Beam Type','covered_beam_type',['TIE BEAM','ROOF BEAM'],details.covered_beam_type||'TIE BEAM')
-            @@field('Width','covered_beam_width',details.covered_beam_width,false,'number','0')
-            @@field('Length','covered_beam_length',details.covered_beam_length,false,'number','0')
-            @@field('Thickness','covered_beam_thickness',details.covered_beam_thickness,false,'number','0')
-            @@calculatedField('Beam Quantity','covered_beam_quantity',details.covered_beam_quantity,'WIDTH × LENGTH × THICKNESS')
+            ${selectField('Beam Type','covered_beam_type',['TIE BEAM','ROOF BEAM'],details.covered_beam_type||'TIE BEAM')}
+            ${field('Width','covered_beam_width',details.covered_beam_width,false,'number','0')}
+            ${field('Length','covered_beam_length',details.covered_beam_length,false,'number','0')}
+            ${field('Thickness','covered_beam_thickness',details.covered_beam_thickness,false,'number','0')}
+            ${calculatedField('Beam Quantity','covered_beam_quantity',details.covered_beam_quantity,'WIDTH × LENGTH × THICKNESS')}
           </div>
         </div>
       </div>`;
@@ -1703,109 +1703,6 @@ function openProjectModal(mode,record=null) {
 
   openModal(mode==='add'?'ADD PROJECT — '+type:'EDIT PROJECT — '+type,'project',mode,values);
 }
-
-
-  document
-    .getElementById(
-      'formFields'
-    )
-    .innerHTML = `
-
-      ${field(
-        'Project ID',
-        'project_id',
-        values.project_id,
-        true
-      )}
-
-      ${field(
-        'Project Name',
-        'project_name',
-        values.project_name,
-        true
-      )}
-
-      ${field(
-        'Client',
-        'client',
-        values.client
-      )}
-
-      ${field(
-        'Location',
-        'location',
-        values.location
-      )}
-
-      ${field(
-        'Site Engineer',
-        'site_engineer',
-        values.site_engineer
-      )}
-
-      ${field(
-        'Start Date',
-        'start_date',
-        values.start_date,
-        false,
-        'date'
-      )}
-
-      ${field(
-        'Target Completion',
-        'target_completion',
-        values.target_completion,
-        false,
-        'date'
-      )}
-
-      ${field(
-        'Actual Completion',
-        'actual_completion',
-        values.actual_completion,
-        false,
-        'date'
-      )}
-
-      ${field(
-        'Contract Amount',
-        'contract_amount',
-        values.contract_amount,
-        false,
-        'number',
-        '0.00'
-      )}
-
-      ${field(
-        'Current Progress (%)',
-        'current_progress',
-        values.current_progress,
-        false,
-        'number',
-        '0'
-      )}
-
-      ${selectField(
-        'Status',
-        'status',
-        ['ACTIVE', 'COMPLETED', 'ON HOLD', 'INACTIVE'],
-        values.status || 'ACTIVE'
-      )}
-
-    `;
-
-  openModal(
-    mode === 'add'
-      ? 'ADD PROJECT'
-      : 'EDIT PROJECT',
-    'project',
-    mode,
-    record
-  );
-
-}
-
-
 /* =========================================================
    FORM FIELD HELPERS
    ========================================================= */
