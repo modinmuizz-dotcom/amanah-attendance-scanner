@@ -750,9 +750,16 @@
         quantities are calculated from the saved Project Length using the consumption factors provided for this AMANAH project formula. Labor is fixed at ₱356 per meter.
       </div>
 
-      <div class="modal-actions">
-        <button type="button" id="cancelMaterialEstimateButton" class="button secondary">CANCEL</button>
-        <button type="button" id="saveMaterialEstimateButton" class="button primary">SAVE MATERIAL ESTIMATE</button>
+      <div class="modal-actions material-estimate-actions">
+        <div class="material-estimate-actions-left">
+          <button type="button" id="addMaterialDescriptionButton" class="button secondary">+ ADD DESCRIPTION</button>
+          <button type="button" id="printMaterialEstimateButton" class="button print-button">PRINT</button>
+        </div>
+
+        <div class="material-estimate-actions-right">
+          <button type="button" id="cancelMaterialEstimateButton" class="button secondary">CANCEL</button>
+          <button type="button" id="saveMaterialEstimateButton" class="button primary">SAVE MATERIAL ESTIMATE</button>
+        </div>
       </div>
     </div>
   </div>
@@ -819,7 +826,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=19"></script>
+  <script src="admin.js?v=20"></script>
 <script src="amanah-ui.js?v=3"></script>
 </body>
 </html>
