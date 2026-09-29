@@ -1642,7 +1642,7 @@ function updateMaterialEstimateTotals() {
       const qty =
         Number(
           document.querySelector(
-            `[data-material-qty="${index}"]`
+            `[data-material-qty][data-index="${index}"]`
           )?.textContent.replaceAll(',','')
         ) || 0;
       const rate = Number(input.value || 0);
@@ -1651,7 +1651,7 @@ function updateMaterialEstimateTotals() {
 
       const totalCell =
         document.querySelector(
-          `[data-material-total="${index}"]`
+          `[data-material-total][data-index="${index}"]`
         );
 
       if (totalCell) {
