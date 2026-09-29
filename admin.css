@@ -1692,3 +1692,30 @@ th {
   border-color:#2563eb;
   box-shadow:0 0 0 3px rgba(37,99,235,.10);
 }
+
+
+/* =====================================================
+   PROJECT TYPE CHOOSER INTERACTION
+   ===================================================== */
+
+#projectTypeModal{
+  z-index:20000 !important;
+  pointer-events:auto !important;
+}
+
+#projectTypeModal .project-type-modal-card{
+  position:relative;
+  z-index:20001;
+  pointer-events:auto !important;
+}
+
+#projectTypeModal .project-type-grid,
+#projectTypeModal .project-type-card{
+  position:relative;
+  z-index:20002;
+  pointer-events:auto !important;
+}
+
+#projectTypeModal .project-type-card{
+  cursor:pointer !important;
+}
