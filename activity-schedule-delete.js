@@ -1,9 +1,11 @@
-/* AMANAH Activity Schedule delete enhancement. Loaded by project-schedule.html when included. */
+/* AMANAH Activity Schedule delete enhancement. Loaded by project-schedule.js. */
 (function(){
   function initDelete(){
     if(!document.getElementById('activityTable')) return;
     if(typeof supabaseClient === 'undefined') return;
     document.querySelectorAll('[data-delete-activity]').forEach(btn=>{
+      if(btn.dataset.deleteBound==='1') return;
+      btn.dataset.deleteBound='1';
       btn.addEventListener('click', async ()=>{
         const id=btn.dataset.deleteActivity;
         if(!id) return;
@@ -28,10 +30,15 @@
       });
     });
   }
-  const observer=new MutationObserver(initDelete);
-  document.addEventListener('DOMContentLoaded',()=>{
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',initDelete,{once:true});
+  }else{
     initDelete();
-    const target=document.getElementById('activityTable');
-    if(target) observer.observe(target,{childList:true});
-  });
+  }
+
+  const target=document.getElementById('activityTable');
+  if(target){
+    new MutationObserver(initDelete).observe(target,{childList:true,subtree:true});
+  }
 })();
