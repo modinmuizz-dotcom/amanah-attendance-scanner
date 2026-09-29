@@ -1338,3 +1338,148 @@ th {
       transparent 68%);
   pointer-events:none;
 }
+
+
+/* =====================================================
+   PROJECT TYPE SELECTION
+   ===================================================== */
+
+.project-type-modal-card{
+  width:min(980px,100%);
+}
+
+.project-type-subtitle{
+  margin:7px 0 0;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.project-type-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+.project-type-card{
+  border:1px solid #dbe3ec;
+  border-radius:16px;
+  padding:18px;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+  text-align:left;
+  cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease;
+}
+
+.project-type-card:hover{
+  transform:translateY(-2px);
+  border-color:#93c5fd;
+  background:#eff6ff;
+  box-shadow:0 10px 24px rgba(37,99,235,.10);
+}
+
+.project-type-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+
+.project-type-card span{
+  display:block;
+  margin-top:7px;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.project-type-banner{
+  grid-column:1 / -1;
+  padding:13px 15px;
+  border:1px solid #bfdbfe;
+  border-radius:12px;
+  background:#eff6ff;
+  color:#1e3a8a;
+}
+
+.project-type-banner small{
+  display:block;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:4px;
+  color:#2563eb;
+}
+
+.project-type-banner strong{
+  font-size:14px;
+}
+
+.project-detail-section{
+  grid-column:1 / -1;
+  padding:16px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:#f8fafc;
+}
+
+.project-detail-section h3{
+  margin:0;
+  color:#0f172a;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.project-detail-section p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.project-calculated{
+  background:#ecfdf5 !important;
+  border-color:#bbf7d0 !important;
+}
+
+.project-calculated input{
+  color:#166534 !important;
+  font-weight:900;
+  background:#f0fdf4 !important;
+}
+
+.project-formula{
+  margin-top:5px;
+  color:#64748b;
+  font-size:10px;
+  line-height:1.45;
+}
+
+.project-type-change{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:7px;
+  padding:6px 9px;
+  border:1px solid #bfdbfe;
+  border-radius:8px;
+  background:#fff;
+  color:#1d4ed8;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media (max-width: 800px) {
+  .project-type-grid{
+    grid-template-columns:1fr;
+  }
+
+  .project-type-modal-card{
+    max-height:92vh;
+  }
+}
