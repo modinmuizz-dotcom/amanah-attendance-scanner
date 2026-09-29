@@ -1755,3 +1755,155 @@ th {
     grid-template-columns:1fr;
   }
 }
+
+
+/* =====================================================
+   MATERIAL ESTIMATE CUSTOM ROWS + ACTIONS
+   ===================================================== */
+
+.material-estimate-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.material-estimate-actions-left,
+.material-estimate-actions-right{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-wrap:wrap;
+}
+
+.material-estimate-actions .button{
+  min-height:42px;
+}
+
+.print-button{
+  background:#e0f2fe !important;
+  color:#075985 !important;
+  border:1px solid #bae6fd !important;
+}
+
+.print-button:hover{
+  background:#bae6fd !important;
+}
+
+.material-estimate-description{
+  width:100%;
+  min-width:180px;
+  min-height:40px;
+  padding:9px 10px;
+  border:1px solid #d6dee8;
+  border-radius:9px;
+  background:#fff;
+  color:#0f172a;
+  outline:none;
+}
+
+.material-estimate-description:focus,
+.material-estimate-qty-input:focus,
+.material-estimate-rate:focus,
+.material-estimate-unit:focus{
+  border-color:#60a5fa;
+  box-shadow:0 0 0 3px rgba(37,99,235,.10);
+}
+
+.material-estimate-qty-input{
+  width:120px;
+  min-height:40px;
+  padding:9px 10px;
+  border:1px solid #d6dee8;
+  border-radius:9px;
+  background:#fff;
+  color:#0f172a;
+  outline:none;
+}
+
+.material-estimate-custom-wrap{
+  width:100%;
+}
+
+body.printing-material-estimate *{
+  visibility:hidden !important;
+}
+
+body.printing-material-estimate #materialEstimateModal,
+body.printing-material-estimate #materialEstimateModal *{
+  visibility:visible !important;
+}
+
+body.printing-material-estimate #materialEstimateModal{
+  position:static !important;
+  inset:auto !important;
+  display:block !important;
+  width:100% !important;
+  min-height:100vh;
+  padding:0 !important;
+  background:#fff !important;
+}
+
+body.printing-material-estimate #materialEstimateModal .material-estimate-modal-card{
+  width:100% !important;
+  max-width:none !important;
+  max-height:none !important;
+  overflow:visible !important;
+  margin:0 !important;
+  padding:12px !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+
+body.printing-material-estimate .material-estimate-table-wrap{
+  overflow:visible !important;
+}
+
+body.printing-material-estimate .material-estimate-table{
+  min-width:0 !important;
+}
+
+body.printing-material-estimate .material-estimate-table input{
+  border:0 !important;
+  box-shadow:none !important;
+  background:transparent !important;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+
+body.printing-material-estimate .material-estimate-actions,
+body.printing-material-estimate .close-button{
+  display:none !important;
+}
+
+body.printing-material-estimate .material-estimate-subtitle,
+body.printing-material-estimate .material-estimate-note{
+  color:#334155 !important;
+}
+
+@media print{
+  @page{
+    size:A4 portrait;
+    margin:12mm;
+  }
+
+  body.printing-material-estimate{
+    background:#fff !important;
+  }
+}
+
+@media(max-width:700px){
+  .material-estimate-actions{
+    align-items:stretch;
+  }
+
+  .material-estimate-actions-left,
+  .material-estimate-actions-right{
+    width:100%;
+  }
+
+  .material-estimate-actions .button{
+    flex:1;
+  }
+}
