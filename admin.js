@@ -1151,7 +1151,7 @@ function openSupplierModal(
       ${field(
         'Contact Number',
         'contact_number',
-        values.contact_number
+        values.phone
       )}
 
       ${field(
