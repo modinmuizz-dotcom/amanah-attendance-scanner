@@ -21,8 +21,6 @@ const supabaseClient =
 
 let allAttendance = [];
 
-let activityByAttendanceId = new Map();
-
 
 /* =========================================================
    MESSAGE
@@ -319,10 +317,6 @@ async function loadAttendance() {
     allAttendance =
       data || [];
 
-    await loadAttendanceActivities(
-      allAttendance
-    );
-
     applyFilters();
 
   } catch (error) {
@@ -349,84 +343,6 @@ async function loadAttendance() {
 
   }
 
-}
-
-
-async function loadAttendanceActivities(
-  rows
-) {
-
-  activityByAttendanceId =
-    new Map();
-
-  const ids =
-    rows
-      .map(
-        row =>
-          String(
-            row.attendance_id || ''
-          )
-      )
-      .filter(Boolean);
-
-  if (!ids.length) {
-    return;
-  }
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from('attendance_activities')
-        .select(
-          'attendance_id,activity_category,activity_description,quantity'
-        )
-        .in(
-          'attendance_id',
-          ids
-        );
-
-    if (error) {
-
-      console.warn(
-        'Attendance activities:',
-        error.message
-      );
-
-      return;
-    }
-
-    (data || []).forEach(
-      function (activity) {
-
-        const id =
-          String(
-            activity.attendance_id || ''
-          );
-
-        if (!activityByAttendanceId.has(id)) {
-          activityByAttendanceId.set(
-            id,
-            []
-          );
-        }
-
-        activityByAttendanceId
-          .get(id)
-          .push(activity);
-      }
-    );
-
-  } catch (error) {
-
-    console.warn(
-      'Unable to load activity records:',
-      error
-    );
-  }
 }
 
 
@@ -743,63 +659,6 @@ function renderAttendance(
           const meterUnit =
             row.meter_unit || '';
 
-          const activities =
-            activityByAttendanceId.get(
-              String(
-                row.attendance_id || ''
-              )
-            ) || [];
-
-          const activitySummary =
-            activities.length
-              ? activities
-                  .map(
-                    activity => {
-
-                      const evidenceCount =
-                        (
-                          activity.photo_1_path
-                            ? 1
-                            : 0
-                        ) +
-                        (
-                          activity.photo_2_path
-                            ? 1
-                            : 0
-                        );
-
-                      return (
-                        escapeHtml(
-                          activity.activity_category
-                        ) +
-                        ': ' +
-                        escapeHtml(
-                          activity.activity_description
-                        ) +
-                        ' (' +
-                        escapeHtml(
-                          Number(
-                            activity.quantity || 0
-                          ).toFixed(2)
-                        ) +
-                        ') — ' +
-                        escapeHtml(
-                          String(
-                            evidenceCount
-                          )
-                        ) +
-                        ' photo' +
-                        (
-                          evidenceCount === 1
-                            ? ''
-                            : 's'
-                        )
-                      );
-                    }
-                  )
-                  .join('<br>')
-              : '-';
-
           return (
             '<tr>' +
 
@@ -892,9 +751,6 @@ function renderAttendance(
                 escapeHtml(totalHours) +
               '</td>' +
 
-              '<td>' +
-                activitySummary +
-              '</td>' +
 
               '<td>' +
                 formatFuel(row) +
