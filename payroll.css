@@ -5,10 +5,10 @@
 .payroll-kicker{color:#2563eb;font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
 .payroll-control-card h2,.payroll-panel-header h2{margin:4px 0 4px;font-size:18px;font-weight:900;color:#0f172a}
 .payroll-control-card p,.payroll-panel-header p{margin:0;color:#64748b;font-size:11px;line-height:1.5}
-.payroll-period-controls{display:grid;grid-template-columns:180px 180px auto;gap:12px;align-items:end;margin-top:18px}
+.payroll-period-controls{display:grid;grid-template-columns:180px 180px minmax(240px,1fr) auto;gap:12px;align-items:end;margin-top:18px}
 .payroll-field{display:flex;flex-direction:column;gap:7px}
 .payroll-field label{font-size:9px;font-weight:900;letter-spacing:.08em;color:#475569}
-.payroll-field input{min-height:42px;padding:0 11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;box-sizing:border-box}
+.payroll-field input,.payroll-field select{min-height:42px;padding:0 11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;box-sizing:border-box;width:100%;min-width:0;font-size:12px;color:#0f172a}
 .payroll-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
 .payroll-summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 17px;box-shadow:0 8px 24px rgba(15,23,42,.045);position:relative;overflow:hidden}
 .payroll-summary-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#2563eb}
@@ -35,5 +35,5 @@
 .payroll-history-panel{margin-bottom:0}
 .payroll-status{display:inline-flex;padding:6px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;border:1px solid #dbeafe;font-size:8px;font-weight:900;letter-spacing:.06em}
 .payroll-status.void{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
-@media(max-width:900px){.payroll-period-controls{grid-template-columns:1fr 1fr}.payroll-period-controls .button{grid-column:1/-1}.payroll-summary-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.payroll-period-controls,.payroll-summary-grid{grid-template-columns:1fr}.payroll-panel-header{align-items:stretch;flex-direction:column}.payroll-panel-header .button{width:100%}}
+@media(max-width:1100px){.payroll-period-controls{grid-template-columns:1fr 1fr}.payroll-period-controls .payroll-employee-filter{grid-column:1/-1}.payroll-period-controls .button{grid-column:1/-1}.payroll-summary-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.payroll-period-controls,.payroll-summary-grid{grid-template-columns:1fr}.payroll-period-controls .payroll-employee-filter{grid-column:auto}.payroll-panel-header{align-items:stretch;flex-direction:column}.payroll-panel-header .button{width:100%}}
