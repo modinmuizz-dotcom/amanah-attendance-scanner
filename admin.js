@@ -112,6 +112,13 @@ function getRoadMaterialBOM(project) {
         factor: 0.012,
         defaultRate: 0,
         formula: 'PROJECT LENGTH × 0.012'
+      },
+      {
+        description: 'Shouldering - Labor',
+        unit: 'METER',
+        factor: 1,
+        defaultRate: 71.111,
+        formula: 'PROJECT LENGTH × ₱71.111'
       }
     );
   }
