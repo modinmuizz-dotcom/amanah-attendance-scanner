@@ -556,7 +556,7 @@ function renderSuppliers() {
             supplier.supplier_code,
             supplier.supplier_name,
             supplier.contact_person,
-            supplier.contact_number,
+            supplier.phone,
             supplier.email,
             supplier.address,
             supplier.tin,
@@ -610,7 +610,7 @@ function renderSuppliers() {
         </td>
 
         <td>
-          ${escapeHtml(supplier.contact_number)}
+          ${escapeHtml(supplier.phone)}
         </td>
 
         <td>
@@ -1211,7 +1211,7 @@ async function saveSupplier(
       values.contact_person.trim() ||
       null,
 
-    contact_number:
+    phone:
       values.contact_number.trim() ||
       null,
 
