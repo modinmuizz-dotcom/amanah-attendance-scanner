@@ -2041,3 +2041,29 @@ body.printing-material-estimate .material-estimate-note{
     width:100%;
   }
 }
+
+
+/* =====================================================
+   DELETE CONFIRMATION INTERACTION
+   ===================================================== */
+
+#deleteConfirmationModal{
+  z-index:20000 !important;
+  pointer-events:auto !important;
+}
+
+#deleteConfirmationModal .delete-confirmation-card,
+#deleteConfirmationModal .delete-confirmation-header,
+#deleteConfirmationModal .delete-confirmation-body,
+#deleteConfirmationModal .delete-confirmation-actions{
+  position:relative;
+  z-index:20001;
+  pointer-events:auto !important;
+}
+
+#deleteConfirmationModal button{
+  pointer-events:auto !important;
+  position:relative;
+  z-index:20002;
+  cursor:pointer;
+}
