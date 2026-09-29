@@ -553,6 +553,10 @@
                   </th>
 
                   <th>
+                    Project Type
+                  </th>
+
+                  <th>
                     Client
                   </th>
 
@@ -626,6 +630,70 @@
        ===================================================== -->
 
   <div
+    id="projectTypeModal"
+    class="modal hidden"
+    aria-hidden="true"
+  >
+    <div class="modal-card project-type-modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>SELECT PROJECT TYPE</h2>
+          <p class="project-type-subtitle">Select the project classification. AMANAH will then open the appropriate project form.</p>
+        </div>
+        <button
+          id="closeProjectTypeModalButton"
+          class="close-button"
+          type="button"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="project-type-grid">
+        <button type="button" class="project-type-card" data-project-type="CONCRETING OF ROAD">
+          <strong>CONCRETING OF ROAD</strong>
+          <span>Road pavement project with automatic pavement-area calculation.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="MULTI PURPOSE BUILDING">
+          <strong>MULTI PURPOSE BUILDING</strong>
+          <span>Building project with floor, footing, column, wall and beam details.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="SCHOOL BUILDING">
+          <strong>SCHOOL BUILDING</strong>
+          <span>School building project with structural dimension details.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="FLOOD CONTROL">
+          <strong>FLOOD CONTROL</strong>
+          <span>Slope and sheet-pile calculations based on site dimensions.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="WATER SYSTEM">
+          <strong>WATER SYSTEM</strong>
+          <span>Water-system project using the common project information form.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="BRIDGE">
+          <strong>BRIDGE</strong>
+          <span>Bridge project using the common project information form.</span>
+        </button>
+
+        <button type="button" class="project-type-card" data-project-type="COVERED COURT">
+          <strong>COVERED COURT</strong>
+          <span>Covered court project with selectable beam classification.</span>
+        </button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelProjectTypeButton" class="button secondary">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <div
     id="modal"
     class="modal hidden"
   >
@@ -687,7 +755,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=3"></script>
+  <script src="admin.js?v=4"></script>
 
 <script src="amanah-ui.js?v=3"></script>
 </body>
