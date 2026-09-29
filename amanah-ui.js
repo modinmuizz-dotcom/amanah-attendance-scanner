@@ -17,6 +17,7 @@
     {section:'WORKFORCE',items:[
       ['attendance','Attendance','attendance.html','calendar'],
       ['activitiesSite','Activities on Site','activity-on-site.html','activity'],
+      ['payroll','Payroll','payroll.html','report'],
     ]},
     {section:'EQUIPMENT',items:[
       ['equipment','Equipment','admin.html','truck'],
@@ -65,6 +66,7 @@
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
     if(file==='activity-on-site.html') return 'activitiesSite';
+    if(file==='payroll.html') return 'payroll';
     if(file==='admin.html') return 'employees';
     return 'dashboard';
   }
@@ -107,6 +109,12 @@
           title:'ACTIVITIES ON SITE',
           desc:'Review the work activities completed by drivers and operators during site operations, including photo evidence submitted at TIME OUT.',
           badge:'Site Activity Evidence'
+        },
+        'payroll.html':{
+          kicker:'WORKFORCE COMPENSATION',
+          title:'PAYROLL',
+          desc:'Calculate and maintain employee payroll using AMANAH attendance records and employee pay rates.',
+          badge:'Payroll Control'
         },
         'reports.html':{
           kicker:'REPORTING & ANALYTICS',
