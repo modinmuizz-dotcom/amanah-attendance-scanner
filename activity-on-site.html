@@ -7,23 +7,25 @@
   <title>AMANAH Activities on Site</title>
 
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="activity-on-site.css?v=1">
+  <link rel="stylesheet" href="activity-on-site.css?v=2">
 </head>
 
 <body>
   <main class="container activity-site-page">
     <div id="activityMessage" class="message hidden"></div>
 
-    <section class="activity-site-toolbar">
-      <div>
-        <div class="activity-kicker">WORKFORCE OPERATIONS</div>
-        <h1>ACTIVITIES ON SITE</h1>
-        <p>Review work activities recorded by drivers and operators at TIME OUT, including photo evidence submitted from the site.</p>
-      </div>
-      <button id="refreshActivitiesButton" class="button primary" type="button">REFRESH</button>
-    </section>
-
     <section class="activity-summary-grid">
+      <div class="activity-summary-heading">
+        <div>
+          <div class="activity-kicker">SITE OPERATIONS REGISTER</div>
+          <h2>ACTIVITY PERFORMANCE</h2>
+          <p>Recorded driver and operator activities completed during field operations.</p>
+        </div>
+        <button id="refreshActivitiesButton" class="activity-refresh-button" type="button">
+          <span class="refresh-icon">↻</span>
+          REFRESH DATA
+        </button>
+      </div>
       <div class="activity-summary-card">
         <span>ACTIVITIES</span>
         <strong id="activityCount">0</strong>
@@ -120,7 +122,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="activity-on-site.js?v=1"></script>
+  <script src="activity-on-site.js?v=2"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
