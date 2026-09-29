@@ -103,13 +103,127 @@ function renderTables(){
   renderCalendar();
 }
 
+function ensureAmanahMessageStyles(){
+  if(document.getElementById("amanahMessageStyles")) return;
+  const style=document.createElement("style");
+  style.id="amanahMessageStyles";
+  style.textContent=`
+    .amanah-message-backdrop{
+      display:none;position:fixed;inset:0;z-index:2500;
+      align-items:center;justify-content:center;padding:20px;
+      background:rgba(15,23,42,.66);backdrop-filter:blur(3px);
+    }
+    .amanah-message-dialog{
+      width:min(560px,100%);background:#fff;border:1px solid #e2e8f0;
+      border-radius:18px;box-shadow:0 25px 80px rgba(15,23,42,.28);
+      overflow:hidden;animation:amanahMessageIn .16s ease-out;
+    }
+    .amanah-message-head{
+      display:flex;align-items:center;gap:12px;padding:18px 20px;
+      border-bottom:1px solid #e2e8f0;
+    }
+    .amanah-message-icon{
+      width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+      font-size:20px;font-weight:900;flex:0 0 auto;
+    }
+    .amanah-message-icon.confirm{background:#fef3c7;color:#92400e}
+    .amanah-message-icon.success{background:#dcfce7;color:#166534}
+    .amanah-message-icon.error{background:#fee2e2;color:#991b1b}
+    .amanah-message-title{margin:0;font-size:16px;font-weight:900;color:#0f172a}
+    .amanah-message-subtitle{margin:3px 0 0;color:#64748b;font-size:11px;font-weight:700}
+    .amanah-message-body{padding:20px;color:#334155;font-size:13px;line-height:1.6}
+    .amanah-message-body strong{color:#0f172a}
+    .amanah-message-details{
+      margin-top:12px;padding:12px 13px;border:1px solid #e2e8f0;border-radius:12px;
+      background:#f8fafc;white-space:pre-line;
+    }
+    .amanah-message-actions{
+      display:flex;justify-content:flex-end;gap:9px;padding:0 20px 20px;
+    }
+    .amanah-message-btn{
+      min-height:42px;padding:10px 16px;border-radius:10px;border:1px solid #dbe2ea;
+      font-size:11px;font-weight:900;cursor:pointer;
+    }
+    .amanah-message-btn.cancel{background:#fff;color:#334155}
+    .amanah-message-btn.danger{background:#dc2626;color:#fff;border-color:#dc2626}
+    .amanah-message-btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}
+    .amanah-message-btn:disabled{opacity:.65;cursor:wait}
+    @keyframes amanahMessageIn{
+      from{opacity:0;transform:translateY(8px) scale(.985)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+    @media(max-width:600px){
+      .amanah-message-backdrop{padding:12px}
+      .amanah-message-actions{flex-direction:column-reverse}
+      .amanah-message-btn{width:100%}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function closeAmanahMessage(result){
+  const wrap=document.getElementById("amanahMessageBackdrop");
+  if(!wrap)return;
+  wrap.style.display="none";
+  wrap.remove();
+  return result;
+}
+
+function showAmanahConfirm({title,subtitle,activity,equipment}){
+  return new Promise(resolve=>{
+    ensureAmanahMessageStyles();
+    document.getElementById("amanahMessageBackdrop")?.remove();
+    const details=[
+      activity?("Activity: "+activity):"",
+      equipment?("Equipment schedule: "+equipment):"Equipment schedule: None"
+    ].filter(Boolean).join("\\n");
+
+    const wrap=document.createElement("div");
+    wrap.id="amanahMessageBackdrop";
+    wrap.className="amanah-message-backdrop";
+    wrap.innerHTML=
+      '<div class="amanah-message-dialog" role="dialog" aria-modal="true" aria-labelledby="amanahMessageTitle">'+
+        '<div class="amanah-message-head">'+
+          '<div class="amanah-message-icon confirm">!</div>'+
+          '<div><h3 class="amanah-message-title" id="amanahMessageTitle">'+esc(title||"Confirm Action")+'</h3>'+
+          '<p class="amanah-message-subtitle">'+esc(subtitle||"Please review the following information before continuing.")+'</p></div>'+
+        '</div>'+
+        '<div class="amanah-message-body">'+
+          '<div>This action will permanently remove the selected record.</div>'+
+          '<div class="amanah-message-details"><strong>Review before deletion</strong>\\n'+esc(details)+'</div>'+
+        '</div>'+
+        '<div class="amanah-message-actions">'+
+          '<button type="button" class="amanah-message-btn cancel" data-message-cancel>CANCEL</button>'+
+          '<button type="button" class="amanah-message-btn danger" data-message-confirm>DELETE ACTIVITY</button>'+
+        '</div>'+
+      '</div>';
+
+    document.body.appendChild(wrap);
+    wrap.style.display="flex";
+
+    const finish=value=>{closeAmanahMessage();resolve(value);};
+    wrap.querySelector("[data-message-cancel]").addEventListener("click",()=>finish(false));
+    wrap.querySelector("[data-message-confirm]").addEventListener("click",()=>finish(true));
+    wrap.addEventListener("click",e=>{if(e.target===wrap)finish(false);});
+    document.addEventListener("keydown",function onKey(e){
+      if(e.key==="Escape"){document.removeEventListener("keydown",onKey);finish(false);}
+    },{once:true});
+  });
+}
+
 async function deleteActivity(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
   const name=a.activity||"Activity";
   const equipment=equipmentFor(id).map(e=>e.equipment_name).join(", ");
   const details=equipment?"\\n\\nEquipment schedule that will also be deleted:\\n"+equipment:"";
-  if(!confirm("DELETE ACTIVITY?\\n\\n"+name+details+"\\n\\nThis action cannot be undone."))return;
+  const confirmed=await showAmanahConfirm({
+    title:"Confirm Activity Deletion",
+    subtitle:"This action requires confirmation before the activity is removed.",
+    activity:name,
+    equipment:equipment||"None"
+  });
+  if(!confirmed)return;
   clearMsg();
   const btn=document.querySelector("[data-delete=\""+CSS.escape(id)+"\"]");
   const old=btn?.textContent||"DELETE";
