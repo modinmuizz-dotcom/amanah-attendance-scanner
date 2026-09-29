@@ -2176,26 +2176,263 @@ function printMaterialEstimate() {
 
   if (!modal) return;
 
-  document.body.classList.add(
-    'printing-material-estimate'
-  );
+  const card =
+    modal.querySelector(
+      '.material-estimate-modal-card'
+    );
 
-  const cleanup = () => {
-    document.body.classList.remove(
-      'printing-material-estimate'
+  if (!card) return;
+
+  const printWindow =
+    window.open(
+      '',
+      '_blank',
+      'width=1000,height=800'
     );
-    window.removeEventListener(
-      'afterprint',
-      cleanup
+
+  if (!printWindow) {
+    showMessage(
+      'globalMessage',
+      'The print window could not be opened. Please allow pop-ups for AMANAH and try again.',
+      'error'
     );
+    return;
+  }
+
+  const clone =
+    card.cloneNode(true);
+
+  // Preserve the values currently visible in editable fields.
+  clone
+    .querySelectorAll('input, textarea, select')
+    .forEach(field => {
+      if (field.tagName === 'SELECT') {
+        Array.from(field.options).forEach(option => {
+          option.selected =
+            option.value === field.value;
+        });
+      } else {
+        field.setAttribute(
+          'value',
+          field.value || ''
+        );
+
+        if (field.tagName === 'TEXTAREA') {
+          field.textContent =
+            field.value || '';
+        }
+      }
+    });
+
+  // Remove screen-only controls from the printed document.
+  clone
+    .querySelectorAll(
+      '.material-estimate-actions, .close-button'
+    )
+    .forEach(element =>
+      element.remove()
+    );
+
+  const printDocument = printWindow.document;
+
+  printDocument.open();
+  printDocument.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>BOM / Material Estimate</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #0f172a;
+            font-family: Arial, Helvetica, sans-serif;
+          }
+
+          body {
+            padding: 0;
+          }
+
+          .material-estimate-modal-card {
+            width: 100%;
+            max-width: none;
+            background: #fff;
+            box-shadow: none;
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+          }
+
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 0 0 12px;
+            border-bottom: 2px solid #0f172a;
+          }
+
+          .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.25;
+            color: #0f172a;
+          }
+
+          .material-estimate-subtitle {
+            margin: 5px 0 0;
+            color: #475569;
+            font-size: 10px;
+            line-height: 1.45;
+          }
+
+          .material-estimate-project {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+          }
+
+          .material-estimate-project small {
+            display: block;
+            margin-bottom: 4px;
+            color: #475569;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+          }
+
+          .material-estimate-project strong {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+
+          .material-estimate-info {
+            display: block !important;
+            margin: 0 0 10px;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background: #f8fafc;
+            color: #334155;
+            font-size: 9px;
+            line-height: 1.45;
+          }
+
+          .material-estimate-table-wrap {
+            overflow: visible;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+          }
+
+          .material-estimate-table {
+            width: 100%;
+            min-width: 0;
+            border-collapse: collapse;
+          }
+
+          .material-estimate-table th,
+          .material-estimate-table td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 9px;
+          }
+
+          .material-estimate-table thead th {
+            background: #f1f5f9;
+            color: #334155;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+          }
+
+          .material-estimate-table tfoot th {
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 9px;
+          }
+
+          .material-estimate-table input {
+            width: 100%;
+            min-height: 22px;
+            padding: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: #0f172a;
+            font: inherit;
+          }
+
+          .project-formula {
+            margin-top: 2px;
+            color: #64748b;
+            font-size: 7px;
+            line-height: 1.3;
+          }
+
+          .material-estimate-qty,
+          .material-estimate-total {
+            white-space: nowrap;
+            font-weight: 800;
+          }
+
+          .material-estimate-note {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 8px;
+            line-height: 1.45;
+          }
+
+          .material-estimate-note strong {
+            color: #334155;
+          }
+        </style>
+      </head>
+
+      <body>
+        ${clone.outerHTML}
+      </body>
+    </html>
+  `);
+
+  printDocument.close();
+
+  const doPrint = () => {
+    printWindow.focus();
+    printWindow.print();
+
+    printWindow.onafterprint = () => {
+      printWindow.close();
+    };
   };
 
-  window.addEventListener(
-    'afterprint',
-    cleanup
-  );
-
-  window.print();
+  setTimeout(doPrint, 350);
 }
 
 function closeMaterialEstimate() {
