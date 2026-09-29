@@ -88,37 +88,57 @@ function getRoadMaterialBOM(project) {
     details.road_shouldering === true ||
     String(details.road_shouldering).toUpperCase() === 'YES';
 
-  const items = [...ROAD_MATERIAL_BOM];
+  const roadLength = Number(details.road_length);
+  const shoulderingLength = Number(details.road_shouldering_length);
+
+  const items = ROAD_MATERIAL_BOM.map(item => ({
+    ...item,
+    basis: 'PROJECT LENGTH',
+    basisLength: Number.isFinite(roadLength) && roadLength > 0 ? roadLength : 0
+  }));
 
   if (shouldering) {
+    const shoulderBasis =
+      Number.isFinite(shoulderingLength) && shoulderingLength > 0
+        ? shoulderingLength
+        : 0;
+
     items.push(
       {
         description: 'Shouldering - Cement',
         unit: 'TUNNER BAG',
         factor: 0.067,
         defaultRate: 0,
-        formula: 'PROJECT LENGTH × 0.067'
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × 0.067'
       },
       {
         description: 'Shouldering - Rebar Longitudinal Section',
         unit: 'REBAR',
         factor: 0.17,
         defaultRate: 0,
-        formula: 'PROJECT LENGTH × 0.17'
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × 0.17'
       },
       {
         description: 'Shouldering - Rebar Transverse Section',
         unit: 'REBAR',
         factor: 0.012,
         defaultRate: 0,
-        formula: 'PROJECT LENGTH × 0.012'
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × 0.012'
       },
       {
         description: 'Shouldering - Labor',
         unit: 'METER',
         factor: 1,
         defaultRate: 71.111,
-        formula: 'PROJECT LENGTH × ₱71.111'
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × ₱71.111'
       }
     );
   }
@@ -1594,10 +1614,15 @@ async function loadMaterialEstimateItems(project, length) {
           item => item.description === template.description
         );
 
+      // Quantity always recalculates from the CURRENT project basis.
+      // Saved estimates supply the previous rate only.
+      const basisLength =
+        Number.isFinite(Number(template.basisLength))
+          ? Number(template.basisLength)
+          : length;
+
       const qty =
-        Number.isFinite(Number(found?.qty))
-          ? Number(found.qty)
-          : length * template.factor;
+        basisLength * Number(template.factor || 0);
 
       const rate =
         Number.isFinite(Number(found?.rate))
