@@ -2984,7 +2984,16 @@ function calculatedField(label,name,value='',formula='') {
   return `
     <div class="form-field project-calculated">
       <label for="${name}">${escapeHtml(label)}</label>
-      <input id="${name}" name="${name}" type="number" value="${escapeHtml(value ?? '')}" readonly>
+      <input
+        id="${name}"
+        name="${name}"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        data-calculated-field="true"
+        value="${escapeHtml(value ?? '')}"
+        readonly
+      >
       ${formula ? `<div class="project-formula">Formula: ${escapeHtml(formula)}</div>` : ''}
     </div>`;
 }
