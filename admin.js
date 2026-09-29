@@ -1423,6 +1423,28 @@ function openSupplierModal(
   const values =
     record || {};
 
+  const positionOptions =
+    values.position &&
+    !EMPLOYEE_POSITIONS.includes(
+      values.position
+    )
+      ? [
+          values.position,
+          ...EMPLOYEE_POSITIONS
+        ]
+      : EMPLOYEE_POSITIONS;
+
+  const departmentOptions =
+    values.department &&
+    !EMPLOYEE_DEPARTMENTS.includes(
+      values.department
+    )
+      ? [
+          values.department,
+          ...EMPLOYEE_DEPARTMENTS
+        ]
+      : EMPLOYEE_DEPARTMENTS;
+
   document
     .getElementById(
       'formFields'
@@ -1778,14 +1800,14 @@ function openEmployeeModal(
       ${selectField(
         'Position',
         'position',
-        EMPLOYEE_POSITIONS,
+        positionOptions,
         values.position || ''
       )}
 
       ${selectField(
         'Department',
         'department',
-        EMPLOYEE_DEPARTMENTS,
+        departmentOptions,
         values.department || ''
       )}
 
