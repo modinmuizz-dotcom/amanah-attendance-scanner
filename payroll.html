@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=1">
+  <link rel="stylesheet" href="payroll.css?v=2">
 </head>
 <body>
   <main class="container payroll-page">
@@ -27,6 +27,12 @@
         <div class="payroll-field">
           <label for="payrollEnd">END DATE</label>
           <input id="payrollEnd" type="date">
+        </div>
+        <div class="payroll-field payroll-employee-filter">
+          <label for="payrollEmployeeFilter">EMPLOYEE</label>
+          <select id="payrollEmployeeFilter">
+            <option value="">ALL EMPLOYEES</option>
+          </select>
         </div>
         <button id="calculatePayrollButton" class="button primary" type="button">CALCULATE PAYROLL</button>
       </div>
@@ -100,7 +106,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=1"></script>
+  <script src="payroll.js?v=2"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
