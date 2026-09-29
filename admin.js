@@ -41,31 +41,43 @@ const ROAD_MATERIAL_BOM = [
     description: 'Cement',
     unit: 'TUNNER BAG',
     factor: 0.34,
+    defaultRate: 0,
     formula: 'PROJECT LENGTH × 0.34'
   },
   {
     description: 'Rebar - Longitudinal Section',
     unit: 'REBAR',
     factor: 0.17,
+    defaultRate: 0,
     formula: 'PROJECT LENGTH × 0.17'
   },
   {
     description: 'Rebar - Transverse Section',
     unit: 'REBAR',
     factor: 0.14,
+    defaultRate: 0,
     formula: 'PROJECT LENGTH × 0.14'
   },
   {
     description: 'Gravel',
     unit: 'CUBIC METER',
     factor: 1.15,
+    defaultRate: 0,
     formula: 'PROJECT LENGTH × 1.15'
   },
   {
     description: 'Sand',
     unit: 'CUBIC METER',
     factor: 0.58,
+    defaultRate: 0,
     formula: 'PROJECT LENGTH × 0.58'
+  },
+  {
+    description: 'Labor',
+    unit: 'METER',
+    factor: 1,
+    defaultRate: 356,
+    formula: 'PROJECT LENGTH × ₱356'
   }
 ];
 
@@ -1485,9 +1497,9 @@ function openMaterialEstimate(encodedId) {
 
   const info = document.getElementById('materialEstimateInfo');
   info.style.display = length > 0 ? 'block' : 'none';
-  info.textContent =
+      info.textContent =
     length > 0
-      ? 'The quantities below are generated from the saved Project Length using the AMANAH road material consumption factors.'
+      ? 'The quantities below are generated from the saved Project Length. Labor is calculated at ₱356 per meter.'
       : 'Project Length is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
 
   loadMaterialEstimateItems(project, length);
@@ -1545,7 +1557,7 @@ async function loadMaterialEstimateItems(project, length) {
       const rate =
         Number.isFinite(Number(found?.rate))
           ? Number(found.rate)
-          : 0;
+          : Number(template.defaultRate || 0);
 
       return {
         ...template,
