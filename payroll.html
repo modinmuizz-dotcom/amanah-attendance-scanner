@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>AMANAH Payroll</title>
+  <link rel="stylesheet" href="amanah-ui.css?v=6">
+  <link rel="stylesheet" href="payroll.css?v=1">
+</head>
+<body>
+  <main class="container payroll-page">
+    <div id="payrollMessage" class="message hidden"></div>
+
+    <section class="payroll-control-card">
+      <div>
+        <div class="payroll-kicker">WORKFORCE COMPENSATION</div>
+        <h2>PAYROLL PERIOD</h2>
+        <p>Select the payroll period. AMANAH will use completed attendance records within the selected dates.</p>
+      </div>
+
+      <div class="payroll-period-controls">
+        <div class="payroll-field">
+          <label for="payrollStart">START DATE</label>
+          <input id="payrollStart" type="date">
+        </div>
+        <div class="payroll-field">
+          <label for="payrollEnd">END DATE</label>
+          <input id="payrollEnd" type="date">
+        </div>
+        <button id="calculatePayrollButton" class="button primary" type="button">CALCULATE PAYROLL</button>
+      </div>
+    </section>
+
+    <section class="payroll-summary-grid">
+      <div class="payroll-summary-card"><span>EMPLOYEES</span><strong id="payrollEmployeeCount">0</strong></div>
+      <div class="payroll-summary-card"><span>WORK DAYS</span><strong id="payrollWorkDays">0</strong></div>
+      <div class="payroll-summary-card"><span>TRUCKER HOURS</span><strong id="payrollTruckerHours">0.00</strong></div>
+      <div class="payroll-summary-card emphasis"><span>GROSS PAYROLL</span><strong id="payrollGross">₱0.00</strong></div>
+    </section>
+
+    <section class="payroll-panel">
+      <div class="payroll-panel-header">
+        <div>
+          <div class="payroll-kicker">PAYROLL REGISTER</div>
+          <h2>EMPLOYEE PAYROLL</h2>
+          <p>TRUCKERS use hourly rates. All other departments use daily rates, with optional half-day treatment.</p>
+        </div>
+        <button id="savePayrollButton" class="button primary" type="button" disabled>SAVE PAYROLL</button>
+      </div>
+
+      <div class="payroll-table-wrap">
+        <table class="payroll-table">
+          <thead>
+            <tr>
+              <th>EMPLOYEE</th>
+              <th>DEPARTMENT</th>
+              <th>PAY BASIS</th>
+              <th>RATE</th>
+              <th>ATTENDANCE DAYS</th>
+              <th>FULL DAYS</th>
+              <th>HALF DAYS</th>
+              <th>HOURS</th>
+              <th>GROSS PAY</th>
+            </tr>
+          </thead>
+          <tbody id="payrollBody">
+            <tr><td colspan="9" class="payroll-empty">Select a payroll period and calculate payroll.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="payroll-panel payroll-history-panel">
+      <div class="payroll-panel-header compact">
+        <div>
+          <div class="payroll-kicker">PAYROLL HISTORY</div>
+          <h2>SAVED PAYROLL RUNS</h2>
+        </div>
+        <button id="refreshPayrollHistoryButton" class="button secondary" type="button">REFRESH</button>
+      </div>
+
+      <div class="payroll-table-wrap">
+        <table class="payroll-table history-table">
+          <thead>
+            <tr>
+              <th>PERIOD</th>
+              <th>EMPLOYEES</th>
+              <th>GROSS PAYROLL</th>
+              <th>STATUS</th>
+              <th>CREATED</th>
+            </tr>
+          </thead>
+          <tbody id="payrollHistoryBody">
+            <tr><td colspan="5" class="payroll-empty">No payroll runs found.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="payroll.js?v=1"></script>
+  <script src="amanah-ui.js?v=6"></script>
+</body>
+</html>
