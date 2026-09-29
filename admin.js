@@ -938,6 +938,13 @@ function renderEmployees() {
               EDIT
             </button>
 
+            <button
+              class="small-button delete-button"
+              onclick="confirmDeleteEmployee('${encodeURIComponent(employee.employee_id)}')"
+            >
+              DELETE
+            </button>
+
           </div>
 
         </td>
@@ -948,6 +955,134 @@ function renderEmployees() {
 
 }
 
+
+function confirmDeleteEmployee(encodedId) {
+  const employeeId = decodeURIComponent(encodedId);
+  const employee = state.employees.find(item => item.employee_id === employeeId);
+  if (!employee) return;
+
+  openDeleteConfirmation({
+    type: 'employee',
+    table: 'employees',
+    id: employee.employee_id,
+    idColumn: 'employee_id',
+    load: loadEmployees,
+    render: renderEmployees,
+    title: 'Delete Employee',
+    name: employee.employee_name,
+    subtitle: 'This action permanently removes the selected employee record from AMANAH.',
+    detailLabel: 'Employee ID',
+    detailValue: employee.employee_id,
+    confirmText: 'DELETE EMPLOYEE',
+    successText: 'Employee "' + employee.employee_name + '" was deleted successfully.'
+  });
+}
+
+function confirmDeleteEquipment(encodedId) {
+  const equipmentId = decodeURIComponent(encodedId);
+  const equipment = state.equipment.find(item => item.equipment_id === equipmentId);
+  if (!equipment) return;
+
+  openDeleteConfirmation({
+    type: 'equipment',
+    table: 'equipment',
+    id: equipment.equipment_id,
+    idColumn: 'equipment_id',
+    load: loadEquipment,
+    render: renderEquipment,
+    title: 'Delete Equipment',
+    name: equipment.equipment_name,
+    subtitle: 'This action permanently removes the selected equipment record from AMANAH.',
+    detailLabel: 'Equipment ID',
+    detailValue: equipment.equipment_id,
+    confirmText: 'DELETE EQUIPMENT',
+    successText: 'Equipment "' + equipment.equipment_name + '" was deleted successfully.'
+  });
+}
+
+function confirmDeleteProject(encodedId) {
+  const projectId = decodeURIComponent(encodedId);
+  const project = state.projects.find(item => item.project_id === projectId);
+  if (!project) return;
+
+  openDeleteConfirmation({
+    type: 'project',
+    table: 'projects',
+    id: project.project_id,
+    idColumn: 'project_id',
+    load: loadProjects,
+    render: renderProjects,
+    title: 'Delete Project',
+    name: project.project_name,
+    subtitle: 'This action permanently removes the selected project record from AMANAH.',
+    detailLabel: 'Project ID',
+    detailValue: project.project_id,
+    confirmText: 'DELETE PROJECT',
+    successText: 'Project "' + project.project_name + '" was deleted successfully.'
+  });
+}
+
+function openDeleteConfirmation(target) {
+  state.deleteTarget = target;
+  const modal = document.getElementById('deleteConfirmationModal');
+  if (!modal) return;
+
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  modal.style.setProperty('z-index', '20000', 'important');
+  modal.style.setProperty('pointer-events', 'auto', 'important');
+
+  document.getElementById('deleteConfirmationTitle').textContent = target.title || 'Confirm Deletion';
+  document.getElementById('deleteConfirmationSubtitle').textContent = target.subtitle || 'Please confirm that you want to permanently remove this record.';
+  document.getElementById('deleteConfirmationName').textContent = target.name || '—';
+  document.getElementById('deleteConfirmationDetailLabel').textContent = target.detailLabel || 'Record ID';
+  document.getElementById('deleteConfirmationDetailValue').textContent = target.detailValue || target.id || '—';
+  document.getElementById('confirmDeleteButton').textContent = target.confirmText || 'DELETE';
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDeleteConfirmation() {
+  const modal = document.getElementById('deleteConfirmationModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  state.deleteTarget = null;
+}
+
+function friendlyDeleteError(error, target) {
+  if (error?.code === '23503') {
+    if (target.type === 'employee') return 'This employee cannot be deleted because attendance records reference this employee. Please deactivate the employee instead.';
+    if (target.type === 'equipment') return 'This equipment cannot be deleted because attendance, maintenance, repair, or activity records reference this equipment. Please deactivate the equipment instead.';
+    if (target.type === 'project') return 'This project cannot be deleted because existing attendance records reference it. Please review those records before deletion.';
+    return 'This record cannot be deleted because other AMANAH records still reference it.';
+  }
+  return error?.message || 'The selected record could not be deleted.';
+}
+
+async function executeDeleteConfirmation() {
+  const target = state.deleteTarget;
+  if (!target) return;
+
+  const button = document.getElementById('confirmDeleteButton');
+  if (!button) return;
+  button.disabled = true;
+  button.textContent = 'DELETING...';
+
+  try {
+    const { error } = await supabaseClient.from(target.table).delete().eq(target.idColumn, target.id);
+    if (error) throw error;
+    await target.load();
+    target.render();
+    closeDeleteConfirmation();
+    showMessage('globalMessage', target.successText || 'The selected record was deleted successfully.', 'success');
+  } catch (error) {
+    showMessage('globalMessage', friendlyDeleteError(error, target), 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = target.confirmText || 'DELETE';
+  }
+}
 
 function editEmployee(encodedId) {
 
@@ -1081,6 +1216,13 @@ function renderEquipment() {
               )}')"
             >
               EDIT
+            </button>
+
+            <button
+              class="small-button delete-button"
+              onclick="confirmDeleteEquipment('${encodeURIComponent(equipment.equipment_id)}')"
+            >
+              DELETE
             </button>
 
           </div>
@@ -1230,6 +1372,13 @@ function renderProjects() {
             `
                 : ''
             }
+
+            <button
+              class="small-button delete-button"
+              onclick="confirmDeleteProject('${encodeURIComponent(project.project_id)}')"
+            >
+              DELETE
+            </button>
           </div>
         </td>
 
@@ -3867,6 +4016,24 @@ function setupEvents() {
     );
 
 
+  /* DELETE_CONFIRMATION_DELEGATE */
+  document.addEventListener('click', event => {
+    const cancel = event.target.closest('#cancelDeleteButton, #deleteConfirmationCloseButton');
+    if (cancel) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeDeleteConfirmation();
+      return;
+    }
+    const confirm = event.target.closest('#confirmDeleteButton');
+    if (confirm) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      executeDeleteConfirmation();
+      return;
+    }
+    if (event.target.id === 'deleteConfirmationModal') closeDeleteConfirmation();
+  }, true);
   setupTabs();
 
 }
