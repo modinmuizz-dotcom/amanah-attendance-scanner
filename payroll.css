@@ -37,3 +37,208 @@
 .payroll-status.void{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
 @media(max-width:1100px){.payroll-period-controls{grid-template-columns:1fr 1fr}.payroll-period-controls .payroll-employee-filter{grid-column:1/-1}.payroll-period-controls .button{grid-column:1/-1}.payroll-summary-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.payroll-period-controls,.payroll-summary-grid{grid-template-columns:1fr}.payroll-period-controls .payroll-employee-filter{grid-column:auto}.payroll-panel-header{align-items:stretch;flex-direction:column}.payroll-panel-header .button{width:100%}}
+
+
+.payroll-action-buttons{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.payroll-action-buttons .button{
+  min-height:38px;
+}
+
+.payroll-print-header{
+  display:none;
+}
+
+@media print{
+  @page{
+    size:A4 portrait;
+    margin:12mm;
+  }
+
+  html,body{
+    background:#fff !important;
+    color:#111827 !important;
+  }
+
+  body{
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+
+  #amanahSidebar,
+  #amanahTopbar,
+  #amanahMobileOverlay,
+  .amanah-sidebar-logout,
+  .payroll-control-card,
+  #payrollMessage,
+  .payroll-history-panel,
+  .payroll-print-action,
+  #savePayrollButton{
+    display:none !important;
+  }
+
+  .payroll-page{
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+
+  .payroll-print-header{
+    display:block !important;
+    margin:0 0 12px;
+    padding:0 0 10px;
+    border-bottom:2px solid #111827;
+  }
+
+  .payroll-print-company{
+    font-size:15pt;
+    font-weight:900;
+    letter-spacing:.04em;
+  }
+
+  .payroll-print-title{
+    margin-top:3px;
+    font-size:12pt;
+    font-weight:900;
+    letter-spacing:.08em;
+  }
+
+  .payroll-print-meta{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:14px;
+    margin-top:9px;
+  }
+
+  .payroll-print-meta span{
+    display:block;
+    font-size:7pt;
+    font-weight:900;
+    letter-spacing:.08em;
+    color:#475569;
+  }
+
+  .payroll-print-meta strong{
+    display:block;
+    margin-top:2px;
+    font-size:9pt;
+    color:#111827;
+  }
+
+  .payroll-summary-grid{
+    display:grid !important;
+    grid-template-columns:repeat(4,1fr) !important;
+    gap:7px !important;
+    margin-bottom:10px !important;
+  }
+
+  .payroll-summary-card{
+    box-shadow:none !important;
+    border:1px solid #cbd5e1 !important;
+    border-radius:4px !important;
+    padding:8px 9px !important;
+  }
+
+  .payroll-summary-card:before{
+    display:none !important;
+  }
+
+  .payroll-summary-card span{
+    font-size:6.5pt !important;
+  }
+
+  .payroll-summary-card strong{
+    font-size:11pt !important;
+  }
+
+  .payroll-panel{
+    box-shadow:none !important;
+    border:1px solid #cbd5e1 !important;
+    border-radius:0 !important;
+    margin:0 !important;
+  }
+
+  .payroll-panel-header{
+    padding:9px 10px !important;
+    background:#f8fafc !important;
+  }
+
+  .payroll-panel-header .payroll-kicker{
+    font-size:7pt;
+  }
+
+  .payroll-panel-header h2{
+    font-size:11pt !important;
+    margin:2px 0 !important;
+  }
+
+  .payroll-panel-header p{
+    font-size:7.5pt !important;
+  }
+
+  .payroll-table-wrap{
+    overflow:visible !important;
+  }
+
+  .payroll-table{
+    width:100% !important;
+    min-width:0 !important;
+    table-layout:fixed;
+  }
+
+  .payroll-table th,
+  .payroll-table td{
+    padding:6px 5px !important;
+    font-size:7.5pt !important;
+    border-bottom:1px solid #dbe3eb !important;
+  }
+
+  .payroll-table th{
+    font-size:6.5pt !important;
+    background:#f1f5f9 !important;
+  }
+
+  .payroll-table .payroll-input{
+    border:0 !important;
+    box-shadow:none !important;
+    width:auto !important;
+    min-height:0 !important;
+    padding:0 !important;
+    background:transparent !important;
+    font-size:7.5pt !important;
+  }
+
+  .payroll-sub{
+    font-size:6.5pt !important;
+  }
+
+  .payroll-status{
+    border:0 !important;
+    padding:0 !important;
+    background:transparent !important;
+    font-size:7pt !important;
+  }
+
+  .payroll-gross{
+    font-weight:900 !important;
+  }
+
+  .payroll-panel-header{
+    page-break-after:avoid;
+  }
+
+  .payroll-table thead{
+    display:table-header-group;
+  }
+
+  .payroll-table tbody tr{
+    page-break-inside:avoid;
+  }
+}
