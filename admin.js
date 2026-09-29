@@ -136,22 +136,22 @@ function getRoadMaterialBOM(project) {
       {
         description: 'Shouldering - Gravel',
         unit: 'CUBIC METER',
-        factor: 1.15,
+        factor: 0.23,
         defaultRate: 0,
         sameAs: 'Gravel',
         basis: 'SHOULDERING LENGTH',
         basisLength: shoulderBasis,
-        formula: 'SHOULDERING LENGTH × 1.15'
+        formula: 'SHOULDERING LENGTH × 0.23'
       },
       {
         description: 'Shouldering - Sand',
         unit: 'CUBIC METER',
-        factor: 0.58,
+        factor: 0.115,
         defaultRate: 0,
         sameAs: 'Sand',
         basis: 'SHOULDERING LENGTH',
         basisLength: shoulderBasis,
-        formula: 'SHOULDERING LENGTH × 0.58'
+        formula: 'SHOULDERING LENGTH × 0.115'
       },
       {
         description: 'Shouldering - Labor',
