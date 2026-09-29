@@ -1,0 +1,82 @@
+name: Implement Activity Delete
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  implement-delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add Activity Schedule delete action
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("project-schedule.js")
+          text = path.read_text(encoding="utf-8")
+
+          marker = "// AMANAH_ACTIVITY_DELETE_V1"
+          if marker not in text:
+              old_action = "const action='<button class=\"mini edit\" data-edit=\"'+esc(a.activity_id)+'\">✎ EDIT</button><button class=\"mini blue\" data-update=\"'+esc(a.activity_id)+'\">UPDATE</button>';"
+              new_action = "const action='<button class=\"mini edit\" data-edit=\"'+esc(a.activity_id)+'\">✎ EDIT</button><button class=\"mini blue\" data-update=\"'+esc(a.activity_id)+'\">UPDATE</button><button class=\"mini danger\" data-delete=\"'+esc(a.activity_id)+'\" style=\"background:#fee2e2;color:#b91c1c;border-color:#fecaca\">DELETE</button>';"
+              if old_action not in text:
+                  raise SystemExit("Expected Activity Schedule action markup was not found; stopping without changes.")
+              text = text.replace(old_action, new_action, 1)
+
+              old_bind = 'document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));'
+              new_bind = old_bind + '\n  document.querySelectorAll("[data-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteActivity(btn.dataset.delete)));'
+              if old_bind not in text:
+                  raise SystemExit("Expected Activity Schedule update binding was not found; stopping without changes.")
+              text = text.replace(old_bind, new_bind, 1)
+
+              anchor = "function changeCalendarMonth(delta){"
+              delete_fn = '''async function deleteActivity(activityId){
+  const activity=state.activities.find(a=>a.activity_id===activityId);
+  if(!activity)return;
+
+  const equipment=equipmentFor(activityId).map(e=>e.equipment_name).filter(Boolean);
+  const details=[
+    `Activity: ${activity.activity||"—"}`,
+    `Project: ${activity.project_name||selectedProjectName(activity.project_id)||"—"}`,
+    equipment.length?`Equipment schedule: ${equipment.join(", ")}`:"Equipment schedule: none"
+  ].join("\\n");
+
+  const confirmed=window.confirm(`DELETE ACTIVITY?\\n\\n${details}\\n\\nDeleting this activity will also delete its corresponding equipment schedule.\\n\\nThis action cannot be undone.`);
+  if(!confirmed)return;
+
+  clearMsg();
+  try{
+    const {error}=await supabaseClient.from("project_activities").delete().eq("activity_id",activityId);
+    if(error)throw error;
+    msg("ok",`Activity "${activity.activity||"Activity"}" deleted successfully. Its equipment schedule was also removed.`);
+    await loadActivities();
+  }catch(error){
+    console.error(error);
+    msg("err",`Unable to delete the activity: ${error.message||error}`);
+  }
+}
+
+'''
+              if anchor not in text:
+                  raise SystemExit("Expected calendar function anchor was not found; stopping without changes.")
+              text = text.replace(anchor, delete_fn + anchor, 1)
+              text = text.replace("function deleteActivity(activityId){", marker + "\nfunction deleteActivity(activityId){", 1)
+              path.write_text(text, encoding="utf-8")
+
+      - name: Commit implementation and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/implement-activity-delete.yml
+          git add project-schedule.js
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add activity schedule delete action"
+          git push
