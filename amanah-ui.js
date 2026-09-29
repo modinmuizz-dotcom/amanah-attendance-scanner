@@ -16,6 +16,7 @@
     ]},
     {section:'WORKFORCE',items:[
       ['attendance','Attendance','attendance.html','calendar'],
+      ['activitiesSite','Activities on Site','activity-on-site.html','activity'],
     ]},
     {section:'EQUIPMENT',items:[
       ['equipment','Equipment','admin.html','truck'],
@@ -48,7 +49,8 @@
     repair:'<path d="M4 19h5l10-10a2.8 2.8 0 0 0-4-4L5 15l-1 4z"/><path d="M14 6l4 4"/>',
     history:'<path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M16 3v4M8 3v4"/>',
     box:'<path d="M4 7h16v13H4z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M4 12h16"/>',
-    report:'<path d="M4 19V5M4 19h16"/><path d="M8 16v-3M12 16V8M16 16v-6"/>'
+    report:'<path d="M4 19V5M4 19h16"/><path d="M8 16v-3M12 16V8M16 16v-6"/>',
+    activity:'<path d="M4 19V5M4 19h16"/><path d="M6 15l4-4 3 2 5-6"/>'
   };
 
   function getCurrentKey(){
@@ -62,6 +64,7 @@
     if(file==='project-schedule.html') return 'schedule';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
+    if(file==='activity-on-site.html') return 'activitiesSite';
     if(file==='admin.html') return 'employees';
     return 'dashboard';
   }
@@ -71,7 +74,7 @@
 
     const style=document.createElement('link');
     style.rel='stylesheet';
-    style.href='amanah-ui.css?v=5';
+    style.href='amanah-ui.css?v=6';
     document.head.appendChild(style);
 
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
@@ -98,6 +101,12 @@
           title:'ATTENDANCE MANAGEMENT',
           desc:'View and monitor AMANAH attendance, working hours and fuel usage.',
           badge:'Attendance Control'
+        },
+        'activity-on-site.html':{
+          kicker:'WORKFORCE OPERATIONS',
+          title:'ACTIVITIES ON SITE',
+          desc:'Review the work activities completed by drivers and operators during site operations, including photo evidence submitted at TIME OUT.',
+          badge:'Site Activity Evidence'
         },
         'reports.html':{
           kicker:'REPORTING & ANALYTICS',
