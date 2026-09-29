@@ -1360,18 +1360,12 @@ function renderProjects() {
               EDIT
             </button>
 
-            ${
-              project.project_type === 'CONCRETING OF ROAD'
-                ? `
             <button
               class="small-button material-estimate-button"
               onclick="openMaterialEstimate('${encodeURIComponent(project.project_id)}')"
             >
               MATERIAL ESTIMATE
             </button>
-            `
-                : ''
-            }
 
             <button
               class="small-button delete-button"
@@ -1857,16 +1851,13 @@ function openMaterialEstimate(encodedId) {
 
   if (!project) return;
 
-  if (project.project_type !== 'CONCRETING OF ROAD') {
-    showMessage(
-      'globalMessage',
-      'BOM / Material Estimate is currently configured for CONCRETING OF ROAD projects. The material formulas for this project type must be defined before an estimate can be generated.',
-      'info'
-    );
-    return;
-  }
+  const isRoadProject =
+    project.project_type === 'CONCRETING OF ROAD';
 
-  const length = getRoadProjectLength(project);
+  const length =
+    isRoadProject
+      ? getRoadProjectLength(project)
+      : 0;
 
   state.materialEstimateProjectId = projectId;
 
@@ -1877,17 +1868,23 @@ function openMaterialEstimate(encodedId) {
     project.project_id || '—';
 
   document.getElementById('materialEstimateBasis').textContent =
-    Number(length || 0).toLocaleString(
-      'en-PH',
-      { maximumFractionDigits: 6 }
-    );
+    isRoadProject
+      ? Number(length || 0).toLocaleString(
+          'en-PH',
+          { maximumFractionDigits: 6 }
+        )
+      : 'MANUAL';
 
   const info = document.getElementById('materialEstimateInfo');
-  info.style.display = length > 0 ? 'block' : 'none';
-      info.textContent =
-    length > 0
-      ? 'The quantities below are generated from the saved Project Length. Labor is calculated at ₱356 per meter.'
-      : 'Project Length is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
+  info.style.display = 'block';
+  info.textContent =
+    isRoadProject
+      ? (
+        length > 0
+          ? 'Road quantities are generated from the saved Project Length. Total Cost is calculated automatically as QTY × RATE.'
+          : 'Project Length is not available. Complete the Road Engineering Details before generating the automatic road estimate.'
+      )
+      : 'Add the required materials or cost items. Total Cost is calculated automatically as QTY × RATE.';
 
   loadMaterialEstimateItems(project, length);
 }
@@ -1905,6 +1902,14 @@ async function loadMaterialEstimateItems(project, length) {
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
 
+  const isRoadProject =
+    project.project_type === 'CONCRETING OF ROAD';
+
+  const estimateType =
+    isRoadProject
+      ? 'ROAD'
+      : 'GENERAL';
+
   let existing = [];
 
   try {
@@ -1913,7 +1918,7 @@ async function loadMaterialEstimateItems(project, length) {
         .from('project_material_estimates')
         .select('estimate_id')
         .eq('project_id', project.project_id)
-        .eq('estimate_type', 'ROAD')
+        .eq('estimate_type', estimateType)
         .maybeSingle();
 
     if (error) throw error;
@@ -1930,7 +1935,10 @@ async function loadMaterialEstimateItems(project, length) {
       existing = items || [];
     }
 
-    const templates = getRoadMaterialBOM(project);
+    const templates =
+      isRoadProject
+        ? getRoadMaterialBOM(project)
+        : [];
     const standardDescriptions = new Set(
       templates.map(item => item.description)
     );
@@ -2290,15 +2298,20 @@ async function saveMaterialEstimate() {
 
   if (!project) return;
 
-  if (project.project_type !== 'CONCRETING OF ROAD') {
-    throw new Error(
-      'Material estimate formulas are currently configured for CONCRETING OF ROAD projects only.'
-    );
-  }
+  const isRoadProject =
+    project.project_type === 'CONCRETING OF ROAD';
 
-  const length = getRoadProjectLength(project);
+  const estimateType =
+    isRoadProject
+      ? 'ROAD'
+      : 'GENERAL';
 
-  if (!length) {
+  const length =
+    isRoadProject
+      ? getRoadProjectLength(project)
+      : 0;
+
+  if (isRoadProject && !length) {
     throw new Error(
       'Project Length is not available. Please complete the Road Engineering Details first.'
     );
@@ -2319,9 +2332,11 @@ async function saveMaterialEstimate() {
         .upsert(
           {
             project_id: projectId,
-            estimate_type: 'ROAD',
+            estimate_type: estimateType,
             basis_quantity: length,
-            basis_label: 'PROJECT LENGTH',
+            basis_label: isRoadProject
+              ? 'PROJECT LENGTH'
+              : 'MANUAL',
             updated_at: new Date().toISOString()
           },
           {
