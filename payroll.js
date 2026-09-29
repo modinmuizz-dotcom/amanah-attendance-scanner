@@ -158,6 +158,42 @@ function render(){
   updateSummary();
 }
 
+function updatePrintHeader(){
+  const start=document.getElementById('payrollStart')?.value || '—';
+  const end=document.getElementById('payrollEnd')?.value || '—';
+  const employeeSelect=document.getElementById('payrollEmployeeFilter');
+  const employeeText=employeeSelect?.value
+    ? (employeeSelect.options[employeeSelect.selectedIndex]?.textContent || '—')
+    : 'ALL EMPLOYEES';
+
+  const generated=new Date().toLocaleString([],{
+    year:'numeric',
+    month:'short',
+    day:'numeric',
+    hour:'numeric',
+    minute:'2-digit'
+  });
+
+  const periodEl=document.getElementById('printPayrollPeriod');
+  const employeeEl=document.getElementById('printPayrollEmployee');
+  const generatedEl=document.getElementById('printPayrollGenerated');
+
+  if(periodEl)periodEl.textContent=`${dateText(start)} – ${dateText(end)}`;
+  if(employeeEl)employeeEl.textContent=employeeText;
+  if(generatedEl)generatedEl.textContent=generated;
+}
+
+function printPayroll(){
+  if(!calculatedPeriod || !payrollRows.length){
+    showMessage('Please calculate the payroll before printing.','error');
+    return;
+  }
+
+  updatePrintHeader();
+  document.title='AMANAH Payroll Register';
+  window.print();
+}
+
 function updateSummary(){
   const employees=payrollRows.length;
   const workDays=payrollRows.reduce((sum,r)=>sum+(r.rateType==='DAILY'?r.fullDays+r.halfDays:0),0);
@@ -169,6 +205,7 @@ function updateSummary(){
   document.getElementById('payrollTruckerHours').textContent=truckerHours.toFixed(2);
   document.getElementById('payrollGross').textContent=money(gross);
   document.getElementById('savePayrollButton').disabled=!payrollRows.length||!calculatedPeriod;
+  document.getElementById('printPayrollButton').disabled=!payrollRows.length||!calculatedPeriod;
 }
 
 async function calculatePayroll(){
@@ -288,6 +325,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     calculatePayroll().catch(error=>showMessage(error.message||'Unable to calculate payroll.','error'));
   });
   document.getElementById('savePayrollButton').addEventListener('click',savePayroll);
+  document.getElementById('printPayrollButton').addEventListener('click',printPayroll);
   document.getElementById('refreshPayrollHistoryButton').addEventListener('click',loadPayrollHistory);
   document.getElementById('payrollEmployeeFilter').addEventListener('change',()=>{
     calculatedPeriod=null;
