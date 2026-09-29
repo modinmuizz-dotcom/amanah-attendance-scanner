@@ -36,6 +36,39 @@ const PROJECT_TYPES = [
   'COVERED COURT'
 ];
 
+const ROAD_MATERIAL_BOM = [
+  {
+    description: 'Cement',
+    unit: 'TUNNER BAG',
+    factor: 0.34,
+    formula: 'PAVEMENT AREA × 0.34'
+  },
+  {
+    description: 'Rebar - Longitudinal Section',
+    unit: 'REBAR',
+    factor: 0.17,
+    formula: 'PAVEMENT AREA × 0.17'
+  },
+  {
+    description: 'Rebar - Transverse Section',
+    unit: 'REBAR',
+    factor: 0.14,
+    formula: 'PAVEMENT AREA × 0.14'
+  },
+  {
+    description: 'Gravel',
+    unit: 'CUBIC METER',
+    factor: 1.15,
+    formula: 'PAVEMENT AREA × 1.15'
+  },
+  {
+    description: 'Sand',
+    unit: 'CUBIC METER',
+    factor: 0.58,
+    formula: 'PAVEMENT AREA × 0.58'
+  }
+];
+
 
 const supabaseClient =
   window.supabase.createClient(
@@ -63,7 +96,9 @@ const state = {
 
   editId: null,
 
-  pendingProjectModal: null
+  pendingProjectModal: null,
+
+  materialEstimateProjectId: null
 
 };
 
@@ -881,7 +916,7 @@ function renderProjects() {
     body.innerHTML = `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="empty-row"
         >
           No projects found.
@@ -899,60 +934,47 @@ function renderProjects() {
       <tr>
 
         <td>
-          ${escapeHtml(
-            project.project_id
-          )}
+          ${escapeHtml(project.project_id)}
         </td>
 
         <td>
-          ${escapeHtml(
-            project.project_name
-          )}
+          ${escapeHtml(project.project_name)}
         </td>
 
         <td>
-          ${escapeHtml(
-            project.project_type || 'NOT CLASSIFIED'
-          )}
+          ${escapeHtml(project.project_type || 'NOT CLASSIFIED')}
         </td>
 
         <td>
-          ${escapeHtml(
-            project.client
-          )}
+          ${escapeHtml(project.client)}
         </td>
 
         <td>
-          ${escapeHtml(
-            project.location
-          )}
+          ${escapeHtml(project.location)}
         </td>
 
-        <td class="${
-          project.status === 'ACTIVE'
-            ? 'status-active'
-            : 'status-inactive'
-        }">
-          ${escapeHtml(
-            project.status
-          )}
+        <td class="${project.status === 'ACTIVE'
+          ? 'status-active'
+          : 'status-inactive'}">
+          ${escapeHtml(project.status)}
         </td>
 
         <td>
-
           <div class="action-buttons">
-
             <button
               class="small-button edit-button"
-              onclick="editProject('${encodeURIComponent(
-                project.project_id
-              )}')"
+              onclick="editProject('${encodeURIComponent(project.project_id)}')"
             >
               EDIT
             </button>
 
+            <button
+              class="small-button material-estimate-button"
+              onclick="openMaterialEstimate('${encodeURIComponent(project.project_id)}')"
+            >
+              MATERIAL ESTIMATE
+            </button>
           </div>
-
         </td>
 
       </tr>
@@ -1397,6 +1419,417 @@ function openEquipmentModal(
 
 }
 
+
+/* =========================================================
+   BOM / MATERIAL ESTIMATE
+   ========================================================= */
+
+function getRoadPavementArea(project) {
+  const details = project?.project_details || {};
+  const stored = Number(details.road_pavement_area);
+  if (Number.isFinite(stored) && stored > 0) {
+    return stored;
+  }
+
+  const length = Number(details.road_length);
+  const width = Number(details.road_width);
+  const thickness = Number(details.road_thickness);
+
+  if (
+    Number.isFinite(length) &&
+    Number.isFinite(width) &&
+    Number.isFinite(thickness)
+  ) {
+    return length * width * thickness;
+  }
+
+  return 0;
+}
+
+function materialEstimateMoney(value) {
+  return '₱' + Number(value || 0).toLocaleString(
+    'en-PH',
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }
+  );
+}
+
+function openMaterialEstimate(encodedId) {
+  const projectId = decodeURIComponent(encodedId);
+  const project =
+    state.projects.find(
+      item => item.project_id === projectId
+    );
+
+  if (!project) return;
+
+  if (project.project_type !== 'CONCRETING OF ROAD') {
+    showMessage(
+      'globalMessage',
+      'BOM / Material Estimate is currently configured for CONCRETING OF ROAD projects. The material formulas for this project type must be defined before an estimate can be generated.',
+      'info'
+    );
+    return;
+  }
+
+  const area = getRoadPavementArea(project);
+
+  state.materialEstimateProjectId = projectId;
+
+  document.getElementById('materialEstimateProjectName').textContent =
+    project.project_name || '—';
+
+  document.getElementById('materialEstimateProjectId').textContent =
+    project.project_id || '—';
+
+  document.getElementById('materialEstimateBasis').textContent =
+    Number(area || 0).toLocaleString(
+      'en-PH',
+      { maximumFractionDigits: 6 }
+    );
+
+  const info = document.getElementById('materialEstimateInfo');
+  info.style.display = area > 0 ? 'block' : 'none';
+  info.textContent =
+    area > 0
+      ? 'The quantities below are generated from the saved Pavement Area using the AMANAH road material consumption factors.'
+      : 'Pavement Area is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
+
+  loadMaterialEstimateItems(project, area);
+}
+
+async function loadMaterialEstimateItems(project, area) {
+  const body = document.getElementById('materialEstimateBody');
+  const modal = document.getElementById('materialEstimateModal');
+
+  body.innerHTML = `
+    <tr>
+      <td colspan="5" class="empty-row">Loading material estimate...</td>
+    </tr>
+  `;
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+
+  let existing = [];
+
+  try {
+    const { data, error } =
+      await supabaseClient
+        .from('project_material_estimates')
+        .select('estimate_id')
+        .eq('project_id', project.project_id)
+        .eq('estimate_type', 'ROAD')
+        .maybeSingle();
+
+    if (error) throw error;
+
+    if (data?.estimate_id) {
+      const { data: items, error: itemError } =
+        await supabaseClient
+          .from('project_material_estimate_items')
+          .select('description,unit,qty,rate,total_cost,consumption_factor,formula')
+          .eq('estimate_id', data.estimate_id)
+          .order('created_at');
+
+      if (itemError) throw itemError;
+      existing = items || [];
+    }
+
+    const rows = ROAD_MATERIAL_BOM.map(template => {
+      const found =
+        existing.find(
+          item => item.description === template.description
+        );
+
+      const qty =
+        Number.isFinite(Number(found?.qty))
+          ? Number(found.qty)
+          : area * template.factor;
+
+      const rate =
+        Number.isFinite(Number(found?.rate))
+          ? Number(found.rate)
+          : 0;
+
+      return {
+        ...template,
+        unit: found?.unit || template.unit,
+        qty,
+        rate,
+        total_cost: qty * rate
+      };
+    });
+
+    body.innerHTML =
+      rows.map((row, index) => `
+        <tr>
+          <td>
+            <strong>${escapeHtml(row.description)}</strong>
+            <div class="project-formula">Formula: ${escapeHtml(row.formula)}</div>
+            <input type="hidden" data-material-description data-index="${index}" value="${escapeHtml(row.description)}">
+            <input type="hidden" data-material-factor data-index="${index}" value="${row.factor}">
+            <input type="hidden" data-material-formula data-index="${index}" value="${escapeHtml(row.formula)}">
+          </td>
+
+          <td>
+            <input
+              class="material-estimate-unit"
+              data-material-unit
+              data-index="${index}"
+              value="${escapeHtml(row.unit)}"
+              maxlength="40"
+            >
+          </td>
+
+          <td class="material-estimate-qty">
+            <span data-material-qty data-index="${index}">
+              ${Number(row.qty || 0).toLocaleString('en-PH',{maximumFractionDigits:6})}
+            </span>
+          </td>
+
+          <td>
+            <input
+              class="material-estimate-rate"
+              data-material-rate
+              data-index="${index}"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(row.rate || 0).toFixed(2)}"
+              placeholder="0.00"
+            >
+          </td>
+
+          <td class="material-estimate-total" data-material-total data-index="${index}">
+            ${materialEstimateMoney(row.qty * row.rate)}
+          </td>
+        </tr>
+      `).join('');
+
+    document
+      .querySelectorAll('[data-material-rate]')
+      .forEach(input =>
+        input.addEventListener(
+          'input',
+          updateMaterialEstimateTotals
+        )
+      );
+
+    updateMaterialEstimateTotals();
+
+  } catch (error) {
+    body.innerHTML =
+      `
+        <tr>
+          <td colspan="5" class="empty-row">
+            Unable to load material estimate: ${escapeHtml(error.message)}
+          </td>
+        </tr>
+      `;
+  }
+}
+
+function updateMaterialEstimateTotals() {
+  let grandTotal = 0;
+
+  document
+    .querySelectorAll('[data-material-rate]')
+    .forEach(input => {
+      const index = input.dataset.index;
+      const qty =
+        Number(
+          document.querySelector(
+            `[data-material-qty="${index}"]`
+          )?.textContent.replaceAll(',','')
+        ) || 0;
+      const rate = Number(input.value || 0);
+      const total = qty * rate;
+      grandTotal += total;
+
+      const totalCell =
+        document.querySelector(
+          `[data-material-total="${index}"]`
+        );
+
+      if (totalCell) {
+        totalCell.textContent =
+          materialEstimateMoney(total);
+      }
+    });
+
+  document.getElementById('materialEstimateGrandTotal').textContent =
+    materialEstimateMoney(grandTotal);
+}
+
+async function saveMaterialEstimate() {
+  const projectId = state.materialEstimateProjectId;
+
+  if (!projectId) return;
+
+  const project =
+    state.projects.find(
+      item => item.project_id === projectId
+    );
+
+  if (!project) return;
+
+  if (project.project_type !== 'CONCRETING OF ROAD') {
+    throw new Error(
+      'Material estimate formulas are currently configured for CONCRETING OF ROAD projects only.'
+    );
+  }
+
+  const area = getRoadPavementArea(project);
+
+  if (!area) {
+    throw new Error(
+      'Pavement Area is not available. Please complete the Road Engineering Details first.'
+    );
+  }
+
+  const button =
+    document.getElementById(
+      'saveMaterialEstimateButton'
+    );
+
+  button.disabled = true;
+  button.textContent = 'SAVING...';
+
+  try {
+    const { data: estimate, error: estimateError } =
+      await supabaseClient
+        .from('project_material_estimates')
+        .upsert(
+          {
+            project_id: projectId,
+            estimate_type: 'ROAD',
+            basis_quantity: area,
+            basis_label: 'PAVEMENT AREA',
+            updated_at: new Date().toISOString()
+          },
+          {
+            onConflict: 'project_id,estimate_type'
+          }
+        )
+        .select('estimate_id')
+        .single();
+
+    if (estimateError) {
+      throw estimateError;
+    }
+
+    const rows = [];
+
+    document
+      .querySelectorAll('[data-material-rate]')
+      .forEach(input => {
+        const index = input.dataset.index;
+        const description =
+          document.querySelector(
+            `[data-material-description][data-index="${index}"]`
+          )?.value || '';
+
+        const unit =
+          document.querySelector(
+            `[data-material-unit][data-index="${index}"]`
+          )?.value.trim() || '';
+
+        const factor =
+          Number(
+            document.querySelector(
+              `[data-material-factor][data-index="${index}"]`
+            )?.value
+          ) || 0;
+
+        const formula =
+          document.querySelector(
+            `[data-material-formula][data-index="${index}"]`
+          )?.value || '';
+
+        const qty =
+          Number(
+            document.querySelector(
+              `[data-material-qty][data-index="${index}"]`
+            )?.textContent.replaceAll(',','')
+          ) || 0;
+
+        const rate = Number(input.value || 0);
+
+        rows.push({
+          estimate_id: estimate.estimate_id,
+          description,
+          unit,
+          consumption_factor: factor,
+          qty,
+          rate,
+          total_cost: qty * rate,
+          formula,
+          updated_at: new Date().toISOString()
+        });
+      });
+
+    const { error: deleteError } =
+      await supabaseClient
+        .from('project_material_estimate_items')
+        .delete()
+        .eq('estimate_id', estimate.estimate_id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    const { error: insertError } =
+      await supabaseClient
+        .from('project_material_estimate_items')
+        .insert(rows);
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    closeMaterialEstimate();
+
+    showMessage(
+      'globalMessage',
+      'BOM / Material Estimate saved successfully for ' +
+        project.project_name +
+        '.',
+      'success'
+    );
+
+  } catch (error) {
+
+    showMessage(
+      'globalMessage',
+      error.message ||
+        'Unable to save material estimate.',
+      'error'
+    );
+
+  } finally {
+
+    button.disabled = false;
+    button.textContent = 'SAVE MATERIAL ESTIMATE';
+
+  }
+}
+
+function closeMaterialEstimate() {
+  state.materialEstimateProjectId = null;
+
+  const modal =
+    document.getElementById(
+      'materialEstimateModal'
+    );
+
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
 
 /* =========================================================
    PROJECT FORM
@@ -2404,6 +2837,46 @@ function setupEvents() {
     .addEventListener(
       'input',
       renderProjects
+    );
+
+  document
+    .getElementById(
+      'closeMaterialEstimateButton'
+    )
+    .addEventListener(
+      'click',
+      closeMaterialEstimate
+    );
+
+  document
+    .getElementById(
+      'cancelMaterialEstimateButton'
+    )
+    .addEventListener(
+      'click',
+      closeMaterialEstimate
+    );
+
+  document
+    .getElementById(
+      'saveMaterialEstimateButton'
+    )
+    .addEventListener(
+      'click',
+      saveMaterialEstimate
+    );
+
+  document
+    .getElementById(
+      'materialEstimateModal'
+    )
+    .addEventListener(
+      'click',
+      event => {
+        if (event.target.id === 'materialEstimateModal') {
+          closeMaterialEstimate();
+        }
+      }
     );
 
   document
