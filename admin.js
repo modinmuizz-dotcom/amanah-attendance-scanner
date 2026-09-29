@@ -41,31 +41,31 @@ const ROAD_MATERIAL_BOM = [
     description: 'Cement',
     unit: 'TUNNER BAG',
     factor: 0.34,
-    formula: 'PAVEMENT AREA × 0.34'
+    formula: 'PROJECT LENGTH × 0.34'
   },
   {
     description: 'Rebar - Longitudinal Section',
     unit: 'REBAR',
     factor: 0.17,
-    formula: 'PAVEMENT AREA × 0.17'
+    formula: 'PROJECT LENGTH × 0.17'
   },
   {
     description: 'Rebar - Transverse Section',
     unit: 'REBAR',
     factor: 0.14,
-    formula: 'PAVEMENT AREA × 0.14'
+    formula: 'PROJECT LENGTH × 0.14'
   },
   {
     description: 'Gravel',
     unit: 'CUBIC METER',
     factor: 1.15,
-    formula: 'PAVEMENT AREA × 1.15'
+    formula: 'PROJECT LENGTH × 1.15'
   },
   {
     description: 'Sand',
     unit: 'CUBIC METER',
     factor: 0.58,
-    formula: 'PAVEMENT AREA × 0.58'
+    formula: 'PROJECT LENGTH × 0.58'
   }
 ];
 
@@ -1424,26 +1424,13 @@ function openEquipmentModal(
    BOM / MATERIAL ESTIMATE
    ========================================================= */
 
-function getRoadPavementArea(project) {
+function getRoadProjectLength(project) {
   const details = project?.project_details || {};
-  const stored = Number(details.road_pavement_area);
-  if (Number.isFinite(stored) && stored > 0) {
-    return stored;
-  }
-
   const length = Number(details.road_length);
-  const width = Number(details.road_width);
-  const thickness = Number(details.road_thickness);
 
-  if (
-    Number.isFinite(length) &&
-    Number.isFinite(width) &&
-    Number.isFinite(thickness)
-  ) {
-    return length * width * thickness;
-  }
-
-  return 0;
+  return Number.isFinite(length) && length > 0
+    ? length
+    : 0;
 }
 
 function materialEstimateMoney(value) {
@@ -1474,7 +1461,7 @@ function openMaterialEstimate(encodedId) {
     return;
   }
 
-  const area = getRoadPavementArea(project);
+  const length = getRoadProjectLength(project);
 
   state.materialEstimateProjectId = projectId;
 
@@ -1485,15 +1472,15 @@ function openMaterialEstimate(encodedId) {
     project.project_id || '—';
 
   document.getElementById('materialEstimateBasis').textContent =
-    Number(area || 0).toLocaleString(
+    Number(length || 0).toLocaleString(
       'en-PH',
       { maximumFractionDigits: 6 }
     );
 
   const info = document.getElementById('materialEstimateInfo');
-  info.style.display = area > 0 ? 'block' : 'none';
+  info.style.display = length > 0 ? 'block' : 'none';
   info.textContent =
-    area > 0
+    length > 0
       ? 'The quantities below are generated from the saved Pavement Area using the AMANAH road material consumption factors.'
       : 'Pavement Area is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
 
@@ -1547,7 +1534,7 @@ async function loadMaterialEstimateItems(project, area) {
       const qty =
         Number.isFinite(Number(found?.qty))
           ? Number(found.qty)
-          : area * template.factor;
+          : length * template.factor;
 
       const rate =
         Number.isFinite(Number(found?.rate))
@@ -1682,11 +1669,11 @@ async function saveMaterialEstimate() {
     );
   }
 
-  const area = getRoadPavementArea(project);
+  const length = getRoadProjectLength(project);
 
-  if (!area) {
+  if (!length) {
     throw new Error(
-      'Pavement Area is not available. Please complete the Road Engineering Details first.'
+      'Project Length is not available. Please complete the Road Engineering Details first.'
     );
   }
 
@@ -1707,7 +1694,7 @@ async function saveMaterialEstimate() {
             project_id: projectId,
             estimate_type: 'ROAD',
             basis_quantity: area,
-            basis_label: 'PAVEMENT AREA',
+            basis_label: 'PROJECT LENGTH',
             updated_at: new Date().toISOString()
           },
           {
