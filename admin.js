@@ -1968,7 +1968,7 @@ function openEquipmentModal(
       ${selectField(
         'Status',
         'status',
-        ['ACTIVE', 'INACTIVE'],
+        ['ACTIVE', 'MAINTENANCE', 'INACTIVE'],
         values.status || 'ACTIVE'
       )}
 
