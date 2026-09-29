@@ -1,0 +1,65 @@
+name: Patch Activity Delete
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-activity-delete.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch activity schedule
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('project-schedule.js')
+          s=p.read_text()
+          old='''const action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button>';'''
+          new='''const action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';'''
+          if old not in s: raise SystemExit('activity action target not found')
+          s=s.replace(old,new,1)
+          marker='''document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));'''
+          insert='''document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
+  document.querySelectorAll("[data-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteActivity(btn.dataset.delete)));'''
+          if marker not in s: raise SystemExit('activity listener target not found')
+          s=s.replace(marker,insert,1)
+          anchor='''function changeCalendarMonth(delta){'''
+          fn='''async function deleteActivity(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  const name=a.activity||"Activity";
+  const equipment=equipmentFor(id).map(e=>e.equipment_name).join(", ");
+  const details=equipment?`\\n\\nEquipment schedule that will also be deleted:\\n${equipment}`:"";
+  if(!confirm(`DELETE ACTIVITY?\\n\\n${name}${details}\\n\\nThis action cannot be undone.`))return;
+  clearMsg();
+  const btn=document.querySelector(`[data-delete="${CSS.escape(id)}"]`);
+  const old=btn?.textContent||"DELETE";
+  if(btn){btn.disabled=true;btn.textContent="DELETING...";}
+  try{
+    const {error}=await supabaseClient.from("project_activities").delete().eq("activity_id",id);
+    if(error)throw error;
+    msg("ok",`Activity "${name}" deleted successfully. Its corresponding equipment schedule was also deleted.`);
+    await loadActivities();
+  }catch(e){
+    console.error(e);
+    msg("err","Could not delete activity: "+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old;}
+  }
+}
+
+'''+anchor
+          if anchor not in s: raise SystemExit('calendar anchor not found')
+          s=s.replace(anchor,fn,1)
+          p.write_text(s)
+          PY
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add project-schedule.js
+          git rm .github/workflows/patch-activity-delete.yml
+          git commit -m 'Add activity delete with equipment schedule cleanup'
+          git push
