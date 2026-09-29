@@ -135,15 +135,31 @@ async function loadActivitySiteData(){
   }
 }
 
+const STANDARD_ACTIVITY_TYPES = [
+  'HAULING',
+  'DELIVER',
+  'TRIP',
+  'LOADS',
+  'CLEARING',
+  'SLOPE',
+  'CLEARING AND HAULING',
+  'ROAD REPAIR',
+  'BATCHING'
+];
+
 function populateActivityCategories(){
   const select=document.getElementById('activityCategory');
   const current=select.value;
-  const values=[...new Set(
+
+  const recordedValues=
     allActivityRecords
-      .map(r=>r.activity_category)
-      .filter(Boolean)
-      .sort((a,b)=>String(a).localeCompare(String(b)))
-  )];
+      .map(r=>String(r.activity_category || '').trim())
+      .filter(Boolean);
+
+  const values=[...new Set([
+    ...STANDARD_ACTIVITY_TYPES,
+    ...recordedValues
+  ])].sort((a,b)=>a.localeCompare(b));
 
   select.innerHTML=
     '<option value="">ALL ACTIVITIES</option>'+
