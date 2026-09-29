@@ -1630,14 +1630,17 @@ async function loadMaterialEstimateItems(project, length) {
       existing = items || [];
     }
 
-    const rows = getRoadMaterialBOM(project).map(template => {
+    const templates = getRoadMaterialBOM(project);
+    const standardDescriptions = new Set(
+      templates.map(item => item.description)
+    );
+
+    const rows = templates.map(template => {
       const found =
         existing.find(
           item => item.description === template.description
         );
 
-      // Quantity always recalculates from the CURRENT project basis.
-      // Saved estimates supply the previous rate only.
       const basisLength =
         Number.isFinite(Number(template.basisLength))
           ? Number(template.basisLength)
@@ -1669,67 +1672,30 @@ async function loadMaterialEstimateItems(project, length) {
         unit: found?.unit || template.unit,
         qty,
         rate,
-        total_cost: qty * rate
+        total_cost: qty * rate,
+        custom: false
       };
     });
 
-    body.innerHTML =
-      rows.map((row, index) => `
-        <tr>
-          <td>
-            <strong>${escapeHtml(row.description)}</strong>
-            <div class="project-formula">Formula: ${escapeHtml(row.formula)}</div>
-            <input type="hidden" data-material-description data-index="${index}" value="${escapeHtml(row.description)}">
-            <input type="hidden" data-material-factor data-index="${index}" value="${row.factor}">
-            <input type="hidden" data-material-formula data-index="${index}" value="${escapeHtml(row.formula)}">
-          </td>
+    // Preserve any user-created descriptions saved previously.
+    existing
+      .filter(item => !standardDescriptions.has(item.description))
+      .forEach(item => {
+        const qty = Number(item.qty || 0);
+        const rate = Number(item.rate || 0);
 
-          <td>
-            <input
-              class="material-estimate-unit"
-              data-material-unit
-              data-index="${index}"
-              value="${escapeHtml(row.unit)}"
-              maxlength="40"
-            >
-          </td>
+        rows.push({
+          description: item.description || 'Custom Description',
+          unit: item.unit || '',
+          qty: Number.isFinite(qty) ? qty : 0,
+          rate: Number.isFinite(rate) ? rate : 0,
+          factor: Number(item.consumption_factor || 0),
+          formula: item.formula || 'MANUAL ENTRY',
+          custom: true
+        });
+      });
 
-          <td class="material-estimate-qty">
-            <span data-material-qty data-index="${index}">
-              ${Number(row.qty || 0).toLocaleString('en-PH',{maximumFractionDigits:6})}
-            </span>
-          </td>
-
-          <td>
-            <input
-              class="material-estimate-rate"
-              data-material-rate
-              data-index="${index}"
-              type="number"
-              min="0"
-              step="0.01"
-              value="${Number(row.rate || 0).toFixed(2)}"
-              placeholder="0.00"
-            >
-          </td>
-
-          <td class="material-estimate-total" data-material-total data-index="${index}">
-            ${materialEstimateMoney(row.qty * row.rate)}
-          </td>
-        </tr>
-      `).join('');
-
-    document
-      .querySelectorAll('[data-material-rate]')
-      .forEach(input =>
-        input.addEventListener(
-          'input',
-          updateMaterialEstimateTotals
-        )
-      );
-
-    updateMaterialEstimateTotals();
-
+    renderMaterialEstimateRows(rows);
   } catch (error) {
     body.innerHTML =
       `
@@ -1742,6 +1708,232 @@ async function loadMaterialEstimateItems(project, length) {
   }
 }
 
+function renderMaterialEstimateRows(rows) {
+  const body = document.getElementById('materialEstimateBody');
+
+  body.innerHTML =
+    rows.map((row, index) => {
+      const custom = row.custom === true;
+
+      const descriptionCell = custom
+        ? `
+          <div class="material-estimate-custom-wrap">
+            <input
+              class="material-estimate-description"
+              data-material-description
+              data-material-custom="true"
+              data-index="${index}"
+              value="${escapeHtml(row.description)}"
+              placeholder="Enter description"
+              maxlength="120"
+            >
+          </div>
+        `
+        : `
+          <strong>${escapeHtml(row.description)}</strong>
+        `;
+
+      const qtyCell = custom
+        ? `
+          <input
+            class="material-estimate-qty-input"
+            data-material-qty
+            data-index="${index}"
+            data-material-custom="true"
+            type="text"
+            inputmode="decimal"
+            value="${Number(row.qty || 0)}"
+            placeholder="0"
+          >
+        `
+        : `
+          <span data-material-qty data-index="${index}">
+            ${Number(row.qty || 0).toLocaleString('en-PH',{maximumFractionDigits:6})}
+          </span>
+        `;
+
+      return `
+        <tr data-material-row data-index="${index}" data-material-custom-row="${custom ? 'true' : 'false'}">
+          <td>
+            ${descriptionCell}
+            <div class="project-formula">Formula: ${escapeHtml(row.formula || 'MANUAL ENTRY')}</div>
+            <input type="hidden" data-material-factor data-index="${index}" value="${Number(row.factor || 0)}">
+            <input type="hidden" data-material-formula data-index="${index}" value="${escapeHtml(row.formula || 'MANUAL ENTRY')}">
+          </td>
+
+          <td>
+            <input
+              class="material-estimate-unit"
+              data-material-unit
+              data-index="${index}"
+              value="${escapeHtml(row.unit)}"
+              maxlength="40"
+              placeholder="Unit"
+            >
+          </td>
+
+          <td class="material-estimate-qty">
+            ${qtyCell}
+          </td>
+
+          <td>
+            <input
+              class="material-estimate-rate"
+              data-material-rate
+              data-index="${index}"
+              type="text"
+              inputmode="decimal"
+              value="${Number(row.rate || 0).toFixed(2)}"
+              placeholder="0.00"
+            >
+          </td>
+
+          <td class="material-estimate-total" data-material-total data-index="${index}">
+            ${materialEstimateMoney(row.qty * row.rate)}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  bindMaterialEstimateInputs();
+  updateMaterialEstimateTotals();
+}
+
+function bindMaterialEstimateInputs() {
+  document
+    .querySelectorAll('[data-material-rate], [data-material-qty][data-material-custom="true"]')
+    .forEach(input => {
+      if (input.dataset.materialBound === 'true') return;
+
+      input.dataset.materialBound = 'true';
+
+      input.addEventListener(
+        'input',
+        () => {
+          normalizeMaterialDecimal(input);
+          updateMaterialEstimateTotals();
+        }
+      );
+    });
+}
+
+function normalizeMaterialDecimal(input) {
+  if (!input) return;
+
+  let value =
+    String(input.value || '')
+      .replace(/[^0-9.]/g, '');
+
+  const dot = value.indexOf('.');
+
+  if (dot >= 0) {
+    value =
+      value.slice(0, dot + 1) +
+      value.slice(dot + 1).replace(/\\./g, '');
+  }
+
+  input.value = value;
+}
+
+function addMaterialEstimateDescription() {
+  const body = document.getElementById('materialEstimateBody');
+
+  const currentRows =
+    body.querySelectorAll('[data-material-row]').length;
+
+  const row = {
+    description: '',
+    unit: '',
+    qty: 0,
+    rate: 0,
+    factor: 0,
+    formula: 'MANUAL ENTRY',
+    custom: true
+  };
+
+  const wrapper =
+    document.createElement('div');
+
+  wrapper.innerHTML = `
+    <table style="display:none"><tbody>
+      <tr></tr>
+    </tbody></table>
+  `;
+
+  const nextIndex = currentRows;
+
+  const tr =
+    document.createElement('tr');
+
+  tr.setAttribute('data-material-row', '');
+  tr.setAttribute('data-index', nextIndex);
+  tr.setAttribute('data-material-custom-row', 'true');
+
+  tr.innerHTML = `
+    <td>
+      <input
+        class="material-estimate-description"
+        data-material-description
+        data-material-custom="true"
+        data-index="${nextIndex}"
+        value=""
+        placeholder="Enter description"
+        maxlength="120"
+      >
+      <div class="project-formula">Formula: MANUAL ENTRY</div>
+      <input type="hidden" data-material-factor data-index="${nextIndex}" value="0">
+      <input type="hidden" data-material-formula data-index="${nextIndex}" value="MANUAL ENTRY">
+    </td>
+
+    <td>
+      <input
+        class="material-estimate-unit"
+        data-material-unit
+        data-index="${nextIndex}"
+        value=""
+        maxlength="40"
+        placeholder="Unit"
+      >
+    </td>
+
+    <td class="material-estimate-qty">
+      <input
+        class="material-estimate-qty-input"
+        data-material-qty
+        data-material-custom="true"
+        data-index="${nextIndex}"
+        type="text"
+        inputmode="decimal"
+        value="0"
+        placeholder="0"
+      >
+    </td>
+
+    <td>
+      <input
+        class="material-estimate-rate"
+        data-material-rate
+        data-index="${nextIndex}"
+        type="text"
+        inputmode="decimal"
+        value="0.00"
+        placeholder="0.00"
+      >
+    </td>
+
+    <td class="material-estimate-total" data-material-total data-index="${nextIndex}">
+      ₱0.00
+    </td>
+  `;
+
+  body.appendChild(tr);
+
+  bindMaterialEstimateInputs();
+  updateMaterialEstimateTotals();
+
+  tr.querySelector('[data-material-description]')?.focus();
+}
+
 function updateMaterialEstimateTotals() {
   let grandTotal = 0;
 
@@ -1749,14 +1941,25 @@ function updateMaterialEstimateTotals() {
     .querySelectorAll('[data-material-rate]')
     .forEach(input => {
       const index = input.dataset.index;
+
+      const qtyElement =
+        document.querySelector(
+          `[data-material-qty][data-index="${index}"]`
+        );
+
       const qty =
-        Number(
-          document.querySelector(
-            `[data-material-qty][data-index="${index}"]`
-          )?.textContent.replaceAll(',','')
-        ) || 0;
-      const rate = Number(input.value || 0);
+        qtyElement?.tagName === 'INPUT'
+          ? Number(qtyElement.value || 0)
+          : Number(
+              qtyElement?.textContent
+                .replaceAll(',','')
+            ) || 0;
+
+      const rate =
+        Number(input.value || 0);
+
       const total = qty * rate;
+
       grandTotal += total;
 
       const totalCell =
@@ -1773,6 +1976,7 @@ function updateMaterialEstimateTotals() {
   document.getElementById('materialEstimateGrandTotal').textContent =
     materialEstimateMoney(grandTotal);
 }
+
 
 async function saveMaterialEstimate() {
   const projectId = state.materialEstimateProjectId;
@@ -1834,39 +2038,50 @@ async function saveMaterialEstimate() {
     const rows = [];
 
     document
-      .querySelectorAll('[data-material-rate]')
-      .forEach(input => {
-        const index = input.dataset.index;
+      .querySelectorAll('[data-material-row]')
+      .forEach(row => {
+        const index = row.dataset.index;
+
+        const descriptionEl =
+          row.querySelector('[data-material-description]');
+
         const description =
-          document.querySelector(
-            `[data-material-description][data-index="${index}"]`
-          )?.value || '';
+          (descriptionEl?.value || '')
+            .trim();
+
+        if (!description) {
+          return;
+        }
 
         const unit =
-          document.querySelector(
-            `[data-material-unit][data-index="${index}"]`
-          )?.value.trim() || '';
+          row.querySelector('[data-material-unit]')
+            ?.value.trim() || '';
 
         const factor =
           Number(
-            document.querySelector(
-              `[data-material-factor][data-index="${index}"]`
-            )?.value
+            row.querySelector('[data-material-factor]')
+              ?.value
           ) || 0;
 
         const formula =
-          document.querySelector(
-            `[data-material-formula][data-index="${index}"]`
-          )?.value || '';
+          row.querySelector('[data-material-formula]')
+            ?.value || 'MANUAL ENTRY';
+
+        const qtyEl =
+          row.querySelector('[data-material-qty]');
 
         const qty =
-          Number(
-            document.querySelector(
-              `[data-material-qty][data-index="${index}"]`
-            )?.textContent.replaceAll(',','')
-          ) || 0;
+          qtyEl?.tagName === 'INPUT'
+            ? Number(qtyEl.value || 0)
+            : Number(
+                qtyEl?.textContent.replaceAll(',','')
+              ) || 0;
 
-        const rate = Number(input.value || 0);
+        const rate =
+          Number(
+            row.querySelector('[data-material-rate]')
+              ?.value
+          ) || 0;
 
         rows.push({
           estimate_id: estimate.estimate_id,
@@ -1880,6 +2095,31 @@ async function saveMaterialEstimate() {
           updated_at: new Date().toISOString()
         });
       });
+
+    const customRows =
+      document.querySelectorAll(
+        '[data-material-custom="true"]'
+      );
+
+    const invalidCustomRow =
+      Array.from(
+        document.querySelectorAll(
+          '[data-material-custom-row="true"]'
+        )
+      ).some(row => {
+        const description =
+          row.querySelector(
+            '[data-material-description]'
+          )?.value.trim() || '';
+
+        return !description;
+      });
+
+    if (invalidCustomRow) {
+      throw new Error(
+        'Please enter a description for every custom material row before saving.'
+      );
+    }
 
     const { error: deleteError } =
       await supabaseClient
@@ -1925,6 +2165,37 @@ async function saveMaterialEstimate() {
     button.textContent = 'SAVE MATERIAL ESTIMATE';
 
   }
+}
+
+
+function printMaterialEstimate() {
+  const modal =
+    document.getElementById(
+      'materialEstimateModal'
+    );
+
+  if (!modal) return;
+
+  document.body.classList.add(
+    'printing-material-estimate'
+  );
+
+  const cleanup = () => {
+    document.body.classList.remove(
+      'printing-material-estimate'
+    );
+    window.removeEventListener(
+      'afterprint',
+      cleanup
+    );
+  };
+
+  window.addEventListener(
+    'afterprint',
+    cleanup
+  );
+
+  window.print();
 }
 
 function closeMaterialEstimate() {
@@ -3089,6 +3360,24 @@ function setupEvents() {
     .addEventListener(
       'input',
       renderProjects
+    );
+
+  document
+    .getElementById(
+      'addMaterialDescriptionButton'
+    )
+    .addEventListener(
+      'click',
+      addMaterialEstimateDescription
+    );
+
+  document
+    .getElementById(
+      'printMaterialEstimateButton'
+    )
+    .addEventListener(
+      'click',
+      printMaterialEstimate
     );
 
   document
