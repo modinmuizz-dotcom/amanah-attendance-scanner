@@ -493,3 +493,25 @@
     font-size:16px;
   }
 }
+
+/* Activity filter refinement */
+.activity-filter-grid{
+  grid-template-columns:minmax(360px,2.2fr) minmax(220px,1fr) minmax(260px,1.1fr) auto;
+}
+
+.activity-field select{
+  min-width:0;
+  appearance:auto;
+  padding-right:34px;
+  font-weight:700;
+}
+
+#activityCategory{
+  width:100%;
+}
+
+@media(max-width:1200px){
+  .activity-filter-grid{
+    grid-template-columns:minmax(300px,1.8fr) minmax(190px,1fr) minmax(220px,1.1fr) auto;
+  }
+}
