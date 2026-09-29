@@ -765,6 +765,69 @@
   </div>
 
   <div
+    id="deleteConfirmationModal"
+    class="modal hidden"
+    aria-hidden="true"
+  >
+    <div class="modal-card delete-confirmation-card">
+      <div class="delete-confirmation-header">
+        <div class="delete-confirmation-icon" aria-hidden="true">!</div>
+        <div>
+          <h2 id="deleteConfirmationTitle">Delete Record</h2>
+          <p id="deleteConfirmationSubtitle">
+            This action permanently removes the selected record from AMANAH.
+          </p>
+        </div>
+        <button
+          id="deleteConfirmationCloseButton"
+          class="close-button"
+          type="button"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="delete-confirmation-body">
+        <p class="delete-confirmation-warning">
+          Please review the information below before proceeding.
+          This action cannot be undone.
+        </p>
+
+        <div class="delete-confirmation-record">
+          <div>
+            <small>SUPPLIER</small>
+            <strong id="deleteConfirmationName">—</strong>
+          </div>
+
+          <div>
+            <small id="deleteConfirmationDetailLabel">Supplier Code</small>
+            <strong id="deleteConfirmationDetailValue">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions delete-confirmation-actions">
+        <button
+          type="button"
+          id="cancelDeleteButton"
+          class="button secondary"
+        >
+          CANCEL
+        </button>
+
+        <button
+          type="button"
+          id="confirmDeleteButton"
+          class="button danger"
+        >
+          DELETE SUPPLIER
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div
     id="modal"
     class="modal hidden"
   >
@@ -826,7 +889,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=22"></script>
+  <script src="admin.js?v=23"></script>
 <script src="amanah-ui.js?v=3"></script>
 </body>
 </html>
