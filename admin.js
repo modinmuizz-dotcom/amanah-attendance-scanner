@@ -82,6 +82,44 @@ const ROAD_MATERIAL_BOM = [
 ];
 
 
+function getRoadMaterialBOM(project) {
+  const details = project?.project_details || {};
+  const shouldering =
+    details.road_shouldering === true ||
+    String(details.road_shouldering).toUpperCase() === 'YES';
+
+  const items = [...ROAD_MATERIAL_BOM];
+
+  if (shouldering) {
+    items.push(
+      {
+        description: 'Shouldering - Cement',
+        unit: 'TUNNER BAG',
+        factor: 0.067,
+        defaultRate: 0,
+        formula: 'PROJECT LENGTH × 0.067'
+      },
+      {
+        description: 'Shouldering - Rebar Longitudinal Section',
+        unit: 'REBAR',
+        factor: 0.17,
+        defaultRate: 0,
+        formula: 'PROJECT LENGTH × 0.17'
+      },
+      {
+        description: 'Shouldering - Rebar Transverse Section',
+        unit: 'REBAR',
+        factor: 0.012,
+        defaultRate: 0,
+        formula: 'PROJECT LENGTH × 0.012'
+      }
+    );
+  }
+
+  return items;
+}
+
+
 const supabaseClient =
   window.supabase.createClient(
     SUPABASE_URL,
@@ -1543,7 +1581,7 @@ async function loadMaterialEstimateItems(project, length) {
       existing = items || [];
     }
 
-    const rows = ROAD_MATERIAL_BOM.map(template => {
+    const rows = getRoadMaterialBOM(project).map(template => {
       const found =
         existing.find(
           item => item.description === template.description
@@ -1881,15 +1919,41 @@ function chooseProjectType(type) {
 
 function renderProjectSpecificFields(type, details = {}) {
   if (type === 'CONCRETING OF ROAD') {
+    const hasShouldering = details.road_shouldering === true ||
+      String(details.road_shouldering).toUpperCase() === 'YES';
+
     return `
       <div class="project-detail-section">
         <h3>ROAD ENGINEERING DETAILS</h3>
-        <p>Enter the pavement dimensions. AMANAH calculates the pavement area automatically.</p>
+        <p>Enter the pavement dimensions. Concrete shouldering is optional and can be enabled when applicable.</p>
+
         <div class="form-grid">
           ${field('Length','road_length',details.road_length,false,'number','0')}
           ${field('Width','road_width',details.road_width,false,'number','0')}
           ${field('Thickness','road_thickness',details.road_thickness,false,'number','0')}
           ${calculatedField('Pavement Area','road_pavement_area',details.road_pavement_area,'LENGTH × WIDTH × THICKNESS')}
+        </div>
+
+        <div class="project-detail-section road-shouldering-panel">
+          <div class="road-shouldering-heading">
+            <div>
+              <h3>CONCRETE SHOULDERING</h3>
+              <p>Optional. Select YES only when this road project includes concrete shouldering.</p>
+            </div>
+            ${selectField(
+              'Concrete Shouldering',
+              'road_shouldering',
+              ['NO','YES'],
+              hasShouldering ? 'YES' : 'NO'
+            )}
+          </div>
+
+          <div id="roadShoulderingFields" class="form-grid ${hasShouldering ? '' : 'hidden'}">
+            ${field('Shouldering Length','road_shouldering_length',details.road_shouldering_length,false,'number','0')}
+            ${field('Shouldering Width','road_shouldering_width',details.road_shouldering_width,false,'number','0')}
+            ${field('Shouldering Thickness','road_shouldering_thickness',details.road_shouldering_thickness,false,'number','0')}
+            ${calculatedField('Shouldering Area','road_shouldering_area',details.road_shouldering_area,'LENGTH × WIDTH × THICKNESS')}
+          </div>
         </div>
       </div>`;
   }
@@ -2067,6 +2131,32 @@ function calculateProjectFormulas() {
 
   if (type === 'CONCRETING OF ROAD') {
     set('road_pavement_area',product('road_length','road_width','road_thickness'));
+
+    const shouldering =
+      document.getElementById('road_shouldering')?.value === 'YES';
+
+    const shoulderingFields =
+      document.getElementById('roadShoulderingFields');
+
+    if (shoulderingFields) {
+      shoulderingFields.classList.toggle(
+        'hidden',
+        !shouldering
+      );
+    }
+
+    if (shouldering) {
+      set(
+        'road_shouldering_area',
+        product(
+          'road_shouldering_length',
+          'road_shouldering_width',
+          'road_shouldering_thickness'
+        )
+      );
+    } else {
+      set('road_shouldering_area', null);
+    }
   }
 
   if (type === 'MULTI PURPOSE BUILDING' || type === 'SCHOOL BUILDING') {
@@ -2097,7 +2187,17 @@ function calculateProjectFormulas() {
 
 function collectProjectDetails(type,values) {
   const map = {
-    'CONCRETING OF ROAD':['road_length','road_width','road_thickness','road_pavement_area'],
+    'CONCRETING OF ROAD':[
+      'road_length',
+      'road_width',
+      'road_thickness',
+      'road_pavement_area',
+      'road_shouldering',
+      'road_shouldering_length',
+      'road_shouldering_width',
+      'road_shouldering_thickness',
+      'road_shouldering_area'
+    ],
     'MULTI PURPOSE BUILDING':['building_floor_length','building_floor_width','building_floor_thickness','building_floor_area','building_height','footing_width','footing_length','footing_thickness','footing_quantity','column_width','column_length','column_height','column_quantity','beam_type','beam_width','beam_length','beam_thickness','beam_quantity','wall_height','wall_width','wall_quantity'],
     'SCHOOL BUILDING':['building_floor_length','building_floor_width','building_floor_thickness','building_floor_area','building_height','footing_width','footing_length','footing_thickness','footing_quantity','column_width','column_length','column_height','column_quantity','beam_type','beam_width','beam_length','beam_thickness','beam_quantity','wall_height','wall_width','wall_quantity'],
     'FLOOD CONTROL':['flood_rise','flood_run','flood_width','flood_slope','flood_slope_area','sheet_pile_cap_length','sheet_pile_width','sheet_pile_pieces'],
@@ -2154,8 +2254,18 @@ function openProjectModal(mode,record=null) {
     input.style.userSelect = 'text';
   });
 
-  fields.oninput=calculateProjectFormulas;
-  fields.onchange=calculateProjectFormulas;
+  fields.oninput = calculateProjectFormulas;
+  fields.onchange = calculateProjectFormulas;
+  fields.addEventListener(
+    'change',
+    event => {
+      if (
+        event.target?.id === 'road_shouldering'
+      ) {
+        calculateProjectFormulas();
+      }
+    }
+  );
   setupDecimalInputs(fields);
   calculateProjectFormulas();
 
