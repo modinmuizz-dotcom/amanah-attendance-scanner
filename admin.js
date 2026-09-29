@@ -197,7 +197,9 @@ const state = {
 
   pendingProjectModal: null,
 
-  materialEstimateProjectId: null
+  materialEstimateProjectId: null,
+
+  deleteTarget: null
 
 };
 
@@ -636,6 +638,15 @@ function renderSuppliers() {
               EDIT
             </button>
 
+            <button
+              class="small-button delete-button"
+              onclick="confirmDeleteSupplier('${encodeURIComponent(
+                supplier.supplier_id
+              )}')"
+            >
+              DELETE
+            </button>
+
           </div>
 
         </td>
@@ -644,6 +655,146 @@ function renderSuppliers() {
 
     `).join('');
 
+}
+
+
+
+function confirmDeleteSupplier(
+  encodedId
+) {
+  const supplierId =
+    decodeURIComponent(encodedId);
+
+  const supplier =
+    state.suppliers.find(
+      item =>
+        item.supplier_id ===
+        supplierId
+    );
+
+  if (!supplier) {
+    return;
+  }
+
+  openDeleteConfirmation({
+    type: 'supplier',
+    id: supplier.supplier_id,
+    title: 'Delete Supplier',
+    name: supplier.supplier_name,
+    subtitle:
+      'This action permanently removes the selected supplier record from AMANAH.',
+    detailLabel: 'Supplier Code',
+    detailValue: supplier.supplier_code
+  });
+}
+
+function openDeleteConfirmation(target) {
+  state.deleteTarget = target;
+
+  const modal =
+    document.getElementById(
+      'deleteConfirmationModal'
+    );
+
+  if (!modal) return;
+
+  document.getElementById(
+    'deleteConfirmationTitle'
+  ).textContent =
+    target.title || 'Confirm Deletion';
+
+  document.getElementById(
+    'deleteConfirmationSubtitle'
+  ).textContent =
+    target.subtitle ||
+    'Please confirm that you want to permanently remove this record.';
+
+  document.getElementById(
+    'deleteConfirmationName'
+  ).textContent =
+    target.name || '—';
+
+  document.getElementById(
+    'deleteConfirmationDetailLabel'
+  ).textContent =
+    target.detailLabel || 'Record ID';
+
+  document.getElementById(
+    'deleteConfirmationDetailValue'
+  ).textContent =
+    target.detailValue || target.id || '—';
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden','false');
+}
+
+function closeDeleteConfirmation() {
+  const modal =
+    document.getElementById(
+      'deleteConfirmationModal'
+    );
+
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden','true');
+
+  state.deleteTarget = null;
+}
+
+async function executeDeleteConfirmation() {
+  const target =
+    state.deleteTarget;
+
+  if (!target) return;
+
+  const button =
+    document.getElementById(
+      'confirmDeleteButton'
+    );
+
+  button.disabled = true;
+  button.textContent = 'DELETING...';
+
+  try {
+    if (target.type === 'supplier') {
+      const { error } =
+        await supabaseClient
+          .from('suppliers')
+          .delete()
+          .eq(
+            'supplier_id',
+            target.id
+          );
+
+      if (error) {
+        throw new Error(
+          `Unable to delete supplier: ${error.message}`
+        );
+      }
+
+      await loadSuppliers();
+      renderSuppliers();
+
+      closeDeleteConfirmation();
+
+      showMessage(
+        'globalMessage',
+        `Supplier "${target.name}" was deleted successfully.`,
+        'success'
+      );
+    }
+  } catch (error) {
+    showMessage(
+      'globalMessage',
+      error.message ||
+        'The supplier could not be deleted.',
+      'error'
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = 'DELETE SUPPLIER';
+  }
 }
 
 
