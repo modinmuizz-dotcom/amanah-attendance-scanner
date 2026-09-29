@@ -702,7 +702,7 @@
       <div class="modal-header">
         <div>
           <h2>BOM / MATERIAL ESTIMATE</h2>
-          <p class="material-estimate-subtitle">Generate the road material estimate from the saved pavement area and enter the applicable material rates.</p>
+          <p class="material-estimate-subtitle">Generate the road material and labor estimate from the saved project length and enter the applicable material rates.</p>
         </div>
         <button id="closeMaterialEstimateButton" class="close-button" type="button" aria-label="Close">×</button>
       </div>
@@ -746,8 +746,8 @@
       </div>
 
       <div class="material-estimate-note">
-        <strong>Road material basis:</strong>
-        quantities are calculated from the saved Pavement Area using the consumption factors provided for this AMANAH project formula.
+        <strong>Road material and labor basis:</strong>
+        quantities are calculated from the saved Project Length using the consumption factors provided for this AMANAH project formula. Labor is fixed at ₱356 per meter.
       </div>
 
       <div class="modal-actions">
@@ -819,7 +819,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=13"></script>
+  <script src="admin.js?v=14"></script>
 <script src="amanah-ui.js?v=3"></script>
 </body>
 </html>
