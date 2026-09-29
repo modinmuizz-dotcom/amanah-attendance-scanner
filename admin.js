@@ -1835,8 +1835,19 @@ function projectTypeLabel(type) {
 
 function openProjectTypeModal(mode = 'add', record = null) {
   state.pendingProjectModal = { mode, record: record || {} };
+
   const modal = document.getElementById('projectTypeModal');
   if (!modal) return;
+
+  // Move the chooser to document.body so it cannot be trapped
+  // inside another stacking context created by the AMANAH shell.
+  if (modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+
+  modal.style.setProperty('z-index','20000','important');
+  modal.style.setProperty('pointer-events','auto','important');
+
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
 }
@@ -2832,6 +2843,22 @@ function setupEvents() {
         }
       }
     );
+
+  document.addEventListener(
+    'click',
+    event => {
+      const button = event.target.closest('[data-project-type]');
+      if (!button) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      chooseProjectType(
+        button.dataset.projectType
+      );
+    },
+    true
+  );
 
   document
     .getElementById(
