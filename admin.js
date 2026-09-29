@@ -2154,6 +2154,8 @@ function field(
         id="${name}"
         name="${name}"
         type="${type}"
+        inputmode="${type === 'number' ? 'decimal' : ''}"
+        step="${type === 'number' ? 'any' : ''}"
         value="${escapeHtml(
           value ?? ''
         )}"
