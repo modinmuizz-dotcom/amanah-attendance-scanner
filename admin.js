@@ -135,10 +135,10 @@ function getRoadMaterialBOM(project) {
         description: 'Shouldering - Labor',
         unit: 'METER',
         factor: 1,
-        defaultRate: 71.111,
+        defaultRate: 66.67,
         basis: 'SHOULDERING LENGTH',
         basisLength: shoulderBasis,
-        formula: 'SHOULDERING LENGTH × ₱71.111'
+        formula: 'SHOULDERING LENGTH × ₱66.67'
       }
     );
   }
