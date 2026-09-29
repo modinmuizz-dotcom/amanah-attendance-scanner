@@ -921,8 +921,15 @@ function renderEmployees() {
 
         <td>
           ₱${Number(
-            employee.hourly_rate ?? 0
+            String(employee.department || '').toUpperCase() === 'TRUCKERS'
+              ? (employee.hourly_rate ?? 0)
+              : (employee.daily_rate ?? 0)
           ).toFixed(2)}
+          <small class="rate-display-subtext">
+            ${String(employee.department || '').toUpperCase() === 'TRUCKERS'
+              ? 'PER HOUR'
+              : escapeHtml(employee.rate_basis || 'PER DAY')}
+          </small>
         </td>
 
         <td>
@@ -1672,6 +1679,70 @@ function getRecordId(
 }
 
 
+const EMPLOYEE_POSITIONS = [
+  'PROPRIETOR',
+  'MANAGER',
+  'SITE ENGINEER',
+  'OFFICE ENGINEER',
+  'PURCHASING OFFICER',
+  'MAINTENANCE OFFICER',
+  'LIAISON OFFICER',
+  'PERSONAL ESCORT',
+  'OFFICE DRIVER',
+  'DRIVER / OPERATOR'
+];
+
+const EMPLOYEE_DEPARTMENTS = [
+  'ADMIN',
+  'CONSTRUCTION',
+  'MAINTENANCE',
+  'PROCUREMENT',
+  'TRUCKERS'
+];
+
+function updateEmployeeRateFields() {
+  const department =
+    document
+      .getElementById('department')
+      ?.value
+      ?.trim()
+      ?.toUpperCase() || '';
+
+  const hourlyWrap = document.getElementById('employeeHourlyRateField');
+  const dailyWrap = document.getElementById('employeeDailyRateField');
+  const rateBasis = document.getElementById('rate_basis');
+  const hourlyInput = document.getElementById('hourly_rate');
+  const dailyInput = document.getElementById('daily_rate');
+
+  if (!hourlyWrap || !dailyWrap || !rateBasis || !hourlyInput || !dailyInput) {
+    return;
+  }
+
+  const isTruckers = department === 'TRUCKERS';
+
+  hourlyWrap.style.display = isTruckers ? '' : 'none';
+  dailyWrap.style.display = isTruckers ? 'none' : '';
+  rateBasis.parentElement.style.display = isTruckers ? 'none' : '';
+
+  hourlyInput.disabled = !isTruckers;
+  dailyInput.disabled = isTruckers;
+  rateBasis.disabled = isTruckers;
+
+  hourlyInput.required = isTruckers;
+  dailyInput.required = !isTruckers;
+
+  if (isTruckers) {
+    dailyInput.value = '0';
+  } else {
+    hourlyInput.value = '0';
+    if (rateBasis.value !== 'HALF DAY' && rateBasis.value !== 'PER DAY') {
+      rateBasis.value = 'PER DAY';
+    }
+  }
+
+  setupDecimalInputs(document.getElementById('formFields'));
+}
+
 /* =========================================================
    EMPLOYEE FORM
    ========================================================= */
@@ -1704,18 +1775,18 @@ function openEmployeeModal(
         true
       )}
 
-      ${field(
+      ${selectField(
         'Position',
         'position',
-        values.position,
-        true
+        EMPLOYEE_POSITIONS,
+        values.position || ''
       )}
 
-      ${field(
+      ${selectField(
         'Department',
         'department',
-        values.department,
-        true
+        EMPLOYEE_DEPARTMENTS,
+        values.department || ''
       )}
 
       ${field(
@@ -1732,12 +1803,39 @@ function openEmployeeModal(
         'date'
       )}
 
-      ${field(
-        'Hourly Rate',
-        'hourly_rate',
-        values.hourly_rate ?? 0,
-        false,
-        'text'
+      <div id="employeeHourlyRateField" class="form-field">
+        <label for="hourly_rate">Hourly Rate</label>
+        <input
+          id="hourly_rate"
+          name="hourly_rate"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          data-decimal-input="true"
+          value="${escapeHtml(values.hourly_rate ?? 0)}"
+        >
+        <small class="rate-field-help">TRUCKERS department only.</small>
+      </div>
+
+      <div id="employeeDailyRateField" class="form-field">
+        <label for="daily_rate">Daily Rate</label>
+        <input
+          id="daily_rate"
+          name="daily_rate"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          data-decimal-input="true"
+          value="${escapeHtml(values.daily_rate ?? 0)}"
+        >
+        <small class="rate-field-help">ADMIN, CONSTRUCTION, MAINTENANCE and PROCUREMENT.</small>
+      </div>
+
+      ${selectField(
+        'Rate Basis',
+        'rate_basis',
+        ['HALF DAY', 'PER DAY'],
+        values.rate_basis || 'PER DAY'
       )}
 
       ${selectField(
@@ -1757,6 +1855,18 @@ function openEmployeeModal(
     mode,
     record
   );
+
+  const department =
+    document.getElementById('department');
+
+  if (department) {
+    department.addEventListener(
+      'change',
+      updateEmployeeRateFields
+    );
+  }
+
+  updateEmployeeRateFields();
 
 }
 
@@ -3601,11 +3711,19 @@ async function saveEmployee(
       null,
 
     hourly_rate:
-      values.hourly_rate === ''
+      (values.department || '').toUpperCase() === 'TRUCKERS'
+        ? (values.hourly_rate === '' ? 0 : Number(values.hourly_rate))
+        : 0,
+
+    daily_rate:
+      (values.department || '').toUpperCase() === 'TRUCKERS'
         ? 0
-        : Number(
-            values.hourly_rate
-          ),
+        : (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
+
+    rate_basis:
+      (values.department || '').toUpperCase() === 'TRUCKERS'
+        ? 'PER DAY'
+        : (values.rate_basis || 'PER DAY'),
 
     status:
       values.status || 'ACTIVE'
