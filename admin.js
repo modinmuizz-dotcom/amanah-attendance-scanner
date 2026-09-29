@@ -1423,27 +1423,6 @@ function openSupplierModal(
   const values =
     record || {};
 
-  const positionOptions =
-    values.position &&
-    !EMPLOYEE_POSITIONS.includes(
-      values.position
-    )
-      ? [
-          values.position,
-          ...EMPLOYEE_POSITIONS
-        ]
-      : EMPLOYEE_POSITIONS;
-
-  const departmentOptions =
-    values.department &&
-    !EMPLOYEE_DEPARTMENTS.includes(
-      values.department
-    )
-      ? [
-          values.department,
-          ...EMPLOYEE_DEPARTMENTS
-        ]
-      : EMPLOYEE_DEPARTMENTS;
 
   document
     .getElementById(
@@ -1776,6 +1755,28 @@ function openEmployeeModal(
 
   const values =
     record || {};
+
+  const positionOptions =
+    values.position &&
+    !EMPLOYEE_POSITIONS.includes(
+      values.position
+    )
+      ? [
+          values.position,
+          ...EMPLOYEE_POSITIONS
+        ]
+      : EMPLOYEE_POSITIONS;
+
+  const departmentOptions =
+    values.department &&
+    !EMPLOYEE_DEPARTMENTS.includes(
+      values.department
+    )
+      ? [
+          values.department,
+          ...EMPLOYEE_DEPARTMENTS
+        ]
+      : EMPLOYEE_DEPARTMENTS;
 
   document
     .getElementById(
