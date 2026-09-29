@@ -2153,9 +2153,10 @@ function field(
       <input
         id="${name}"
         name="${name}"
-        type="${type}"
+        type="${type === 'number' ? 'text' : type}"
         inputmode="${type === 'number' ? 'decimal' : ''}"
-        step="${type === 'number' ? 'any' : ''}"
+        autocomplete="off"
+        data-decimal-input="${type === 'number' ? 'true' : 'false'}"
         value="${escapeHtml(
           value ?? ''
         )}"
@@ -2170,6 +2171,22 @@ function field(
 
 }
 
+
+function normalizeDecimalInput(event) {
+  const input = event.target;
+  if (!input || input.dataset.decimalInput !== 'true') return;
+
+  let value = input.value.replace(/[^0-9.]/g, '');
+
+  const firstDot = value.indexOf('.');
+  if (firstDot !== -1) {
+    value =
+      value.slice(0, firstDot + 1) +
+      value.slice(firstDot + 1).replace(/\./g, '');
+  }
+
+  input.value = value;
+}
 
 function selectField(
   label,
@@ -2688,6 +2705,11 @@ function setupTabs() {
    ========================================================= */
 
 function setupEvents() {
+
+  document.addEventListener(
+    'input',
+    normalizeDecimalInput
+  );
 
   document
     .getElementById(
