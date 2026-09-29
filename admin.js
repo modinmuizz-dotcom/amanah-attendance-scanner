@@ -1732,6 +1732,14 @@ function openEmployeeModal(
         'date'
       )}
 
+      ${field(
+        'Hourly Rate',
+        'hourly_rate',
+        values.hourly_rate ?? 0,
+        false,
+        'text'
+      )}
+
       ${selectField(
         'Status',
         'status',
@@ -3591,6 +3599,13 @@ async function saveEmployee(
     date_hired:
       values.date_hired ||
       null,
+
+    hourly_rate:
+      values.hourly_rate === ''
+        ? 0
+        : Number(
+            values.hourly_rate
+          ),
 
     status:
       values.status || 'ACTIVE'
