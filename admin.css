@@ -1653,3 +1653,42 @@ th {
     max-height:94vh;
   }
 }
+
+
+/* =====================================================
+   PROJECT FORM INPUT INTERACTION
+   ===================================================== */
+
+#modal{
+  z-index:10001;
+  pointer-events:auto;
+}
+
+#modal .modal-card,
+#modal #recordForm,
+#modal #formFields{
+  pointer-events:auto;
+}
+
+#modal #formFields input,
+#modal #formFields select,
+#modal #formFields textarea{
+  pointer-events:auto !important;
+  user-select:text !important;
+  -webkit-user-select:text !important;
+  caret-color:#0f172a;
+}
+
+#modal #formFields input:not([readonly]),
+#modal #formFields textarea:not([readonly]),
+#modal #formFields select{
+  cursor:text;
+}
+
+#modal #formFields input:focus,
+#modal #formFields textarea:focus,
+#modal #formFields select:focus{
+  outline:none;
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,.10);
+}
