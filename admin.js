@@ -1709,39 +1709,71 @@ function updateEmployeeRateFields() {
       ?.trim()
       ?.toUpperCase() || '';
 
-  const hourlyWrap = document.getElementById('employeeHourlyRateField');
-  const dailyWrap = document.getElementById('employeeDailyRateField');
-  const rateBasis = document.getElementById('rate_basis');
-  const hourlyInput = document.getElementById('hourly_rate');
-  const dailyInput = document.getElementById('daily_rate');
+  const hourlyWrap =
+    document.getElementById(
+      'employeeHourlyRateField'
+    );
 
-  if (!hourlyWrap || !dailyWrap || !rateBasis || !hourlyInput || !dailyInput) {
+  const dailyWrap =
+    document.getElementById(
+      'employeeDailyRateField'
+    );
+
+  const hourlyInput =
+    document.getElementById(
+      'hourly_rate'
+    );
+
+  const dailyInput =
+    document.getElementById(
+      'daily_rate'
+    );
+
+  if (
+    !hourlyWrap ||
+    !dailyWrap ||
+    !hourlyInput ||
+    !dailyInput
+  ) {
     return;
   }
 
-  const isTruckers = department === 'TRUCKERS';
+  const isTruckers =
+    department === 'TRUCKERS';
 
-  hourlyWrap.style.display = isTruckers ? '' : 'none';
-  dailyWrap.style.display = isTruckers ? 'none' : '';
-  rateBasis.parentElement.style.display = isTruckers ? 'none' : '';
+  hourlyWrap.style.display =
+    isTruckers
+      ? ''
+      : 'none';
 
-  hourlyInput.disabled = !isTruckers;
-  dailyInput.disabled = isTruckers;
-  rateBasis.disabled = isTruckers;
+  dailyWrap.style.display =
+    isTruckers
+      ? 'none'
+      : '';
 
-  hourlyInput.required = isTruckers;
-  dailyInput.required = !isTruckers;
+  hourlyInput.disabled =
+    !isTruckers;
+
+  dailyInput.disabled =
+    isTruckers;
+
+  hourlyInput.required =
+    isTruckers;
+
+  dailyInput.required =
+    !isTruckers;
 
   if (isTruckers) {
     dailyInput.value = '0';
   } else {
     hourlyInput.value = '0';
-    if (rateBasis.value !== 'HALF DAY' && rateBasis.value !== 'PER DAY') {
-      rateBasis.value = 'PER DAY';
-    }
   }
 
-  setupDecimalInputs(document.getElementById('formFields'));
+  setupDecimalInputs(
+    document.getElementById(
+      'formFields'
+    )
+  );
 }
 
 /* =========================================================
@@ -1854,12 +1886,6 @@ function openEmployeeModal(
         <small class="rate-field-help">ADMIN, CONSTRUCTION, MAINTENANCE and PROCUREMENT.</small>
       </div>
 
-      ${selectField(
-        'Rate Basis',
-        'rate_basis',
-        ['HALF DAY', 'PER DAY'],
-        values.rate_basis || 'PER DAY'
-      )}
 
       ${selectField(
         'Status',
@@ -3744,9 +3770,7 @@ async function saveEmployee(
         : (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
 
     rate_basis:
-      (values.department || '').toUpperCase() === 'TRUCKERS'
-        ? 'PER DAY'
-        : (values.rate_basis || 'PER DAY'),
+      'PER DAY',
 
     status:
       values.status || 'ACTIVE'
