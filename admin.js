@@ -1487,13 +1487,13 @@ function openMaterialEstimate(encodedId) {
   info.style.display = length > 0 ? 'block' : 'none';
   info.textContent =
     length > 0
-      ? 'The quantities below are generated from the saved Pavement Area using the AMANAH road material consumption factors.'
-      : 'Pavement Area is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
+      ? 'The quantities below are generated from the saved Project Length using the AMANAH road material consumption factors.'
+      : 'Project Length is not available for this project. Edit the project and complete the Road Engineering Details before generating the estimate.';
 
-  loadMaterialEstimateItems(project, area);
+  loadMaterialEstimateItems(project, length);
 }
 
-async function loadMaterialEstimateItems(project, area) {
+async function loadMaterialEstimateItems(project, length) {
   const body = document.getElementById('materialEstimateBody');
   const modal = document.getElementById('materialEstimateModal');
 
@@ -1699,7 +1699,7 @@ async function saveMaterialEstimate() {
           {
             project_id: projectId,
             estimate_type: 'ROAD',
-            basis_quantity: area,
+            basis_quantity: length,
             basis_label: 'PROJECT LENGTH',
             updated_at: new Date().toISOString()
           },
