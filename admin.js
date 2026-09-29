@@ -2899,13 +2899,16 @@ function renderProjectSpecificFields(type, details = {}) {
     return `
       <div class="project-detail-section">
         <h3>FLOOD CONTROL ENGINEERING DETAILS</h3>
-        <p>Slope ratio is defined by Rise and Run. No separate ratio text field is required.</p>
+        <p>Enter the slope using the Rise-to-Run ratio. AMANAH calculates the slope ratio, true slope length using the Pythagorean theorem, and slope surface area.</p>
         <div class="form-grid">
           ${field('Rise','flood_rise',details.flood_rise,false,'number','0')}
           ${field('Run','flood_run',details.flood_run,false,'number','0')}
           ${field('Width','flood_width',details.flood_width,false,'number','0')}
-          ${calculatedField('Slope','flood_slope',details.flood_slope,'RISE ÷ RUN')}
-          ${calculatedField('Slope Area','flood_slope_area',details.flood_slope_area,'(RISE ÷ RUN) × WIDTH')}
+
+          ${calculatedField('Slope Ratio','flood_slope',details.flood_slope,'RISE ÷ RUN')}
+          ${calculatedField('Slope Length','flood_slope_length',details.flood_slope_length,'√(RISE² + RUN²)')}
+          ${calculatedField('Slope Area','flood_slope_area',details.flood_slope_area,'SLOPE LENGTH × WIDTH')}
+
           ${field('Pile Cap Length','sheet_pile_cap_length',details.sheet_pile_cap_length,false,'number','0')}
           ${field('Sheet Pile Width','sheet_pile_width',details.sheet_pile_width,false,'number','0')}
           ${calculatedField('Sheet Pile Pieces','sheet_pile_pieces',details.sheet_pile_pieces,'PILE CAP LENGTH ÷ SHEET PILE WIDTH')}
@@ -3044,12 +3047,58 @@ function calculateProjectFormulas() {
   }
 
   if (type === 'FLOOD CONTROL') {
-    const rise=num('flood_rise'),run=num('flood_run'),width=num('flood_width');
-    const slope=rise!==null&&run!==null&&run!==0?rise/run:null;
-    set('flood_slope',slope);
-    set('flood_slope_area',slope!==null&&width!==null?slope*width:null);
-    const cap=num('sheet_pile_cap_length'),pileWidth=num('sheet_pile_width');
-    set('sheet_pile_pieces',cap!==null&&pileWidth!==null&&pileWidth!==0?cap/pileWidth:null);
+    const rise = num('flood_rise');
+    const run = num('flood_run');
+    const width = num('flood_width');
+
+    // Rise-to-run is the slope ratio.
+    const slopeRatio =
+      rise !== null &&
+      run !== null &&
+      run !== 0
+        ? rise / run
+        : null;
+
+    // Treat Rise and Run as the perpendicular legs of the
+    // right triangle. The sloped face is the hypotenuse.
+    const slopeLength =
+      rise !== null &&
+      run !== null
+        ? Math.sqrt(
+            (rise * rise) +
+            (run * run)
+          )
+        : null;
+
+    set(
+      'flood_slope',
+      slopeRatio
+    );
+
+    set(
+      'flood_slope_length',
+      slopeLength
+    );
+
+    set(
+      'flood_slope_area',
+      slopeLength !== null &&
+      width !== null
+        ? slopeLength * width
+        : null
+    );
+
+    const cap = num('sheet_pile_cap_length');
+    const pileWidth = num('sheet_pile_width');
+
+    set(
+      'sheet_pile_pieces',
+      cap !== null &&
+      pileWidth !== null &&
+      pileWidth !== 0
+        ? cap / pileWidth
+        : null
+    );
   }
 
   if (type === 'COVERED COURT') {
@@ -3075,7 +3124,17 @@ function collectProjectDetails(type,values) {
     ],
     'MULTI PURPOSE BUILDING':['building_floor_length','building_floor_width','building_floor_thickness','building_floor_area','building_height','footing_width','footing_length','footing_thickness','footing_quantity','column_width','column_length','column_height','column_quantity','beam_type','beam_width','beam_length','beam_thickness','beam_quantity','wall_height','wall_width','wall_quantity'],
     'SCHOOL BUILDING':['building_floor_length','building_floor_width','building_floor_thickness','building_floor_area','building_height','footing_width','footing_length','footing_thickness','footing_quantity','column_width','column_length','column_height','column_quantity','beam_type','beam_width','beam_length','beam_thickness','beam_quantity','wall_height','wall_width','wall_quantity'],
-    'FLOOD CONTROL':['flood_rise','flood_run','flood_width','flood_slope','flood_slope_area','sheet_pile_cap_length','sheet_pile_width','sheet_pile_pieces'],
+    'FLOOD CONTROL':[
+      'flood_rise',
+      'flood_run',
+      'flood_width',
+      'flood_slope',
+      'flood_slope_length',
+      'flood_slope_area',
+      'sheet_pile_cap_length',
+      'sheet_pile_width',
+      'sheet_pile_pieces'
+    ],
     'WATER SYSTEM':[],
     'BRIDGE':[],
     'COVERED COURT':['covered_floor_length','covered_floor_width','covered_floor_thickness','covered_floor_area','covered_height','covered_footing_width','covered_footing_length','covered_footing_thickness','covered_footing_quantity','covered_column_width','covered_column_length','covered_column_height','covered_column_quantity','covered_beam_type','covered_beam_width','covered_beam_length','covered_beam_thickness','covered_beam_quantity']
