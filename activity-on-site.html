@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>AMANAH Activities on Site</title>
+
+  <link rel="stylesheet" href="amanah-ui.css?v=6">
+  <link rel="stylesheet" href="activity-on-site.css?v=1">
+</head>
+
+<body>
+  <main class="container activity-site-page">
+    <div id="activityMessage" class="message hidden"></div>
+
+    <section class="activity-site-toolbar">
+      <div>
+        <div class="activity-kicker">WORKFORCE OPERATIONS</div>
+        <h1>ACTIVITIES ON SITE</h1>
+        <p>Review work activities recorded by drivers and operators at TIME OUT, including photo evidence submitted from the site.</p>
+      </div>
+      <button id="refreshActivitiesButton" class="button primary" type="button">REFRESH</button>
+    </section>
+
+    <section class="activity-summary-grid">
+      <div class="activity-summary-card">
+        <span>ACTIVITIES</span>
+        <strong id="activityCount">0</strong>
+      </div>
+      <div class="activity-summary-card">
+        <span>COMPLETED ATTENDANCE</span>
+        <strong id="attendanceCount">0</strong>
+      </div>
+      <div class="activity-summary-card">
+        <span>PHOTO EVIDENCE</span>
+        <strong id="photoCount">0</strong>
+      </div>
+      <div class="activity-summary-card">
+        <span>DATE SHOWN</span>
+        <strong id="dateShown">ALL</strong>
+      </div>
+    </section>
+
+    <section class="activity-site-filter-card">
+      <div class="activity-filter-grid">
+        <div class="activity-field">
+          <label for="activitySearch">SEARCH</label>
+          <input id="activitySearch" type="search" placeholder="Employee / equipment / project / location / activity">
+        </div>
+
+        <div class="activity-field">
+          <label for="activityDate">DATE</label>
+          <input id="activityDate" type="date">
+        </div>
+
+        <div class="activity-field">
+          <label for="activityCategory">ACTIVITY</label>
+          <select id="activityCategory">
+            <option value="">ALL ACTIVITIES</option>
+          </select>
+        </div>
+
+        <button id="clearActivityFilters" class="button secondary" type="button">CLEAR</button>
+      </div>
+    </section>
+
+    <section class="activity-site-panel">
+      <div class="activity-panel-header">
+        <div>
+          <h2>SITE ACTIVITY RECORDS</h2>
+          <p>Each row represents an activity submitted during TIME OUT.</p>
+        </div>
+        <span class="activity-status-badge">TIME OUT ACTIVITY</span>
+      </div>
+
+      <div class="activity-table-wrap">
+        <table class="activity-site-table">
+          <thead>
+            <tr>
+              <th>DATE</th>
+              <th>EMPLOYEE</th>
+              <th>EQUIPMENT</th>
+              <th>PROJECT</th>
+              <th>LOCATION</th>
+              <th>ACTIVITY</th>
+              <th>DESCRIPTION</th>
+              <th>QTY</th>
+              <th>TIME OUT</th>
+              <th>PHOTO EVIDENCE</th>
+            </tr>
+          </thead>
+          <tbody id="activitySiteBody">
+            <tr>
+              <td colspan="10" class="activity-empty">Loading activity records...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="activityEvidenceModal" class="activity-evidence-modal hidden" aria-hidden="true">
+    <div class="activity-evidence-card">
+      <div class="activity-evidence-header">
+        <div>
+          <div class="activity-kicker">SITE WORK EVIDENCE</div>
+          <h2 id="evidenceTitle">Activity Photo Evidence</h2>
+          <p id="evidenceSubtitle">Photos submitted at TIME OUT.</p>
+        </div>
+        <button id="closeEvidenceButton" class="activity-close-button" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div id="evidenceContent" class="activity-evidence-grid"></div>
+
+      <div class="activity-evidence-actions">
+        <button id="closeEvidenceButtonBottom" class="button secondary" type="button">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="activity-on-site.js?v=1"></script>
+  <script src="amanah-ui.js?v=6"></script>
+</body>
+</html>
