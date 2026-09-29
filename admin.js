@@ -2969,7 +2969,79 @@ function renderProjectSpecificFields(type, details = {}) {
       </div>`;
   }
 
-  if (type === 'WATER SYSTEM' || type === 'BRIDGE') {
+  if (type === 'WATER SYSTEM') {
+    return `
+      <div class="project-detail-section">
+        <h3>WATER SYSTEM ENGINEERING DETAILS</h3>
+        <p>Enter the required structural dimensions and quantities for the water system project.</p>
+
+        <div class="project-detail-section">
+          <h3>COLUMN</h3>
+          <div class="form-grid">
+            ${field('Width','water_column_width',details.water_column_width,false,'number','0')}
+            ${field('Length','water_column_length',details.water_column_length,false,'number','0')}
+            ${field('Height','water_column_height',details.water_column_height,false,'number','0')}
+            ${calculatedField('Column','water_column_quantity',details.water_column_quantity,'WIDTH × LENGTH × HEIGHT')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>BEAM</h3>
+          <div class="form-grid">
+            ${field('Width','water_beam_width',details.water_beam_width,false,'number','0')}
+            ${field('Length','water_beam_length',details.water_beam_length,false,'number','0')}
+            ${field('Thickness','water_beam_thickness',details.water_beam_thickness,false,'number','0')}
+            ${calculatedField('Beam','water_beam_quantity',details.water_beam_quantity,'WIDTH × LENGTH × THICKNESS')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>SECOND FLOOR BEAM</h3>
+          <div class="form-grid">
+            ${field('Width','water_second_floor_beam_width',details.water_second_floor_beam_width,false,'number','0')}
+            ${field('Length','water_second_floor_beam_length',details.water_second_floor_beam_length,false,'number','0')}
+            ${field('Thickness','water_second_floor_beam_thickness',details.water_second_floor_beam_thickness,false,'number','0')}
+            ${calculatedField('Second Floor Beam','water_second_floor_beam_quantity',details.water_second_floor_beam_quantity,'WIDTH × LENGTH × THICKNESS')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>SLUB</h3>
+          <div class="form-grid">
+            ${field('Width','water_slub_width',details.water_slub_width,false,'number','0')}
+            ${field('Length','water_slub_length',details.water_slub_length,false,'number','0')}
+            ${field('Thickness','water_slub_thickness',details.water_slub_thickness,false,'number','0')}
+            ${calculatedField('Slub','water_slub_quantity',details.water_slub_quantity,'WIDTH × LENGTH × THICKNESS')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>3RD FLOOR BEAM</h3>
+          <div class="form-grid">
+            ${field('Width','water_3rd_floor_beam_width',details.water_3rd_floor_beam_width,false,'number','0')}
+            ${field('Length','water_3rd_floor_beam_length',details.water_3rd_floor_beam_length,false,'number','0')}
+            ${field('Thickness','water_3rd_floor_beam_thickness',details.water_3rd_floor_beam_thickness,false,'number','0')}
+            ${calculatedField('3rd Floor Beam','water_3rd_floor_beam_quantity',details.water_3rd_floor_beam_quantity,'WIDTH × LENGTH × THICKNESS')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>TOP STAND</h3>
+          <div class="form-grid">
+            ${field('How Many','water_top_stand_quantity',details.water_top_stand_quantity,false,'number','0')}
+          </div>
+        </div>
+
+        <div class="project-detail-section">
+          <h3>SOLAR PANNEL</h3>
+          <div class="form-grid">
+            ${field('How Many','water_solar_pannel_quantity',details.water_solar_pannel_quantity,false,'number','0')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (type === 'BRIDGE') {
     return `
       <div class="project-detail-section">
         <h3>PROJECT-SPECIFIC DETAILS</h3>
@@ -3116,6 +3188,14 @@ function calculateProjectFormulas() {
     set('covered_column_quantity',product('covered_column_width','covered_column_length','covered_column_height'));
     set('covered_beam_quantity',product('covered_beam_width','covered_beam_length','covered_beam_thickness'));
   }
+
+  if (type === 'WATER SYSTEM') {
+    set('water_column_quantity',product('water_column_width','water_column_length','water_column_height'));
+    set('water_beam_quantity',product('water_beam_width','water_beam_length','water_beam_thickness'));
+    set('water_second_floor_beam_quantity',product('water_second_floor_beam_width','water_second_floor_beam_length','water_second_floor_beam_thickness'));
+    set('water_slub_quantity',product('water_slub_width','water_slub_length','water_slub_thickness'));
+    set('water_3rd_floor_beam_quantity',product('water_3rd_floor_beam_width','water_3rd_floor_beam_length','water_3rd_floor_beam_thickness'));
+  }
 }
 
 function collectProjectDetails(type,values) {
@@ -3144,7 +3224,30 @@ function collectProjectDetails(type,values) {
       'sheet_pile_width',
       'sheet_pile_pieces'
     ],
-    'WATER SYSTEM':[],
+    'WATER SYSTEM':[
+      'water_column_width',
+      'water_column_length',
+      'water_column_height',
+      'water_column_quantity',
+      'water_beam_width',
+      'water_beam_length',
+      'water_beam_thickness',
+      'water_beam_quantity',
+      'water_second_floor_beam_width',
+      'water_second_floor_beam_length',
+      'water_second_floor_beam_thickness',
+      'water_second_floor_beam_quantity',
+      'water_slub_width',
+      'water_slub_length',
+      'water_slub_thickness',
+      'water_slub_quantity',
+      'water_3rd_floor_beam_width',
+      'water_3rd_floor_beam_length',
+      'water_3rd_floor_beam_thickness',
+      'water_3rd_floor_beam_quantity',
+      'water_top_stand_quantity',
+      'water_solar_pannel_quantity'
+    ],
     'BRIDGE':[],
     'COVERED COURT':['covered_floor_length','covered_floor_width','covered_floor_thickness','covered_floor_area','covered_height','covered_footing_width','covered_footing_length','covered_footing_thickness','covered_footing_quantity','covered_column_width','covered_column_length','covered_column_height','covered_column_quantity','covered_beam_type','covered_beam_width','covered_beam_length','covered_beam_thickness','covered_beam_quantity']
   };
