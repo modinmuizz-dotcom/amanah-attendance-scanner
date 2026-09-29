@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=2">
+  <link rel="stylesheet" href="payroll.css?v=3">
 </head>
 <body>
   <main class="container payroll-page">
@@ -38,6 +38,16 @@
       </div>
     </section>
 
+    <section class="payroll-print-header" aria-hidden="true">
+      <div class="payroll-print-company">AMANAH CONSTRUCTION SERVICES</div>
+      <div class="payroll-print-title">PAYROLL REGISTER</div>
+      <div class="payroll-print-meta">
+        <div><span>PAYROLL PERIOD</span><strong id="printPayrollPeriod">—</strong></div>
+        <div><span>EMPLOYEE</span><strong id="printPayrollEmployee">ALL EMPLOYEES</strong></div>
+        <div><span>GENERATED</span><strong id="printPayrollGenerated">—</strong></div>
+      </div>
+    </section>
+
     <section class="payroll-summary-grid">
       <div class="payroll-summary-card"><span>EMPLOYEES</span><strong id="payrollEmployeeCount">0</strong></div>
       <div class="payroll-summary-card"><span>WORK DAYS</span><strong id="payrollWorkDays">0</strong></div>
@@ -52,7 +62,10 @@
           <h2>EMPLOYEE PAYROLL</h2>
           <p>TRUCKERS use hourly rates. All other departments use daily rates, with optional half-day treatment.</p>
         </div>
-        <button id="savePayrollButton" class="button primary" type="button" disabled>SAVE PAYROLL</button>
+        <div class="payroll-action-buttons">
+          <button id="printPayrollButton" class="button secondary payroll-print-action" type="button" disabled>PRINT PAYROLL</button>
+          <button id="savePayrollButton" class="button primary" type="button" disabled>SAVE PAYROLL</button>
+        </div>
       </div>
 
       <div class="payroll-table-wrap">
@@ -106,7 +119,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=2"></script>
+  <script src="payroll.js?v=3"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
