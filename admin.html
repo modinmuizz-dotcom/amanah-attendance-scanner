@@ -694,6 +694,70 @@
   </div>
 
   <div
+    id="materialEstimateModal"
+    class="modal hidden"
+    aria-hidden="true"
+  >
+    <div class="modal-card material-estimate-modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>BOM / MATERIAL ESTIMATE</h2>
+          <p class="material-estimate-subtitle">Generate the road material estimate from the saved pavement area and enter the applicable material rates.</p>
+        </div>
+        <button id="closeMaterialEstimateButton" class="close-button" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="material-estimate-project">
+        <div>
+          <small>PROJECT</small>
+          <strong id="materialEstimateProjectName">—</strong>
+        </div>
+        <div>
+          <small>PROJECT ID</small>
+          <strong id="materialEstimateProjectId">—</strong>
+        </div>
+        <div>
+          <small>PAVEMENT AREA</small>
+          <strong id="materialEstimateBasis">0</strong>
+        </div>
+      </div>
+
+      <div id="materialEstimateInfo" class="material-estimate-info"></div>
+
+      <div class="material-estimate-table-wrap">
+        <table class="material-estimate-table">
+          <thead>
+            <tr>
+              <th>DESCRIPTION</th>
+              <th>UNIT</th>
+              <th>QTY</th>
+              <th>RATE</th>
+              <th>TOTAL COST</th>
+            </tr>
+          </thead>
+          <tbody id="materialEstimateBody"></tbody>
+          <tfoot>
+            <tr>
+              <th colspan="4" style="text-align:right">TOTAL ESTIMATED MATERIAL COST</th>
+              <th id="materialEstimateGrandTotal">₱0.00</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="material-estimate-note">
+        <strong>Road material basis:</strong>
+        quantities are calculated from the saved Pavement Area using the consumption factors provided for this AMANAH project formula.
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelMaterialEstimateButton" class="button secondary">CANCEL</button>
+        <button type="button" id="saveMaterialEstimateButton" class="button primary">SAVE MATERIAL ESTIMATE</button>
+      </div>
+    </div>
+  </div>
+
+  <div
     id="modal"
     class="modal hidden"
   >
@@ -755,7 +819,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=5"></script>
+  <script src="admin.js?v=6"></script>
 
 <script src="amanah-ui.js?v=3"></script>
 </body>
