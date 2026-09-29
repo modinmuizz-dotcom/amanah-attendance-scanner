@@ -118,6 +118,7 @@ function getRoadMaterialBOM(project) {
         unit: 'REBAR',
         factor: 0.17,
         defaultRate: 0,
+        sameAs: 'Rebar - Longitudinal Section',
         basis: 'SHOULDERING LENGTH',
         basisLength: shoulderBasis,
         formula: 'SHOULDERING LENGTH × 0.17'
@@ -127,9 +128,30 @@ function getRoadMaterialBOM(project) {
         unit: 'REBAR',
         factor: 0.012,
         defaultRate: 0,
+        sameAs: 'Rebar - Transverse Section',
         basis: 'SHOULDERING LENGTH',
         basisLength: shoulderBasis,
         formula: 'SHOULDERING LENGTH × 0.012'
+      },
+      {
+        description: 'Shouldering - Gravel',
+        unit: 'CUBIC METER',
+        factor: 1.15,
+        defaultRate: 0,
+        sameAs: 'Gravel',
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × 1.15'
+      },
+      {
+        description: 'Shouldering - Sand',
+        unit: 'CUBIC METER',
+        factor: 0.58,
+        defaultRate: 0,
+        sameAs: 'Sand',
+        basis: 'SHOULDERING LENGTH',
+        basisLength: shoulderBasis,
+        formula: 'SHOULDERING LENGTH × 0.58'
       },
       {
         description: 'Shouldering - Labor',
@@ -1624,10 +1646,23 @@ async function loadMaterialEstimateItems(project, length) {
       const qty =
         basisLength * Number(template.factor || 0);
 
-      const rate =
-        Number.isFinite(Number(found?.rate))
-          ? Number(found.rate)
-          : Number(template.defaultRate || 0);
+      let rate = 0;
+
+      if (Number.isFinite(Number(found?.rate))) {
+        rate = Number(found.rate);
+      } else if (template.sameAs) {
+        const sameAsRow =
+          existing.find(
+            item => item.description === template.sameAs
+          );
+
+        rate =
+          Number.isFinite(Number(sameAsRow?.rate))
+            ? Number(sameAsRow.rate)
+            : Number(template.defaultRate || 0);
+      } else {
+        rate = Number(template.defaultRate || 0);
+      }
 
       return {
         ...template,
