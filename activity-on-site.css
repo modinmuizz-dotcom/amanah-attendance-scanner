@@ -182,6 +182,8 @@
 .activity-field select{
   width:100%;
   min-height:42px;
+  min-width:0;
+  box-sizing:border-box;
   border:1px solid #cbd5e1;
   border-radius:10px;
   padding:0 12px;
@@ -190,6 +192,11 @@
   font-size:13px;
   outline:none;
   transition:.18s ease;
+}
+
+.activity-field input[type="date"]{
+  min-width:250px;
+  padding-right:38px;
 }
 
 .activity-field input::placeholder{
@@ -512,6 +519,22 @@
 
 @media(max-width:1200px){
   .activity-filter-grid{
-    grid-template-columns:minmax(300px,1.8fr) minmax(190px,1fr) minmax(220px,1.1fr) auto;
+    grid-template-columns:minmax(320px,1.7fr) minmax(235px,.9fr) minmax(250px,1fr) auto;
+    gap:14px;
+  }
+}
+
+@media(max-width:950px){
+  .activity-filter-grid{
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .activity-filter-grid > .button.secondary{
+    min-width:120px;
+  }
+
+  .activity-field input[type="date"]{
+    min-width:0;
   }
 }
