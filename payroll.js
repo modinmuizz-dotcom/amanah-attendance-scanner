@@ -6,6 +6,7 @@ let payrollEmployees=[];
 let payrollAttendance=[];
 let payrollRows=[];
 let calculatedPeriod=null;
+let payrollEmployeeOptions=[];
 
 function escapeHtml(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function money(v){return '₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -23,6 +24,34 @@ async function requireSession(){
 
 function normalizeDepartment(v){return String(v||'').trim().toUpperCase();}
 
+function selectedPayrollEmployeeId(){
+  return String(
+    document.getElementById('payrollEmployeeFilter')?.value || ''
+  );
+}
+
+function populatePayrollEmployeeFilter(employees){
+  const select=document.getElementById('payrollEmployeeFilter');
+  if(!select)return;
+
+  const selected=select.value;
+  const sorted=[...(employees||[])].sort((a,b)=>
+    String(a.employee_name||'').localeCompare(String(b.employee_name||''))
+  );
+
+  payrollEmployeeOptions=sorted;
+  select.innerHTML='<option value="">ALL EMPLOYEES</option>'+
+    sorted.map(employee=>
+      `<option value="${escapeHtml(employee.employee_id)}">${escapeHtml(employee.employee_name||'—')} — ${escapeHtml(employee.employee_id||'') }</option>`
+    ).join('');
+
+  if(sorted.some(employee=>String(employee.employee_id)===selected)){
+    select.value=selected;
+  }else{
+    select.value='';
+  }
+}
+
 function completedInPeriod(row,start,end){
   const status=String(row.status||'').toUpperCase();
   if(status!=='COMPLETED')return false;
@@ -33,7 +62,12 @@ function completedInPeriod(row,start,end){
 function buildPayrollRows(){
   const byEmployee=new Map();
 
-  payrollEmployees.forEach(employee=>{
+  payrollEmployees
+    .filter(employee=>{
+      const selected=selectedPayrollEmployeeId();
+      return !selected || String(employee.employee_id)===selected;
+    })
+    .forEach(employee=>{
     byEmployee.set(employee.employee_id,{
       employeeId:employee.employee_id,
       employeeName:employee.employee_name||'—',
@@ -155,8 +189,21 @@ async function calculatePayroll(){
   if(attError)throw attError;
 
   payrollEmployees=employees||[];
-  payrollAttendance=attendance||[];
-  calculatedPeriod={start,end};
+  populatePayrollEmployeeFilter(payrollEmployees);
+
+  const selectedEmployeeId=selectedPayrollEmployeeId();
+
+  payrollAttendance=(attendance||[])
+    .filter(row=>
+      !selectedEmployeeId ||
+      String(row.employee_id)===selectedEmployeeId
+    );
+
+  calculatedPeriod={
+    start,
+    end,
+    employeeId:selectedEmployeeId
+  };
   buildPayrollRows();
   render();
   showMessage('Payroll calculated successfully. Review the daily employee classifications before saving.','success');
@@ -242,6 +289,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
   });
   document.getElementById('savePayrollButton').addEventListener('click',savePayroll);
   document.getElementById('refreshPayrollHistoryButton').addEventListener('click',loadPayrollHistory);
+  document.getElementById('payrollEmployeeFilter').addEventListener('change',()=>{
+    calculatedPeriod=null;
+    payrollRows=[];
+    document.getElementById('payrollBody').innerHTML='<tr><td colspan="9" class="payroll-empty">Select a payroll period and calculate payroll.</td></tr>';
+    updateSummary();
+  });
 
   const today=new Date();
   const start=new Date(today.getFullYear(),today.getMonth(),1);
@@ -250,5 +303,19 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('payrollStart').value=iso(start);
   document.getElementById('payrollEnd').value=iso(end);
 
-  if(await requireSession()) await loadPayrollHistory();
+  if(await requireSession()){
+    try{
+      const {data,error}=await supabaseClient
+        .from('employees')
+        .select('employee_id,employee_name,department,hourly_rate,daily_rate,status')
+        .eq('status','ACTIVE')
+        .order('employee_name');
+
+      if(error)throw error;
+      populatePayrollEmployeeFilter(data||[]);
+      await loadPayrollHistory();
+    }catch(error){
+      showMessage(error.message||'Unable to load employee list.','error');
+    }
+  }
 });
