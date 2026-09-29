@@ -2123,8 +2123,17 @@ function openProjectModal(mode,record=null) {
     ${renderProjectSpecificFields(type,details)}
   `;
   const fields=document.getElementById('formFields');
+
+  fields.querySelectorAll('input, select').forEach(input => {
+    input.readOnly = false;
+    input.disabled = false;
+    input.style.pointerEvents = 'auto';
+    input.style.userSelect = 'text';
+  });
+
   fields.oninput=calculateProjectFormulas;
   fields.onchange=calculateProjectFormulas;
+  setupDecimalInputs(fields);
   calculateProjectFormulas();
 
   openModal(mode==='add'?'ADD PROJECT — '+type:'EDIT PROJECT — '+type,'project',mode,values);
@@ -2172,11 +2181,11 @@ function field(
 }
 
 
-function normalizeDecimalInput(event) {
-  const input = event.target;
-  if (!input || input.dataset.decimalInput !== 'true') return;
+function normalizeDecimalValue(input) {
+  if (!input) return;
 
-  let value = input.value.replace(/[^0-9.]/g, '');
+  let value = String(input.value || '')
+    .replace(/[^0-9.]/g, '');
 
   const firstDot = value.indexOf('.');
   if (firstDot !== -1) {
@@ -2186,6 +2195,21 @@ function normalizeDecimalInput(event) {
   }
 
   input.value = value;
+}
+
+function setupDecimalInputs(container = document) {
+  container
+    .querySelectorAll('[data-decimal-input="true"]')
+    .forEach(input => {
+      input.readOnly = false;
+      input.disabled = false;
+      input.style.pointerEvents = 'auto';
+      input.style.userSelect = 'text';
+      input.addEventListener(
+        'input',
+        () => normalizeDecimalValue(input)
+      );
+    });
 }
 
 function selectField(
@@ -2705,11 +2729,6 @@ function setupTabs() {
    ========================================================= */
 
 function setupEvents() {
-
-  document.addEventListener(
-    'input',
-    normalizeDecimalInput
-  );
 
   document
     .getElementById(
