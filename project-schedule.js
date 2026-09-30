@@ -68,7 +68,7 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
+  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
   if(error)throw error;state.activities=acts||[];
   const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
   if(relErr)throw relErr;state.assignments=rel||[];renderTables();
@@ -94,7 +94,8 @@ function renderTables(){
     return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
-  const assignments=rows.flatMap(a=>equipmentFor(a.activity_id).map(e=>({a,e})));
+  const approvedRows=rows.filter(a=>a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status)));
+  const assignments=approvedRows.flatMap(a=>equipmentFor(a.activity_id).map(e=>({a,e})));
   document.getElementById("equipmentTable").innerHTML=assignments.length?assignments.map(({a,e})=>'<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc((a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—"))+'</td><td><strong>'+esc(e.equipment_name)+'</strong><br><small style="color:#64748b">'+esc(e.equipment_id)+" • "+esc(e.plate_number||"")+'</small></td><td>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</td><td><strong>'+esc(a.activity||"")+'</strong></td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td></tr>').join(""):'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px">No equipment schedules found.</td></tr>';
 
   document.querySelectorAll("[data-edit]").forEach(btn=>btn.addEventListener("click",()=>openEditModal(btn.dataset.edit)));
@@ -271,7 +272,8 @@ function renderCalendar(){
   const filtered=state.activities.filter(a=>{
     const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
     const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
-    return (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||a.activity_status===filterStatus);
+    const calendarApproved=a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status));
+    return calendarApproved && (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||a.activity_status===filterStatus);
   });
 
   let out=weekdays.map(d=>'<div class="calendar-weekday">'+d+'</div>').join("");
@@ -326,7 +328,7 @@ function renderCalendar(){
 
 async function saveSchedule(){
   clearMsg();
-  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value,initialStatus=document.getElementById("initialStatus").value;
+  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
   if(!activity)return msg("err","Please enter the activity.");
@@ -334,18 +336,35 @@ async function saveSchedule(){
   const ss=isoFromLocal(date,start),se=isoFromLocal(date,end);
   if(ss&&se&&new Date(se)<new Date(ss))return msg("err","End time cannot be earlier than start time.");
   const p=state.projects.find(x=>x.project_id===pid);
-  const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SAVING...";
+  const equipmentNames=state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", ");
+  const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SUBMITTING...";
   try{
-    const {data,error:insertError}=await supabaseClient.from("project_activities").insert({project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,manpower,equipment:state.equipment.filter(e=>state.selectedEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),accomplishment:initialStatus==="DONE"?100:0,remarks:null,activity_status:initialStatus,scheduled_start:ss,scheduled_end:se,priority,completed_at:initialStatus==="DONE"?new Date().toISOString():null,completion_remarks:null}).select("activity_id").single();
+    const {data,error:insertError}=await supabaseClient.from("project_activities").insert({
+      project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,
+      manpower,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
+      approval_status:"PENDING",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null
+    }).select("activity_id").single();
     if(insertError)throw insertError;
+
     const rel=Array.from(state.selectedEquipment).map(equipment_id=>({activity_id:data.activity_id,equipment_id}));
-    const {error}=await supabaseClient.from("project_activity_equipment").insert(rel);if(error)throw error;
-    msg("ok","Activity scheduled successfully. The selected equipment is now reserved on the equipment schedule.");
+    const {error:relError}=await supabaseClient.from("project_activity_equipment").insert(rel);
+    if(relError)throw relError;
+
+    const {error:approvalError}=await supabaseClient.rpc("amanah_submit_approval",{
+      p_request_type:"ACTIVITY",
+      p_entity_id:data.activity_id,
+      p_title:activity,
+      p_description:"Activity submitted by Engineer for General Manager approval.",
+      p_payload:{project_name:p?.project_name||"",activity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
+    });
+    if(approvalError)throw approvalError;
+
+    msg("ok","Activity submitted for General Manager approval. It will not be placed on the equipment/calendar schedule until approved.");
     clearForm();await loadActivities();
-  }catch(e){console.error(e);msg("err","Could not save schedule: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
+  }catch(e){console.error(e);msg("err","Could not submit activity: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PLANNED";updateInitialStatusUI();state.selectedEquipment.clear();renderEquipment();}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
@@ -428,7 +447,12 @@ async function saveEditSchedule(){
       equipment:state.equipment.filter(e=>state.editingScheduleEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),
       scheduled_start:ss,
       scheduled_end:se,
-      priority
+      priority,
+      activity_status:"PENDING APPROVAL",
+      approval_status:"PENDING",
+      approval_decided_by:null,
+      approval_decided_at:null,
+      approval_remarks:null
     };
     const {error:updateError}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",id);
     if(updateError)throw updateError;
@@ -440,8 +464,18 @@ async function saveEditSchedule(){
     const {error:insertError}=await supabaseClient.from("project_activity_equipment").insert(rel);
     if(insertError)throw insertError;
 
+    const p2=state.projects.find(x=>x.project_id===pid);
+    const eqNames=state.equipment.filter(e=>state.editingScheduleEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", ");
+    const {error:approvalError}=await supabaseClient.rpc("amanah_submit_approval",{
+      p_request_type:"ACTIVITY",
+      p_entity_id:id,
+      p_title:activity,
+      p_description:"Edited activity resubmitted by Engineer for General Manager approval.",
+      p_payload:{project_name:p2?.project_name||"",activity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
+    });
+    if(approvalError)throw approvalError;
     closeEditModal();
-    msg("ok","Activity schedule updated successfully.");
+    msg("ok","Activity changes saved and resubmitted for General Manager approval.");
     await loadActivities();
   }catch(e){
     console.error(e);
