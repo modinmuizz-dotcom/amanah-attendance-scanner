@@ -33,6 +33,13 @@ function updateActivityTypeFields(prefix=""){
   if(itemField)itemField.style.display=needsItem?"":"none";
   if(qtyField)qtyField.style.display=needsQuantity?"":"none";
   if(itemLabel)itemLabel.textContent=type==="MATERIALS DELIVERY"?"What is being delivered?":"What is being hauled?";
+  const manpowerField=document.getElementById(prefix+"manpowerField");
+  const hideManpower=type==="HAULING"||type==="MATERIALS DELIVERY";
+  if(manpowerField)manpowerField.style.display=hideManpower?"none":"";
+  if(hideManpower){
+    const manpowerInput=document.getElementById(prefix+"manpower");
+    if(manpowerInput)manpowerInput.value="0";
+  }
   if(!needsItem && document.getElementById(prefix+"activityItem"))document.getElementById(prefix+"activityItem").value="";
   if(!needsQuantity && document.getElementById(prefix+"activityQuantity"))document.getElementById(prefix+"activityQuantity").value="";
 }
