@@ -375,3 +375,46 @@ alter table public.project_activities
       ]
     )
   );
+
+
+-- Delete completed approval-history records only; underlying module record remains intact.
+create or replace function public.amanah_delete_approval_history(
+  p_approval_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_status text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication is required.';
+  end if;
+
+  if not public.amanah_has_permission('approvals.view') then
+    raise exception 'You are not authorized to delete approval history.';
+  end if;
+
+  select status into v_status
+  from public.amanah_approval_requests
+  where approval_id=p_approval_id;
+
+  if v_status is null then
+    raise exception 'Approval history record was not found.';
+  end if;
+
+  if v_status='PENDING' then
+    raise exception 'Pending approvals cannot be deleted from history.';
+  end if;
+
+  delete from public.amanah_approval_requests
+  where approval_id=p_approval_id;
+
+  if not found then
+    raise exception 'Approval history record could not be deleted.';
+  end if;
+end $$;
+
+grant execute on function public.amanah_delete_approval_history(uuid) to authenticated;
