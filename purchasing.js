@@ -108,12 +108,70 @@ function renderMetrics(){
  const po=state.orders.filter(o=>!["CLOSED","CANCELLED"].includes(o.status)).length;
  document.getElementById("mOpen").textContent=open;document.getElementById("mReview").textContent=review;document.getElementById("mApproved").textContent=approved;document.getElementById("mPO").textContent=po;
 }
+
+function showCancelRequestDialog(title,requestNo,projectName){
+  return new Promise(resolve=>{
+    document.getElementById("amanahCancelRequestModal")?.remove();
+    const wrap=document.createElement("div");
+    wrap.id="amanahCancelRequestModal";
+    wrap.style.cssText="position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.68);backdrop-filter:blur(4px)";
+    wrap.innerHTML=
+      '<div style="width:min(560px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 30px 90px rgba(15,23,42,.3);overflow:hidden">'+
+        '<div style="display:flex;gap:12px;align-items:flex-start;padding:20px;border-bottom:1px solid #e2e8f0">'+
+          '<div style="width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:#fff7ed;color:#b45309;font-weight:900">!</div>'+
+          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">PURCHASE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">CANCEL REQUEST</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">This purchase request is still awaiting General Manager approval.</p></div>'+
+          '<button type="button" data-cancel-close style="margin-left:auto;border:1px solid #dbe3ef;background:#fff;border-radius:9px;width:34px;height:34px;font-size:20px;color:#475569;cursor:pointer">×</button>'+
+        '</div>'+
+        '<div style="padding:18px 20px">'+
+          '<div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><strong style="display:block;color:#0f172a;font-size:11px">'+esc(requestNo)+'</strong><span style="display:block;margin-top:4px;color:#475569;font-size:11px">'+esc(projectName||"—")+'</span></div>'+
+          '<label style="display:block;margin-top:14px;color:#334155;font-size:9px;font-weight:900;letter-spacing:.08em">CANCELLATION REASON</label>'+
+          '<textarea data-cancel-reason rows="4" placeholder="Enter the reason for withdrawing this purchase request..." style="width:100%;box-sizing:border-box;margin-top:7px;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit;resize:vertical"></textarea>'+
+          '<div style="margin-top:6px;color:#94a3b8;font-size:9px">The reason will be retained in the approval history.</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px;padding:15px 20px;border-top:1px solid #e2e8f0;background:#fbfdff">'+
+          '<button type="button" data-cancel-close class="btn gray">KEEP REQUEST</button>'+
+          '<button type="button" data-cancel-confirm class="btn red">CANCEL REQUEST</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(wrap);
+    const reason=wrap.querySelector("[data-cancel-reason]");setTimeout(()=>reason?.focus(),30);
+    const finish=value=>{wrap.remove();resolve(value);};
+    wrap.querySelectorAll("[data-cancel-close]").forEach(b=>b.addEventListener("click",()=>finish(null)));
+    wrap.querySelector("[data-cancel-confirm]").addEventListener("click",()=>{
+      const v=(reason?.value||"").trim();
+      if(!v){reason.focus();reason.style.borderColor="#dc2626";return;}
+      finish(v);
+    });
+    wrap.addEventListener("click",e=>{if(e.target===wrap)finish(null);});
+  });
+}
+
+async function cancelPurchaseRequest(id){
+  const r=state.requests.find(x=>x.purchase_request_id===id);
+  if(!r || r.status!=="PENDING APPROVAL")return;
+  const reason=await showCancelRequestDialog("CANCEL PURCHASE REQUEST",r.request_no,r.project_name);
+  if(!reason)return;
+  try{
+    const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","PURCHASE_REQUEST").eq("entity_id",id).eq("status","PENDING").maybeSingle();
+    if(reqError)throw reqError;
+    if(!req?.approval_id)throw new Error("No pending approval request was found for this purchase request.");
+    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
+    if(error)throw error;
+    msg("Purchase Request "+r.request_no+" cancelled successfully.","ok");
+    await loadRequests();
+    renderRequests();
+  }catch(error){
+    console.error(error);msg(error.message||"Unable to cancel purchase request.","err");
+  }
+}
+
 function renderRequests(){
  const q=(document.getElementById("prSearch").value||"").toLowerCase().trim(),status=document.getElementById("prStatus").value,pid=document.getElementById("prProject").value;
  const rows=state.requests.filter(r=>(!q||[r.request_no,r.project_name,r.requester_name,r.purpose].join(" ").toLowerCase().includes(q))&&(!status||r.status===status)&&(!pid||r.project_id===pid));
  document.getElementById("prBody").innerHTML=rows.length?rows.map(r=>{
   const items=state.requestItems.filter(i=>i.purchase_request_id===r.purchase_request_id);
   let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini edit" data-pr-edit="'+esc(r.purchase_request_id)+'">EDIT</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button><button class="mini delete" data-pr-delete="'+esc(r.purchase_request_id)+'">DELETE</button>';
+  if(r.status==="PENDING APPROVAL")actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">CANCEL REQUEST</button>';
   if(r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW")actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
   if(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
   return '<tr><td><strong>'+esc(r.request_no)+'</strong></td><td>'+esc(fmtDate(r.request_date))+'</td><td><strong>'+esc(r.project_name)+'</strong><br><small style="color:#64748b">'+esc(r.project_location||"")+'</small></td><td>'+esc(r.requester_name)+'<br><small style="color:#64748b">'+esc(r.requester_position||r.requester_role||"SITE ENGINEER")+'</small></td><td>'+esc(fmtDate(r.needed_by_date))+'</td><td>'+esc(r.priority)+'</td><td>'+items.length+'</td><td>'+statusBadge(r.status)+'</td><td><div class="row-actions">'+actions+'</div></td></tr>';
@@ -122,6 +180,7 @@ function renderRequests(){
  document.querySelectorAll("[data-pr-edit]").forEach(b=>b.addEventListener("click",()=>openRequestEdit(b.dataset.prEdit)));
  document.querySelectorAll("[data-pr-print]").forEach(b=>b.addEventListener("click",()=>printPurchaseRequest(b.dataset.prPrint)));
  document.querySelectorAll("[data-pr-delete]").forEach(b=>b.addEventListener("click",()=>deletePurchaseRequest(b.dataset.prDelete)));
+ document.querySelectorAll("[data-pr-cancel]").forEach(b=>b.addEventListener("click",()=>cancelPurchaseRequest(b.dataset.prCancel)));
  document.querySelectorAll("[data-pr-approve]").forEach(b=>b.addEventListener("click",()=>setRequestStatus(b.dataset.prApprove,"APPROVED")));
  document.querySelectorAll("[data-pr-reject]").forEach(b=>b.addEventListener("click",()=>setRequestStatus(b.dataset.prReject,"REJECTED")));
  document.querySelectorAll("[data-pr-po]").forEach(b=>b.addEventListener("click",()=>openPOModal(b.dataset.prPo)));
