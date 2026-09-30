@@ -7,7 +7,134 @@ let payrollAttendance=[];
 let payrollRows=[];
 let calculatedPeriod=null;
 let payrollEmployeeOptions=[];
+let groupLaborRows=[];
 
+
+
+function groupLaborGross(row){
+  return num(row.ratePerMeter)*num(row.metersAccomplished);
+}
+
+function updateGroupLaborPreview(){
+  const rate=num(document.getElementById('groupLaborRate')?.value);
+  const meters=num(document.getElementById('groupLaborMeters')?.value);
+  const gross=rate*meters;
+  const el=document.getElementById('groupLaborPreviewGross');
+  if(el)el.textContent=money(gross);
+}
+
+function openGroupLaborModal(){
+  clearMessage();
+  document.getElementById('groupLaborName').value='';
+  document.getElementById('groupLaborActivity').value='';
+  document.getElementById('groupLaborRate').value='';
+  document.getElementById('groupLaborMeters').value='';
+  document.getElementById('groupLaborError').textContent='';
+  updateGroupLaborPreview();
+
+  const modal=document.getElementById('groupLaborModal');
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden','false');
+}
+
+function closeGroupLaborModal(){
+  const modal=document.getElementById('groupLaborModal');
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden','true');
+}
+
+function addGroupLaborEntry(){
+  const error=document.getElementById('groupLaborError');
+  error.textContent='';
+
+  const groupName=document.getElementById('groupLaborName').value.trim();
+  const activity=document.getElementById('groupLaborActivity').value.trim();
+  const rate=num(document.getElementById('groupLaborRate').value);
+  const meters=num(document.getElementById('groupLaborMeters').value);
+
+  const start=document.getElementById('payrollStart').value;
+  const end=document.getElementById('payrollEnd').value;
+
+  if(!start||!end||end<start){
+    error.textContent='Please set a valid payroll period first.';
+    return;
+  }
+  if(!groupName){
+    error.textContent='Please enter the group name.';
+    return;
+  }
+  if(!activity){
+    error.textContent='Please enter the activity or description.';
+    return;
+  }
+  if(rate<=0){
+    error.textContent='Please enter a rate per meter greater than 0.';
+    return;
+  }
+  if(meters<=0){
+    error.textContent='Please enter meters accomplished greater than 0.';
+    return;
+  }
+
+  groupLaborRows.push({
+    groupName,
+    activity,
+    ratePerMeter:rate,
+    metersAccomplished:meters
+  });
+
+  calculatedPeriod={
+    start,
+    end,
+    employeeId:selectedPayrollEmployeeId(),
+    includesManualEntries:payrollRows.some(r=>r.source==='MANUAL'),
+    includesGroupLabor:true
+  };
+
+  renderGroupLabor();
+  updateSummary();
+  closeGroupLaborModal();
+
+  showMessage(
+    groupName+' group labor was added: '+meters.toLocaleString('en-PH',{maximumFractionDigits:2})+
+    ' meters × '+money(rate)+'.',
+    'success'
+  );
+}
+
+function renderGroupLabor(){
+  const body=document.getElementById('groupLaborBody');
+  if(!body)return;
+
+  if(!groupLaborRows.length){
+    body.innerHTML='<tr><td colspan="5" class="payroll-empty">No group labor entries added.</td></tr>';
+    document.getElementById('groupLaborGross').textContent=money(0);
+    return;
+  }
+
+  body.innerHTML=groupLaborRows.map((row,index)=>`
+    <tr>
+      <td><strong>${escapeHtml(row.groupName)}</strong></td>
+      <td>${escapeHtml(row.activity)}</td>
+      <td class="payroll-rate">${money(row.ratePerMeter)}<span class="payroll-sub">PER METER</span></td>
+      <td>${num(row.metersAccomplished).toFixed(2)}</td>
+      <td class="payroll-gross">
+        ${money(groupLaborGross(row))}
+        <button type="button" class="group-labor-remove" data-group-index="${index}">REMOVE</button>
+      </td>
+    </tr>`).join('');
+
+  body.querySelectorAll('[data-group-index]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      groupLaborRows.splice(Number(button.dataset.groupIndex),1);
+      renderGroupLabor();
+      updateSummary();
+    });
+  });
+
+  const gross=groupLaborRows.reduce((sum,row)=>sum+groupLaborGross(row),0);
+  document.getElementById('groupLaborGross').textContent=money(gross);
+}
 
 function manualPayrollEmployee(){
   const raw=String(
@@ -392,7 +519,7 @@ function updatePrintHeader(){
 }
 
 function printPayroll(){
-  if(!calculatedPeriod || !payrollRows.length){
+  if(!calculatedPeriod || (!payrollRows.length&&!groupLaborRows.length)){
     showMessage('Please calculate the payroll before printing.','error');
     return;
   }
@@ -406,14 +533,19 @@ function updateSummary(){
   const employees=payrollRows.length;
   const workDays=payrollRows.reduce((sum,r)=>sum+(r.rateType==='DAILY'?r.fullDays+r.halfDays:0),0);
   const truckerHours=payrollRows.reduce((sum,r)=>sum+(r.rateType==='HOURLY'?r.hours:0),0);
-  const gross=payrollRows.reduce((sum,r)=>sum+grossFor(r),0);
+  const employeeGross=payrollRows.reduce((sum,r)=>sum+grossFor(r),0);
+  const groupGross=groupLaborRows.reduce((sum,r)=>sum+groupLaborGross(r),0);
+  const gross=employeeGross+groupGross;
+
 
   document.getElementById('payrollEmployeeCount').textContent=employees;
   document.getElementById('payrollWorkDays').textContent=workDays.toFixed(2);
   document.getElementById('payrollTruckerHours').textContent=truckerHours.toFixed(2);
   document.getElementById('payrollGross').textContent=money(gross);
-  document.getElementById('savePayrollButton').disabled=!payrollRows.length||!calculatedPeriod;
-  document.getElementById('printPayrollButton').disabled=!payrollRows.length||!calculatedPeriod;
+  const hasPayrollRows=payrollRows.length||groupLaborRows.length;
+  document.getElementById('savePayrollButton').disabled=!hasPayrollRows||!calculatedPeriod;
+  document.getElementById('printPayrollButton').disabled=!hasPayrollRows||!calculatedPeriod;
+
 }
 
 async function calculatePayroll(){
@@ -456,13 +588,15 @@ async function calculatePayroll(){
 
 async function savePayroll(){
   clearMessage();
-  if(!calculatedPeriod||!payrollRows.length){showMessage('Calculate a payroll period before saving.','error');return;}
+  if(!calculatedPeriod||(!payrollRows.length&&!groupLaborRows.length)){showMessage('Add employee payroll or group labor before saving.','error');return;}
   const button=document.getElementById('savePayrollButton');
   button.disabled=true;
   button.textContent='SAVING...';
 
   try{
-    const totalGross=payrollRows.reduce((sum,r)=>sum+grossFor(r),0);
+    const totalGross=
+      payrollRows.reduce((sum,r)=>sum+grossFor(r),0)+
+      groupLaborRows.reduce((sum,r)=>sum+groupLaborGross(r),0);
     const {data:run,error:runError}=await supabaseClient.from('payroll_runs').insert({
       period_start:calculatedPeriod.start,
       period_end:calculatedPeriod.end,
@@ -490,6 +624,23 @@ async function savePayroll(){
 
     const {error:itemError}=await supabaseClient.from('payroll_items').insert(items);
     if(itemError)throw itemError;
+
+    if(groupLaborRows.length){
+      const groupItems=groupLaborRows.map(row=>({
+        payroll_run_id:run.payroll_run_id,
+        group_name:row.groupName,
+        activity_description:row.activity,
+        rate_per_meter:Number(row.ratePerMeter.toFixed(2)),
+        meters_accomplished:Number(row.metersAccomplished.toFixed(2)),
+        gross_pay:Number(groupLaborGross(row).toFixed(2))
+      }));
+
+      const {error:groupError}=await supabaseClient
+        .from('payroll_group_items')
+        .insert(groupItems);
+
+      if(groupError)throw groupError;
+    }
 
     showMessage('Payroll run saved successfully.','success');
     await loadPayrollHistory();
@@ -539,6 +690,15 @@ document.addEventListener('DOMContentLoaded',async()=>{
   ['manualFullDays','manualHalfDays','manualHours'].forEach(id=>{
     document.getElementById(id).addEventListener('input',updateManualPayrollPreview);
   });
+
+  document.getElementById('groupLaborButton').addEventListener('click',openGroupLaborModal);
+  document.getElementById('groupLaborClose').addEventListener('click',closeGroupLaborModal);
+  document.getElementById('groupLaborCancel').addEventListener('click',closeGroupLaborModal);
+  document.querySelector('#groupLaborModal .manual-payroll-backdrop').addEventListener('click',closeGroupLaborModal);
+  document.getElementById('groupLaborAdd').addEventListener('click',addGroupLaborEntry);
+  document.getElementById('groupLaborRate').addEventListener('input',updateGroupLaborPreview);
+  document.getElementById('groupLaborMeters').addEventListener('input',updateGroupLaborPreview);
+  renderGroupLabor();
 
   document.getElementById('calculatePayrollButton').addEventListener('click',()=>{
     calculatePayroll().catch(error=>showMessage(error.message||'Unable to calculate payroll.','error'));
