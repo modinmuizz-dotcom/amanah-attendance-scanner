@@ -114,7 +114,7 @@ function renderRequests(){
  document.getElementById("prBody").innerHTML=rows.length?rows.map(r=>{
   const items=state.requestItems.filter(i=>i.purchase_request_id===r.purchase_request_id);
   let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini edit" data-pr-edit="'+esc(r.purchase_request_id)+'">EDIT</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button><button class="mini delete" data-pr-delete="'+esc(r.purchase_request_id)+'">DELETE</button>';
-  if(r.status==="SUBMITTED"||r.status==="UNDER REVIEW")actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
+  if(r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW")actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
   if(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
   return '<tr><td><strong>'+esc(r.request_no)+'</strong></td><td>'+esc(fmtDate(r.request_date))+'</td><td><strong>'+esc(r.project_name)+'</strong><br><small style="color:#64748b">'+esc(r.project_location||"")+'</small></td><td>'+esc(r.requester_name)+'<br><small style="color:#64748b">'+esc(r.requester_position||r.requester_role||"SITE ENGINEER")+'</small></td><td>'+esc(fmtDate(r.needed_by_date))+'</td><td>'+esc(r.priority)+'</td><td>'+items.length+'</td><td>'+statusBadge(r.status)+'</td><td><div class="row-actions">'+actions+'</div></td></tr>';
  }).join(""):'<tr><td colspan="9" class="empty">No purchase requests found.</td></tr>';
@@ -164,26 +164,55 @@ async function saveRequest(){
   let requestId=state.editingRequestId,requestNo="";
   const payload={project_id:String(projectId),project_name:p?.project_name||"",project_location:p?.location||null,requester_employee_id:String(reqId),requester_name:e?.employee_name||"",requester_position:e?.position||null,requester_role:"SITE ENGINEER",request_date:requestDate,needed_by_date:neededBy||null,priority,purpose:purpose||null,remarks:remarks||null};
   if(editing){
+   payload.status="PENDING APPROVAL";
+   payload.reviewed_at=null;
+   payload.reviewed_by=null;
+   payload.review_remarks=null;
    const {error}=await supabaseClient.from("purchase_requests").update(payload).eq("purchase_request_id",requestId);if(error)throw error;
    const {error:delErr}=await supabaseClient.from("purchase_request_items").delete().eq("purchase_request_id",requestId);if(delErr)throw delErr;
    requestNo=state.requests.find(x=>x.purchase_request_id===requestId)?.request_no||"Purchase Request";
   }else{
-   payload.status="SUBMITTED";payload.submitted_at=new Date().toISOString();
+   payload.status="PENDING APPROVAL";payload.submitted_at=new Date().toISOString();
    const {data,error}=await supabaseClient.from("purchase_requests").insert(payload).select("purchase_request_id,request_no").single();if(error)throw error;
    requestId=data.purchase_request_id;requestNo=data.request_no;
   }
   const items=state.prDraftItems.map((it,i)=>({purchase_request_id:requestId,line_no:i+1,material_name:it.material_name.trim(),specifications:it.specifications?.trim()||null,quantity:Number(it.quantity),unit:it.unit.trim()}));
   const {error:itemError}=await supabaseClient.from("purchase_request_items").insert(items);if(itemError)throw itemError;
-  closeRequestModal();msg(editing?requestNo+" updated successfully.":"Purchase Request "+requestNo+" submitted to Purchasing.");await Promise.all([loadRequests(),loadOrders()]);renderAll();
+  const itemsSummary=state.prDraftItems.map(it=>String(it.material_name||"")+" × "+String(it.quantity||0)+" "+String(it.unit||"")).join(", ");
+  const {error:approvalError}=await supabaseClient.rpc("amanah_submit_approval",{
+    p_request_type:"PURCHASE_REQUEST",
+    p_entity_id:requestId,
+    p_title:requestNo||"Purchase Request",
+    p_description:"Purchase request submitted for General Manager approval.",
+    p_payload:{
+      request_no:requestNo,
+      project_name:p?.project_name||"",
+      project_location:p?.location||"",
+      requester_name:e?.employee_name||"",
+      requester_position:e?.position||"",
+      needed_by_date:neededBy||"",
+      priority,
+      purpose:purpose||"",
+      items_summary:itemsSummary
+    }
+  });
+  if(approvalError)throw approvalError;
+  closeRequestModal();msg(editing?requestNo+" saved and resubmitted for General Manager approval.":"Purchase Request "+requestNo+" submitted for General Manager approval.");await Promise.all([loadRequests(),loadOrders()]);renderAll();
  }catch(err){console.error(err);msg((editing?"Could not update purchase request: ":"Could not submit purchase request: ")+err.message,"err");}
  finally{btn.disabled=false;btn.textContent=editing?"SAVE CHANGES":"SUBMIT REQUEST";}
 }
 async function setRequestStatus(id,status){
  const approve=status==="APPROVED";
- const confirmed=await showConfirm(approve?"APPROVE PURCHASE REQUEST":"REJECT PURCHASE REQUEST",approve?"Please confirm that this Purchase Request has been reviewed and may proceed to Purchase Order processing.":"Please confirm that this Purchase Request should be rejected. The request will remain recorded as REJECTED.",approve?"APPROVE REQUEST":"REJECT REQUEST",!approve);
+ const confirmed=await showConfirm(approve?"APPROVE PURCHASE REQUEST":"REJECT PURCHASE REQUEST",approve?"Please confirm that this Purchase Request has been reviewed by the General Manager and may proceed to Purchase Order processing.":"Please confirm that this Purchase Request should be rejected by the General Manager.",approve?"APPROVE REQUEST":"REJECT REQUEST",!approve);
  if(!confirmed)return;
- const {error}=await supabaseClient.from("purchase_requests").update({status,reviewed_at:new Date().toISOString(),review_remarks:approve?"Approved by Purchasing":"Rejected by Purchasing"}).eq("purchase_request_id",id);
- if(error)return msg("Could not update request: "+error.message,"err");
+ const remarks=approve?"Approved by General Manager":"Rejected by General Manager";
+ const {error}=await supabaseClient.rpc("amanah_decide_pending_approval",{
+   p_request_type:"PURCHASE_REQUEST",
+   p_entity_id:id,
+   p_decision:status,
+   p_remarks:remarks
+ });
+ if(error)return msg("Could not update approval: "+error.message,"err");
  msg("Purchase Request "+(approve?"approved successfully.":"rejected successfully."));
  await loadRequests();renderAll();
 }
