@@ -921,15 +921,9 @@ function renderEmployees() {
 
         <td>
           ₱${Number(
-            String(employee.department || '').toUpperCase() === 'TRUCKERS'
-              ? (employee.hourly_rate ?? 0)
-              : (employee.daily_rate ?? 0)
+            employee.daily_rate ?? 0
           ).toFixed(2)}
-          <small class="rate-display-subtext">
-            ${String(employee.department || '').toUpperCase() === 'TRUCKERS'
-              ? 'PER HOUR'
-              : escapeHtml(employee.rate_basis || 'PER DAY')}
-          </small>
+          <small class="rate-display-subtext">PER DAY</small>
         </td>
 
         <td>
@@ -1704,78 +1698,26 @@ const EMPLOYEE_DEPARTMENTS = [
 ];
 
 function updateEmployeeRateFields() {
-  const department =
-    document
-      .getElementById('department')
-      ?.value
-      ?.trim()
-      ?.toUpperCase() || '';
+  const hourlyWrap = document.getElementById('employeeHourlyRateField');
+  const dailyWrap = document.getElementById('employeeDailyRateField');
+  const hourlyInput = document.getElementById('hourly_rate');
+  const dailyInput = document.getElementById('daily_rate');
 
-  const hourlyWrap =
-    document.getElementById(
-      'employeeHourlyRateField'
-    );
+  if (!hourlyWrap || !dailyWrap || !hourlyInput || !dailyInput) return;
 
-  const dailyWrap =
-    document.getElementById(
-      'employeeDailyRateField'
-    );
+  // AMANAH employee payroll is DAILY for every department,
+  // including TRUCKERS / DRIVER / OPERATOR.
+  hourlyWrap.style.display = 'none';
+  dailyWrap.style.display = '';
 
-  const hourlyInput =
-    document.getElementById(
-      'hourly_rate'
-    );
+  hourlyInput.disabled = true;
+  hourlyInput.required = false;
+  hourlyInput.value = '0';
 
-  const dailyInput =
-    document.getElementById(
-      'daily_rate'
-    );
+  dailyInput.disabled = false;
+  dailyInput.required = true;
 
-  if (
-    !hourlyWrap ||
-    !dailyWrap ||
-    !hourlyInput ||
-    !dailyInput
-  ) {
-    return;
-  }
-
-  const isTruckers =
-    department === 'TRUCKERS';
-
-  hourlyWrap.style.display =
-    isTruckers
-      ? ''
-      : 'none';
-
-  dailyWrap.style.display =
-    isTruckers
-      ? 'none'
-      : '';
-
-  hourlyInput.disabled =
-    !isTruckers;
-
-  dailyInput.disabled =
-    isTruckers;
-
-  hourlyInput.required =
-    isTruckers;
-
-  dailyInput.required =
-    !isTruckers;
-
-  if (isTruckers) {
-    dailyInput.value = '0';
-  } else {
-    hourlyInput.value = '0';
-  }
-
-  setupDecimalInputs(
-    document.getElementById(
-      'formFields'
-    )
-  );
+  setupDecimalInputs(document.getElementById('formFields'));
 }
 
 /* =========================================================
@@ -1860,7 +1802,7 @@ function openEmployeeModal(
         'date'
       )}
 
-      <div id="employeeHourlyRateField" class="form-field">
+      <div id="employeeHourlyRateField" class="form-field" style="display:none">
         <label for="hourly_rate">Hourly Rate</label>
         <input
           id="hourly_rate"
@@ -1869,9 +1811,9 @@ function openEmployeeModal(
           inputmode="decimal"
           autocomplete="off"
           data-decimal-input="true"
-          value="${escapeHtml(values.hourly_rate ?? 0)}"
+          value="0"
+          disabled
         >
-        <small class="rate-field-help">TRUCKERS department only.</small>
       </div>
 
       <div id="employeeDailyRateField" class="form-field">
@@ -1885,9 +1827,8 @@ function openEmployeeModal(
           data-decimal-input="true"
           value="${escapeHtml(values.daily_rate ?? 0)}"
         >
-        <small class="rate-field-help">ADMIN, CONSTRUCTION, MAINTENANCE and PROCUREMENT.</small>
+        <small class="rate-field-help">All employees, including TRUCKERS / DRIVER / OPERATOR, are paid on a PER DAY basis.</small>
       </div>
-
 
       ${selectField(
         'Status',
@@ -3762,14 +3703,10 @@ async function saveEmployee(
       null,
 
     hourly_rate:
-      (values.department || '').toUpperCase() === 'TRUCKERS'
-        ? (values.hourly_rate === '' ? 0 : Number(values.hourly_rate))
-        : 0,
+      0,
 
     daily_rate:
-      (values.department || '').toUpperCase() === 'TRUCKERS'
-        ? 0
-        : (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
+      (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
 
     rate_basis:
       'PER DAY',
