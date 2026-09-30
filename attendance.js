@@ -20,6 +20,8 @@ const supabaseClient =
 
 
 let allAttendance = [];
+let currentUserRole = '';
+let pendingDeleteAttendanceId = null;
 
 
 /* =========================================================
@@ -137,6 +139,88 @@ function escapeHtml(
       '&#039;'
     );
 
+}
+
+
+
+async function loadCurrentUserRole() {
+  try {
+    const { data, error } = await supabaseClient.rpc('amanah_get_current_role');
+    if (error) throw error;
+    currentUserRole = String(data || '').trim().toUpperCase();
+  } catch (error) {
+    console.warn('Unable to determine current role.', error);
+    currentUserRole = '';
+  }
+}
+
+function isSuperAdmin() {
+  return currentUserRole === 'SUPER ADMIN';
+}
+
+function openDeleteAttendanceModal(row) {
+  if (!isSuperAdmin()) {
+    showMessage('Only SUPER ADMIN can delete attendance records.');
+    return;
+  }
+
+  pendingDeleteAttendanceId = row.attendance_id || null;
+
+  document.getElementById('deleteAttendanceEmployee').textContent =
+    row.employee_name || '—';
+  document.getElementById('deleteAttendanceId').textContent =
+    row.attendance_id || '—';
+  document.getElementById('deleteAttendanceDate').textContent =
+    formatDate(row.attendance_date);
+  document.getElementById('deleteAttendanceStatus').textContent =
+    String(row.status || '—').toUpperCase();
+
+  const modal = document.getElementById('deleteAttendanceModal');
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDeleteAttendanceModal() {
+  pendingDeleteAttendanceId = null;
+  const modal = document.getElementById('deleteAttendanceModal');
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+async function confirmDeleteAttendance() {
+  const attendanceId = pendingDeleteAttendanceId;
+  if (!attendanceId) return;
+
+  if (!isSuperAdmin()) {
+    closeDeleteAttendanceModal();
+    showMessage('Only SUPER ADMIN can delete attendance records.');
+    return;
+  }
+
+  const button = document.getElementById('confirmDeleteAttendance');
+  button.disabled = true;
+  button.textContent = 'DELETING...';
+
+  try {
+    const { error } = await supabaseClient.rpc('amanah_delete_attendance', {
+      p_attendance_id: attendanceId
+    });
+
+    if (error) throw error;
+
+    closeDeleteAttendanceModal();
+    showMessage('Attendance record deleted successfully.', 'success');
+    await (async () => {
+  await loadCurrentUserRole();
+  await loadAttendance();
+})();
+  } catch (error) {
+    console.error(error);
+    showMessage(error.message || 'Unable to delete attendance record.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'DELETE ATTENDANCE';
+  }
 }
 
 
@@ -757,6 +841,14 @@ function renderAttendance(
                 statusClass +
               '">' +
                 escapeHtml(status) +
+              '</td>' +
+
+              '<td>' +
+                (isSuperAdmin()
+                  ? '<button type="button" class="attendance-delete-btn" data-delete-attendance="' +
+                    escapeHtml(row.attendance_id) +
+                    '">DELETE</button>'
+                  : '') +
               '</td>' +
 
             '</tr>'
