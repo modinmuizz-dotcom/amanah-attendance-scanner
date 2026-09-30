@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=4">
+  <link rel="stylesheet" href="payroll.css?v=5">
 </head>
 <body>
   <main class="container payroll-page">
@@ -136,9 +136,17 @@
       <div class="manual-payroll-grid">
         <div class="payroll-field">
           <label for="manualPayrollEmployee">EMPLOYEE</label>
-          <select id="manualPayrollEmployee">
-            <option value="">SELECT EMPLOYEE</option>
-          </select>
+          <div class="manual-payroll-combobox">
+            <input
+              id="manualPayrollEmployee"
+              type="text"
+              list="manualPayrollEmployeeList"
+              autocomplete="off"
+              placeholder="Type employee name or ID, or select from the list"
+              aria-label="Employee"
+            >
+            <datalist id="manualPayrollEmployeeList"></datalist>
+          </div>
         </div>
         <div class="payroll-field">
           <label>DEPARTMENT</label>
@@ -198,7 +206,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=4"></script>
+  <script src="payroll.js?v=5"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
