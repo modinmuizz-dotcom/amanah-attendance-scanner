@@ -61,15 +61,16 @@ function detailCard(label,value,opts={}){
 function payloadCards(a, historical=false){
   const p=a.payload||{};
   const type=typeLabel(a.request_type);
+  const isCancellation=p.request_action==='CANCEL';
 
   if(a.request_type==='ACTIVITY'){
     const equipment=String(p.equipment||'—').split(',').map(x=>x.trim()).filter(Boolean);
     return `
       <div class="review-summary">
         <div class="review-summary-main">
-          <div class="review-summary-kicker">REQUEST TYPE</div>
-          <h3>ACTIVITY CALENDAR</h3>
-          <p>Activity submitted for General Manager approval before scheduling.</p>
+          <div class="review-summary-kicker">${isCancellation?'CANCELLATION REQUEST':'REQUEST TYPE'}</div>
+          <h3>${isCancellation?'ACTIVITY CANCELLATION':'ACTIVITY CALENDAR'}</h3>
+          <p>${isCancellation?'Cancellation request for an approved activity. General Manager approval is required before the activity is cancelled.':'Activity submitted for General Manager approval before scheduling.'}</p>
         </div>
         <div class="review-status ${historical ? 'review-status-'+String(a.status||'').toLowerCase() : ''}"><span></span><strong>${esc(historical ? (a.status||'DECISION RECORDED') : 'PENDING APPROVAL')}</strong><small>${esc(historical ? 'Decision recorded' : 'Awaiting decision')}</small></div>
       </div>
@@ -86,6 +87,7 @@ function payloadCards(a, historical=false){
       <div class="review-section">
         <div class="review-section-title"><span>02</span><div><strong>ACTIVITY DETAILS</strong><small>Planned site work information</small></div></div>
         <div class="detail-grid detail-grid-2">
+          ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
           ${detailCard('PROJECT',p.project_name)}
           ${detailCard('ACTIVITY',p.activity||a.title)}
           ${detailCard('ACTIVITY DATE',p.activity_date)}
@@ -106,9 +108,9 @@ function payloadCards(a, historical=false){
   const commonHeader=`
     <div class="review-summary">
       <div class="review-summary-main">
-        <div class="review-summary-kicker">REQUEST TYPE</div>
-        <h3>${esc(type)}</h3>
-        <p>${esc(a.title||'Request submitted for General Manager approval.')}</p>
+        <div class="review-summary-kicker">${isCancellation?'CANCELLATION REQUEST':'REQUEST TYPE'}</div>
+        <h3>${esc(isCancellation ? (type+' CANCELLATION') : type)}</h3>
+        <p>${esc(isCancellation ? 'Cancellation request for an approved record. General Manager approval is required before the record is cancelled.' : (a.title||'Request submitted for General Manager approval.'))}</p>
       </div>
       <div class="review-status ${historical ? 'review-status-'+String(a.status||'').toLowerCase() : ''}"><span></span><strong>${esc(historical ? (a.status||'DECISION RECORDED') : 'PENDING APPROVAL')}</strong><small>${esc(historical ? 'Decision recorded' : 'Awaiting decision')}</small></div>
     </div>`;
@@ -118,6 +120,7 @@ function payloadCards(a, historical=false){
       <div class="review-section">
         <div class="review-section-title"><span>01</span><div><strong>REQUEST INFORMATION</strong><small>Purchase request summary</small></div></div>
         <div class="detail-grid detail-grid-3">
+          ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
           ${detailCard('REQUEST NO.',p.request_no||a.title)}
           ${detailCard('REQUESTED BY',a.requested_by_name||p.requester_name||a.requester_email)}
           ${detailCard('SUBMITTED',formatDateTime(a.submitted_at))}
@@ -136,6 +139,7 @@ function payloadCards(a, historical=false){
     <div class="review-section">
       <div class="review-section-title"><span>01</span><div><strong>MAINTENANCE REQUEST</strong><small>Equipment maintenance details</small></div></div>
       <div class="detail-grid detail-grid-3">
+        ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
         ${detailCard('EQUIPMENT',p.equipment_name||p.equipment_id)}
         ${detailCard('MAINTENANCE TYPE',p.maintenance_type)}
         ${detailCard('DATE',p.maintenance_date)}
