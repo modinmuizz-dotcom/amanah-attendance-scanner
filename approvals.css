@@ -195,3 +195,5 @@
 .mini.delete-history{background:#fff;color:#b91c1c;border-color:#fecaca}
 .mini.delete-history:hover{background:#fef2f2;border-color:#fca5a5}
 @media(max-width:600px){.delete-history-header{padding:18px}.delete-history-body{padding:16px}.delete-history-header h2{font-size:17px}}
+.history-decision-banner.cancelled{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.history-decision-card.cancelled{background:#fff7ed;border-color:#fed7aa}
