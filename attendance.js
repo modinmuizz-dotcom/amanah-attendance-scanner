@@ -145,9 +145,21 @@ function escapeHtml(
 
 async function loadCurrentUserRole() {
   try {
-    const { data, error } = await supabaseClient.rpc('amanah_get_current_role');
+    const { data: isSuper, error: superError } =
+      await supabaseClient.rpc('amanah_is_super_admin');
+
+    if (!superError && isSuper === true) {
+      currentUserRole = 'SUPER ADMIN';
+      return;
+    }
+
+    const { data, error } =
+      await supabaseClient.rpc('amanah_get_current_role');
+
     if (error) throw error;
-    currentUserRole = String(data || '').trim().toUpperCase();
+
+    currentUserRole =
+      String(data || '').trim().toUpperCase();
   } catch (error) {
     console.warn('Unable to determine current role.', error);
     currentUserRole = '';
