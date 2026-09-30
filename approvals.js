@@ -23,7 +23,7 @@ function detailCard(label,value,opts={}){
   return '<div class="detail-card'+full+accent+'"><div class="detail-label">'+esc(label)+'</div><div class="detail-value">'+esc(value==null||value===''?'—':value)+'</div></div>';
 }
 
-function payloadCards(a){
+function payloadCards(a, historical=false){
   const p=a.payload||{};
   const type=typeLabel(a.request_type);
 
@@ -36,7 +36,7 @@ function payloadCards(a){
           <h3>ACTIVITY CALENDAR</h3>
           <p>Activity submitted for General Manager approval before scheduling.</p>
         </div>
-        <div class="review-status"><span></span><strong>PENDING APPROVAL</strong><small>Awaiting decision</small></div>
+        <div class="review-status ${historical ? 'review-status-'+String(a.status||'').toLowerCase() : ''}"><span></span><strong>${esc(historical ? (a.status||'DECISION RECORDED') : 'PENDING APPROVAL')}</strong><small>${esc(historical ? 'Decision recorded' : 'Awaiting decision')}</small></div>
       </div>
 
       <div class="review-section">
@@ -75,7 +75,7 @@ function payloadCards(a){
         <h3>${esc(type)}</h3>
         <p>${esc(a.title||'Request submitted for General Manager approval.')}</p>
       </div>
-      <div class="review-status"><span></span><strong>PENDING APPROVAL</strong><small>Awaiting decision</small></div>
+      <div class="review-status ${historical ? 'review-status-'+String(a.status||'').toLowerCase() : ''}"><span></span><strong>${esc(historical ? (a.status||'DECISION RECORDED') : 'PENDING APPROVAL')}</strong><small>${esc(historical ? 'Decision recorded' : 'Awaiting decision')}</small></div>
     </div>`;
 
   if(a.request_type==='PURCHASE_REQUEST'){
@@ -114,7 +114,7 @@ function payloadCards(a){
 
 function historyDetailHtml(a){
   const p=a.payload||{};
-  const base=payloadCards(a);
+  const base=payloadCards(a, true);
   const decision=a.status||'—';
   const decisionClass=decision.toLowerCase();
   const decidedBy=a.decided_by_name||'—';
