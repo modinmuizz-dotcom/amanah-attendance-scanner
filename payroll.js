@@ -270,60 +270,36 @@ function addManualPayrollEntry(){
 
   const rate=manualPayrollRate(employee);
   if(rate<=0){
-    error.textContent='This employee does not have a valid payroll rate in Employee Master.';
+    error.textContent='This employee does not have a valid daily payroll rate in Employee Master.';
     return;
   }
 
-  let row;
+  const fullDays=Math.max(0,num(document.getElementById('manualFullDays').value));
+  const halfDays=Math.max(0,num(document.getElementById('manualHalfDays').value));
 
-  if(manualPayrollIsHourly(employee)){
-    const hours=Math.max(0,num(document.getElementById('manualHours').value));
-    if(hours<=0){
-      error.textContent='Please enter total hours greater than 0.';
-      return;
-    }
-
-    row={
-      employeeId:employee.employee_id,
-      employeeName:employee.employee_name||'—',
-      department:employee.department||'—',
-      rateType:'HOURLY',
-      rate,
-      attendanceDays:0,
-      fullDays:0,
-      halfDays:0,
-      hours,
-      attendanceIds:[],
-      source:'MANUAL'
-    };
-  }else{
-    const fullDays=Math.max(0,num(document.getElementById('manualFullDays').value));
-    const halfDays=Math.max(0,num(document.getElementById('manualHalfDays').value));
-
-    if(fullDays<=0 && halfDays<=0){
-      error.textContent='Please enter at least one full day or half day.';
-      return;
-    }
-
-    if(fullDays+halfDays>31){
-      error.textContent='The total classified days cannot exceed 31.';
-      return;
-    }
-
-    row={
-      employeeId:employee.employee_id,
-      employeeName:employee.employee_name||'—',
-      department:employee.department||'—',
-      rateType:'DAILY',
-      rate,
-      attendanceDays:fullDays+halfDays,
-      fullDays,
-      halfDays,
-      hours:0,
-      attendanceIds:[],
-      source:'MANUAL'
-    };
+  if(fullDays<=0 && halfDays<=0){
+    error.textContent='Please enter at least one full day or half day.';
+    return;
   }
+
+  if(fullDays+halfDays>31){
+    error.textContent='The total classified days cannot exceed 31.';
+    return;
+  }
+
+  const row={
+    employeeId:employee.employee_id,
+    employeeName:employee.employee_name||'—',
+    department:employee.department||'—',
+    rateType:'DAILY',
+    rate,
+    attendanceDays:fullDays+halfDays,
+    fullDays,
+    halfDays,
+    hours:0,
+    attendanceIds:[],
+    source:'MANUAL'
+  };
 
   payrollRows.push(row);
 
@@ -342,7 +318,6 @@ function addManualPayrollEntry(){
     'success'
   );
 }
-
 function escapeHtml(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function money(v){return '₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0;}
@@ -407,8 +382,8 @@ function buildPayrollRows(){
       employeeId:employee.employee_id,
       employeeName:employee.employee_name||'—',
       department:employee.department||'—',
-      rateType:normalizeDepartment(employee.department)==='TRUCKERS'?'HOURLY':'DAILY',
-      rate:normalizeDepartment(employee.department)==='TRUCKERS'?num(employee.hourly_rate):num(employee.daily_rate),
+      rateType:'DAILY',
+      rate:num(employee.daily_rate),
       attendanceDays:0,
       fullDays:0,
       halfDays:0,
@@ -422,11 +397,8 @@ function buildPayrollRows(){
     const item=byEmployee.get(id);
     if(!item)return;
     item.attendanceIds.push(row.attendance_id);
-    if(item.rateType==='HOURLY'){
-      item.hours+=num(row.total_hours);
-    }else{
-      item.attendanceDays+=1;
-    }
+    item.attendanceDays+=1;
+    item.hours+=num(row.total_hours);
   });
 
   payrollRows=[...byEmployee.values()].filter(r=>r.attendanceDays>0||r.hours>0);
@@ -439,9 +411,6 @@ function buildPayrollRows(){
 }
 
 function grossFor(row){
-  if(row.rateType==='HOURLY'){
-    return row.hours*row.rate;
-  }
   return (row.fullDays*row.rate)+(row.halfDays*(row.rate/2));
 }
 
