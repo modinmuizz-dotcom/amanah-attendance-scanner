@@ -10,6 +10,7 @@
     {section:'ADMIN SECTION',items:[
       ['employees','Master Data','admin.html','user','master_data.employees'],
       ['roles','Roles & Permissions','roles-permissions.html','shield','roles.manage'],
+      ['approvals','Approval Center','approvals.html','shield','approvals.view'],
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar','schedule.view'],
@@ -68,6 +69,7 @@
     if(file==='activity-on-site.html') return 'activitiesSite';
     if(file==='payroll.html') return 'payroll';
     if(file==='roles-permissions.html') return 'roles';
+    if(file==='approvals.html') return 'approvals';
     if(file==='admin.html') return 'employees';
     return 'dashboard';
   }
