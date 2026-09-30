@@ -622,8 +622,10 @@ async function savePayroll(){
       attendance_ids:row.attendanceIds
     }));
 
-    const {error:itemError}=await supabaseClient.from('payroll_items').insert(items);
-    if(itemError)throw itemError;
+    if(items.length){
+      const {error:itemError}=await supabaseClient.from('payroll_items').insert(items);
+      if(itemError)throw itemError;
+    }
 
     if(groupLaborRows.length){
       const groupItems=groupLaborRows.map(row=>({
