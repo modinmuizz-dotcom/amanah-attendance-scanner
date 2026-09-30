@@ -5,33 +5,33 @@
 
   const nav=[
     {section:'MAIN',items:[
-      ['dashboard','Dashboard','dashboard.html','grid'],
+      ['dashboard','Dashboard','dashboard.html','grid','dashboard.view'],
     ]},
     {section:'ADMIN SECTION',items:[
-      ['employees','Master Data','admin.html','user'],
-      ['roles','Roles & Permissions','admin.html','shield'],
+      ['employees','Master Data','admin.html','user','master_data.employees'],
+      ['roles','Roles & Permissions','roles-permissions.html','shield','roles.manage'],
     ]},
     {section:'PROJECT MANAGEMENT',items:[
-      ['schedule','Activity Calendar','project-schedule.html','calendar'],
+      ['schedule','Activity Calendar','project-schedule.html','calendar','schedule.view'],
     ]},
     {section:'WORKFORCE',items:[
-      ['attendance','Attendance','attendance.html','calendar'],
-      ['activitiesSite','Activities on Site','activity-on-site.html','activity'],
-      ['payroll','Payroll','payroll.html','report'],
+      ['attendance','Attendance','attendance.html','calendar','attendance.view'],
+      ['activitiesSite','Activities on Site','activity-on-site.html','activity','activities.view'],
+      ['payroll','Payroll','payroll.html','report','payroll.view'],
     ]},
     {section:'EQUIPMENT',items:[
-      ['equipment','Equipment','admin.html','truck'],
-      ['operators','Operators / Drivers','admin.html','users'],
-      ['maintenance','Maintenance','equipment-maintenance.html','wrench'],
-      ['repairs','Repair Requests','repair-requests.html','repair'],
-      ['history','Equipment History','equipment-history.html','history'],
+      ['equipment','Equipment','admin.html','truck','master_data.equipment'],
+      ['operators','Operators / Drivers','admin.html','users','master_data.employees'],
+      ['maintenance','Maintenance','equipment-maintenance.html','wrench','maintenance.view'],
+      ['repairs','Repair Requests','repair-requests.html','repair','repairs.view'],
+      ['history','Equipment History','equipment-history.html','history','equipment_history.view'],
     ]},
     {section:'RESOURCES',items:[
-      ['materials','Materials & Inventory','project-cost.html','box'],
-      ['purchasing','Purchasing','purchasing.html','briefcase'],
+      ['materials','Materials & Inventory','project-cost.html','box','materials.view'],
+      ['purchasing','Purchasing','purchasing.html','briefcase','purchasing.view'],
     ]},
     {section:'REPORTING',items:[
-      ['reports','Reports','reports.html','report'],
+      ['reports','Reports','reports.html','report','reports.view'],
     ]}
   ];
 
@@ -67,6 +67,7 @@
     if(file==='attendance.html') return 'attendance';
     if(file==='activity-on-site.html') return 'activitiesSite';
     if(file==='payroll.html') return 'payroll';
+    if(file==='roles-permissions.html') return 'roles';
     if(file==='admin.html') return 'employees';
     return 'dashboard';
   }
@@ -169,11 +170,11 @@
         nav.map(group=>'<div class="amanah-nav-section">'+group.section+'</div>'+group.items.map(item=>{
           const active=item[0]===current?' active':'';
           const icon=icons[item[3]]||icons.grid;
-          return '<a class="amanah-nav-item'+active+'" data-key="'+item[0]+'" href="'+item[2]+'"><span class="amanah-nav-icon"><svg viewBox="0 0 24 24">'+icon+'</svg></span><span>'+item[1]+'</span><span class="amanah-nav-chevron">›</span></a>';
+          return '<a class="amanah-nav-item'+active+'" data-key="'+item[0]+'" data-permission="'+(item[4]||'')+'" href="'+item[2]+'"><span class="amanah-nav-icon"><svg viewBox="0 0 24 24">'+icon+'</svg></span><span>'+item[1]+'</span><span class="amanah-nav-chevron">›</span></a>';
         }).join('')).join('')+
       '</nav>'+
       '<div class="amanah-side-bottom"><div class="amanah-status-row"><span class="amanah-status-dot"></span>Local system online</div>'+
-      '<div class="amanah-user-card"><div class="amanah-avatar">SA</div><div><div class="amanah-user-name">Super Admin</div><div class="amanah-user-role">Administrator</div></div><div class="amanah-user-gear">⚙</div></div>'+
+      '<div class="amanah-user-card"><div class="amanah-avatar">A</div><div><div class="amanah-user-name" id="amanahCurrentUserName">AMANAH USER</div><div class="amanah-user-role" id="amanahCurrentUserRole">AUTHENTICATED</div></div><div class="amanah-user-gear">⚙</div></div>'+
       '<button class="amanah-sidebar-logout" id="amanahSidebarLogout" type="button">LOG OUT</button></div>';
 
     const topbar=document.createElement('header');
@@ -221,6 +222,100 @@
     });
   }
 
+  async function loadAccessControl(){
+    try{
+      if(!window.supabase?.createClient) return;
+      const client=window.supabaseClient || window.supabase.createClient(
+        'https://bafmycjninxomufhkjvy.supabase.co',
+        'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ'
+      );
+
+      const {data:{session}}=await client.auth.getSession();
+      if(!session) return;
+
+      await client.rpc('amanah_register_current_user');
+
+      const [{data:permissionRows,error:permissionError},{data:role,error:roleError}]=await Promise.all([
+        client.rpc('amanah_get_current_permissions'),
+        client.rpc('amanah_get_current_role')
+      ]);
+
+      if(permissionError) throw permissionError;
+      if(roleError) throw roleError;
+
+      const permissionSet=new Set((permissionRows||[]).map(row=>row.permission_key));
+      window.AMANAH_PERMISSION_SET=permissionSet;
+      window.AMANAH_CURRENT_ROLE=role||'UNASSIGNED';
+      window.amanahCan=(permission)=>permissionSet.has(permission);
+
+      const roleEl=document.getElementById('amanahCurrentUserRole');
+      if(roleEl) roleEl.textContent=window.AMANAH_CURRENT_ROLE;
+
+      const email=session.user?.email||'AMANAH USER';
+      const name=session.user?.user_metadata?.full_name ||
+        session.user?.user_metadata?.name ||
+        email.split('@')[0];
+
+      const nameEl=document.getElementById('amanahCurrentUserName');
+      if(nameEl) nameEl.textContent=name;
+
+      const visibleLinks=[...document.querySelectorAll('.amanah-nav-item')];
+      visibleLinks.forEach(link=>{
+        const key=link.dataset.permission;
+        if(key && !permissionSet.has(key)){
+          link.style.display='none';
+          link.dataset.accessHidden='true';
+        }
+      });
+
+      document.querySelectorAll('.amanah-nav-section').forEach(section=>{
+        let node=section.nextElementSibling;
+        let hasVisible=false;
+        while(node && !node.classList.contains('amanah-nav-section')){
+          if(node.classList.contains('amanah-nav-item') && node.dataset.accessHidden!=='true'){
+            hasVisible=true;
+          }
+          node=node.nextElementSibling;
+        }
+        section.style.display=hasVisible?'':'none';
+      });
+
+      const file=(location.pathname.split('/').pop()||'dashboard.html').toLowerCase();
+      const accessRules={
+        'dashboard.html':['dashboard.view'],
+        'roles-permissions.html':['roles.manage'],
+        'project-schedule.html':['schedule.view'],
+        'attendance.html':['attendance.view'],
+        'activity-on-site.html':['activities.view'],
+        'payroll.html':['payroll.view'],
+        'equipment-maintenance.html':['maintenance.view'],
+        'repair-requests.html':['repairs.view'],
+        'equipment-history.html':['equipment_history.view'],
+        'project-cost.html':['materials.view'],
+        'purchasing.html':['purchasing.view'],
+        'reports.html':['reports.view'],
+        'admin.html':['master_data.employees','master_data.equipment','master_data.projects','master_data.suppliers']
+      };
+
+      const required=accessRules[file]||[];
+      const allowed=required.length===0 || required.some(p=>permissionSet.has(p));
+
+      if(!allowed && file!=='admin.html'){
+        const host=document.querySelector('main')||document.body;
+        const currentHero=document.querySelector('.amanah-common-page-hero');
+        if(currentHero) currentHero.style.display='none';
+        const block=document.createElement('section');
+        block.className='amanah-access-denied';
+        block.innerHTML='<div class="kicker">ACCESS CONTROL</div><h1>ACCESS RESTRICTED</h1><p>Your assigned role does not include permission to open this module.</p><button type="button" id="amanahAccessBack">RETURN TO DASHBOARD</button>';
+        host.prepend(block);
+        document.getElementById('amanahAccessBack')?.addEventListener('click',()=>location.href='dashboard.html');
+        setTimeout(()=>{ if(location.pathname.toLowerCase().endsWith(file)) location.href='dashboard.html'; },1500);
+      }
+    }catch(error){
+      console.warn('AMANAH access control initialization failed:',error);
+    }
+  }
+
   function removeShell(){
     ['amanahSidebar','amanahTopbar','amanahMobileOverlay'].forEach(id=>{
       document.getElementById(id)?.remove();
@@ -241,16 +336,19 @@
             removeShell();
           }else if(!document.getElementById('amanahSidebar')){
             build();
+            loadAccessControl();
           }
         };
 
         const obs=new MutationObserver(syncShell);
         obs.observe(login,{attributes:true,attributeFilter:['class']});
         syncShell();
+        if(!login.classList.contains('hidden')) loadAccessControl();
         return;
       }
     }
     build();
+    loadAccessControl();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
