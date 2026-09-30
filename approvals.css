@@ -62,3 +62,30 @@
 .button.primary{box-shadow:0 6px 16px rgba(37,99,235,.16)}
 @media(max-width:900px){.detail-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}.approval-modal{padding:12px}.approval-modal-card{max-height:96vh}}
 @media(max-width:600px){.review-summary{flex-direction:column;align-items:stretch}.review-status{text-align:left;min-width:0}.detail-grid,.detail-grid-2,.detail-grid-3{grid-template-columns:1fr}.detail-card-full{grid-column:auto}.modal-actions{flex-direction:column-reverse;align-items:stretch}.modal-actions .button{width:100%}}
+
+.approval-history-panel{margin-top:18px}
+.history-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fbfdff}
+.history-summary>div{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+.history-summary span{display:block;color:#64748b;font-size:7px;font-weight:950;letter-spacing:.09em}
+.history-summary strong{display:block;margin-top:4px;color:#0f172a;font-size:18px;font-weight:950}
+.history-table .request-sub{max-width:280px}
+.history-status-chip{display:inline-flex;align-items:center;justify-content:center;min-width:78px;padding:6px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.05em}
+.history-approved{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.history-rejected{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.history-other{background:#f8fafc;color:#475569;border:1px solid #cbd5e1}
+.history-modal-card{width:min(900px,100%)}
+.history-decision-banner{margin:2px 24px 18px;padding:13px 15px;border-radius:12px;border:1px solid #dbe3ef;background:#f8fafc}
+.history-decision-banner.approved{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+.history-decision-banner.rejected{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.history-decision-banner.other{background:#f8fafc;border-color:#cbd5e1;color:#475569}
+.history-decision-banner>div{display:flex;align-items:center;gap:9px}
+.history-banner-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.history-decision-banner strong{font-size:9px;font-weight:950;letter-spacing:.06em}
+.history-decision-banner small{margin-left:4px;font-size:8px;color:inherit;opacity:.8}
+.history-decision-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.history-decision-card{padding:12px 13px;border:1px solid #e2e8f0;border-radius:11px;background:#fff}
+.history-decision-card.approved{background:#ecfdf5;border-color:#a7f3d0}
+.history-decision-card.rejected{background:#fef2f2;border-color:#fecaca}
+.history-decision-full{grid-column:1/-1}
+@media(max-width:900px){.history-decision-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-summary{grid-template-columns:1fr}}
+@media(max-width:600px){.history-decision-grid{grid-template-columns:1fr}.history-decision-full{grid-column:auto}.history-summary{grid-template-columns:1fr}.history-summary>div{display:flex;justify-content:space-between;align-items:center}.history-summary strong{margin:0}}
