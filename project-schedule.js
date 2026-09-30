@@ -68,7 +68,7 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
+  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_request_id,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
   if(error)throw error;state.activities=acts||[];
   const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
   if(relErr)throw relErr;state.assignments=rel||[];renderTables();
@@ -90,7 +90,10 @@ function renderTables(){
 
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-    const action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
+    let action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
+    if(a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL"){
+      action+='<button class="mini amber" data-cancel-request="'+esc(a.activity_id)+'">CANCEL REQUEST</button>';
+    }
     return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
@@ -101,6 +104,7 @@ function renderTables(){
   document.querySelectorAll("[data-edit]").forEach(btn=>btn.addEventListener("click",()=>openEditModal(btn.dataset.edit)));
   document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
   document.querySelectorAll("[data-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteActivity(btn.dataset.delete)));
+  document.querySelectorAll("[data-cancel-request]").forEach(btn=>btn.addEventListener("click",()=>cancelActivityRequest(btn.dataset.cancelRequest)));
   renderCalendar();
 }
 
@@ -210,6 +214,73 @@ function showAmanahConfirm({title,subtitle,activity,equipment}){
       if(e.key==="Escape"){document.removeEventListener("keydown",onKey);finish(false);}
     },{once:true});
   });
+}
+
+
+function showAmanahCancelConfirm({title,subtitle,activity,project}){
+  return new Promise(resolve=>{
+    ensureAmanahMessageStyles();
+    document.getElementById("amanahCancelBackdrop")?.remove();
+    const wrap=document.createElement("div");
+    wrap.id="amanahCancelBackdrop";
+    wrap.className="amanah-message-backdrop";
+    wrap.innerHTML=
+      '<div class="amanah-message-dialog" role="dialog" aria-modal="true">'+
+        '<div class="amanah-message-head">'+
+          '<div class="amanah-message-icon confirm">!</div>'+
+          '<div><h3 class="amanah-message-title">'+esc(title||"Cancel Request")+'</h3>'+
+          '<p class="amanah-message-subtitle">'+esc(subtitle||"Review this request before withdrawing it.")+'</p></div>'+
+        '</div>'+
+        '<div class="amanah-message-body">'+
+          '<div>This will withdraw the pending request. The original record will remain in AMANAH for audit history.</div>'+
+          '<div class="amanah-message-details"><strong>Request details</strong>\nActivity: '+esc(activity||"—")+'\nProject: '+esc(project||"—")+'</div>'+
+          '<label style="display:block;margin-top:14px;font-size:11px;font-weight:800;color:#334155">CANCELLATION REASON</label>'+
+          '<textarea data-cancel-reason rows="4" placeholder="Enter the reason for withdrawing this request..." style="width:100%;box-sizing:border-box;margin-top:7px;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit;resize:vertical"></textarea>'+
+          '<div style="margin-top:6px;color:#94a3b8;font-size:10px">A cancellation reason is required for the audit trail.</div>'+
+        '</div>'+
+        '<div class="amanah-message-actions">'+
+          '<button type="button" class="amanah-message-btn cancel" data-message-cancel>KEEP REQUEST</button>'+
+          '<button type="button" class="amanah-message-btn danger" data-message-confirm>CANCEL REQUEST</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(wrap);
+    wrap.style.display="flex";
+    const reason=wrap.querySelector("[data-cancel-reason]");
+    setTimeout(()=>reason?.focus(),30);
+    const finish=value=>{wrap.remove();resolve(value);};
+    wrap.querySelector("[data-message-cancel]").addEventListener("click",()=>finish(null));
+    wrap.querySelector("[data-message-confirm]").addEventListener("click",()=>{
+      const text=(reason?.value||"").trim();
+      if(!text){reason.focus();reason.style.borderColor="#dc2626";return;}
+      finish(text);
+    });
+    wrap.addEventListener("click",e=>{if(e.target===wrap)finish(null);});
+    document.addEventListener("keydown",function onKey(e){if(e.key==="Escape"){document.removeEventListener("keydown",onKey);finish(null);}}, {once:true});
+  });
+}
+
+async function cancelActivityRequest(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a || a.approval_status!=="PENDING") return;
+  const reason=await showAmanahCancelConfirm({
+    title:"Cancel Activity Request",
+    subtitle:"This activity is still awaiting General Manager approval.",
+    activity:a.activity,
+    project:a.project_name||selectedProjectName(a.project_id)
+  });
+  if(!reason)return;
+  const btn=document.querySelector("[data-cancel-request=\""+CSS.escape(id)+"\"]");
+  if(btn){btn.disabled=true;btn.textContent="CANCELLING...";}
+  try{
+    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:a.approval_request_id,p_reason:reason});
+    if(error)throw error;
+    msg("ok","Activity request cancelled successfully.");
+    await loadActivities();
+  }catch(e){
+    console.error(e);msg("err","Could not cancel activity request: "+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="CANCEL REQUEST";}
+  }
 }
 
 async function deleteActivity(id){
