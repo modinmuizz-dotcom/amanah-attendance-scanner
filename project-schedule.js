@@ -12,6 +12,41 @@ function statusPill(s){const cls={"PLANNED":"planned","IN PROGRESS":"progress","
 function fmtTime(iso){if(!iso)return "—";const d=new Date(iso);return d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});}
 function fmtDate(iso){if(!iso)return "—";const d=new Date(iso);return d.toLocaleDateString();}
 function isoFromLocal(date,time){if(!date||!time)return null;return new Date(date+"T"+time).toISOString();}
+function getActivityTypeValue(prefix=""){
+  const el=document.getElementById(prefix+"activityType");
+  return (el?.value||"").trim();
+}
+function getActivityTypeDetails(prefix=""){
+  const type=getActivityTypeValue(prefix).toUpperCase();
+  const item=(document.getElementById(prefix+"activityItem")?.value||"").trim();
+  const qtyRaw=document.getElementById(prefix+"activityQuantity")?.value||"";
+  const quantity=qtyRaw===""?null:Number(qtyRaw);
+  return {type,item,quantity};
+}
+function updateActivityTypeFields(prefix=""){
+  const {type}=getActivityTypeDetails(prefix);
+  const needsItem=type==="HAULING"||type==="MATERIALS DELIVERY";
+  const needsQuantity=needsItem||type==="CONCRETE POURING";
+  const itemField=document.getElementById(prefix+"activityItemField");
+  const qtyField=document.getElementById(prefix+"activityQuantityField");
+  const itemLabel=document.getElementById(prefix+"activityItemLabel");
+  if(itemField)itemField.style.display=needsItem?"":"none";
+  if(qtyField)qtyField.style.display=needsQuantity?"":"none";
+  if(itemLabel)itemLabel.textContent=type==="MATERIALS DELIVERY"?"What is being delivered?":"What is being hauled?";
+  if(!needsItem && document.getElementById(prefix+"activityItem"))document.getElementById(prefix+"activityItem").value="";
+  if(!needsQuantity && document.getElementById(prefix+"activityQuantity"))document.getElementById(prefix+"activityQuantity").value="";
+}
+function validateActivityTypeDetails(prefix=""){
+  const {type,item,quantity}=getActivityTypeDetails(prefix);
+  if(!type)return "Please select or enter the activity type.";
+  if((type==="HAULING"||type==="MATERIALS DELIVERY") && !item){
+    return type==="HAULING" ? "Please enter what is being hauled." : "Please enter what is being delivered.";
+  }
+  if((type==="HAULING"||type==="MATERIALS DELIVERY"||type==="CONCRETE POURING") && (quantity===null || !Number.isFinite(quantity) || quantity<=0)){
+    return "Please enter a quantity greater than 0.";
+  }
+  return null;
+}
 
 async function init(){
   const {data:{session}}=await supabaseClient.auth.getSession();
@@ -20,6 +55,14 @@ async function init(){
   document.getElementById("clearForm").addEventListener("click",clearForm);
   document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
+  ["activityType","activityItem","activityQuantity"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener("input",()=>updateActivityTypeFields(""));
+  });
+  ["editActivityType","editActivityItem","editActivityQuantity"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener("input",()=>updateActivityTypeFields("edit"));
+  });
   document.getElementById("equipmentSearch").addEventListener("input",renderEquipment);
   document.getElementById("allEquipment").addEventListener("click",()=>{state.equipment.forEach(e=>state.selectedEquipment.add(e.equipment_id));renderEquipment();});
   document.getElementById("clearEquipment").addEventListener("click",()=>{state.selectedEquipment.clear();renderEquipment();});
@@ -68,7 +111,7 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
+  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
   if(error)throw error;state.activities=acts||[];
   const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
   if(relErr)throw relErr;state.assignments=rel||[];renderTables();
@@ -97,7 +140,7 @@ function renderTables(){
     if(a.approval_status==="APPROVED" && a.activity_status!=="DONE" && a.activity_status!=="CANCELLED" && a.activity_status!=="REJECTED"){
       action+='<button class="mini amber" data-approved-cancel-request="'+esc(a.activity_id)+'">REQUEST CANCELLATION</button>';
     }
-    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
+    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const approvedRows=rows.filter(a=>a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status)));
@@ -447,10 +490,12 @@ function renderCalendar(){
 
 async function saveSchedule(){
   clearMsg();
-  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activity").value.trim(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
+  const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activityType").value.trim().toUpperCase(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
+  const {type:activityType, item:activityItem, quantity:activityQuantity}=getActivityTypeDetails("");
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
-  if(!activity)return msg("err","Please enter the activity.");
+  const activityDetailError=validateActivityTypeDetails("");
+  if(activityDetailError)return msg("err",activityDetailError);
   if(!state.selectedEquipment.size)return msg("err","Please select the equipment required on site.");
   const ss=isoFromLocal(date,start),se=isoFromLocal(date,end);
   if(ss&&se&&new Date(se)<new Date(ss))return msg("err","End time cannot be earlier than start time.");
@@ -459,8 +504,8 @@ async function saveSchedule(){
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SUBMITTING...";
   try{
     const {data,error:insertError}=await supabaseClient.from("project_activities").insert({
-      project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,description:description||null,
-      manpower,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
+      project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,
+      description:description||null,manpower,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
       approval_status:"PENDING",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null
     }).select("activity_id").single();
     if(insertError)throw insertError;
@@ -474,7 +519,7 @@ async function saveSchedule(){
       p_entity_id:data.activity_id,
       p_title:activity,
       p_description:"Activity submitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p?.project_name||"",activity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
+      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
 
@@ -483,7 +528,7 @@ async function saveSchedule(){
   }catch(e){console.error(e);msg("err","Could not submit activity: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();state.selectedEquipment.clear();renderEquipment();}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
@@ -519,7 +564,9 @@ function openEditModal(id){
   document.getElementById("editActivityDate").value=a.activity_date||localDateInput(a.scheduled_start);
   document.getElementById("editStartTime").value=localTimeInput(a.scheduled_start);
   document.getElementById("editEndTime").value=localTimeInput(a.scheduled_end);
-  document.getElementById("editActivity").value=a.activity||"";
+  document.getElementById("editActivityType").value=a.activity||"";
+  document.getElementById("editActivityItem").value=a.activity_item||"";
+  document.getElementById("editActivityQuantity").value=a.activity_quantity??"";
   document.getElementById("editPriority").value=a.priority||"NORMAL";
   document.getElementById("editDescription").value=a.description||"";
   document.getElementById("editManpower").value=a.manpower??0;
@@ -527,6 +574,7 @@ function openEditModal(id){
   document.getElementById("editEquipmentSearch").value="";
   state.editingScheduleEquipment=new Set(state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id));
   renderEditEquipment();
+  updateActivityTypeFields("edit");
   document.getElementById("editModal").style.display="flex";
 }
 function closeEditModal(){
@@ -542,13 +590,15 @@ async function saveEditSchedule(){
   const date=document.getElementById("editActivityDate").value;
   const start=document.getElementById("editStartTime").value;
   const end=document.getElementById("editEndTime").value;
-  const activity=document.getElementById("editActivity").value.trim();
+  const activity=document.getElementById("editActivityType").value.trim().toUpperCase();
+  const {type:activityType,item:activityItem,quantity:activityQuantity}=getActivityTypeDetails("edit");
   const description=document.getElementById("editDescription").value.trim();
   const manpower=Number(document.getElementById("editManpower").value||0);
   const priority=document.getElementById("editPriority").value;
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
-  if(!activity)return msg("err","Please enter the activity.");
+  const editActivityDetailError=validateActivityTypeDetails("edit");
+  if(editActivityDetailError)return msg("err",editActivityDetailError);
   if(!state.editingScheduleEquipment.size)return msg("err","Please select the equipment required on site.");
   const ss=isoFromLocal(date,start),se=isoFromLocal(date,end);
   if(ss&&se&&new Date(se)<new Date(ss))return msg("err","End time cannot be earlier than start time.");
@@ -561,6 +611,8 @@ async function saveEditSchedule(){
       project_name:p?.project_name||null,
       activity_date:date,
       activity,
+      activity_item:activityItem||null,
+      activity_quantity:activityQuantity,
       description:description||null,
       manpower,
       equipment:state.equipment.filter(e=>state.editingScheduleEquipment.has(e.equipment_id)).map(e=>e.equipment_name).join(", "),
@@ -590,7 +642,7 @@ async function saveEditSchedule(){
       p_entity_id:id,
       p_title:activity,
       p_description:"Edited activity resubmitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p2?.project_name||"",activity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
+      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
     closeEditModal();
