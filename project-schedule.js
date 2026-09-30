@@ -68,7 +68,7 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_request_id,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
+  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
   if(error)throw error;state.activities=acts||[];
   const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
   if(relErr)throw relErr;state.assignments=rel||[];renderTables();
@@ -272,7 +272,10 @@ async function cancelActivityRequest(id){
   const btn=document.querySelector("[data-cancel-request=\""+CSS.escape(id)+"\"]");
   if(btn){btn.disabled=true;btn.textContent="CANCELLING...";}
   try{
-    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:a.approval_request_id,p_reason:reason});
+    const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","ACTIVITY").eq("entity_id",id).eq("status","PENDING").maybeSingle();
+    if(reqError)throw reqError;
+    if(!req?.approval_id)throw new Error("No pending approval request was found for this activity.");
+    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
     if(error)throw error;
     msg("ok","Activity request cancelled successfully.");
     await loadActivities();
