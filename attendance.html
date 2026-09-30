@@ -590,6 +590,30 @@
   </style>
 
   <link rel="stylesheet" href="amanah-ui.css?v=4">
+<style>
+  .delete-modal{display:none;position:fixed;inset:0;z-index:9999}
+  .delete-modal.is-open{display:block}
+  .delete-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.58);backdrop-filter:blur(4px)}
+  .delete-modal-card{position:relative;width:min(560px,92vw);margin:12vh auto 0;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(15,23,42,.25);overflow:hidden}
+  .delete-modal-header{display:flex;gap:14px;align-items:flex-start;padding:24px;border-bottom:1px solid #e2e8f0}
+  .delete-modal-icon{width:40px;height:40px;border-radius:12px;background:#fee2e2;color:#b91c1c;display:grid;place-items:center;font-size:22px;font-weight:900;flex:none}
+  .delete-modal-kicker{font-size:10px;letter-spacing:.14em;font-weight:900;color:#dc2626}
+  .delete-modal-header h3{margin:3px 0 6px;font-size:22px;color:#111827}
+  .delete-modal-header p,.delete-modal-body p{margin:0;color:#64748b;font-size:13px;line-height:1.5}
+  .delete-modal-close{margin-left:auto;background:transparent;color:#64748b;font-size:24px;padding:0 4px}
+  .delete-modal-body{padding:22px 24px}
+  .delete-record-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .delete-record-grid>div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px}
+  .delete-record-grid span{display:block;font-size:10px;font-weight:900;color:#64748b;letter-spacing:.08em;margin-bottom:5px}
+  .delete-record-grid strong{display:block;font-size:13px;color:#111827;word-break:break-word}
+  .delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px 22px;border-top:1px solid #e2e8f0}
+  .delete-cancel-btn{background:#e2e8f0;color:#111827}
+  .delete-confirm-btn{background:#dc2626;color:#fff}
+  .delete-confirm-btn:disabled{opacity:.6;cursor:not-allowed}
+  .attendance-delete-btn{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3;padding:8px 12px;border-radius:9px;font-size:12px;font-weight:900}
+  .attendance-delete-btn:hover{background:#ffe4e6}
+  @media(max-width:650px){.delete-record-grid{grid-template-columns:1fr}.delete-modal-card{margin-top:8vh}.delete-modal-actions{flex-direction:column}.delete-modal-actions button{width:100%}}
+</style>
 </head>
 
 
@@ -951,6 +975,10 @@
               STATUS
             </th>
 
+            <th>
+              ACTION
+            </th>
+
           </tr>
 
         </thead>
@@ -984,6 +1012,36 @@
 
 
 </main>
+<div id="deleteAttendanceModal" class="delete-modal" aria-hidden="true">
+  <div class="delete-modal-backdrop"></div>
+  <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteAttendanceTitle">
+    <div class="delete-modal-header">
+      <div class="delete-modal-icon">!</div>
+      <div>
+        <div class="delete-modal-kicker">SECURITY ACTION</div>
+        <h3 id="deleteAttendanceTitle">Delete Attendance Record</h3>
+        <p>This action permanently removes the selected attendance record from AMANAH.</p>
+      </div>
+      <button type="button" class="delete-modal-close" id="cancelDeleteAttendanceTop" aria-label="Close">×</button>
+    </div>
+
+    <div class="delete-modal-body">
+      <p>Please review the record before proceeding. This action cannot be undone.</p>
+      <div class="delete-record-grid">
+        <div><span>EMPLOYEE</span><strong id="deleteAttendanceEmployee">—</strong></div>
+        <div><span>ATTENDANCE ID</span><strong id="deleteAttendanceId">—</strong></div>
+        <div><span>DATE</span><strong id="deleteAttendanceDate">—</strong></div>
+        <div><span>STATUS</span><strong id="deleteAttendanceStatus">—</strong></div>
+      </div>
+    </div>
+
+    <div class="delete-modal-actions">
+      <button type="button" class="delete-cancel-btn" id="cancelDeleteAttendance">CANCEL</button>
+      <button type="button" class="delete-confirm-btn" id="confirmDeleteAttendance">DELETE ATTENDANCE</button>
+    </div>
+  </div>
+</div>
+
 
 
 <script
@@ -994,7 +1052,7 @@
 
 
 <script
-  src="attendance.js?v=3"
+  src="attendance.js?v=4"
 ></script>
 
 
