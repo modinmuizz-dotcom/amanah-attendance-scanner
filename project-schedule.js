@@ -94,6 +94,9 @@ function renderTables(){
     if(a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL"){
       action+='<button class="mini amber" data-cancel-request="'+esc(a.activity_id)+'">CANCEL REQUEST</button>';
     }
+    if(a.approval_status==="APPROVED" && a.activity_status!=="DONE" && a.activity_status!=="CANCELLED" && a.activity_status!=="REJECTED"){
+      action+='<button class="mini amber" data-approved-cancel-request="'+esc(a.activity_id)+'">REQUEST CANCELLATION</button>';
+    }
     return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
@@ -105,6 +108,7 @@ function renderTables(){
   document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
   document.querySelectorAll("[data-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteActivity(btn.dataset.delete)));
   document.querySelectorAll("[data-cancel-request]").forEach(btn=>btn.addEventListener("click",()=>cancelActivityRequest(btn.dataset.cancelRequest)));
+  document.querySelectorAll("[data-approved-cancel-request]").forEach(btn=>btn.addEventListener("click",()=>requestActivityCancellation(btn.dataset.approvedCancelRequest)));
   renderCalendar();
 }
 
@@ -217,7 +221,7 @@ function showAmanahConfirm({title,subtitle,activity,equipment}){
 }
 
 
-function showAmanahCancelConfirm({title,subtitle,activity,project}){
+function showAmanahCancelConfirm({title,subtitle,activity,project,approved=false}){
   return new Promise(resolve=>{
     ensureAmanahMessageStyles();
     document.getElementById("amanahCancelBackdrop")?.remove();
@@ -232,7 +236,7 @@ function showAmanahCancelConfirm({title,subtitle,activity,project}){
           '<p class="amanah-message-subtitle">'+esc(subtitle||"Review this request before withdrawing it.")+'</p></div>'+
         '</div>'+
         '<div class="amanah-message-body">'+
-          '<div>This will withdraw the pending request. The original record will remain in AMANAH for audit history.</div>'+
+          '<div>'+esc(approved ? "This will submit a cancellation request to the General Manager. The approved activity will remain active until the General Manager decides." : "This will withdraw the pending request. The original record will remain in AMANAH for audit history.")+'</div>'+
           '<div class="amanah-message-details"><strong>Request details</strong>\nActivity: '+esc(activity||"—")+'\nProject: '+esc(project||"—")+'</div>'+
           '<label style="display:block;margin-top:14px;font-size:11px;font-weight:800;color:#334155">CANCELLATION REASON</label>'+
           '<textarea data-cancel-reason rows="4" placeholder="Enter the reason for withdrawing this request..." style="width:100%;box-sizing:border-box;margin-top:7px;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit;resize:vertical"></textarea>'+
@@ -283,6 +287,47 @@ async function cancelActivityRequest(id){
     console.error(e);msg("err","Could not cancel activity request: "+e.message);
   }finally{
     if(btn){btn.disabled=false;btn.textContent="CANCEL REQUEST";}
+  }
+}
+
+async function requestActivityCancellation(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a || a.approval_status!=="APPROVED")return;
+  const reason=await showAmanahCancelConfirm({
+    title:"Request Activity Cancellation",
+    subtitle:"This approved activity requires General Manager approval before it can be cancelled.",
+    activity:a.activity,
+    project:a.project_name||selectedProjectName(a.project_id),
+    approved:true
+  });
+  if(!reason)return;
+  const btn=document.querySelector("[data-approved-cancel-request=\""+CSS.escape(id)+"\"]");
+  if(btn){btn.disabled=true;btn.textContent="SUBMITTING...";}
+  try{
+    const {error}=await supabaseClient.rpc("amanah_submit_approval",{
+      p_request_type:"ACTIVITY",
+      p_entity_id:id,
+      p_title:"Cancellation: "+(a.activity||"Activity"),
+      p_description:"Cancellation request submitted for General Manager approval.",
+      p_payload:{
+        request_action:"CANCEL",
+        project_name:a.project_name||selectedProjectName(a.project_id),
+        activity:a.activity||"",
+        activity_date:a.activity_date||"",
+        equipment:equipmentFor(id).map(e=>e.equipment_name).join(", "),
+        priority:a.priority||"NORMAL",
+        manpower:a.manpower||0,
+        description:a.description||"",
+        cancellation_reason:reason
+      }
+    });
+    if(error)throw error;
+    msg("ok","Activity cancellation request submitted for General Manager approval.");
+    await loadActivities();
+  }catch(e){
+    console.error(e);msg("err","Could not submit activity cancellation request: "+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="REQUEST CANCELLATION";}
   }
 }
 
