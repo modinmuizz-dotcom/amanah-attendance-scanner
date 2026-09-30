@@ -222,10 +222,7 @@ async function confirmDeleteAttendance() {
 
     closeDeleteAttendanceModal();
     showMessage('Attendance record deleted successfully.', 'success');
-    await (async () => {
-  await loadCurrentUserRole();
-  await loadAttendance();
-})();
+    await loadAttendance();
   } catch (error) {
     console.error(error);
     showMessage(error.message || 'Unable to delete attendance record.');
