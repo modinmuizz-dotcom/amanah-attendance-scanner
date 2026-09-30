@@ -742,7 +742,17 @@ function openDetailsModal(id){
   document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
   document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
   document.getElementById("detailTime").textContent=time;
-  document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
+  const normalizedActivityType = String(a.activity_type || a.activity || "").trim().toUpperCase();
+  const hideDetailManpower =
+    normalizedActivityType === "HAULING" ||
+    normalizedActivityType === "MATERIALS DELIVERY";
+
+  const detailManpowerCard = document.getElementById("detailManpowerCard");
+  if(detailManpowerCard) detailManpowerCard.style.display = hideDetailManpower ? "none" : "";
+
+  if(!hideDetailManpower){
+    document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
+  }
   document.getElementById("detailEquipment").textContent=equipmentText;
   document.getElementById("detailDescription").textContent=a.description||"No description provided.";
   document.getElementById("detailProgressText").textContent=progress+"%";
