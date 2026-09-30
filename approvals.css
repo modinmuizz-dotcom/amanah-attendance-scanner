@@ -89,3 +89,7 @@
 .history-decision-full{grid-column:1/-1}
 @media(max-width:900px){.history-decision-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-summary{grid-template-columns:1fr}}
 @media(max-width:600px){.history-decision-grid{grid-template-columns:1fr}.history-decision-full{grid-column:auto}.history-summary{grid-template-columns:1fr}.history-summary>div{display:flex;justify-content:space-between;align-items:center}.history-summary strong{margin:0}}
+
+.review-status.review-status-approved{background:#ecfdf5;border-color:#a7f3d0}.review-status.review-status-approved>span{background:#10b981}.review-status.review-status-approved strong{color:#047857}.review-status.review-status-approved small{color:#059669}
+.review-status.review-status-rejected{background:#fef2f2;border-color:#fecaca}.review-status.review-status-rejected>span{background:#ef4444}.review-status.review-status-rejected strong{color:#b91c1c}.review-status.review-status-rejected small{color:#dc2626}
+.review-status.review-status-cancelled{background:#f8fafc;border-color:#cbd5e1}.review-status.review-status-cancelled>span{background:#64748b}.review-status.review-status-cancelled strong{color:#475569}.review-status.review-status-cancelled small{color:#64748b}
