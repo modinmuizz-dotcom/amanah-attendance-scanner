@@ -89,7 +89,9 @@ function payloadCards(a, historical=false){
         <div class="detail-grid detail-grid-2">
           ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
           ${detailCard('PROJECT',p.project_name)}
-          ${detailCard('ACTIVITY',p.activity||a.title)}
+          ${detailCard('ACTIVITY TYPE',p.activity_type||p.activity||a.title)}
+          ${detailCard('ITEM / MATERIAL',p.activity_item||'—')}
+          ${detailCard('QUANTITY',p.activity_quantity??'—')}
           ${detailCard('ACTIVITY DATE',p.activity_date)}
           ${detailCard('TIME',p.time)}
           ${detailCard('MANPOWER',p.manpower??0)}
