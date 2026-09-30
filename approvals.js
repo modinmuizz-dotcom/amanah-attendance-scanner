@@ -4,11 +4,18 @@ const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHA
 
 let approvals=[];
 let currentApproval=null;
+let approvalHistory=[];
+let currentHistoryRecord=null;
 
 function esc(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function formatDateTime(v){if(!v)return '—';return new Date(v).toLocaleString();}
 function showMsg(text,type='success'){const el=document.getElementById('approvalMessage');el.textContent=text;el.className=`message ${type}`;el.style.display='block';setTimeout(()=>{el.className='message hidden';el.textContent='';},3500);}
 function closeModal(){currentApproval=null;document.getElementById('approvalModal').classList.add('hidden');document.getElementById('approvalModal').setAttribute('aria-hidden','true');}
+function closeHistoryModal(){
+  currentHistoryRecord=null;
+  document.getElementById('historyModal').classList.add('hidden');
+  document.getElementById('historyModal').setAttribute('aria-hidden','true');
+}
 function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
 function detailCard(label,value,opts={}){
   const full=opts.full?' detail-card-full':'';
@@ -105,6 +112,26 @@ function payloadCards(a){
     </div>`;
 }
 
+function historyDetailHtml(a){
+  const p=a.payload||{};
+  const base=payloadCards(a);
+  const decision=a.status||'—';
+  const decisionClass=decision.toLowerCase();
+  const decidedBy=a.decided_by_name||'—';
+  const decidedAt=formatDateTime(a.decided_at);
+  const remarks=a.decision_remarks||'No decision remarks were recorded.';
+  return base+`
+    <div class="review-section review-section-last">
+      <div class="review-section-title"><span>04</span><div><strong>DECISION RECORD</strong><small>Final approval action recorded by the system</small></div></div>
+      <div class="history-decision-grid">
+        <div class="history-decision-card ${esc(decisionClass)}"><div class="detail-label">DECISION</div><div class="detail-value">${esc(decision)}</div></div>
+        <div class="history-decision-card"><div class="detail-label">DECIDED BY</div><div class="detail-value">${esc(decidedBy)}</div></div>
+        <div class="history-decision-card"><div class="detail-label">DECISION DATE</div><div class="detail-value">${esc(decidedAt)}</div></div>
+        <div class="history-decision-card history-decision-full"><div class="detail-label">REVIEW REMARKS</div><div class="detail-value">${esc(remarks)}</div></div>
+      </div>
+    </div>`;
+}
+
 async function requireAccess(){
   const {data:{session}}=await supabaseClient.auth.getSession();
   if(!session){location.href='admin.html';return false;}
@@ -128,6 +155,17 @@ async function loadApprovals(){
   approvals=data||[];
   render();
 }
+async function loadHistory(){
+  const type=document.getElementById('historyTypeFilter').value;
+  const status=document.getElementById('historyStatusFilter').value;
+  let q=supabaseClient.from('amanah_approval_requests').select('*').neq('status','PENDING').order('decided_at',{ascending:false}).order('submitted_at',{ascending:false}).limit(200);
+  if(type)q=q.eq('request_type',type);
+  if(status)q=q.eq('status',status);
+  const {data,error}=await q;
+  if(error)throw error;
+  approvalHistory=data||[];
+  renderHistory();
+}
 function render(){
   const counts={ACTIVITY:0,PURCHASE_REQUEST:0,MAINTENANCE:0};
   approvals.forEach(a=>counts[a.request_type]=(counts[a.request_type]||0)+1);
@@ -147,6 +185,48 @@ function render(){
   '</tr>').join('');
   body.querySelectorAll('[data-review]').forEach(btn=>btn.addEventListener('click',()=>openReview(btn.dataset.review)));
 }
+function renderHistory(){
+  const approved=approvalHistory.filter(a=>a.status==='APPROVED').length;
+  const rejected=approvalHistory.filter(a=>a.status==='REJECTED').length;
+  document.getElementById('historyTotal').textContent=approvalHistory.length;
+  document.getElementById('historyApproved').textContent=approved;
+  document.getElementById('historyRejected').textContent=rejected;
+  const body=document.getElementById('historyBody');
+  if(!approvalHistory.length){
+    body.innerHTML='<tr><td colspan="7" class="empty">No completed approval decisions found for the selected filters.</td></tr>';
+    return;
+  }
+  body.innerHTML=approvalHistory.map(a=>{
+    const decision=a.status||'—';
+    const decisionClass=decision==='APPROVED'?'history-approved':decision==='REJECTED'?'history-rejected':'history-other';
+    return '<tr>'+
+      '<td><span class="type-chip type-'+esc(a.request_type)+'">'+esc(typeLabel(a.request_type))+'</span></td>'+
+      '<td><span class="request-title">'+esc(a.title)+'</span><span class="request-sub">'+esc(a.description||'')+'</span></td>'+
+      '<td><span class="requester"><strong>'+esc(a.requested_by_name||'AMANAH USER')+'</strong><span>'+esc(a.requester_email||'')+'</span></span></td>'+
+      '<td><span class="requester"><strong>'+esc(a.decided_by_name||'—')+'</strong></span></td>'+
+      '<td>'+esc(formatDateTime(a.decided_at))+'</td>'+
+      '<td><span class="history-status-chip '+decisionClass+'">'+esc(decision)+'</span></td>'+
+      '<td><button class="mini review" type="button" data-history="'+esc(a.approval_id)+'">VIEW</button></td>'+
+    '</tr>';
+  }).join('');
+  body.querySelectorAll('[data-history]').forEach(btn=>btn.addEventListener('click',()=>openHistory(btn.dataset.history)));
+}
+
+function openHistory(id){
+  const record=approvalHistory.find(a=>a.approval_id===id);
+  if(!record)return;
+  currentHistoryRecord=record;
+  document.getElementById('historyModalTitle').textContent=typeLabel(record.request_type)+' DECISION';
+  document.getElementById('historyDetails').innerHTML=historyDetailHtml(record);
+  const banner=document.getElementById('historyDecisionBanner');
+  const status=record.status||'—';
+  const cls=status==='APPROVED'?'approved':status==='REJECTED'?'rejected':'other';
+  banner.className='history-decision-banner '+cls;
+  banner.innerHTML='<div><span class="history-banner-dot"></span><strong>'+esc(status)+'</strong><small>Decision recorded by '+esc(record.decided_by_name||'General Manager')+' on '+esc(formatDateTime(record.decided_at))+'</small></div>';
+  document.getElementById('historyModal').classList.remove('hidden');
+  document.getElementById('historyModal').setAttribute('aria-hidden','false');
+}
+
 function openReview(id){
   const approval=approvals.find(a=>a.approval_id===id);if(!approval)return;
   currentApproval=approval;
@@ -186,11 +266,17 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(!(await requireAccess()))return;
     document.getElementById('refreshApprovals').addEventListener('click',loadApprovals);
     document.getElementById('typeFilter').addEventListener('change',loadApprovals);
+    document.getElementById('refreshHistory').addEventListener('click',loadHistory);
+    document.getElementById('historyTypeFilter').addEventListener('change',loadHistory);
+    document.getElementById('historyStatusFilter').addEventListener('change',loadHistory);
     document.getElementById('closeApprovalModal').addEventListener('click',closeModal);
     document.getElementById('cancelApproval').addEventListener('click',closeModal);
     document.getElementById('approveApproval').addEventListener('click',()=>decide('APPROVED'));
     document.getElementById('rejectApproval').addEventListener('click',()=>decide('REJECTED'));
     document.getElementById('approvalModal').addEventListener('click',e=>{if(e.target.id==='approvalModal')closeModal();});
-    await loadApprovals();
+    document.getElementById('closeHistoryModal').addEventListener('click',closeHistoryModal);
+    document.getElementById('historyCloseButton').addEventListener('click',closeHistoryModal);
+    document.getElementById('historyModal').addEventListener('click',e=>{if(e.target.id==='historyModal')closeHistoryModal();});
+    await Promise.all([loadApprovals(),loadHistory()]);
   }catch(error){console.error(error);showMsg(error.message||'Unable to load approval center.','error');}
 });
