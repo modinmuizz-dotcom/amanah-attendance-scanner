@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AMANAH Approval Center</title>
+<link rel="stylesheet" href="amanah-ui.css?v=8">
+<link rel="stylesheet" href="approvals.css?v=1">
+</head>
+<body>
+<main class="container approvals-page">
+  <div id="approvalMessage" class="message hidden"></div>
+
+  <section class="approval-hero">
+    <div>
+      <div class="approval-kicker">MANAGEMENT CONTROL</div>
+      <h1>APPROVAL CENTER</h1>
+      <p>General Manager review of Activity Calendar, Purchasing and Maintenance requests.</p>
+    </div>
+    <div class="gm-badge"><span class="gm-dot"></span><div><small>APPROVAL AUTHORITY</small><strong>GENERAL MANAGER</strong></div></div>
+  </section>
+
+  <section class="approval-metrics">
+    <div class="metric"><span>PENDING APPROVALS</span><strong id="pendingCount">0</strong></div>
+    <div class="metric"><span>ACTIVITY CALENDAR</span><strong id="activityCount">0</strong></div>
+    <div class="metric"><span>PURCHASING</span><strong id="purchaseCount">0</strong></div>
+    <div class="metric"><span>MAINTENANCE</span><strong id="maintenanceCount">0</strong></div>
+  </section>
+
+  <section class="approval-panel">
+    <div class="panel-head">
+      <div>
+        <div class="approval-kicker">PENDING REQUESTS</div>
+        <h2>MANAGER REVIEW QUEUE</h2>
+        <p>Review the request details before approving or rejecting it.</p>
+      </div>
+      <div class="panel-actions">
+        <select id="typeFilter">
+          <option value="">ALL REQUEST TYPES</option>
+          <option value="ACTIVITY">ACTIVITY CALENDAR</option>
+          <option value="PURCHASE_REQUEST">PURCHASING</option>
+          <option value="MAINTENANCE">MAINTENANCE</option>
+        </select>
+        <button id="refreshApprovals" class="button secondary" type="button">REFRESH</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="approval-table">
+        <thead>
+          <tr>
+            <th>REQUEST TYPE</th>
+            <th>REQUEST</th>
+            <th>REQUESTED BY</th>
+            <th>SUBMITTED</th>
+            <th>STATUS</th>
+            <th>ACTION</th>
+          </tr>
+        </thead>
+        <tbody id="approvalBody">
+          <tr><td colspan="6" class="empty">Loading approval requests...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div id="approvalModal" class="approval-modal hidden" aria-hidden="true">
+  <div class="approval-modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="approval-kicker">MANAGER REVIEW</div>
+        <h2 id="modalTitle">REQUEST REVIEW</h2>
+      </div>
+      <button id="closeApprovalModal" class="modal-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div id="approvalDetails" class="approval-details"></div>
+
+    <div class="decision-box">
+      <label for="decisionRemarks">REVIEW REMARKS</label>
+      <textarea id="decisionRemarks" rows="4" placeholder="Enter instructions, conditions, or reason for rejection..."></textarea>
+      <div class="decision-note">Your decision will be recorded with your authenticated General Manager account.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="rejectApproval" class="button danger" type="button">REJECT REQUEST</button>
+      <button id="cancelApproval" class="button secondary" type="button">CANCEL</button>
+      <button id="approveApproval" class="button primary" type="button">APPROVE REQUEST</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="approvals.js?v=1"></script>
+<script src="amanah-ui.js?v=8"></script>
+</body>
+</html>
