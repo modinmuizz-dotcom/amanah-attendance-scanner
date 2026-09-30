@@ -242,3 +242,26 @@
     page-break-inside:avoid;
   }
 }
+.payroll-control-actions{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.manual-payroll-modal{display:none;position:fixed;inset:0;z-index:10000}
+.manual-payroll-modal.is-open{display:block}
+.manual-payroll-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(4px)}
+.manual-payroll-card{position:relative;width:min(720px,94vw);max-height:88vh;overflow:auto;margin:6vh auto 0;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.25)}
+.manual-payroll-header{display:flex;justify-content:space-between;gap:18px;padding:22px 24px;border-bottom:1px solid #e2e8f0;background:#fbfdff}
+.manual-payroll-header h2{margin:4px 0;color:#0f172a;font-size:20px}
+.manual-payroll-header p{margin:0;color:#64748b;font-size:11px;line-height:1.5}
+.manual-payroll-close{border:0;background:transparent;font-size:27px;line-height:1;color:#64748b;padding:2px 6px}
+.manual-payroll-body{padding:22px 24px}
+.manual-payroll-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.manual-payroll-grid.three{grid-template-columns:1fr 1fr 1fr}
+.manual-payroll-grid.two{grid-template-columns:1fr 1fr}
+.manual-payroll-readonly{min-height:42px;display:flex;align-items:center;padding:0 11px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#0f172a;font-size:12px;font-weight:800}
+.manual-payroll-entry-panel{margin-top:18px;padding:16px;border:1px solid #dbeafe;border-radius:13px;background:#f8fbff}
+.manual-entry-caption{margin-bottom:12px;color:#2563eb;font-size:9px;font-weight:900;letter-spacing:.11em}
+.manual-payroll-preview{display:flex;flex-direction:column;justify-content:center;padding:12px;border-radius:10px;background:#ecfdf5;border:1px solid #bbf7d0}
+.manual-payroll-preview span{font-size:8px;color:#047857;font-weight:900;letter-spacing:.08em}
+.manual-payroll-preview strong{margin-top:6px;font-size:20px;color:#065f46}
+.manual-payroll-error{min-height:18px;margin-top:14px;color:#b91c1c;font-size:11px;font-weight:700}
+.manual-payroll-actions{display:flex;justify-content:flex-end;gap:9px;padding:16px 24px 22px;border-top:1px solid #e2e8f0}
+@media(max-width:720px){.manual-payroll-grid,.manual-payroll-grid.three,.manual-payroll-grid.two{grid-template-columns:1fr}.payroll-control-actions{flex-direction:column}.payroll-control-actions .button{width:100%}.manual-payroll-actions{flex-direction:column}.manual-payroll-actions .button{width:100%}}
+@media print{.manual-payroll-modal{display:none!important}}
