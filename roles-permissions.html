@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>AMANAH Roles & Permissions</title>
+  <link rel="stylesheet" href="amanah-ui.css?v=7">
+  <link rel="stylesheet" href="roles-permissions.css?v=1">
+</head>
+<body>
+  <main class="container rp-page">
+    <div id="rpMessage" class="message hidden"></div>
+
+    <section class="rp-intro">
+      <div>
+        <div class="rp-kicker">SECURITY CONTROL</div>
+        <h2>ROLES &amp; PERMISSIONS</h2>
+        <p>Control which AMANAH modules and management functions each role can access.</p>
+      </div>
+      <div class="rp-security-badge">
+        <span class="rp-dot"></span>
+        ACCESS CONTROL
+      </div>
+    </section>
+
+    <section class="rp-summary-grid">
+      <div class="rp-summary-card"><span>ROLES</span><strong id="rpRoleCount">0</strong></div>
+      <div class="rp-summary-card"><span>PERMISSIONS</span><strong id="rpPermissionCount">0</strong></div>
+      <div class="rp-summary-card"><span>REGISTERED USERS</span><strong id="rpUserCount">0</strong></div>
+      <div class="rp-summary-card"><span>MY ROLE</span><strong id="rpMyRole">—</strong></div>
+    </section>
+
+    <section class="rp-panel">
+      <div class="rp-panel-header">
+        <div>
+          <div class="rp-kicker">ROLE ADMINISTRATION</div>
+          <h2>ROLES</h2>
+          <p>System roles are provided by AMANAH. Custom roles can be created when needed.</p>
+        </div>
+        <button id="addRoleButton" class="button primary" type="button">+ ADD ROLE</button>
+      </div>
+
+      <div id="roleCards" class="rp-role-grid"></div>
+    </section>
+
+    <section class="rp-panel">
+      <div class="rp-panel-header">
+        <div>
+          <div class="rp-kicker">USER ACCESS</div>
+          <h2>USER ROLE ASSIGNMENTS</h2>
+          <p>Users appear here after they have signed in to AMANAH at least once.</p>
+        </div>
+        <button id="refreshUsersButton" class="button secondary" type="button">REFRESH USERS</button>
+      </div>
+
+      <div class="rp-table-wrap">
+        <table class="rp-table">
+          <thead>
+            <tr>
+              <th>USER</th>
+              <th>EMAIL</th>
+              <th>ROLE</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="rpUsersBody">
+            <tr><td colspan="5" class="rp-empty">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rp-panel rp-note-panel">
+      <div class="rp-note-title">ACCESS CONTROL NOTES</div>
+      <div class="rp-note-list">
+        <div><strong>SUPER ADMIN</strong><span>Full system access, including role and permission administration.</span></div>
+        <div><strong>NEW USERS</strong><span>A user must sign in once before AMANAH can display the account here for role assignment.</span></div>
+        <div><strong>MODULE ACCESS</strong><span>Navigation and direct page access are checked against the user's assigned permissions.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="roleModal" class="rp-modal hidden" aria-hidden="true">
+    <div class="rp-modal-card">
+      <div class="rp-modal-header">
+        <div>
+          <div class="rp-kicker">ROLE CONFIGURATION</div>
+          <h2 id="roleModalTitle">ADD ROLE</h2>
+        </div>
+        <button id="closeRoleModal" class="rp-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="rp-form">
+        <div class="rp-field">
+          <label for="roleName">ROLE NAME</label>
+          <input id="roleName" type="text" maxlength="80" placeholder="Example: PROJECT SUPERVISOR">
+        </div>
+        <div class="rp-field">
+          <label for="roleDescription">DESCRIPTION</label>
+          <textarea id="roleDescription" rows="3" placeholder="Describe the responsibility of this role."></textarea>
+        </div>
+      </div>
+
+      <div class="rp-permission-title">
+        <div>
+          <strong>PERMISSIONS</strong>
+          <span>Select the functions available to this role.</span>
+        </div>
+        <label class="rp-check-all">
+          <input id="selectAllRolePermissions" type="checkbox">
+          SELECT ALL
+        </label>
+      </div>
+
+      <div id="rolePermissionGroups" class="rp-permission-groups"></div>
+
+      <div class="rp-modal-actions">
+        <button id="cancelRoleButton" class="button secondary" type="button">CANCEL</button>
+        <button id="saveRoleButton" class="button primary" type="button">SAVE ROLE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="userRoleModal" class="rp-modal hidden" aria-hidden="true">
+    <div class="rp-modal-card rp-user-modal">
+      <div class="rp-modal-header">
+        <div>
+          <div class="rp-kicker">USER ACCESS</div>
+          <h2>ASSIGN ROLE</h2>
+        </div>
+        <button id="closeUserRoleModal" class="rp-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div id="selectedUserSummary" class="rp-selected-user"></div>
+
+      <div class="rp-field">
+        <label for="userRoleSelect">ROLE</label>
+        <select id="userRoleSelect"></select>
+      </div>
+
+      <div class="rp-modal-actions">
+        <button id="cancelUserRoleButton" class="button secondary" type="button">CANCEL</button>
+        <button id="saveUserRoleButton" class="button primary" type="button">ASSIGN ROLE</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="roles-permissions.js?v=1"></script>
+  <script src="amanah-ui.js?v=7"></script>
+</body>
+</html>
