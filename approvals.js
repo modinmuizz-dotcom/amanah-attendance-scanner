@@ -10,23 +10,101 @@ function formatDateTime(v){if(!v)return '—';return new Date(v).toLocaleString(
 function showMsg(text,type='success'){const el=document.getElementById('approvalMessage');el.textContent=text;el.className=`message ${type}`;el.style.display='block';setTimeout(()=>{el.className='message hidden';el.textContent='';},3500);}
 function closeModal(){currentApproval=null;document.getElementById('approvalModal').classList.add('hidden');document.getElementById('approvalModal').setAttribute('aria-hidden','true');}
 function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
+function detailCard(label,value,opts={}){
+  const full=opts.full?' detail-card-full':'';
+  const accent=opts.accent?' detail-card-accent-'+opts.accent:'';
+  return '<div class="detail-card'+full+accent+'"><div class="detail-label">'+esc(label)+'</div><div class="detail-value">'+esc(value==null||value===''?'—':value)+'</div></div>';
+}
+
 function payloadCards(a){
   const p=a.payload||{};
-  const common=[
-    ['REQUEST TYPE',typeLabel(a.request_type)],
-    ['REQUESTED BY',a.requested_by_name||a.requester_email||'—'],
-    ['SUBMITTED',formatDateTime(a.submitted_at)]
-  ];
+  const type=typeLabel(a.request_type);
+
   if(a.request_type==='ACTIVITY'){
-    common.push(['PROJECT',p.project_name||'—'],['ACTIVITY',p.activity||a.title||'—'],['DATE',p.activity_date||'—'],['TIME',p.time||'—'],['PRIORITY',p.priority||'NORMAL'],['EQUIPMENT',p.equipment||'—'],['MANPOWER',p.manpower??0],['DESCRIPTION',p.description||a.description||'—']);
-  }else if(a.request_type==='PURCHASE_REQUEST'){
-    common.push(['REQUEST NO.',p.request_no||a.title||'—'],['PROJECT',p.project_name||'—'],['LOCATION',p.project_location||'—'],['REQUESTER POSITION',p.requester_position||'—'],['NEEDED BY',p.needed_by_date||'—'],['PRIORITY',p.priority||'NORMAL'],['PURPOSE',p.purpose||'—'],['ITEMS',p.items_summary||'See Purchase Request details']);
-  }else{
-    common.push(['EQUIPMENT',p.equipment_name||p.equipment_id||'—'],['MAINTENANCE TYPE',p.maintenance_type||'—'],['DATE',p.maintenance_date||'—'],['PROJECT',p.project_name||'—'],['DESCRIPTION',p.description||a.description||'—'],['SUPPLIER / SHOP',p.supplier_shop||'—'],['TOTAL AMOUNT',p.total_amount==null?'—':'₱'+Number(p.total_amount).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})]);
+    const equipment=String(p.equipment||'—').split(',').map(x=>x.trim()).filter(Boolean);
+    return `
+      <div class="review-summary">
+        <div class="review-summary-main">
+          <div class="review-summary-kicker">REQUEST TYPE</div>
+          <h3>ACTIVITY CALENDAR</h3>
+          <p>Activity submitted for General Manager approval before scheduling.</p>
+        </div>
+        <div class="review-status"><span></span><strong>PENDING APPROVAL</strong><small>Awaiting decision</small></div>
+      </div>
+
+      <div class="review-section">
+        <div class="review-section-title"><span>01</span><div><strong>REQUEST INFORMATION</strong><small>Submission and accountability details</small></div></div>
+        <div class="detail-grid detail-grid-3">
+          ${detailCard('REQUESTED BY',a.requested_by_name||a.requester_email)}
+          ${detailCard('SUBMITTED',formatDateTime(a.submitted_at))}
+          ${detailCard('PRIORITY',p.priority||'NORMAL',{accent:(p.priority||'NORMAL').toLowerCase()})}
+        </div>
+      </div>
+
+      <div class="review-section">
+        <div class="review-section-title"><span>02</span><div><strong>ACTIVITY DETAILS</strong><small>Planned site work information</small></div></div>
+        <div class="detail-grid detail-grid-2">
+          ${detailCard('PROJECT',p.project_name)}
+          ${detailCard('ACTIVITY',p.activity||a.title)}
+          ${detailCard('ACTIVITY DATE',p.activity_date)}
+          ${detailCard('TIME',p.time)}
+          ${detailCard('MANPOWER',p.manpower??0)}
+          ${detailCard('EQUIPMENT',equipment.length?equipment.join(', '):'—',{full:true})}
+          ${detailCard('DESCRIPTION',p.description||a.description||'No additional description provided.',{full:true})}
+        </div>
+      </div>
+
+      <div class="review-section review-section-last">
+        <div class="review-section-title"><span>03</span><div><strong>SUBMISSION NOTE</strong><small>Origin of the approval request</small></div></div>
+        <div class="submission-note">${esc(a.description||'This activity was submitted for General Manager approval.')}</div>
+      </div>
+    `;
   }
-  return '<div class="detail-grid">'+common.map(([k,v])=>'<div class="detail-card '+(['DESCRIPTION','PURPOSE','ITEMS'].includes(k)?'full':'')+'"><label>'+esc(k)+'</label><div>'+esc(v)+'</div></div>').join('')+
-    '<div class="detail-card full"><label>SUBMISSION NOTE</label><div>'+esc(a.description||'No additional notes supplied.')+'</div></div></div>';
+
+  const commonHeader=`
+    <div class="review-summary">
+      <div class="review-summary-main">
+        <div class="review-summary-kicker">REQUEST TYPE</div>
+        <h3>${esc(type)}</h3>
+        <p>${esc(a.title||'Request submitted for General Manager approval.')}</p>
+      </div>
+      <div class="review-status"><span></span><strong>PENDING APPROVAL</strong><small>Awaiting decision</small></div>
+    </div>`;
+
+  if(a.request_type==='PURCHASE_REQUEST'){
+    return commonHeader+`
+      <div class="review-section">
+        <div class="review-section-title"><span>01</span><div><strong>REQUEST INFORMATION</strong><small>Purchase request summary</small></div></div>
+        <div class="detail-grid detail-grid-3">
+          ${detailCard('REQUEST NO.',p.request_no||a.title)}
+          ${detailCard('REQUESTED BY',a.requested_by_name||p.requester_name||a.requester_email)}
+          ${detailCard('SUBMITTED',formatDateTime(a.submitted_at))}
+          ${detailCard('PROJECT',p.project_name)}
+          ${detailCard('LOCATION',p.project_location)}
+          ${detailCard('NEEDED BY',p.needed_by_date)}
+          ${detailCard('PRIORITY',p.priority||'NORMAL')}
+          ${detailCard('REQUESTER POSITION',p.requester_position)}
+          ${detailCard('PURPOSE',p.purpose||'—',{full:true})}
+          ${detailCard('ITEMS',p.items_summary||'See Purchase Request details',{full:true})}
+        </div>
+      </div>`;
+  }
+
+  return commonHeader+`
+    <div class="review-section">
+      <div class="review-section-title"><span>01</span><div><strong>MAINTENANCE REQUEST</strong><small>Equipment maintenance details</small></div></div>
+      <div class="detail-grid detail-grid-3">
+        ${detailCard('EQUIPMENT',p.equipment_name||p.equipment_id)}
+        ${detailCard('MAINTENANCE TYPE',p.maintenance_type)}
+        ${detailCard('DATE',p.maintenance_date)}
+        ${detailCard('PROJECT',p.project_name)}
+        ${detailCard('SUPPLIER / SHOP',p.supplier_shop)}
+        ${detailCard('TOTAL AMOUNT',p.total_amount==null?'—':'₱'+Number(p.total_amount).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}))}
+        ${detailCard('DESCRIPTION',p.description||a.description||'No additional description provided.',{full:true})}
+      </div>
+    </div>`;
 }
+
 async function requireAccess(){
   const {data:{session}}=await supabaseClient.auth.getSession();
   if(!session){location.href='admin.html';return false;}
