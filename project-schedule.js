@@ -90,6 +90,7 @@ async function init(){
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
   updateInitialStatusUI();
+  updateActivityTypeFields("");
 }
 async function loadProjects(){
   const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name");
