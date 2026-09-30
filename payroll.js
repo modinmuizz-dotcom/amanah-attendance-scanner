@@ -8,6 +8,198 @@ let payrollRows=[];
 let calculatedPeriod=null;
 let payrollEmployeeOptions=[];
 
+
+function manualPayrollEmployee(){
+  const id=String(document.getElementById('manualPayrollEmployee')?.value||'');
+  return payrollEmployees.find(e=>String(e.employee_id)===id)||null;
+}
+
+function manualPayrollIsHourly(employee){
+  return normalizeDepartment(employee?.department)==='TRUCKERS';
+}
+
+function manualPayrollRate(employee){
+  if(!employee)return 0;
+  return manualPayrollIsHourly(employee) ? num(employee.hourly_rate) : num(employee.daily_rate);
+}
+
+function updateManualPayrollPreview(){
+  const employee=manualPayrollEmployee();
+  const department=document.getElementById('manualPayrollDepartment');
+  const basis=document.getElementById('manualPayrollBasis');
+  const rate=document.getElementById('manualPayrollRate');
+  const dailyPanel=document.getElementById('manualDailyFields');
+  const hourlyPanel=document.getElementById('manualHourlyFields');
+
+  if(!employee){
+    department.textContent='—';
+    basis.textContent='—';
+    rate.textContent='₱0.00';
+    dailyPanel.hidden=true;
+    hourlyPanel.hidden=true;
+    return;
+  }
+
+  const hourly=manualPayrollIsHourly(employee);
+  const employeeRate=manualPayrollRate(employee);
+
+  department.textContent=employee.department||'—';
+  basis.textContent=hourly?'HOURLY':'DAILY';
+  rate.textContent=money(employeeRate);
+  dailyPanel.hidden=hourly;
+  hourlyPanel.hidden=!hourly;
+
+  const full=num(document.getElementById('manualFullDays').value);
+  const half=num(document.getElementById('manualHalfDays').value);
+  const hours=num(document.getElementById('manualHours').value);
+
+  document.getElementById('manualDailyGross').textContent =
+    money((full*employeeRate)+(half*(employeeRate/2)));
+
+  document.getElementById('manualHourlyGross').textContent =
+    money(hours*employeeRate);
+}
+
+function populateManualPayrollEmployees(){
+  const select=document.getElementById('manualPayrollEmployee');
+  if(!select)return;
+
+  const current=select.value;
+  const employees=[...(payrollEmployees||[])]
+    .filter(e=>String(e.status||'').toUpperCase()==='ACTIVE')
+    .sort((a,b)=>String(a.employee_name||'').localeCompare(String(b.employee_name||'')));
+
+  select.innerHTML='<option value="">SELECT EMPLOYEE</option>'+
+    employees.map(e=>
+      '<option value="'+escapeHtml(e.employee_id)+'">'+
+      escapeHtml(e.employee_name||'—')+
+      ' — '+escapeHtml(e.employee_id||'')+
+      '</option>'
+    ).join('');
+
+  if(employees.some(e=>String(e.employee_id)===current))select.value=current;
+  updateManualPayrollPreview();
+}
+
+function openManualPayrollModal(){
+  clearMessage();
+  populateManualPayrollEmployees();
+  document.getElementById('manualPayrollEmployee').value='';
+  document.getElementById('manualFullDays').value='0';
+  document.getElementById('manualHalfDays').value='0';
+  document.getElementById('manualHours').value='0';
+  document.getElementById('manualPayrollError').textContent='';
+  updateManualPayrollPreview();
+
+  const modal=document.getElementById('manualPayrollModal');
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden','false');
+}
+
+function closeManualPayrollModal(){
+  const modal=document.getElementById('manualPayrollModal');
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden','true');
+}
+
+function addManualPayrollEntry(){
+  const error=document.getElementById('manualPayrollError');
+  error.textContent='';
+
+  const employee=manualPayrollEmployee();
+  if(!employee){
+    error.textContent='Please select an employee.';
+    return;
+  }
+
+  const start=document.getElementById('payrollStart').value;
+  const end=document.getElementById('payrollEnd').value;
+  if(!start||!end||end<start){
+    error.textContent='Please set a valid payroll period first.';
+    return;
+  }
+
+  const duplicate=payrollRows.some(row=>String(row.employeeId)===String(employee.employee_id));
+  if(duplicate){
+    error.textContent='This employee is already included in the current payroll register.';
+    return;
+  }
+
+  const rate=manualPayrollRate(employee);
+  if(rate<=0){
+    error.textContent='This employee does not have a valid payroll rate in Employee Master.';
+    return;
+  }
+
+  let row;
+
+  if(manualPayrollIsHourly(employee)){
+    const hours=Math.max(0,num(document.getElementById('manualHours').value));
+    if(hours<=0){
+      error.textContent='Please enter total hours greater than 0.';
+      return;
+    }
+
+    row={
+      employeeId:employee.employee_id,
+      employeeName:employee.employee_name||'—',
+      department:employee.department||'—',
+      rateType:'HOURLY',
+      rate,
+      attendanceDays:0,
+      fullDays:0,
+      halfDays:0,
+      hours,
+      attendanceIds:[],
+      source:'MANUAL'
+    };
+  }else{
+    const fullDays=Math.max(0,num(document.getElementById('manualFullDays').value));
+    const halfDays=Math.max(0,num(document.getElementById('manualHalfDays').value));
+
+    if(fullDays<=0 && halfDays<=0){
+      error.textContent='Please enter at least one full day or half day.';
+      return;
+    }
+
+    if(fullDays+halfDays>31){
+      error.textContent='The total classified days cannot exceed 31.';
+      return;
+    }
+
+    row={
+      employeeId:employee.employee_id,
+      employeeName:employee.employee_name||'—',
+      department:employee.department||'—',
+      rateType:'DAILY',
+      rate,
+      attendanceDays:fullDays+halfDays,
+      fullDays,
+      halfDays,
+      hours:0,
+      attendanceIds:[],
+      source:'MANUAL'
+    };
+  }
+
+  payrollRows.push(row);
+
+  calculatedPeriod={
+    start,
+    end,
+    employeeId:'',
+    includesManualEntries:true
+  };
+
+  render();
+  closeManualPayrollModal();
+
+  showMessage(
+    row.employeeName+' was added to the payroll register manually.',
+    'success'
+  );
+}
+
 function escapeHtml(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function money(v){return '₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:0;}
