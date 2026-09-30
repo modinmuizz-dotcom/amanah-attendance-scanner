@@ -241,7 +241,7 @@ function render() {
 
   if (!records.length) {
     body.innerHTML =
-      '<tr><td colspan="12" class="empty">No maintenance records found.</td></tr>';
+      '<tr><td colspan="13" class="empty">No maintenance records found.</td></tr>';
     return;
   }
 
@@ -266,6 +266,7 @@ function render() {
         "<td>" + money(row.unit_cost) + "</td>" +
         "<td><strong>" + money(row.total_amount) + "</strong></td>" +
         "<td>" + escapeHtml(row.reference_no || "—") + "</td>" +
+        "<td><span class=\"tag\">" + escapeHtml(row.approval_status || "NOT REQUIRED") + "</span></td>" +
         "<td class=\"action-buttons\">" +
           "<button class=\"btn-action btn-edit\" type=\"button\" onclick=\"editRecord('" +
             escapeHtml(row.maintenance_id) +
