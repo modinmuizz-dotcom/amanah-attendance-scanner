@@ -35,7 +35,9 @@ function updateActivityTypeFields(prefix=""){
   if(itemLabel)itemLabel.textContent=type==="MATERIALS DELIVERY"?"What is being delivered?":"What is being hauled?";
   const manpowerField=document.getElementById(prefix+"manpowerField");
   const hideManpower=type==="HAULING"||type==="MATERIALS DELIVERY";
-  if(manpowerField)manpowerField.style.display=hideManpower?"none":"";
+  if(manpowerField){
+    manpowerField.style.display=hideManpower ? "none" : "";
+  }
   if(hideManpower){
     const manpowerInput=document.getElementById(prefix+"manpower");
     if(manpowerInput)manpowerInput.value="0";
@@ -747,12 +749,50 @@ function openDetailsModal(id){
     normalizedActivityType === "HAULING" ||
     normalizedActivityType === "MATERIALS DELIVERY";
 
+  const showActivityItem =
+    normalizedActivityType === "HAULING" ||
+    normalizedActivityType === "MATERIALS DELIVERY";
+
+  const showActivityQuantity =
+    showActivityItem ||
+    normalizedActivityType === "CONCRETE POURING";
+
   const detailManpowerCard = document.getElementById("detailManpowerCard");
   if(detailManpowerCard) detailManpowerCard.style.display = hideDetailManpower ? "none" : "";
 
   if(!hideDetailManpower){
     document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
   }
+
+  const itemCard = document.getElementById("detailActivityItemCard");
+  const itemLabel = document.getElementById("detailActivityItemLabel");
+  const itemValue = document.getElementById("detailActivityItem");
+  const quantityCard = document.getElementById("detailActivityQuantityCard");
+  const quantityValue = document.getElementById("detailActivityQuantity");
+
+  if(itemCard) itemCard.style.display = showActivityItem ? "" : "none";
+  if(quantityCard) quantityCard.style.display = showActivityQuantity ? "" : "none";
+
+  if(showActivityItem){
+    if(itemLabel) itemLabel.textContent =
+      normalizedActivityType === "MATERIALS DELIVERY"
+        ? "What is Being Delivered"
+        : "What is Being Hauled";
+    if(itemValue) itemValue.textContent = a.activity_item || "—";
+  }else{
+    if(itemValue) itemValue.textContent = "";
+  }
+
+  if(showActivityQuantity){
+    if(quantityValue) {
+      const q = a.activity_quantity;
+      quantityValue.textContent =
+        q === null || q === undefined || q === "" ? "—" : Number(q).toLocaleString();
+    }
+  }else{
+    if(quantityValue) quantityValue.textContent = "";
+  }
+
   document.getElementById("detailEquipment").textContent=equipmentText;
   document.getElementById("detailDescription").textContent=a.description||"No description provided.";
   document.getElementById("detailProgressText").textContent=progress+"%";
