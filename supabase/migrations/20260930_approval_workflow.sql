@@ -330,3 +330,27 @@ end $$;
 grant execute on function public.amanah_submit_approval(text,uuid,text,text,jsonb) to authenticated;
 grant execute on function public.amanah_decide_approval(uuid,text,text) to authenticated;
 grant execute on function public.amanah_decide_pending_approval(text,uuid,text,text) to authenticated;
+
+-- Super Admin must also be able to see and operate the Approval Center.
+do $$
+declare
+  r_super uuid;
+begin
+  select role_id into r_super
+  from public.amanah_roles
+  where upper(role_name)='SUPER ADMIN'
+  limit 1;
+
+  if r_super is not null then
+    insert into public.amanah_role_permissions(role_id,permission_id)
+    select r_super,p.permission_id
+    from public.amanah_permissions p
+    where p.permission_key in (
+      'approvals.view',
+      'schedule.approve',
+      'purchasing.approve',
+      'maintenance.approve'
+    )
+    on conflict do nothing;
+  end if;
+end $$;
