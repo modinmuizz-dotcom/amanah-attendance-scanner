@@ -273,6 +273,7 @@ function render() {
             "')\">EDIT</button>" +
 
           (row.approval_status === "PENDING" ? "<button class=\"btn-action\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">CANCEL REQUEST</button>" : "") +
+          (row.approval_status === "APPROVED" ? "<button class=\"btn-action\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">REQUEST CANCELLATION</button>" : "") +
           "<button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">DELETE</button>" +
@@ -282,7 +283,7 @@ function render() {
   }).join("");
 }
 
-function showMaintenanceCancelDialog(record){
+function showMaintenanceCancelDialog(record,approved=false){
   return new Promise(resolve=>{
     $("amanahMaintenanceCancelBackdrop")?.remove();
     const wrap=document.createElement("div");
@@ -292,7 +293,7 @@ function showMaintenanceCancelDialog(record){
       '<div style="width:min(560px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 30px 90px rgba(15,23,42,.3);overflow:hidden">'+
         '<div style="display:flex;gap:12px;align-items:flex-start;padding:20px;border-bottom:1px solid #e2e8f0">'+
           '<div style="width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:#fff7ed;color:#b45309;font-weight:900">!</div>'+
-          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">MAINTENANCE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">CANCEL REQUEST</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">This maintenance request is still awaiting General Manager approval.</p></div>'+
+          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">MAINTENANCE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">'+(approved?"REQUEST MAINTENANCE CANCELLATION":"CANCEL REQUEST")+'</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">'+(approved?"This approved maintenance record requires General Manager approval before it can be cancelled.":"This maintenance request is still awaiting General Manager approval.")+'</p></div>'+
           '<button type="button" data-maint-cancel-close style="margin-left:auto;border:1px solid #dbe3ef;background:#fff;border-radius:9px;width:34px;height:34px;font-size:20px;color:#475569;cursor:pointer">×</button>'+
         '</div>'+
         '<div style="padding:18px 20px">'+
@@ -321,23 +322,48 @@ function showMaintenanceCancelDialog(record){
 
 async function cancelMaintenanceRequest(id){
   const record=state.records.find(row=>row.maintenance_id===id);
-  if(!record || record.approval_status!=="PENDING")return;
-  const reason=await showMaintenanceCancelDialog(record);
+  if(!record)return;
+  const approved=record.approval_status==="APPROVED";
+  if(!["PENDING","APPROVED"].includes(record.approval_status))return;
+  const reason=await showMaintenanceCancelDialog(record,approved);
   if(!reason)return;
   try{
-    const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","MAINTENANCE").eq("entity_id",id).eq("status","PENDING").maybeSingle();
-    if(reqError)throw reqError;
-    if(!req?.approval_id)throw new Error("No pending approval request was found for this maintenance request.");
-    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
-    if(error)throw error;
-    showMessage("Maintenance request cancelled successfully.","success");
+    if(!approved){
+      const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","MAINTENANCE").eq("entity_id",id).eq("status","PENDING").maybeSingle();
+      if(reqError)throw reqError;
+      if(!req?.approval_id)throw new Error("No pending approval request was found for this maintenance request.");
+      const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
+      if(error)throw error;
+      showMessage("Maintenance request cancelled successfully.","success");
+    }else{
+      const {error}=await supabaseClient.rpc("amanah_submit_approval",{
+        p_request_type:"MAINTENANCE",
+        p_entity_id:id,
+        p_title:"Cancellation: "+(equipmentNameById(record.equipment_id)||"Maintenance"),
+        p_description:"Cancellation request submitted for General Manager approval.",
+        p_payload:{
+          request_action:"CANCEL",
+          equipment_id:record.equipment_id||"",
+          equipment_name:equipmentNameById(record.equipment_id)||"",
+          project_id:record.project_id||"",
+          project_name:projectNameById(record.project_id)||"",
+          maintenance_date:record.maintenance_date||"",
+          maintenance_type:record.maintenance_type||"",
+          description:record.description||"",
+          supplier_shop:record.supplier_shop||"",
+          total_amount:Number(record.total_amount||0),
+          cancellation_reason:reason
+        }
+      });
+      if(error)throw error;
+      showMessage("Maintenance cancellation request submitted for General Manager approval.","success");
+    }
     await loadRecords();
   }catch(error){
     console.error(error);
-    showMessage(error.message||"Unable to cancel maintenance request.","error");
+    showMessage(error.message||"Unable to process maintenance cancellation.","error");
   }
 }
-
 function calculateTotal() {
   const quantity = Number($("quantity").value || 0);
   const unitCost = Number($("unitCost").value || 0);
