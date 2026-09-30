@@ -174,7 +174,7 @@ async function loadRecords() {
   const result = await supabaseClient
     .from("equipment_maintenance")
     .select(
-      "maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,created_at"
+      "maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,approval_status,created_at"
     )
     .order("maintenance_date", { ascending: false })
     .order("created_at", { ascending: false });
