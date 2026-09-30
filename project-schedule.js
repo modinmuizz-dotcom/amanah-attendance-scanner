@@ -293,6 +293,7 @@ async function cancelActivityRequest(id){
 async function requestActivityCancellation(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a || a.approval_status!=="APPROVED")return;
+
   const reason=await showAmanahCancelConfirm({
     title:"Request Activity Cancellation",
     subtitle:"This approved activity requires General Manager approval before it can be cancelled.",
@@ -301,36 +302,89 @@ async function requestActivityCancellation(id){
     approved:true
   });
   if(!reason)return;
+
   const btn=document.querySelector("[data-approved-cancel-request=\""+CSS.escape(id)+"\"]");
   if(btn){btn.disabled=true;btn.textContent="SUBMITTING...";}
+
   try{
-    const {error}=await supabaseClient.rpc("amanah_submit_approval",{
-      p_request_type:"ACTIVITY",
-      p_entity_id:id,
-      p_title:"Cancellation: "+(a.activity||"Activity"),
-      p_description:"Cancellation request submitted for General Manager approval.",
-      p_payload:{
-        request_action:"CANCEL",
-        project_name:a.project_name||selectedProjectName(a.project_id),
-        activity:a.activity||"",
-        activity_date:a.activity_date||"",
-        equipment:equipmentFor(id).map(e=>e.equipment_name).join(", "),
-        priority:a.priority||"NORMAL",
-        manpower:a.manpower||0,
-        description:a.description||"",
-        cancellation_reason:reason
-      }
-    });
-    if(error)throw error;
+    const {data:{user},error:userError}=await supabaseClient.auth.getUser();
+    if(userError)throw userError;
+    if(!user?.id)throw new Error("Your session could not be verified.");
+
+    /* Verify that this user is the original requester of the approved activity. */
+    const {data:originalApproval,error:originalError}=await supabaseClient
+      .from("amanah_approval_requests")
+      .select("approval_id,requested_by,status")
+      .eq("request_type","ACTIVITY")
+      .eq("entity_id",id)
+      .eq("status","APPROVED")
+      .order("decided_at",{ascending:false})
+      .limit(1)
+      .maybeSingle();
+
+    if(originalError)throw originalError;
+    if(originalApproval?.requested_by && originalApproval.requested_by!==user.id){
+      throw new Error("Only the original requester can submit a cancellation request for this activity.");
+    }
+
+    const payload={
+      request_action:"CANCEL",
+      project_name:a.project_name||selectedProjectName(a.project_id),
+      activity:a.activity||"",
+      activity_date:a.activity_date||"",
+      equipment:equipmentFor(id).map(e=>e.equipment_name).join(", "),
+      priority:a.priority||"NORMAL",
+      manpower:a.manpower||0,
+      description:a.description||"",
+      cancellation_reason:reason
+    };
+
+    /* Check whether a cancellation request already exists. */
+    let {data:pending,error:pendingError}=await supabaseClient
+      .from("amanah_approval_requests")
+      .select("approval_id,status,payload")
+      .eq("request_type","ACTIVITY")
+      .eq("entity_id",id)
+      .eq("status","PENDING")
+      .maybeSingle();
+
+    if(pendingError)throw pendingError;
+
+    if(!pending){
+      const email=user.email||"";
+      const name=user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0] || "AMANAH USER";
+
+      /* Direct insert is intentional here: it uses the normal RLS requester policy
+         and guarantees the cancellation appears in the General Manager queue. */
+      const {data:created,error:createError}=await supabaseClient
+        .from("amanah_approval_requests")
+        .insert({
+          request_type:"ACTIVITY",
+          entity_id:id,
+          title:"Cancellation: "+(a.activity||"Activity"),
+          description:"Cancellation request submitted for General Manager approval.",
+          payload,
+          requested_by:user.id,
+          requested_by_name:name,
+          requester_email:email,
+          status:"PENDING"
+        })
+        .select("approval_id")
+        .single();
+
+      if(createError)throw createError;
+      pending=created;
+    }
+
     msg("ok","Activity cancellation request submitted for General Manager approval.");
     await loadActivities();
   }catch(e){
-    console.error(e);msg("err","Could not submit activity cancellation request: "+e.message);
+    console.error(e);
+    msg("err","Could not submit activity cancellation request: "+(e.message||"Unknown error"));
   }finally{
     if(btn){btn.disabled=false;btn.textContent="REQUEST CANCELLATION";}
   }
 }
-
 async function deleteActivity(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
