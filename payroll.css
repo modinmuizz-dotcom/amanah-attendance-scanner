@@ -293,3 +293,12 @@
   pointer-events:none;
   font-size:14px;
 }
+
+.group-labor-modal-card{width:min(760px,94vw)}
+.payroll-group-summary{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding:10px 14px;border:1px solid #bfdbfe;border-radius:11px;background:#eff6ff;min-width:150px}
+.payroll-group-summary span{font-size:8px;font-weight:900;letter-spacing:.1em;color:#2563eb}
+.payroll-group-summary strong{font-size:18px;color:#0f172a;margin-top:4px}
+.group-labor-total-preview{margin-top:18px}
+.group-labor-total-preview small{display:block;margin-top:5px;color:#64748b;font-size:10px}
+.group-labor-remove{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:900}
+@media(max-width:720px){.payroll-group-summary{align-items:flex-start;width:100%;box-sizing:border-box;margin-top:10px}}
