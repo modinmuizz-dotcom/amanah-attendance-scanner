@@ -1002,4 +1002,4 @@ document
    START
    ========================================================= */
 
-loadAttendance();
+loadCurrentUserRole().then(() => loadAttendance());
