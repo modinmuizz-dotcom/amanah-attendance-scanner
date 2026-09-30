@@ -152,17 +152,23 @@ function historyDetailHtml(a){
   const base=payloadCards(a, true);
   const decision=a.status||'—';
   const decisionClass=decision.toLowerCase();
-  const decidedBy=a.decided_by_name||'—';
-  const decidedAt=formatDateTime(a.decided_at);
-  const remarks=a.decision_remarks||'No decision remarks were recorded.';
+  const cancelled=decision==='CANCELLED';
+  const actor=cancelled ? (a.cancelled_by_name||'—') : (a.decided_by_name||'—');
+  const actionAt=cancelled ? a.cancelled_at : a.decided_at;
+  const remarks=cancelled ? (a.cancellation_reason||'No cancellation reason was recorded.') : (a.decision_remarks||'No decision remarks were recorded.');
+  const sectionTitle=cancelled?'CANCELLATION RECORD':'DECISION RECORD';
+  const actorLabel=cancelled?'CANCELLED BY':'DECIDED BY';
+  const dateLabel=cancelled?'CANCELLED DATE':'DECISION DATE';
+  const remarksLabel=cancelled?'CANCELLATION REASON':'REVIEW REMARKS';
+  const helpText=cancelled?'Request withdrawn by the original requester before General Manager decision.':'Final approval action recorded by the system';
   return base+`
     <div class="review-section review-section-last">
-      <div class="review-section-title"><span>04</span><div><strong>DECISION RECORD</strong><small>Final approval action recorded by the system</small></div></div>
+      <div class="review-section-title"><span>04</span><div><strong>${sectionTitle}</strong><small>${helpText}</small></div></div>
       <div class="history-decision-grid">
-        <div class="history-decision-card ${esc(decisionClass)}"><div class="detail-label">DECISION</div><div class="detail-value">${esc(decision)}</div></div>
-        <div class="history-decision-card"><div class="detail-label">DECIDED BY</div><div class="detail-value">${esc(decidedBy)}</div></div>
-        <div class="history-decision-card"><div class="detail-label">DECISION DATE</div><div class="detail-value">${esc(decidedAt)}</div></div>
-        <div class="history-decision-card history-decision-full"><div class="detail-label">REVIEW REMARKS</div><div class="detail-value">${esc(remarks)}</div></div>
+        <div class="history-decision-card ${esc(decisionClass)}"><div class="detail-label">STATUS</div><div class="detail-value">${esc(decision)}</div></div>
+        <div class="history-decision-card"><div class="detail-label">${actorLabel}</div><div class="detail-value">${esc(actor)}</div></div>
+        <div class="history-decision-card"><div class="detail-label">${dateLabel}</div><div class="detail-value">${esc(formatDateTime(actionAt))}</div></div>
+        <div class="history-decision-card history-decision-full"><div class="detail-label">${remarksLabel}</div><div class="detail-value">${esc(remarks)}</div></div>
       </div>
     </div>`;
 }
@@ -256,9 +262,12 @@ function openHistory(id){
   document.getElementById('historyDetails').innerHTML=historyDetailHtml(record);
   const banner=document.getElementById('historyDecisionBanner');
   const status=record.status||'—';
-  const cls=status==='APPROVED'?'approved':status==='REJECTED'?'rejected':'other';
+  const cls=status==='APPROVED'?'approved':status==='REJECTED'?'rejected':status==='CANCELLED'?'cancelled':'other';
   banner.className='history-decision-banner '+cls;
-  banner.innerHTML='<div><span class="history-banner-dot"></span><strong>'+esc(status)+'</strong><small>Decision recorded by '+esc(record.decided_by_name||'General Manager')+' on '+esc(formatDateTime(record.decided_at))+'</small></div>';
+  const bannerActor=record.status==='CANCELLED'?(record.cancelled_by_name||'Requester'):(record.decided_by_name||'General Manager');
+  const bannerDate=record.status==='CANCELLED'?record.cancelled_at:record.decided_at;
+  const bannerText=record.status==='CANCELLED'?'Request cancelled by '+bannerActor+' on '+formatDateTime(bannerDate):'Decision recorded by '+bannerActor+' on '+formatDateTime(bannerDate);
+  banner.innerHTML='<div><span class="history-banner-dot"></span><strong>'+esc(status)+'</strong><small>'+esc(bannerText)+'</small></div>';
   document.getElementById('historyModal').classList.remove('hidden');
   document.getElementById('historyModal').setAttribute('aria-hidden','false');
 }
