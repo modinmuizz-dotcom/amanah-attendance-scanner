@@ -354,3 +354,24 @@ begin
     on conflict do nothing;
   end if;
 end $$;
+
+
+-- Allow activities to exist while awaiting General Manager approval.
+alter table public.project_activities
+  drop constraint if exists project_activities_activity_status_check;
+
+alter table public.project_activities
+  add constraint project_activities_activity_status_check
+  check (
+    activity_status = any (
+      array[
+        'PENDING APPROVAL'::text,
+        'PLANNED'::text,
+        'IN PROGRESS'::text,
+        'DONE'::text,
+        'NOT DONE'::text,
+        'CANCELLED'::text,
+        'REJECTED'::text
+      ]
+    )
+  );
