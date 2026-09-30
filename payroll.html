@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=5">
+  <link rel="stylesheet" href="payroll.css?v=6">
 </head>
 <body>
   <main class="container payroll-page">
@@ -37,6 +37,7 @@
         <div class="payroll-control-actions">
           <button id="calculatePayrollButton" class="button primary" type="button">CALCULATE PAYROLL</button>
           <button id="manualPayrollButton" class="button secondary" type="button">MANUAL PAYROLL</button>
+          <button id="groupLaborButton" class="button secondary" type="button">GROUP LABOR</button>
         </div>
       </div>
     </section>
@@ -88,6 +89,36 @@
           </thead>
           <tbody id="payrollBody">
             <tr><td colspan="9" class="payroll-empty">Select a payroll period and calculate payroll.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="payroll-panel" id="groupLaborPanel">
+      <div class="payroll-panel-header">
+        <div>
+          <div class="payroll-kicker">MANUAL PRODUCTION PAYROLL</div>
+          <h2>GROUP LABOR PAYROLL</h2>
+          <p>For labor groups paid according to meters of accomplishment. Rate and accomplished meters are entered manually.</p>
+        </div>
+        <div class="payroll-group-summary">
+          <span>GROUP LABOR GROSS</span>
+          <strong id="groupLaborGross">₱0.00</strong>
+        </div>
+      </div>
+      <div class="payroll-table-wrap">
+        <table class="payroll-table">
+          <thead>
+            <tr>
+              <th>GROUP</th>
+              <th>ACTIVITY / DESCRIPTION</th>
+              <th>RATE / METER</th>
+              <th>METERS ACCOMPLISHED</th>
+              <th>GROSS PAY</th>
+            </tr>
+          </thead>
+          <tbody id="groupLaborBody">
+            <tr><td colspan="5" class="payroll-empty">No group labor entries added.</td></tr>
           </tbody>
         </table>
       </div>
@@ -203,10 +234,58 @@
     </div>
   </div>
 </div>
+
+<div id="groupLaborModal" class="manual-payroll-modal" aria-hidden="true">
+  <div class="manual-payroll-backdrop"></div>
+  <div class="manual-payroll-card group-labor-modal-card" role="dialog" aria-modal="true" aria-labelledby="groupLaborTitle">
+    <div class="manual-payroll-header">
+      <div>
+        <div class="payroll-kicker">GROUP LABOR PAYROLL</div>
+        <h2 id="groupLaborTitle">ADD GROUP LABOR</h2>
+        <p>Enter the labor group, accomplishment rate per meter, and actual meters completed.</p>
+      </div>
+      <button id="groupLaborClose" class="manual-payroll-close" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="manual-payroll-body">
+      <div class="manual-payroll-grid">
+        <div class="payroll-field">
+          <label for="groupLaborName">GROUP NAME</label>
+          <input id="groupLaborName" type="text" placeholder="Example: ROAD CREW A">
+        </div>
+        <div class="payroll-field">
+          <label for="groupLaborActivity">ACTIVITY / DESCRIPTION</label>
+          <input id="groupLaborActivity" type="text" placeholder="Example: CONCRETING OF ROAD">
+        </div>
+        <div class="payroll-field">
+          <label for="groupLaborRate">RATE PER METER (₱)</label>
+          <input id="groupLaborRate" type="text" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="payroll-field">
+          <label for="groupLaborMeters">METERS ACCOMPLISHED</label>
+          <input id="groupLaborMeters" type="text" inputmode="decimal" placeholder="0.00">
+        </div>
+      </div>
+
+      <div class="manual-payroll-preview group-labor-total-preview">
+        <span>CALCULATED GROUP LABOR PAY</span>
+        <strong id="groupLaborPreviewGross">₱0.00</strong>
+        <small>Formula: RATE PER METER × METERS ACCOMPLISHED</small>
+      </div>
+
+      <div id="groupLaborError" class="manual-payroll-error" aria-live="polite"></div>
+    </div>
+
+    <div class="manual-payroll-actions">
+      <button id="groupLaborCancel" class="button secondary" type="button">CANCEL</button>
+      <button id="groupLaborAdd" class="button primary" type="button">ADD GROUP LABOR</button>
+    </div>
+  </div>
+</div>
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=6"></script>
+  <script src="payroll.js?v=7"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
