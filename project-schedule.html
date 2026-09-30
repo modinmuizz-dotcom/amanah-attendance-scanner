@@ -193,7 +193,7 @@
           <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field"><label>Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
-          <div class="field"><label>Initial Status</label><select id="initialStatus" style="font-weight:900"><option selected>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select><div class="helper">Set the starting status for this activity when it is first scheduled.</div></div>
+          <div class="field"><label>Approval Status</label><select id="initialStatus" style="font-weight:900" disabled><option selected>PENDING APPROVAL</option></select><div class="helper">Every new activity created by the Engineer must be approved by the General Manager before it becomes an approved schedule.</div></div>
           <div class="field full"><label>Equipment Required on Site</label>
             <div class="equipment-box">
               <div class="equipment-tools">
@@ -222,7 +222,7 @@
         <div class="filter"><label>Search</label><input id="fSearch" placeholder="Activity / project / equipment"></div>
         <div class="filter"><label>Date</label><input type="date" id="fDate"></div>
         <div class="filter"><label>Project</label><select id="fProject"></select></div>
-        <div class="filter"><label>Status</label><select id="fStatus"><option value="">ALL STATUS</option><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select></div>
+        <div class="filter"><label>Status</label><select id="fStatus"><option value="">ALL STATUS</option><option>PENDING APPROVAL</option><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option><option>REJECTED</option></select></div>
         <div class="filter" style="display:flex;align-items:end"><button class="btn gray" id="clearFilters" style="width:100%">CLEAR</button></div>
       </div>
     </section>
