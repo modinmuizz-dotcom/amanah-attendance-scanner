@@ -119,6 +119,8 @@ declare
   v_permission text;
   v_existing uuid;
   v_id uuid;
+  v_action text := upper(coalesce(p_payload->>'request_action','CREATE'));
+  v_current_status text;
   v_email text := coalesce(auth.jwt()->>'email','');
   v_name text := coalesce(
     auth.jwt()->'user_metadata'->>'full_name',
@@ -128,6 +130,10 @@ declare
 begin
   if auth.uid() is null then
     raise exception 'Authentication is required.';
+  end if;
+
+  if v_action not in ('CREATE','CANCEL') then
+    raise exception 'Unsupported approval action.';
   end if;
 
   v_permission := case upper(p_request_type)
@@ -145,27 +151,51 @@ begin
     raise exception 'You are not authorized to submit this request.';
   end if;
 
-  select approval_id into v_existing
-  from public.amanah_approval_requests
-  where request_type=upper(p_request_type)
-    and entity_id=p_entity_id
-    and status='PENDING'
-  order by submitted_at desc
-  limit 1;
+  if v_action='CANCEL' then
+    if upper(p_request_type)='ACTIVITY' then
+      select approval_status into v_current_status
+      from public.project_activities
+      where activity_id=p_entity_id;
+    elsif upper(p_request_type)='PURCHASE_REQUEST' then
+      select status into v_current_status
+      from public.purchase_requests
+      where purchase_request_id=p_entity_id;
+    elsif upper(p_request_type)='MAINTENANCE' then
+      select approval_status into v_current_status
+      from public.equipment_maintenance
+      where maintenance_id=p_entity_id;
+    end if;
 
-  if v_existing is not null then
-    update public.amanah_approval_requests
-    set title=p_title,
-        description=p_description,
-        payload=coalesce(p_payload,'{}'::jsonb),
-        requested_by=auth.uid(),
-        requested_by_name=v_name,
-        requester_email=v_email,
-        submitted_at=now(),
-        updated_at=now()
-    where approval_id=v_existing;
+    if v_current_status is null then
+      raise exception 'The requested record was not found.';
+    end if;
 
-    return v_existing;
+    if v_current_status <> 'APPROVED' then
+      raise exception 'Only an approved request can be submitted for cancellation.';
+    end if;
+  else
+    select approval_id into v_existing
+    from public.amanah_approval_requests
+    where request_type=upper(p_request_type)
+      and entity_id=p_entity_id
+      and status='PENDING'
+    order by submitted_at desc
+    limit 1;
+
+    if v_existing is not null then
+      update public.amanah_approval_requests
+      set title=p_title,
+          description=p_description,
+          payload=coalesce(p_payload,'{}'::jsonb),
+          requested_by=auth.uid(),
+          requested_by_name=v_name,
+          requester_email=v_email,
+          submitted_at=now(),
+          updated_at=now()
+      where approval_id=v_existing;
+
+      return v_existing;
+    end if;
   end if;
 
   insert into public.amanah_approval_requests(
@@ -178,39 +208,42 @@ begin
   )
   returning approval_id into v_id;
 
-  if upper(p_request_type)='ACTIVITY' then
-    update public.project_activities
-    set approval_status='PENDING',
-        approval_requested_by=auth.uid(),
-        approval_requested_at=now(),
-        approval_decided_by=null,
-        approval_decided_at=null,
-        approval_remarks=null,
-        activity_status='PENDING APPROVAL',
-        updated_at=now()
-    where activity_id=p_entity_id;
-  elsif upper(p_request_type)='PURCHASE_REQUEST' then
-    update public.purchase_requests
-    set status='PENDING APPROVAL',
-        reviewed_at=null,
-        reviewed_by=null,
-        review_remarks=null,
-        updated_at=now()
-    where purchase_request_id=p_entity_id;
-  elsif upper(p_request_type)='MAINTENANCE' then
-    update public.equipment_maintenance
-    set approval_status='PENDING',
-        approval_requested_by=auth.uid(),
-        approval_requested_at=now(),
-        approval_decided_by=null,
-        approval_decided_at=null,
-        approval_remarks=null,
-        updated_at=now()
-    where maintenance_id=p_entity_id;
+  if v_action='CREATE' then
+    if upper(p_request_type)='ACTIVITY' then
+      update public.project_activities
+      set approval_status='PENDING',
+          approval_requested_by=auth.uid(),
+          approval_requested_at=now(),
+          approval_decided_by=null,
+          approval_decided_at=null,
+          approval_remarks=null,
+          activity_status='PENDING APPROVAL',
+          updated_at=now()
+      where activity_id=p_entity_id;
+    elsif upper(p_request_type)='PURCHASE_REQUEST' then
+      update public.purchase_requests
+      set status='PENDING APPROVAL',
+          reviewed_at=null,
+          reviewed_by=null,
+          review_remarks=null,
+          updated_at=now()
+      where purchase_request_id=p_entity_id;
+    elsif upper(p_request_type)='MAINTENANCE' then
+      update public.equipment_maintenance
+      set approval_status='PENDING',
+          approval_requested_by=auth.uid(),
+          approval_requested_at=now(),
+          approval_decided_by=null,
+          approval_decided_at=null,
+          approval_remarks=null,
+          updated_at=now()
+      where maintenance_id=p_entity_id;
+    end if;
   end if;
 
   return v_id;
 end $$;
+
 create or replace function public.amanah_decide_approval(
   p_approval_id uuid,
   p_decision text,
@@ -224,6 +257,8 @@ as $$
 declare
   v_type text;
   v_entity uuid;
+  v_payload jsonb;
+  v_action text;
   v_permission text;
   v_email text := coalesce(auth.jwt()->>'email','');
   v_name text := coalesce(
@@ -241,13 +276,15 @@ begin
     raise exception 'Decision must be APPROVED or REJECTED.';
   end if;
 
-  select request_type,entity_id into v_type,v_entity
+  select request_type,entity_id,payload into v_type,v_entity,v_payload
   from public.amanah_approval_requests
   where approval_id=p_approval_id and status='PENDING';
 
   if v_type is null then
     raise exception 'Pending approval request not found.';
   end if;
+
+  v_action := upper(coalesce(v_payload->>'request_action','CREATE'));
 
   v_permission := case v_type
     when 'ACTIVITY' then 'schedule.approve'
@@ -269,7 +306,34 @@ begin
       updated_at=now()
   where approval_id=p_approval_id;
 
-  if v_type='ACTIVITY' then
+  if v_action='CANCEL' then
+    if v_type='ACTIVITY' then
+      update public.project_activities
+      set approval_status=case when v_status='APPROVED' then 'CANCELLED' else 'APPROVED' end,
+          approval_decided_by=auth.uid(),
+          approval_decided_at=now(),
+          approval_remarks=p_remarks,
+          activity_status=case when v_status='APPROVED' then 'CANCELLED' else activity_status end,
+          updated_at=now()
+      where activity_id=v_entity;
+    elsif v_type='PURCHASE_REQUEST' then
+      update public.purchase_requests
+      set status=case when v_status='APPROVED' then 'CANCELLED' else 'APPROVED' end,
+          reviewed_by=v_email,
+          reviewed_at=now(),
+          review_remarks=p_remarks,
+          updated_at=now()
+      where purchase_request_id=v_entity;
+    elsif v_type='MAINTENANCE' then
+      update public.equipment_maintenance
+      set approval_status=case when v_status='APPROVED' then 'CANCELLED' else 'APPROVED' end,
+          approval_decided_by=auth.uid(),
+          approval_decided_at=now(),
+          approval_remarks=p_remarks,
+          updated_at=now()
+      where maintenance_id=v_entity;
+    end if;
+  elsif v_type='ACTIVITY' then
     update public.project_activities
     set approval_status=case when v_status='APPROVED' then 'APPROVED' else 'REJECTED' end,
         approval_decided_by=auth.uid(),
