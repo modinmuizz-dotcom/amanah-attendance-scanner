@@ -10,8 +10,23 @@ let payrollEmployeeOptions=[];
 
 
 function manualPayrollEmployee(){
-  const id=String(document.getElementById('manualPayrollEmployee')?.value||'');
-  return payrollEmployees.find(e=>String(e.employee_id)===id)||null;
+  const raw=String(
+    document.getElementById('manualPayrollEmployee')?.value||''
+  ).trim();
+
+  if(!raw)return null;
+
+  const normalized=raw.toUpperCase();
+
+  return payrollEmployees.find(employee=>{
+    const id=String(employee.employee_id||'').trim().toUpperCase();
+    const name=String(employee.employee_name||'').trim().toUpperCase();
+    const display=(name+' — '+id).toUpperCase();
+
+    return normalized===display ||
+      normalized===id ||
+      normalized===name;
+  })||null;
 }
 
 function manualPayrollIsHourly(employee){
@@ -61,26 +76,27 @@ function updateManualPayrollPreview(){
 }
 
 function populateManualPayrollEmployees(){
-  const select=document.getElementById('manualPayrollEmployee');
-  if(!select)return;
+  const input=document.getElementById('manualPayrollEmployee');
+  const list=document.getElementById('manualPayrollEmployeeList');
+  if(!input||!list)return;
 
-  const current=select.value;
   const employees=[...(payrollEmployees||[])]
     .filter(e=>String(e.status||'').toUpperCase()==='ACTIVE')
-    .sort((a,b)=>String(a.employee_name||'').localeCompare(String(b.employee_name||'')));
+    .sort((a,b)=>
+      String(a.employee_name||'').localeCompare(
+        String(b.employee_name||'')
+      )
+    );
 
-  select.innerHTML='<option value="">SELECT EMPLOYEE</option>'+
-    employees.map(e=>
-      '<option value="'+escapeHtml(e.employee_id)+'">'+
-      escapeHtml(e.employee_name||'—')+
-      ' — '+escapeHtml(e.employee_id||'')+
-      '</option>'
-    ).join('');
+  list.innerHTML=employees.map(e=>{
+    const name=String(e.employee_name||'').trim();
+    const id=String(e.employee_id||'').trim();
+    return '<option value="'+escapeHtml(name+' — '+id)+'"></option>';
+  }).join('');
 
-  if(employees.some(e=>String(e.employee_id)===current))select.value=current;
+  input.value='';
   updateManualPayrollPreview();
 }
-
 function openManualPayrollModal(){
   clearMessage();
   populateManualPayrollEmployees();
@@ -518,6 +534,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('manualPayrollCancel').addEventListener('click',closeManualPayrollModal);
   document.querySelector('#manualPayrollModal .manual-payroll-backdrop').addEventListener('click',closeManualPayrollModal);
   document.getElementById('manualPayrollAdd').addEventListener('click',addManualPayrollEntry);
+  document.getElementById('manualPayrollEmployee').addEventListener('input',updateManualPayrollPreview);
   document.getElementById('manualPayrollEmployee').addEventListener('change',updateManualPayrollPreview);
   ['manualFullDays','manualHalfDays','manualHours'].forEach(id=>{
     document.getElementById(id).addEventListener('input',updateManualPayrollPreview);
