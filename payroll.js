@@ -569,7 +569,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
         .order('employee_name');
 
       if(error)throw error;
-      populatePayrollEmployeeFilter(data||[]);
+      payrollEmployees = data || [];
+      populatePayrollEmployeeFilter(payrollEmployees);
       await loadPayrollHistory();
     }catch(error){
       showMessage(error.message||'Unable to load employee list.','error');
