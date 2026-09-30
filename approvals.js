@@ -62,7 +62,7 @@ function render(){
   body.innerHTML=approvals.map(a=>'<tr>'+
     '<td><span class="type-chip type-'+esc(a.request_type)+'">'+esc(typeLabel(a.request_type))+'</span></td>'+
     '<td><span class="request-title">'+esc(a.title)+'</span><span class="request-sub">'+esc(a.description||'')+'</span></td>'+
-    '<td><span class="requester"><strong>'+esc(a.requested_by_name||'AMANAΗ USER')+'</strong><span>'+esc(a.requester_email||'')+'</span></span></td>'+
+    '<td><span class="requester"><strong>'+esc(a.requested_by_name||'AMANAH USER')+'</strong><span>'+esc(a.requester_email||'')+'</span></span></td>'+
     '<td>'+esc(formatDateTime(a.submitted_at))+'</td>'+
     '<td><span class="pending-chip">PENDING</span></td>'+
     '<td><div class="action-group"><button class="mini review" type="button" data-review="'+esc(a.approval_id)+'">REVIEW</button></div></td>'+
