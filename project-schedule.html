@@ -190,7 +190,9 @@
           <div class="field"><label>Activity Date</label><input type="date" id="activityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="startTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="endTime"></div>
-          <div class="field"><label>Activity</label><input id="activity" placeholder="Example: Hauling limestone"></div>
+          <div class="field"><label>Activity Type</label><input id="activityType" list="activityTypeOptions" autocomplete="off" placeholder="Select or type activity..."><datalist id="activityTypeOptions"><option value="HAULING"></option><option value="MATERIALS DELIVERY"></option><option value="CONCRETE POURING"></option></datalist><div class="helper">Select an activity type or type your own activity.</div></div>
+          <div class="field" id="activityItemField"><label id="activityItemLabel">What is being hauled / delivered?</label><input id="activityItem" placeholder="Example: Gravel, Cement, Sand"></div>
+          <div class="field" id="activityQuantityField"><label>Quantity</label><input type="number" id="activityQuantity" min="0" step="any" inputmode="decimal" placeholder="Enter quantity"></div>
           <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field"><label>Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
@@ -354,7 +356,9 @@
           <div class="field"><label>Activity Date</label><input type="date" id="editActivityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="editStartTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="editEndTime"></div>
-          <div class="field"><label>Activity</label><input id="editActivity" placeholder="Example: Hauling limestone"></div>
+          <div class="field"><label>Activity Type</label><input id="editActivityType" list="activityTypeOptions" autocomplete="off" placeholder="Select or type activity..."><div class="helper">Select an activity type or type your own activity.</div></div>
+          <div class="field" id="editActivityItemField"><label id="editActivityItemLabel">What is being hauled / delivered?</label><input id="editActivityItem" placeholder="Example: Gravel, Cement, Sand"></div>
+          <div class="field" id="editActivityQuantityField"><label>Quantity</label><input type="number" id="editActivityQuantity" min="0" step="any" inputmode="decimal" placeholder="Enter quantity"></div>
           <div class="field"><label>Priority</label><select id="editPriority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="editDescription" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field"><label>Manpower</label><input type="number" id="editManpower" min="0" value="0"></div>
@@ -382,7 +386,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=13"></script>
+  <script src="project-schedule.js?v=15"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
