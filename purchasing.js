@@ -109,7 +109,7 @@ function renderMetrics(){
  document.getElementById("mOpen").textContent=open;document.getElementById("mReview").textContent=review;document.getElementById("mApproved").textContent=approved;document.getElementById("mPO").textContent=po;
 }
 
-function showCancelRequestDialog(title,requestNo,projectName){
+function showCancelRequestDialog(title,requestNo,projectName,approved=false){
   return new Promise(resolve=>{
     document.getElementById("amanahCancelRequestModal")?.remove();
     const wrap=document.createElement("div");
@@ -119,7 +119,7 @@ function showCancelRequestDialog(title,requestNo,projectName){
       '<div style="width:min(560px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 30px 90px rgba(15,23,42,.3);overflow:hidden">'+
         '<div style="display:flex;gap:12px;align-items:flex-start;padding:20px;border-bottom:1px solid #e2e8f0">'+
           '<div style="width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:#fff7ed;color:#b45309;font-weight:900">!</div>'+
-          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">PURCHASE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">CANCEL REQUEST</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">This purchase request is still awaiting General Manager approval.</p></div>'+
+          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">PURCHASE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">'+(approved?"REQUEST PURCHASE CANCELLATION":"CANCEL REQUEST")+'</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">'+(approved?"This approved purchase request requires General Manager approval before it can be cancelled.":"This purchase request is still awaiting General Manager approval.")+'</p></div>'+
           '<button type="button" data-cancel-close style="margin-left:auto;border:1px solid #dbe3ef;background:#fff;border-radius:9px;width:34px;height:34px;font-size:20px;color:#475569;cursor:pointer">×</button>'+
         '</div>'+
         '<div style="padding:18px 20px">'+
@@ -148,23 +148,47 @@ function showCancelRequestDialog(title,requestNo,projectName){
 
 async function cancelPurchaseRequest(id){
   const r=state.requests.find(x=>x.purchase_request_id===id);
-  if(!r || r.status!=="PENDING APPROVAL")return;
-  const reason=await showCancelRequestDialog("CANCEL PURCHASE REQUEST",r.request_no,r.project_name);
+  if(!r)return;
+  const approved=r.status==="APPROVED";
+  if(!["PENDING APPROVAL","APPROVED"].includes(r.status))return;
+  const reason=await showCancelRequestDialog(approved?"REQUEST PURCHASE CANCELLATION":"CANCEL PURCHASE REQUEST",r.request_no,r.project_name,approved);
   if(!reason)return;
   try{
-    const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","PURCHASE_REQUEST").eq("entity_id",id).eq("status","PENDING").maybeSingle();
-    if(reqError)throw reqError;
-    if(!req?.approval_id)throw new Error("No pending approval request was found for this purchase request.");
-    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
-    if(error)throw error;
-    msg("Purchase Request "+r.request_no+" cancelled successfully.","ok");
+    if(!approved){
+      const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","PURCHASE_REQUEST").eq("entity_id",id).eq("status","PENDING").maybeSingle();
+      if(reqError)throw reqError;
+      if(!req?.approval_id)throw new Error("No pending approval request was found for this purchase request.");
+      const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
+      if(error)throw error;
+      msg("Purchase Request "+r.request_no+" cancelled successfully.","ok");
+    }else{
+      const {error}=await supabaseClient.rpc("amanah_submit_approval",{
+        p_request_type:"PURCHASE_REQUEST",
+        p_entity_id:id,
+        p_title:"Cancellation: "+(r.request_no||"Purchase Request"),
+        p_description:"Cancellation request submitted for General Manager approval.",
+        p_payload:{
+          request_action:"CANCEL",
+          request_no:r.request_no||"",
+          project_name:r.project_name||"",
+          project_location:r.project_location||"",
+          requester_name:r.requester_name||"",
+          requester_position:r.requester_position||r.requester_role||"",
+          needed_by_date:r.needed_by_date||"",
+          priority:r.priority||"NORMAL",
+          purpose:r.purpose||"",
+          cancellation_reason:reason
+        }
+      });
+      if(error)throw error;
+      msg("Purchase cancellation request submitted for General Manager approval.","ok");
+    }
     await loadRequests();
     renderRequests();
   }catch(error){
-    console.error(error);msg(error.message||"Unable to cancel purchase request.","err");
+    console.error(error);msg(error.message||"Unable to process purchase cancellation.","err");
   }
 }
-
 function renderRequests(){
  const q=(document.getElementById("prSearch").value||"").toLowerCase().trim(),status=document.getElementById("prStatus").value,pid=document.getElementById("prProject").value;
  const rows=state.requests.filter(r=>(!q||[r.request_no,r.project_name,r.requester_name,r.purpose].join(" ").toLowerCase().includes(q))&&(!status||r.status===status)&&(!pid||r.project_id===pid));
@@ -172,6 +196,7 @@ function renderRequests(){
   const items=state.requestItems.filter(i=>i.purchase_request_id===r.purchase_request_id);
   let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini edit" data-pr-edit="'+esc(r.purchase_request_id)+'">EDIT</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button><button class="mini delete" data-pr-delete="'+esc(r.purchase_request_id)+'">DELETE</button>';
   if(r.status==="PENDING APPROVAL")actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">CANCEL REQUEST</button>';
+  if(r.status==="APPROVED")actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">REQUEST CANCELLATION</button>';
   if(r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW")actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
   if(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
   return '<tr><td><strong>'+esc(r.request_no)+'</strong></td><td>'+esc(fmtDate(r.request_date))+'</td><td><strong>'+esc(r.project_name)+'</strong><br><small style="color:#64748b">'+esc(r.project_location||"")+'</small></td><td>'+esc(r.requester_name)+'<br><small style="color:#64748b">'+esc(r.requester_position||r.requester_role||"SITE ENGINEER")+'</small></td><td>'+esc(fmtDate(r.needed_by_date))+'</td><td>'+esc(r.priority)+'</td><td>'+items.length+'</td><td>'+statusBadge(r.status)+'</td><td><div class="row-actions">'+actions+'</div></td></tr>';
