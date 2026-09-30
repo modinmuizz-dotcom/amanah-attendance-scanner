@@ -150,9 +150,21 @@ begin
   where request_type=upper(p_request_type)
     and entity_id=p_entity_id
     and status='PENDING'
+  order by submitted_at desc
   limit 1;
 
   if v_existing is not null then
+    update public.amanah_approval_requests
+    set title=p_title,
+        description=p_description,
+        payload=coalesce(p_payload,'{}'::jsonb),
+        requested_by=auth.uid(),
+        requested_by_name=v_name,
+        requester_email=v_email,
+        submitted_at=now(),
+        updated_at=now()
+    where approval_id=v_existing;
+
     return v_existing;
   end if;
 
@@ -199,7 +211,6 @@ begin
 
   return v_id;
 end $$;
-
 create or replace function public.amanah_decide_approval(
   p_approval_id uuid,
   p_decision text,
