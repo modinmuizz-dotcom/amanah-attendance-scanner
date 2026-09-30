@@ -304,7 +304,7 @@ async function requestActivityCancellation(id){
   const btn=document.querySelector("[data-approved-cancel-request=\""+CSS.escape(id)+"\"]");
   if(btn){btn.disabled=true;btn.textContent="SUBMITTING...";}
   try{
-    const {data,error}=await supabaseClient.rpc("amanah_submit_approval",{
+    const {data,error}=await supabaseClient.rpc("amanah_request_cancellation",{
       p_request_type:"ACTIVITY",
       p_entity_id:id,
       p_title:"Cancellation: "+(a.activity||"Activity"),
