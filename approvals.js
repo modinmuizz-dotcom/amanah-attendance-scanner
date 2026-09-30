@@ -16,6 +16,41 @@ function closeHistoryModal(){
   document.getElementById('historyModal').classList.add('hidden');
   document.getElementById('historyModal').setAttribute('aria-hidden','true');
 }
+function closeDeleteHistoryModal(){
+  document.getElementById('deleteHistoryModal').classList.add('hidden');
+  document.getElementById('deleteHistoryModal').setAttribute('aria-hidden','true');
+}
+function openDeleteHistory(id){
+  const record=approvalHistory.find(a=>a.approval_id===id);
+  if(!record)return;
+  currentHistoryRecord=record;
+  document.getElementById('deleteHistoryRecord').innerHTML=
+    '<strong>'+esc(typeLabel(record.request_type))+'</strong>'+
+    '<span>'+esc(record.title||'Approval record')+'</span>'+
+    '<small>Decision: '+esc(record.status||'—')+' • '+esc(formatDateTime(record.decided_at))+'</small>';
+  document.getElementById('deleteHistoryModal').classList.remove('hidden');
+  document.getElementById('deleteHistoryModal').setAttribute('aria-hidden','false');
+}
+async function deleteHistoryRecord(){
+  if(!currentHistoryRecord)return;
+  const btn=document.getElementById('confirmDeleteHistory');
+  btn.disabled=true;
+  btn.textContent='DELETING...';
+  try{
+    const {error}=await supabaseClient.rpc('amanah_delete_approval_history',{p_approval_id:currentHistoryRecord.approval_id});
+    if(error)throw error;
+    closeDeleteHistoryModal();
+    currentHistoryRecord=null;
+    showMsg('Approval history record deleted successfully. The original module record remains unchanged.','success');
+    await loadHistory();
+  }catch(error){
+    console.error(error);
+    showMsg(error.message||'Unable to delete approval history record.','error');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='DELETE RECORD';
+  }
+}
 function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
 function detailCard(label,value,opts={}){
   const full=opts.full?' detail-card-full':'';
@@ -206,10 +241,11 @@ function renderHistory(){
       '<td><span class="requester"><strong>'+esc(a.decided_by_name||'—')+'</strong></span></td>'+
       '<td>'+esc(formatDateTime(a.decided_at))+'</td>'+
       '<td><span class="history-status-chip '+decisionClass+'">'+esc(decision)+'</span></td>'+
-      '<td><button class="mini review" type="button" data-history="'+esc(a.approval_id)+'">VIEW</button></td>'+
+      '<td><div class="action-group"><button class="mini review" type="button" data-history="'+esc(a.approval_id)+'">VIEW</button><button class="mini delete-history" type="button" data-delete-history="'+esc(a.approval_id)+'">DELETE</button></div></td>'+
     '</tr>';
   }).join('');
   body.querySelectorAll('[data-history]').forEach(btn=>btn.addEventListener('click',()=>openHistory(btn.dataset.history)));
+  body.querySelectorAll('[data-delete-history]').forEach(btn=>btn.addEventListener('click',()=>openDeleteHistory(btn.dataset.deleteHistory)));
 }
 
 function openHistory(id){
@@ -277,6 +313,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.getElementById('closeHistoryModal').addEventListener('click',closeHistoryModal);
     document.getElementById('historyCloseButton').addEventListener('click',closeHistoryModal);
     document.getElementById('historyModal').addEventListener('click',e=>{if(e.target.id==='historyModal')closeHistoryModal();});
+    document.getElementById('closeDeleteHistoryModal').addEventListener('click',closeDeleteHistoryModal);
+    document.getElementById('cancelDeleteHistory').addEventListener('click',closeDeleteHistoryModal);
+    document.getElementById('confirmDeleteHistory').addEventListener('click',deleteHistoryRecord);
+    document.getElementById('deleteHistoryModal').addEventListener('click',e=>{if(e.target.id==='deleteHistoryModal')closeDeleteHistoryModal();});
     await Promise.all([loadApprovals(),loadHistory()]);
   }catch(error){console.error(error);showMsg(error.message||'Unable to load approval center.','error');}
 });
