@@ -418,3 +418,101 @@ begin
 end $$;
 
 grant execute on function public.amanah_delete_approval_history(uuid) to authenticated;
+
+
+-- Requester cancellation: withdraw a pending approval request without deleting the business record.
+alter table public.amanah_approval_requests
+  add column if not exists cancelled_by uuid,
+  add column if not exists cancelled_by_name text,
+  add column if not exists cancelled_at timestamptz,
+  add column if not exists cancellation_reason text;
+
+create index if not exists amanah_approval_cancelled_idx
+on public.amanah_approval_requests(cancelled_at desc);
+
+create or replace function public.amanah_cancel_approval(
+  p_approval_id uuid,
+  p_reason text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_type text;
+  v_entity uuid;
+  v_requested_by uuid;
+  v_status text;
+  v_email text := coalesce(auth.jwt()->>'email','');
+  v_name text := coalesce(
+    auth.jwt()->'user_metadata'->>'full_name',
+    auth.jwt()->'user_metadata'->>'name',
+    split_part(v_email,'@',1)
+  );
+  v_reason text := nullif(trim(coalesce(p_reason,'')),'');
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication is required.';
+  end if;
+
+  select request_type,entity_id,requested_by,status
+  into v_type,v_entity,v_requested_by,v_status
+  from public.amanah_approval_requests
+  where approval_id=p_approval_id
+  for update;
+
+  if v_status is null then
+    raise exception 'Approval request was not found.';
+  end if;
+
+  if v_status <> 'PENDING' then
+    raise exception 'Only pending requests can be cancelled.';
+  end if;
+
+  if v_requested_by <> auth.uid() then
+    raise exception 'Only the employee who submitted this request can cancel it.';
+  end if;
+
+  update public.amanah_approval_requests
+  set status='CANCELLED',
+      cancelled_by=auth.uid(),
+      cancelled_by_name=v_name,
+      cancelled_at=now(),
+      cancellation_reason=v_reason,
+      decided_by=null,
+      decided_by_name=null,
+      decided_at=null,
+      decision_remarks=null,
+      updated_at=now()
+  where approval_id=p_approval_id;
+
+  if v_type='ACTIVITY' then
+    update public.project_activities
+    set approval_status='CANCELLED',
+        approval_decided_by=null,
+        approval_decided_at=null,
+        approval_remarks=v_reason,
+        activity_status='CANCELLED',
+        updated_at=now()
+    where activity_id=v_entity;
+  elsif v_type='PURCHASE_REQUEST' then
+    update public.purchase_requests
+    set status='CANCELLED',
+        reviewed_by=null,
+        reviewed_at=null,
+        review_remarks=v_reason,
+        updated_at=now()
+    where purchase_request_id=v_entity;
+  elsif v_type='MAINTENANCE' then
+    update public.equipment_maintenance
+    set approval_status='CANCELLED',
+        approval_decided_by=null,
+        approval_decided_at=null,
+        approval_remarks=v_reason,
+        updated_at=now()
+    where maintenance_id=v_entity;
+  end if;
+end $$;
+
+grant execute on function public.amanah_cancel_approval(uuid,text) to authenticated;
