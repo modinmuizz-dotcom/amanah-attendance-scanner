@@ -272,6 +272,7 @@ function render() {
             escapeHtml(row.maintenance_id) +
             "')\">EDIT</button>" +
 
+          (row.approval_status === "PENDING" ? "<button class=\"btn-action\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">CANCEL REQUEST</button>" : "") +
           "<button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">DELETE</button>" +
@@ -279,6 +280,62 @@ function render() {
       "</tr>"
     );
   }).join("");
+}
+
+function showMaintenanceCancelDialog(record){
+  return new Promise(resolve=>{
+    $("amanahMaintenanceCancelBackdrop")?.remove();
+    const wrap=document.createElement("div");
+    wrap.id="amanahMaintenanceCancelBackdrop";
+    wrap.style.cssText="position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.68);backdrop-filter:blur(4px)";
+    wrap.innerHTML=
+      '<div style="width:min(560px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 30px 90px rgba(15,23,42,.3);overflow:hidden">'+
+        '<div style="display:flex;gap:12px;align-items:flex-start;padding:20px;border-bottom:1px solid #e2e8f0">'+
+          '<div style="width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:#fff7ed;color:#b45309;font-weight:900">!</div>'+
+          '<div><div style="color:#2563eb;font-size:8px;font-weight:900;letter-spacing:.1em">MAINTENANCE REQUEST</div><h3 style="margin:5px 0;color:#0f172a;font-size:18px">CANCEL REQUEST</h3><p style="margin:0;color:#64748b;font-size:10px;line-height:1.5">This maintenance request is still awaiting General Manager approval.</p></div>'+
+          '<button type="button" data-maint-cancel-close style="margin-left:auto;border:1px solid #dbe3ef;background:#fff;border-radius:9px;width:34px;height:34px;font-size:20px;color:#475569;cursor:pointer">×</button>'+
+        '</div>'+
+        '<div style="padding:18px 20px">'+
+          '<div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><strong style="display:block;color:#0f172a;font-size:11px">'+escapeHtml(equipmentNameById(record.equipment_id))+'</strong><span style="display:block;margin-top:4px;color:#475569;font-size:11px">'+escapeHtml(record.description||record.maintenance_type||"Maintenance request")+'</span></div>'+
+          '<label style="display:block;margin-top:14px;color:#334155;font-size:9px;font-weight:900;letter-spacing:.08em">CANCELLATION REASON</label>'+
+          '<textarea data-maint-cancel-reason rows="4" placeholder="Enter the reason for withdrawing this maintenance request..." style="width:100%;box-sizing:border-box;margin-top:7px;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit;resize:vertical"></textarea>'+
+          '<div style="margin-top:6px;color:#94a3b8;font-size:9px">The reason will be retained in the approval history.</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px;padding:15px 20px;border-top:1px solid #e2e8f0;background:#fbfdff">'+
+          '<button type="button" data-maint-cancel-close class="btn-action">KEEP REQUEST</button>'+
+          '<button type="button" data-maint-cancel-confirm class="btn-danger">CANCEL REQUEST</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(wrap);
+    const reason=wrap.querySelector("[data-maint-cancel-reason]");setTimeout(()=>reason?.focus(),30);
+    const finish=value=>{wrap.remove();resolve(value);};
+    wrap.querySelectorAll("[data-maint-cancel-close]").forEach(b=>b.addEventListener("click",()=>finish(null)));
+    wrap.querySelector("[data-maint-cancel-confirm]").addEventListener("click",()=>{
+      const v=(reason?.value||"").trim();
+      if(!v){reason.focus();reason.style.borderColor="#dc2626";return;}
+      finish(v);
+    });
+    wrap.addEventListener("click",e=>{if(e.target===wrap)finish(null);});
+  });
+}
+
+async function cancelMaintenanceRequest(id){
+  const record=state.records.find(row=>row.maintenance_id===id);
+  if(!record || record.approval_status!=="PENDING")return;
+  const reason=await showMaintenanceCancelDialog(record);
+  if(!reason)return;
+  try{
+    const {data:req,error:reqError}=await supabaseClient.from("amanah_approval_requests").select("approval_id").eq("request_type","MAINTENANCE").eq("entity_id",id).eq("status","PENDING").maybeSingle();
+    if(reqError)throw reqError;
+    if(!req?.approval_id)throw new Error("No pending approval request was found for this maintenance request.");
+    const {error}=await supabaseClient.rpc("amanah_cancel_approval",{p_approval_id:req.approval_id,p_reason:reason});
+    if(error)throw error;
+    showMessage("Maintenance request cancelled successfully.","success");
+    await loadRecords();
+  }catch(error){
+    console.error(error);
+    showMessage(error.message||"Unable to cancel maintenance request.","error");
+  }
 }
 
 function calculateTotal() {
