@@ -1754,6 +1754,15 @@ function openEmployeeModal(
         ]
       : EMPLOYEE_DEPARTMENTS;
 
+  const normalizedPosition =
+    String(values.position || '')
+      .trim()
+      .toUpperCase();
+
+  const isSeniorManager =
+    normalizedPosition === 'GENERAL MANAGER' ||
+    normalizedPosition === 'FINANCIAL MANAGER';
+
   document
     .getElementById(
       'formFields'
@@ -1794,7 +1803,7 @@ function openEmployeeModal(
         values.contact_number
       )}
 
-      ${field(
+      ${isSeniorManager ? '' : field(
         'Date Hired',
         'date_hired',
         values.date_hired,
@@ -1816,26 +1825,34 @@ function openEmployeeModal(
         >
       </div>
 
-      <div id="employeeDailyRateField" class="form-field">
-        <label for="daily_rate">Daily Rate</label>
-        <input
-          id="daily_rate"
-          name="daily_rate"
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          data-decimal-input="true"
-          value="${escapeHtml(values.daily_rate ?? 0)}"
-        >
-        <small class="rate-field-help">All employees, including TRUCKERS / DRIVER / OPERATOR, are paid on a PER DAY basis.</small>
-      </div>
+      ${isSeniorManager ? '' : `
+        <div id="employeeDailyRateField" class="form-field">
+          <label for="daily_rate">Daily Rate</label>
+          <input
+            id="daily_rate"
+            name="daily_rate"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            data-decimal-input="true"
+            value="${escapeHtml(values.daily_rate ?? 0)}"
+          >
+          <small class="rate-field-help">All employees, including TRUCKERS / DRIVER / OPERATOR, are paid on a PER DAY basis.</small>
+        </div>
+      `}
 
-      ${selectField(
+      ${isSeniorManager ? '' : selectField(
         'Status',
         'status',
         ['ACTIVE', 'INACTIVE'],
         values.status || 'ACTIVE'
       )}
+
+      ${isSeniorManager ? `
+        <div class="form-note">
+          General Manager and Financial Manager are executive roles. Date Hired, Daily Rate and Status are not applicable.
+        </div>
+      ` : ''}
 
     `;
 
@@ -3699,20 +3716,34 @@ async function saveEmployee(
       null,
 
     date_hired:
-      values.date_hired ||
-      null,
+      (
+        (values.position || '').toUpperCase() === 'GENERAL MANAGER' ||
+        (values.position || '').toUpperCase() === 'FINANCIAL MANAGER'
+      )
+        ? null
+        : (values.date_hired || null),
 
     hourly_rate:
       0,
 
     daily_rate:
-      (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
+      (
+        (values.position || '').toUpperCase() === 'GENERAL MANAGER' ||
+        (values.position || '').toUpperCase() === 'FINANCIAL MANAGER'
+      )
+        ? 0
+        : (values.daily_rate === '' ? 0 : Number(values.daily_rate)),
 
     rate_basis:
       'PER DAY',
 
     status:
-      values.status || 'ACTIVE'
+      (
+        (values.position || '').toUpperCase() === 'GENERAL MANAGER' ||
+        (values.position || '').toUpperCase() === 'FINANCIAL MANAGER'
+      )
+        ? 'ACTIVE'
+        : (values.status || 'ACTIVE')
 
   };
 
