@@ -513,6 +513,16 @@ async function loadPayrollHistory(){
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
+  document.getElementById('manualPayrollButton').addEventListener('click',openManualPayrollModal);
+  document.getElementById('manualPayrollClose').addEventListener('click',closeManualPayrollModal);
+  document.getElementById('manualPayrollCancel').addEventListener('click',closeManualPayrollModal);
+  document.querySelector('#manualPayrollModal .manual-payroll-backdrop').addEventListener('click',closeManualPayrollModal);
+  document.getElementById('manualPayrollAdd').addEventListener('click',addManualPayrollEntry);
+  document.getElementById('manualPayrollEmployee').addEventListener('change',updateManualPayrollPreview);
+  ['manualFullDays','manualHalfDays','manualHours'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',updateManualPayrollPreview);
+  });
+
   document.getElementById('calculatePayrollButton').addEventListener('click',()=>{
     calculatePayroll().catch(error=>showMessage(error.message||'Unable to calculate payroll.','error'));
   });
