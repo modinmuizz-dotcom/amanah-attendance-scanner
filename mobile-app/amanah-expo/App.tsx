@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { supabase } from './src/lib/supabase';
 import { EmployeeProfile, fetchMyEmployeeProfile } from './src/services/employeeIdentity';
@@ -176,14 +177,70 @@ function ClockIn({
   onClockedIn: (attendanceId: string) => void;
 }) {
   const [verified, setVerified] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [items, setItems] = useState<ApprovedActivity[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState('');
   const [meterIn, setMeterIn] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [scanError, setScanError] = useState('');
+  const [permission, requestPermission] = useCameraPermissions();
 
   const selectedEquipment = equipment.find((item) => item.equipment_id === selected);
   const selectedActivity = items.find((item) => item.activity_id === selectedActivityId);
+
+  async function openScanner() {
+    setScanError('');
+
+    if (Platform.OS === 'web') {
+      setVerified(true);
+      return;
+    }
+
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        setScanError('Camera permission is required to scan the permanent AMANAH station QR.');
+        return;
+      }
+    }
+
+    setScannerOpen(true);
+  }
+
+  function validateStationQr(data: string) {
+    try {
+      const parsed = JSON.parse(data);
+      return (
+        parsed &&
+        parsed.type === STATION.type &&
+        parsed.company === STATION.company &&
+        parsed.system === STATION.system &&
+        (parsed.station === STATION.station || parsed.station === 'AMANAH_STATION_001') &&
+        Number(parsed.version) === STATION.version
+      );
+    } catch {
+      return data.trim() === STATION.station || data.trim() === 'AMANAH_STATION_001';
+    }
+  }
+
+  function handleBarcodeScanned(result: { data: string; type: string }) {
+    if (verified) return;
+
+    if (result.type !== 'qr') {
+      setScanError('Please scan the AMANAH station QR code.');
+      return;
+    }
+
+    if (!validateStationQr(result.data)) {
+      setScanError('This QR code is not the configured AMANAH station. Please scan the permanent station QR again.');
+      return;
+    }
+
+    setVerified(true);
+    setScannerOpen(false);
+    setScanError('');
+  }
 
   async function chooseEquipment(id: string) {
     setSelected(id);
@@ -272,16 +329,53 @@ function ClockIn({
       <Text style={styles.title}>Clock in</Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Station check</Text>
-        <Text style={styles.muted}>
-          {Platform.OS === 'web' ? 'Web simulation mode.' : 'Native camera scanner.'}
-        </Text>
-        <Text style={styles.code}>{JSON.stringify(STATION)}</Text>
-        {!verified ? (
-          <Button title="SIMULATE STATION SCAN" onPress={() => setVerified(true)} />
-        ) : (
+        <Text style={styles.cardTitle}>Station QR check</Text>
+
+        {!verified && !scannerOpen ? (
+          <>
+            <Text style={styles.muted}>
+              {Platform.OS === 'web'
+                ? 'Web simulation mode. On Android/iPhone the button opens the phone camera.'
+                : 'Point the camera at the permanent AMANAH station QR code.'}
+            </Text>
+
+            {Platform.OS === 'web' ? (
+              <Text style={styles.code}>{JSON.stringify(STATION)}</Text>
+            ) : null}
+
+            <Button
+              title={Platform.OS === 'web' ? 'SIMULATE STATION SCAN' : 'OPEN CAMERA & SCAN STATION QR'}
+              onPress={openScanner}
+            />
+          </>
+        ) : null}
+
+        {scannerOpen ? (
+          <View style={styles.scannerFrame}>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={handleBarcodeScanned}
+            />
+            <View style={styles.scannerOverlay}>
+              <View style={styles.scannerBox} />
+              <Text style={styles.scannerHint}>Align the permanent AMANAH QR inside the box.</Text>
+            </View>
+            <Button title="CANCEL SCANNER" onPress={() => setScannerOpen(false)} secondary />
+          </View>
+        ) : null}
+
+        {scanError ? (
+          <View style={styles.error}>
+            <Text style={styles.errorTitle}>Station scan</Text>
+            <Text>{scanError}</Text>
+          </View>
+        ) : null}
+
+        {verified ? (
           <Text style={styles.success}>✓ MAIN_ATTENDANCE VERIFIED</Text>
-        )}
+        ) : null}
       </View>
 
       {verified ? (
@@ -525,6 +619,11 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: '#FFF' },
   activity: { backgroundColor: '#FFF', borderRadius: 16, padding: 15, marginTop: 10, gap: 5, borderWidth: 1, borderColor: '#E2E9E4' },
   activitySelected: { borderColor: '#145A3B', backgroundColor: '#F0F7F3' },
+  scannerFrame: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#101713', gap: 10 },
+  camera: { width: '100%', height: 420 },
+  scannerOverlay: { position: 'absolute', left: 0, right: 0, top: 0, height: 420, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  scannerBox: { width: 230, height: 230, borderWidth: 3, borderColor: '#FFFFFF', borderRadius: 18, backgroundColor: 'transparent' },
+  scannerHint: { marginTop: 18, color: '#FFFFFF', textAlign: 'center', fontWeight: '800', backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   activityDate: { color: '#527064', fontWeight: '800', fontSize: 12 },
   priority: { color: '#A06016', fontWeight: '800', fontSize: 12 },
   activityTitle: { color: '#14231C', fontSize: 17, fontWeight: '800' },
