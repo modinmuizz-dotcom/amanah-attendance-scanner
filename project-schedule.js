@@ -117,15 +117,17 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError},{data:extraEvidence,error:extraEvidenceError}]=await Promise.all([
+  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError},{data:fuelEvidence,error:fuelEvidenceError},{data:extraEvidence,error:extraEvidenceError}]=await Promise.all([
     supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
     supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
     supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false}),
+    supabaseClient.from("attendance").select("project_activity_id,fuel_photo_path,created_at").not("project_activity_id","is",null).not("fuel_photo_path","is",null).order("created_at",{ascending:false}),
     supabaseClient.from("activity_evidence_photos").select("project_activity_id,photo_path,created_at").order("created_at",{ascending:false})
   ]);
   if(activityError)throw activityError;
   if(relErr)throw relErr;
   if(executionError)throw executionError;
+  if(fuelEvidenceError)throw fuelEvidenceError;
   if(extraEvidenceError)throw extraEvidenceError;
 
   state.activities=acts||[];
@@ -134,7 +136,7 @@ async function loadActivities(){
 
   (execution||[]).forEach(row=>{
     const id=String(row.project_activity_id);
-    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[]};
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
     state.executionByActivity[id].actualQuantity+=Number(row.quantity||0);
     [row.photo_1_path,row.photo_2_path].filter(Boolean).forEach(path=>{
       if(!state.executionByActivity[id].photos.includes(path))state.executionByActivity[id].photos.push(path);
@@ -143,15 +145,23 @@ async function loadActivities(){
 
   (extraEvidence||[]).forEach(row=>{
     const id=String(row.project_activity_id);
-    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[]};
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
     if(row.photo_path&&!state.executionByActivity[id].photos.includes(row.photo_path)){
       state.executionByActivity[id].photos.push(row.photo_path);
     }
   });
 
+  (fuelEvidence||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
+    if(row.fuel_photo_path&&!state.executionByActivity[id].fuelPhotos.includes(row.fuel_photo_path)){
+      state.executionByActivity[id].fuelPhotos.push(row.fuel_photo_path);
+    }
+  });
+
   renderTables();
 }
-function executionFor(id){return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[]};}
+function executionFor(id){return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[],fuelPhotos:[]};}
 function plannedQuantity(a){const n=Number(a?.activity_quantity);return Number.isFinite(n)&&n>=0?n:0;}
 function actualQuantityFor(a){const n=Number(executionFor(a.activity_id).actualQuantity||0);return Number.isFinite(n)&&n>=0?n:0;}
 function calculatedProgress(a){const planned=plannedQuantity(a),actual=actualQuantityFor(a);if(planned<=0)return 0;return Math.min(100,Math.max(0,(actual/planned)*100));}
@@ -811,9 +821,11 @@ async function openDetailsModal(id){
 
     const grouped=executionFor(id);
     document.getElementById("detailEvidenceCount").textContent=grouped.photos.length+" PHOTO"+(grouped.photos.length===1?"":"S");
+    document.getElementById("detailFuelEvidenceCount").textContent=grouped.fuelPhotos.length+" PHOTO"+(grouped.fuelPhotos.length===1?"":"S");
     document.getElementById("detailEvidenceContent").innerHTML=grouped.photos.length?'<div class="detail-evidence-loading">Loading photo evidence...</div>':'<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
     document.getElementById("detailModal").style.display="flex";
     await renderDetailEvidence(id);
+    await renderFuelEvidence(id);
   }catch(e){console.error(e);msg("err","Unable to open activity details: "+e.message);}
 }
 async function renderDetailEvidence(id){
@@ -825,6 +837,22 @@ async function renderDetailEvidence(id){
     const url=result?.data?.signedUrl;
     if(result?.error||!url)return '<div class="detail-evidence-card"><div class="detail-evidence-empty">PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
     return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Driver/operator activity evidence photo '+(index+1)+'"><div class="detail-evidence-label">PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
+  }).join("");
+}
+async function renderFuelEvidence(id){
+  const content=document.getElementById("detailFuelEvidenceContent");
+  const paths=executionFor(id).fuelPhotos||[];
+  if(!paths.length){
+    content.innerHTML='<div class="detail-evidence-empty">No fuel evidence photo recorded for this activity.</div>';
+    return;
+  }
+  const results=await Promise.all(paths.map(path=>supabaseClient.storage.from("attendance-fuel-evidence").createSignedUrl(path,3600)));
+  content.innerHTML=results.map((result,index)=>{
+    const url=result?.data?.signedUrl;
+    if(result?.error||!url){
+      return '<div class="detail-evidence-card"><div class="detail-evidence-empty">FUEL PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
+    }
+    return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Fuel evidence photo '+(index+1)+'"><div class="detail-evidence-label">FUEL PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
   }).join("");
 }
 function closeDetailModal(){
