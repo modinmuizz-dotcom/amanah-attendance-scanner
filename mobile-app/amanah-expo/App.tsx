@@ -80,10 +80,18 @@ function Login({ onDone }: { onDone: () => void }) {
 
 function ActivityCard({ item }: { item: ApprovedActivity }) {
   const start = item.scheduled_start ? new Date(item.scheduled_start) : null;
+  const dateLabel = item.is_carryover && item.carryover_from_date
+    ? `CARRYOVER · ${new Date(item.carryover_from_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    : start
+      ? start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+      : item.activity_date;
+
+  const isDone = item.activity_status === 'DONE';
+
   return (
-    <View style={styles.activity}>
+    <View style={[styles.activity, isDone && { opacity: 0.65 }]}>
       <View style={styles.row}>
-        <Text style={styles.activityDate}>{start ? start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : item.activity_date}</Text>
+        <Text style={styles.activityDate}>{dateLabel}</Text>
         <Text style={styles.priority}>{item.priority}</Text>
       </View>
       <Text style={styles.activityTitle}>{item.activity}</Text>
@@ -94,12 +102,31 @@ function ActivityCard({ item }: { item: ApprovedActivity }) {
         {start ? start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Time TBD'}
         {item.scheduled_end ? ' – ' + new Date(item.scheduled_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}
       </Text>
-      {item.activity_quantity != null ? <Text style={styles.meta}>Quantity: {Number(item.activity_quantity).toLocaleString()}</Text> : null}
-      <Text style={styles.approved}>APPROVED FOR THIS EQUIPMENT</Text>
+
+      {item.activity_quantity != null ? (
+        <Text style={styles.meta}>
+          Planned quantity: {Number(item.activity_quantity).toLocaleString()}
+        </Text>
+      ) : null}
+
+      {item.actual_quantity > 0 ? (
+        <Text style={styles.meta}>
+          Actual: {Number(item.actual_quantity).toLocaleString()} · Remaining: {Number(item.remaining_quantity).toLocaleString()}
+        </Text>
+      ) : null}
+
+      {item.is_carryover ? (
+        <Text style={styles.approved}>
+          {isDone ? '✓ DONE — COMPLETED' : item.selection_available ? '↻ CARRYOVER — CONTINUE REMAINING WORK' : 'CARRYOVER — SLOT ALREADY CLAIMED'}
+        </Text>
+      ) : (
+        <Text style={styles.approved}>
+          {isDone ? '✓ DONE — COMPLETED' : 'APPROVED FOR THIS EQUIPMENT'}
+        </Text>
+      )}
     </View>
   );
 }
-
 function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]; selected: string; setSelected: (id: string) => void }) {
   const [items, setItems] = useState<ApprovedActivity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,7 +151,7 @@ function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.eyebrow}>UPCOMING APPROVED WORK</Text>
       <Text style={styles.title}>Next 7 Days</Text>
-      <Text style={styles.muted}>Available before QR scanning. Filter by equipment to see its approved upcoming work.</Text>
+      <Text style={styles.muted}>Approved work plus unfinished carryover work from the previous 7 days. Filter by equipment to see what that equipment can continue.</Text>
 
       <View style={styles.card}>
         <Text style={styles.label}>EQUIPMENT</Text>
@@ -142,7 +169,7 @@ function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]
 
       {loading ? <View style={styles.center}><ActivityIndicator /></View> : null}
       {error ? <View style={styles.error}><Text style={styles.errorTitle}>Unable to load activities</Text><Text>{error}</Text><Button title="TRY AGAIN" onPress={() => load(selected)} secondary /></View> : null}
-      {!loading && !error && items.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>No approved activities</Text><Text style={styles.muted}>No approved work is scheduled for this equipment in the 7-day window.</Text></View> : null}
+      {!loading && !error && items.length === 0 ? <View style={styles.card}><Text style={styles.cardTitle}>No approved or carryover activities</Text><Text style={styles.muted}>There is no approved work or unfinished carryover work available for this equipment.</Text></View> : null}
       {!loading && !error ? items.map(item => <ActivityCard key={item.activity_id} item={item} />) : null}
     </ScrollView>
   );
@@ -1085,7 +1112,7 @@ function ClockIn({
       const { data, error } = await supabase.rpc('record_attendance_time_in', {
         p_employee_id: employee.employee_id,
         p_employee_name: employee.employee_name,
-        p_attendance_date: new Date().toISOString().slice(0, 10),
+        p_attendance_date: new Date().toLocaleDateString('en-CA'),
         p_time_in: new Date().toISOString(),
         p_equipment_id: selectedEquipment.equipment_id,
         p_equipment_name: selectedEquipment.equipment_name,
@@ -1247,29 +1274,49 @@ function ClockIn({
           {!loading && !loadError
             ? items.map((item) => {
                 const selectedActivityCard = item.activity_id === selectedActivityId;
+                const isDone = item.activity_status === 'DONE';
+                const disabled = !item.selection_available || isDone;
+
                 return (
                   <Pressable
                     key={item.activity_id}
-                    onPress={() => setSelectedActivityId(item.activity_id)}
-                    style={[styles.activity, selectedActivityCard && styles.activitySelected]}
+                    onPress={() => {
+                      if (disabled) {
+                        Alert.alert(
+                          'Activity not available',
+                          item.selection_reason || (isDone ? 'This activity is already DONE and cannot be selected again.' : 'This activity is not available for this equipment.'),
+                        );
+                        return;
+                      }
+                      setSelectedActivityId(item.activity_id);
+                    }}
+                    style={[
+                      styles.activity,
+                      selectedActivityCard && styles.activitySelected,
+                      disabled && { opacity: 0.58 },
+                    ]}
                   >
                     <View style={styles.row}>
                       <Text style={styles.activityDate}>
-                        {item.scheduled_start
-                          ? new Date(item.scheduled_start).toLocaleDateString(undefined, {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                            })
-                          : item.activity_date}
+                        {item.is_carryover && item.carryover_from_date
+                          ? `CARRYOVER · ${new Date(item.carryover_from_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                          : item.scheduled_start
+                            ? new Date(item.scheduled_start).toLocaleDateString(undefined, {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : item.activity_date}
                       </Text>
                       <Text style={styles.priority}>{item.priority}</Text>
                     </View>
+
                     <Text style={styles.activityTitle}>{item.activity}</Text>
                     {item.activity_item ? (
                       <Text style={styles.activityItem}>{item.activity_item}</Text>
                     ) : null}
                     <Text style={styles.project}>{item.project_name}</Text>
+
                     <Text style={styles.meta}>
                       {item.scheduled_start
                         ? new Date(item.scheduled_start).toLocaleTimeString([], {
@@ -1284,14 +1331,28 @@ function ClockIn({
                           })}`
                         : ''}
                     </Text>
+
                     {item.activity_quantity != null ? (
                       <Text style={styles.meta}>
                         Planned quantity: {Number(item.activity_quantity).toLocaleString()}
                       </Text>
                     ) : null}
-                    <Text style={styles.approved}>
-                      {selectedActivityCard ? '✓ SELECTED WORK' : 'SELECT THIS APPROVED ACTIVITY'}
+
+                    <Text style={styles.meta}>
+                      Actual: {Number(item.actual_quantity || 0).toLocaleString()}
+                      {' · '}
+                      Remaining: {Number(item.remaining_quantity || 0).toLocaleString()}
                     </Text>
+
+                    {item.is_carryover ? (
+                      <Text style={styles.approved}>
+                        {isDone ? '✓ DONE — COMPLETED' : item.selection_available ? '↻ CONTINUE CARRYOVER' : item.selection_reason || 'CARRYOVER NOT AVAILABLE'}
+                      </Text>
+                    ) : (
+                      <Text style={styles.approved}>
+                        {isDone ? '✓ DONE — COMPLETED' : selectedActivityCard ? '✓ SELECTED WORK' : 'SELECT THIS APPROVED ACTIVITY'}
+                      </Text>
+                    )}
                   </Pressable>
                 );
               })
