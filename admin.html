@@ -14,12 +14,22 @@
 
   <link
     rel="stylesheet"
-    href="admin.css?v=11"
+    href="admin.css?v=12"
   >
   <link rel="stylesheet" href="amanah-ui.css?v=6">
 </head>
 
 <body>
+<script>
+(function(){
+  function removeOldEquipmentDiagnostic(){
+    document.querySelectorAll('#equipmentClickDiagnostic').forEach(function(el){ el.remove(); });
+    document.querySelectorAll('[id*="equipmentClickDiagnostic"], [class*="equipmentClickDiagnostic"]').forEach(function(el){ el.remove(); });
+  }
+  removeOldEquipmentDiagnostic();
+  document.addEventListener('DOMContentLoaded', removeOldEquipmentDiagnostic, {once:true});
+})();
+</script>
 
   <!-- =====================================================
        LOGIN
@@ -894,7 +904,7 @@
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
   ></script>
 
-  <script src="admin.js?v=44"></script>
+  <script src="admin.js?v=45"></script>
 <script src="amanah-ui.js?v=10"></script>
 </body>
 </html>
