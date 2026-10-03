@@ -4505,6 +4505,46 @@ function bindEquipmentDirectActions() {
 }
 
 /* =========================================================
+   EQUIPMENT POINTER BRIDGE
+   Handles browsers/pages where another visual layer intercepts
+   normal button click events.
+   ========================================================= */
+(function installEquipmentPointerBridge() {
+  function inside(rect, x, y) {
+    return rect &&
+      x >= rect.left && x <= rect.right &&
+      y >= rect.top && y <= rect.bottom;
+  }
+
+  document.addEventListener('pointerup', function(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    const add = document.getElementById('addEquipmentButton');
+    if (add && !add.closest('.hidden')) {
+      const r = add.getBoundingClientRect();
+      if (inside(r, event.clientX, event.clientY)) {
+        event.preventDefault();
+        event.stopPropagation();
+        openEquipmentModal('add');
+        return;
+      }
+    }
+
+    const edits = document.querySelectorAll('#equipmentTableBody .edit-button');
+    for (const button of edits) {
+      const r = button.getBoundingClientRect();
+      if (inside(r, event.clientX, event.clientY)) {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = button.getAttribute('data-equipment-id');
+        if (id) editEquipment(id);
+        return;
+      }
+    }
+  }, true);
+})();
+
+/* =========================================================
    AUTH STATE
    ========================================================= */
 
