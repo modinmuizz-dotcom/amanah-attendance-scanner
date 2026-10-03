@@ -181,7 +181,7 @@ function renderTables(){
     if(a.approval_status==="APPROVED" && a.activity_status!=="DONE" && a.activity_status!=="CANCELLED" && a.activity_status!=="REJECTED"){
       action+='<button class="mini amber" data-approved-cancel-request="'+esc(a.activity_id)+'">REQUEST CANCELLATION</button>';
     }
-    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(calculatedStatus(a))+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
+    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+(executionFor(a.activity_id).photos.length?'<br><small style="color:#145A3B;font-weight:900">📷 '+executionFor(a.activity_id).photos.length+' EVIDENCE</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(calculatedStatus(a))+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const approvedRows=rows.filter(a=>a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status)));
@@ -517,6 +517,7 @@ function renderCalendar(){
         '<div class="calendar-event-time">'+esc(time||"ALL DAY")+'</div>'+
         '<div class="calendar-event-name">'+esc(a.activity||"Activity")+'</div>'+
         '<div class="calendar-event-project">'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</div>'+
+        (executionFor(a.activity_id).photos.length ? '<div class="calendar-event-project">📷 '+executionFor(a.activity_id).photos.length+' EVIDENCE</div>' : '')+
       '</button>';
     }).join("");
 
