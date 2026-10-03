@@ -117,17 +117,21 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError}]=await Promise.all([
+  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError},{data:extraEvidence,error:extraEvidenceError}]=await Promise.all([
     supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
     supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
-    supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false})
+    supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false}),
+    supabaseClient.from("activity_evidence_photos").select("project_activity_id,photo_path,created_at").order("created_at",{ascending:false})
   ]);
   if(activityError)throw activityError;
   if(relErr)throw relErr;
   if(executionError)throw executionError;
+  if(extraEvidenceError)throw extraEvidenceError;
+
   state.activities=acts||[];
   state.assignments=rel||[];
   state.executionByActivity={};
+
   (execution||[]).forEach(row=>{
     const id=String(row.project_activity_id);
     if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[]};
@@ -136,6 +140,15 @@ async function loadActivities(){
       if(!state.executionByActivity[id].photos.includes(path))state.executionByActivity[id].photos.push(path);
     });
   });
+
+  (extraEvidence||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[]};
+    if(row.photo_path&&!state.executionByActivity[id].photos.includes(row.photo_path)){
+      state.executionByActivity[id].photos.push(row.photo_path);
+    }
+  });
+
   renderTables();
 }
 function executionFor(id){return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[]};}
