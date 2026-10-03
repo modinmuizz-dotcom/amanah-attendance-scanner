@@ -1211,8 +1211,9 @@ function renderEquipment() {
           <div class="action-buttons">
 
             <button
+              type="button"
               class="small-button edit-button"
-              onclick="editEquipment('${encodeURIComponent(
+              onclick="window.editEquipment('${encodeURIComponent(
                 equipment.equipment_id
               )}')"
             >
@@ -4153,17 +4154,18 @@ function setupEvents() {
     );
 
 
-  document
-    .getElementById(
-      'addEquipmentButton'
-    )
-    .addEventListener(
+  const addEquipmentButton =
+    document.getElementById('addEquipmentButton');
+
+  if (addEquipmentButton) {
+    addEquipmentButton.addEventListener(
       'click',
-      () =>
-        openEquipmentModal(
-          'add'
-        )
+      event => {
+        event.preventDefault();
+        openEquipmentModal('add');
+      }
     );
+  }
 
 
   document
