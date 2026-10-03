@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 
 import { supabase } from './src/lib/supabase';
 import { EmployeeProfile, fetchMyEmployeeProfile } from './src/services/employeeIdentity';
@@ -283,6 +284,52 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
     }
   }
 
+  async function chooseFromPhone(slot: 1 | 2) {
+    if (!live) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.75,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      setSaving(true);
+      const path = await uploadActivityEvidence(
+        result.assets[0].uri,
+        attendance.attendance_id,
+        live.project_activity_id,
+        slot,
+      );
+
+      const currentQuantity = Number(quantity);
+      await saveLiveActivityProgress(
+        attendance.attendance_id,
+        employee.employee_id,
+        live.project_activity_id,
+        Number.isFinite(currentQuantity) ? currentQuantity : 0,
+        slot === 1 ? path : null,
+        slot === 2 ? path : null,
+      );
+
+      const signed = await createEvidenceUrl(path);
+      setLive({
+        ...live,
+        photo_1_path: slot === 1 ? path : live.photo_1_path,
+        photo_2_path: slot === 2 ? path : live.photo_2_path,
+      });
+      if (slot === 1) setPhoto1Url(signed);
+      if (slot === 2) setPhoto2Url(signed);
+      Alert.alert('Photo uploaded', `Activity evidence photo ${slot} was uploaded successfully.`);
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the selected photo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function openCamera(slot: 1 | 2) {
     if (Platform.OS === 'web') {
       Alert.alert('Use the phone', 'Activity photo evidence is captured from the physical phone camera.');
@@ -425,11 +472,13 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
             <View style={styles.photoRow}>
               <View style={styles.photoBox}>
                 {photo1Url ? <Image source={{ uri: photo1Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
-                <Button title={photo1Url ? 'RETAKE PHOTO 1' : 'PHOTO 1'} onPress={() => openCamera(1)} secondary />
+                <Button title={photo1Url ? 'RETAKE PHOTO 1' : 'TAKE PHOTO 1'} onPress={() => openCamera(1)} secondary />
+                <Button title="CHOOSE PHOTO 1" onPress={() => chooseFromPhone(1)} secondary disabled={saving} />
               </View>
               <View style={styles.photoBox}>
                 {photo2Url ? <Image source={{ uri: photo2Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
-                <Button title={photo2Url ? 'RETAKE PHOTO 2' : 'PHOTO 2'} onPress={() => openCamera(2)} secondary />
+                <Button title={photo2Url ? 'RETAKE PHOTO 2' : 'TAKE PHOTO 2'} onPress={() => openCamera(2)} secondary />
+                <Button title="CHOOSE PHOTO 2" onPress={() => chooseFromPhone(2)} secondary disabled={saving} />
               </View>
             </View>
           </View>
@@ -1028,7 +1077,7 @@ function ClockOut({
         <Text style={styles.muted}>Was fuel added during this shift?</Text>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Button title="NO" onPress={() => setFuelUsed(false)} secondary={!fuelUsed} />
+            <Button title="NO" onPress={() => setFuelUsed(false)} secondary={fuelUsed} />
           </View>
           <View style={{ flex: 1 }}>
             <Button title="YES" onPress={() => setFuelUsed(true)} secondary={!fuelUsed} />
