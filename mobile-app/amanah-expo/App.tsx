@@ -19,6 +19,7 @@ type ActiveAttendance = {
   project_name: string | null;
   meter_type: string | null;
   meter_in: number | null;
+  project_activity_id: string | null;
 };
 
 const STATION = {
@@ -146,7 +147,7 @@ function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]
 async function fetchActiveAttendance(employeeId: string): Promise<ActiveAttendance | null> {
   const { data, error } = await supabase
     .from('attendance')
-    .select('attendance_id,attendance_date,time_in,equipment_id,equipment_name,project_id,project_name,meter_type,meter_in')
+    .select('attendance_id,attendance_date,time_in,equipment_id,equipment_name,project_id,project_name,project_activity_id,meter_type,meter_in')
     .eq('employee_id', employeeId)
     .eq('status', 'IN')
     .order('time_in', { ascending: false })
@@ -155,6 +156,24 @@ async function fetchActiveAttendance(employeeId: string): Promise<ActiveAttendan
 
   if (error) throw error;
   return (data as ActiveAttendance | null) ?? null;
+}
+
+async function fetchAttendanceTask(activityId: string) {
+  const { data, error } = await supabase
+    .from('project_activities')
+    .select('activity_id, activity, activity_item, description, activity_quantity, project_name')
+    .eq('activity_id', activityId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('The engineer-assigned activity could not be found.');
+  return data as {
+    activity_id: string;
+    activity: string;
+    activity_item: string | null;
+    description: string | null;
+    activity_quantity: number | null;
+    project_name: string;
+  };
 }
 
 const ATTENDANCE_ACTIVITY_TYPES = [
@@ -356,6 +375,7 @@ function ClockIn({
         p_project_id: selectedActivity.project_id,
         p_project_name: selectedActivity.project_name,
         p_meter_type: meterType,
+        p_project_activity_id: selectedActivity.activity_id,
         p_meter_in: numericMeter,
         p_meter_unit: meterUnit,
       });
@@ -588,55 +608,82 @@ function ClockOut({
   onCompleted: () => void;
 }) {
   const [meterOut, setMeterOut] = useState('');
-  const [activities, setActivities] = useState([
-    { activity_category: 'HAULING', activity_description: '', quantity: '' },
-  ]);
+  const [completedQuantity, setCompletedQuantity] = useState('');
+  const [task, setTask] = useState<{
+    activity_id: string;
+    activity: string;
+    activity_item: string | null;
+    description: string | null;
+    activity_quantity: number | null;
+    project_name: string;
+  } | null>(null);
+  const [taskError, setTaskError] = useState('');
   const [loading, setLoading] = useState(false);
   const meterType = attendance.meter_type?.toUpperCase() === 'ODOMETER' ? 'ODOMETER' : 'HOUR METER';
   const meterUnit = meterType === 'ODOMETER' ? 'KM' : 'HRS';
 
-  function updateActivity(index: number, field: 'activity_category' | 'activity_description' | 'quantity', value: string) {
-    setActivities(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
-  }
+  useEffect(() => {
+    let active = true;
+    async function loadTask() {
+      if (!attendance.project_activity_id) {
+        setTaskError('This active attendance does not have an engineer-assigned activity linked to it.');
+        return;
+      }
 
-  function addActivity() {
-    setActivities(prev => [...prev, { activity_category: 'HAULING', activity_description: '', quantity: '' }]);
-  }
+      try {
+        const data = await fetchAttendanceTask(attendance.project_activity_id);
+        if (active) {
+          setTask(data);
+          setTaskError('');
+        }
+      } catch (e) {
+        if (active) {
+          setTaskError(e instanceof Error ? e.message : 'Unable to load the engineer-assigned activity.');
+        }
+      }
+    }
 
-  function removeActivity(index: number) {
-    if (activities.length === 1) return;
-    setActivities(prev => prev.filter((_, i) => i !== index));
-  }
+    loadTask();
+    return () => {
+      active = false;
+    };
+  }, [attendance.project_activity_id]);
 
   async function completeTimeOut() {
     const numericMeter = Number(meterOut);
+    const numericQuantity = Number(completedQuantity);
+
+    if (!task) {
+      Alert.alert('Activity unavailable', 'The engineer-assigned activity could not be loaded.');
+      return;
+    }
+
     if (!Number.isFinite(numericMeter) || numericMeter < 0) {
       Alert.alert('Meter Out required', 'Enter the current meter reading before Time OUT.');
       return;
     }
 
-    const preparedActivities = activities.map((item) => ({
-      activity_category: item.activity_category.trim(),
-      activity_description: item.activity_description.trim(),
-      quantity: Number(item.quantity),
-    }));
-
-    const invalid = preparedActivities.find(
-      item => !item.activity_category || !item.activity_description || !Number.isFinite(item.quantity) || item.quantity <= 0
-    );
-
-    if (invalid) {
-      Alert.alert('Activity information required', 'Every activity needs a type, description, and quantity greater than zero.');
+    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+      Alert.alert('Quantity required', 'Enter the quantity you actually completed for this assigned activity.');
       return;
     }
 
     setLoading(true);
     try {
+      const activityDescription =
+        task.activity_item?.trim() ||
+        task.description?.trim() ||
+        task.activity.trim();
+
       const { data: prepared, error: prepareError } = await supabase.rpc('prepare_attendance_out', {
         p_attendance_id: attendance.attendance_id,
         p_employee_id: employee.employee_id,
         p_meter_out: numericMeter,
-        p_activities: preparedActivities,
+        p_activities: [{
+          activity_category: task.activity,
+          activity_description: activityDescription,
+          quantity: numericQuantity,
+        }],
       });
 
       if (prepareError) throw prepareError;
@@ -657,7 +704,7 @@ function ClockOut({
 
       Alert.alert(
         'TIME OUT recorded',
-        `${attendance.equipment_name ?? 'Equipment'} completed the shift. ${prepared.meter_used ?? 0} ${meterUnit} used and ${prepared.activity_count ?? activities.length} activity item(s) recorded.`,
+        `${attendance.equipment_name ?? 'Equipment'} completed ${task.activity} with an actual quantity of ${numericQuantity}.`,
       );
       onCompleted();
     } catch (e) {
@@ -684,7 +731,50 @@ function ClockOut({
           Time in: {new Date(attendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </Text>
         <Text style={styles.muted}>Equipment and project are taken automatically from the active attendance.</Text>
+      </View>
 
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Engineer-assigned activity</Text>
+
+        {taskError ? (
+          <View style={styles.error}>
+            <Text style={styles.errorTitle}>Activity unavailable</Text>
+            <Text>{taskError}</Text>
+          </View>
+        ) : null}
+
+        {task ? (
+          <View style={styles.activitySelectedCard}>
+            <Text style={styles.activityDate}>
+              {task.activity_quantity != null
+                ? `Planned quantity: ${Number(task.activity_quantity).toLocaleString()}`
+                : 'Engineer-assigned work'}
+            </Text>
+            <Text style={styles.activityTitle}>{task.activity}</Text>
+            {task.activity_item ? <Text style={styles.activityItem}>{task.activity_item}</Text> : null}
+            {task.description ? <Text style={styles.muted}>{task.description}</Text> : null}
+            <Text style={styles.project}>{task.project_name}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator />
+        )}
+
+        <Text style={styles.muted}>
+          The activity type and description are already supplied by the engineer. The operator only reports the quantity actually completed.
+        </Text>
+
+        <Text style={styles.label}>ACTUAL QUANTITY COMPLETED</Text>
+        <TextInput
+          value={completedQuantity}
+          onChangeText={setCompletedQuantity}
+          keyboardType="decimal-pad"
+          placeholder="Enter quantity completed"
+          style={styles.input}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Meter OUT</Text>
         <Text style={styles.label}>CURRENT {meterType} READING</Text>
         <TextInput
           value={meterOut}
@@ -694,56 +784,12 @@ function ClockOut({
           style={styles.input}
         />
         <Text style={styles.muted}>Unit: {meterUnit} · Meter In: {attendance.meter_in ?? '—'}</Text>
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Activities completed</Text>
-        <Text style={styles.muted}>Add every activity completed during this shift. Unit is not required.</Text>
-
-        {activities.map((item, index) => (
-          <View key={index} style={styles.activityForm}>
-            <Text style={styles.label}>ACTIVITY {index + 1}</Text>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {ATTENDANCE_ACTIVITY_TYPES.map(type => (
-                <Pressable
-                  key={type}
-                  onPress={() => updateActivity(index, 'activity_category', type)}
-                  style={[
-                    styles.chip,
-                    item.activity_category === type && styles.chipSelected,
-                  ]}
-                >
-                  <Text style={[styles.chipText, item.activity_category === type && styles.chipTextSelected]}>
-                    {type}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            <TextInput
-              value={item.activity_description}
-              onChangeText={value => updateActivity(index, 'activity_description', value)}
-              placeholder="What work did you complete?"
-              style={styles.input}
-            />
-
-            <TextInput
-              value={item.quantity}
-              onChangeText={value => updateActivity(index, 'quantity', value)}
-              keyboardType="decimal-pad"
-              placeholder="Quantity"
-              style={styles.input}
-            />
-
-            {activities.length > 1 ? (
-              <Button title="REMOVE ACTIVITY" onPress={() => removeActivity(index)} secondary />
-            ) : null}
-          </View>
-        ))}
-
-        <Button title="+ ADD ANOTHER ACTIVITY" onPress={addActivity} secondary />
-        <Button title={loading ? 'RECORDING TIME OUT...' : 'CONFIRM TIME OUT'} onPress={completeTimeOut} disabled={loading || !meterOut} />
+        <Button
+          title={loading ? 'RECORDING TIME OUT...' : 'CONFIRM TIME OUT'}
+          onPress={completeTimeOut}
+          disabled={loading || !meterOut || !completedQuantity || !task}
+        />
       </View>
     </ScrollView>
   );
@@ -865,6 +911,7 @@ const styles = StyleSheet.create({
   activity: { backgroundColor: '#FFF', borderRadius: 16, padding: 15, marginTop: 10, gap: 5, borderWidth: 1, borderColor: '#E2E9E4' },
   activitySelected: { borderColor: '#145A3B', backgroundColor: '#F0F7F3' },
   activityForm: { backgroundColor: '#F8FBF9', borderRadius: 14, padding: 14, gap: 9, borderWidth: 1, borderColor: '#E0E9E3' },
+  activitySelectedCard: { backgroundColor: '#F0F7F3', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#145A3B' },
   scannerFrame: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#101713', gap: 10 },
   camera: { width: '100%', height: 420 },
   scannerOverlay: { position: 'absolute', left: 0, right: 0, top: 0, height: 420, alignItems: 'center', justifyContent: 'center', padding: 24 },
