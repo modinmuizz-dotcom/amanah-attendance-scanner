@@ -2110,3 +2110,30 @@ body.printing-material-estimate .material-estimate-note{
   pointer-events:auto !important;
   cursor:pointer !important;
 }
+
+/* =====================================================
+   EQUIPMENT ACTIONS — FORCE CLICK INTERACTION
+   ===================================================== */
+#equipmentTab{
+  position:relative !important;
+  z-index:10 !important;
+}
+#equipmentTab .section-card,
+#equipmentTab .section-header,
+#equipmentTab .equipment-action-button,
+#equipmentTab #equipmentTableBody,
+#equipmentTab #equipmentTableBody .action-buttons{
+  position:relative !important;
+}
+#equipmentTab .equipment-action-button{
+  z-index:30000 !important;
+  pointer-events:auto !important;
+  cursor:pointer !important;
+}
+#equipmentTab #equipmentTableBody .edit-button,
+#equipmentTab #equipmentTableBody .delete-button{
+  position:relative !important;
+  z-index:30000 !important;
+  pointer-events:auto !important;
+  cursor:pointer !important;
+}
