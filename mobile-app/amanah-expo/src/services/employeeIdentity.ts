@@ -24,7 +24,14 @@ export async function fetchMyEmployeeProfile(): Promise<EmployeeProfile> {
     .maybeSingle();
 
   if (linkError) throw linkError;
-  if (!link) throw new Error('This account is not linked to an active AMANAH mobile employee profile.');
+  if (!link) {
+    const { data: linked, error: linkCreateError } = await supabase.rpc('link_my_employee_mobile_account');
+    if (linkCreateError) throw linkCreateError;
+    if (!linked?.success) {
+      throw new Error(linked?.error || 'This email is not registered for an active AMANAH driver/operator.');
+    }
+    return fetchMyEmployeeProfile();
+  }
 
   const { data: employee, error: employeeError } = await supabase
     .from('employees')
