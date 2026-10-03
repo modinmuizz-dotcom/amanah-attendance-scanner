@@ -4476,6 +4476,56 @@ window.editEquipment = editEquipment;
 })();
 
 /* =========================================================
+   EQUIPMENT HARD POINTER HANDLER
+   ========================================================= */
+(function installEquipmentHardPointerHandler(){
+  const install = () => {
+    if (window.__AMANAH_EQUIPMENT_HARD_POINTER__) return;
+    window.__AMANAH_EQUIPMENT_HARD_POINTER__ = true;
+
+    document.addEventListener('pointerdown', function(event){
+      const add = event.target.closest?.('#addEquipmentButton');
+      const edit = event.target.closest?.('#equipmentTableBody .edit-button');
+
+      if (!add && !edit) return;
+
+      try {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (add) {
+          openEquipmentModal('add');
+        } else if (edit) {
+          const id = edit.getAttribute('data-equipment-id');
+          if (id) editEquipment(id);
+        }
+      } catch (error) {
+        console.error('AMANAH Equipment button error:', error);
+        const message =
+          error?.message ||
+          String(error) ||
+          'Unknown Equipment button error';
+
+        const box = document.getElementById('globalMessage');
+        if (box) {
+          box.textContent = 'Equipment action error: ' + message;
+          box.className = 'message error';
+          box.classList.remove('hidden');
+        } else {
+          alert('Equipment action error: ' + message);
+        }
+      }
+    }, true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install, {once:true});
+  } else {
+    install();
+  }
+})();
+
+/* =========================================================
    EQUIPMENT DIRECT CLICK BINDING
    ========================================================= */
 function bindEquipmentDirectActions() {
