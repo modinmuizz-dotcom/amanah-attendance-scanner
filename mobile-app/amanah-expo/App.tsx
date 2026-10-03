@@ -160,45 +160,255 @@ function Home({ employee, onApproved, onClockIn }: { employee: EmployeeProfile; 
   );
 }
 
-function ClockIn({ equipment, selected, setSelected, back }: { equipment: Equipment[]; selected: string; setSelected: (id: string) => void; back: () => void }) {
+function ClockIn({
+  employee,
+  equipment,
+  selected,
+  setSelected,
+  back,
+  onClockedIn,
+}: {
+  employee: EmployeeProfile;
+  equipment: Equipment[];
+  selected: string;
+  setSelected: (id: string) => void;
+  back: () => void;
+  onClockedIn: (attendanceId: string) => void;
+}) {
   const [verified, setVerified] = useState(false);
   const [items, setItems] = useState<ApprovedActivity[]>([]);
+  const [selectedActivityId, setSelectedActivityId] = useState('');
+  const [meterIn, setMeterIn] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const selectedEquipment = equipment.find((item) => item.equipment_id === selected);
+  const selectedActivity = items.find((item) => item.activity_id === selectedActivityId);
 
   async function chooseEquipment(id: string) {
     setSelected(id);
-    setItems(await fetchApprovedActivities(id));
+    setSelectedActivityId('');
+    setMeterIn('');
+    setLoadError('');
+    setLoading(true);
+    try {
+      setItems(await fetchApprovedActivities(id));
+    } catch (e) {
+      setItems([]);
+      setLoadError(e instanceof Error ? e.message : 'Unable to load approved activities.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveTimeIn() {
+    if (!selectedEquipment) {
+      Alert.alert('Equipment required', 'Select the equipment you are using.');
+      return;
+    }
+    if (!selectedActivity) {
+      Alert.alert('Approved activity required', 'Select the approved activity you are going to perform.');
+      return;
+    }
+
+    const numericMeter = Number(meterIn);
+    if (!Number.isFinite(numericMeter) || numericMeter < 0) {
+      Alert.alert('Meter required', 'Enter the current meter reading.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const meterType = selectedEquipment.meter_type || 'ODOMETER';
+      const meterUnit = meterType.toUpperCase().includes('HOUR') ? 'HRS' : 'KM';
+
+      const { data, error } = await supabase.rpc('record_attendance_time_in', {
+        p_employee_id: employee.employee_id,
+        p_employee_name: employee.employee_name,
+        p_attendance_date: new Date().toISOString().slice(0, 10),
+        p_time_in: new Date().toISOString(),
+        p_equipment_id: selectedEquipment.equipment_id,
+        p_equipment_name: selectedEquipment.equipment_name,
+        p_project_id: selectedActivity.project_id,
+        p_project_name: selectedActivity.project_name,
+        p_meter_type: meterType,
+        p_meter_in: numericMeter,
+        p_meter_unit: meterUnit,
+      });
+
+      if (error) throw error;
+
+      const attendanceId =
+        typeof data === 'object' && data && 'attendance_id' in data
+          ? String((data as Record<string, unknown>).attendance_id)
+          : '';
+
+      if (!attendanceId) {
+        throw new Error('Attendance was not returned by the Time IN operation.');
+      }
+
+      Alert.alert(
+        'TIME IN recorded',
+        `${selectedEquipment.equipment_name} is now active for ${selectedActivity.activity} at ${selectedActivity.project_name}.`
+      );
+      onClockedIn(attendanceId);
+    } catch (e) {
+      Alert.alert(
+        'TIME IN failed',
+        e instanceof Error ? e.message : 'Unable to record Time IN.'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable onPress={back}><Text style={styles.back}>‹ Back</Text></Pressable>
+      <Pressable onPress={back}>
+        <Text style={styles.back}>‹ Back</Text>
+      </Pressable>
+
       <Text style={styles.eyebrow}>ATTENDANCE IN</Text>
       <Text style={styles.title}>Clock in</Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Station check</Text>
-        <Text style={styles.muted}>{Platform.OS === 'web' ? 'Web simulation mode.' : 'Native camera scanner.'}</Text>
+        <Text style={styles.muted}>
+          {Platform.OS === 'web' ? 'Web simulation mode.' : 'Native camera scanner.'}
+        </Text>
         <Text style={styles.code}>{JSON.stringify(STATION)}</Text>
-        {!verified ? <Button title="SIMULATE STATION SCAN" onPress={() => setVerified(true)} /> : <Text style={styles.success}>✓ MAIN_ATTENDANCE VERIFIED</Text>}
+        {!verified ? (
+          <Button title="SIMULATE STATION SCAN" onPress={() => setVerified(true)} />
+        ) : (
+          <Text style={styles.success}>✓ MAIN_ATTENDANCE VERIFIED</Text>
+        )}
       </View>
 
       {verified ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Select equipment</Text>
+          <Text style={styles.muted}>
+            The approved work below comes from the Activity Calendar assignment for this equipment.
+          </Text>
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {equipment.map(e => (
-              <Pressable key={e.equipment_id} onPress={() => chooseEquipment(e.equipment_id)} style={[styles.chip, selected === e.equipment_id && styles.chipSelected]}>
-                <Text style={[styles.chipText, selected === e.equipment_id && styles.chipTextSelected]}>{e.equipment_name}</Text>
+            {equipment.map((e) => (
+              <Pressable
+                key={e.equipment_id}
+                onPress={() => chooseEquipment(e.equipment_id)}
+                style={[styles.chip, selected === e.equipment_id && styles.chipSelected]}
+              >
+                <Text style={[styles.chipText, selected === e.equipment_id && styles.chipTextSelected]}>
+                  {e.equipment_name}
+                </Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
       ) : null}
 
-      {selected ? (
+      {selectedEquipment ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Approved work for selected equipment</Text>
-          {items.length ? items.map(item => <ActivityCard key={item.activity_id} item={item} />) : <Text style={styles.muted}>No approved activities for this equipment.</Text>}
+          <Text style={styles.cardTitle}>Approved activity</Text>
+
+          {loading ? <View style={styles.center}><ActivityIndicator /></View> : null}
+
+          {loadError ? (
+            <View style={styles.error}>
+              <Text style={styles.errorTitle}>Unable to load approved activities</Text>
+              <Text>{loadError}</Text>
+            </View>
+          ) : null}
+
+          {!loading && !loadError && items.length === 0 ? (
+            <View style={styles.error}>
+              <Text style={styles.errorTitle}>No approved activity assigned</Text>
+              <Text>
+                There is no approved work for {selectedEquipment.equipment_name} in the 7-day schedule.
+                Contact the project engineer before starting attendance.
+              </Text>
+            </View>
+          ) : null}
+
+          {!loading && !loadError
+            ? items.map((item) => {
+                const selectedActivityCard = item.activity_id === selectedActivityId;
+                return (
+                  <Pressable
+                    key={item.activity_id}
+                    onPress={() => setSelectedActivityId(item.activity_id)}
+                    style={[styles.activity, selectedActivityCard && styles.activitySelected]}
+                  >
+                    <View style={styles.row}>
+                      <Text style={styles.activityDate}>
+                        {item.scheduled_start
+                          ? new Date(item.scheduled_start).toLocaleDateString(undefined, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            })
+                          : item.activity_date}
+                      </Text>
+                      <Text style={styles.priority}>{item.priority}</Text>
+                    </View>
+                    <Text style={styles.activityTitle}>{item.activity}</Text>
+                    {item.activity_item ? (
+                      <Text style={styles.activityItem}>{item.activity_item}</Text>
+                    ) : null}
+                    <Text style={styles.project}>{item.project_name}</Text>
+                    <Text style={styles.meta}>
+                      {item.scheduled_start
+                        ? new Date(item.scheduled_start).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })
+                        : 'Time TBD'}
+                      {item.scheduled_end
+                        ? ` – ${new Date(item.scheduled_end).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}`
+                        : ''}
+                    </Text>
+                    {item.activity_quantity != null ? (
+                      <Text style={styles.meta}>
+                        Planned quantity: {Number(item.activity_quantity).toLocaleString()}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.approved}>
+                      {selectedActivityCard ? '✓ SELECTED WORK' : 'SELECT THIS APPROVED ACTIVITY'}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            : null}
+        </View>
+      ) : null}
+
+      {selectedActivity && selectedEquipment ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Project</Text>
+          <Text style={styles.meta}>{selectedActivity.project_name}</Text>
+          <Text style={styles.muted}>Project is taken automatically from the approved activity.</Text>
+
+          <Text style={styles.label}>CURRENT {selectedEquipment.meter_type || 'METER'} READING</Text>
+          <TextInput
+            value={meterIn}
+            onChangeText={setMeterIn}
+            keyboardType="decimal-pad"
+            placeholder={selectedEquipment.meter_type?.toUpperCase().includes('HOUR') ? 'Enter hour meter' : 'Enter odometer'}
+            style={styles.input}
+          />
+
+          <Text style={styles.muted}>
+            Unit: {selectedEquipment.meter_type?.toUpperCase().includes('HOUR') ? 'HRS' : 'KM'}
+          </Text>
+
+          <Button
+            title={loading ? 'RECORDING...' : 'CONFIRM TIME IN'}
+            onPress={saveTimeIn}
+            disabled={loading || !meterIn}
+          />
         </View>
       ) : null}
     </ScrollView>
@@ -263,7 +473,7 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       {screen === 'home' ? <Home employee={employee} onApproved={() => setScreen('approved')} onClockIn={() => setScreen('clockin')} /> : null}
       {screen === 'approved' ? <Approved equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} /> : null}
-      {screen === 'clockin' ? <ClockIn equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} back={() => setScreen('home')} /> : null}
+      {screen === 'clockin' ? <ClockIn employee={employee} equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} back={() => setScreen('home')} onClockedIn={() => setScreen('home')} /> : null}
       {screen === 'profile' ? <Profile employee={employee} signOut={() => supabase.auth.signOut()} /> : null}
 
       {screen !== 'clockin' ? (
@@ -314,6 +524,7 @@ const styles = StyleSheet.create({
   chipText: { color: '#4E6258', fontSize: 12, fontWeight: '800' },
   chipTextSelected: { color: '#FFF' },
   activity: { backgroundColor: '#FFF', borderRadius: 16, padding: 15, marginTop: 10, gap: 5, borderWidth: 1, borderColor: '#E2E9E4' },
+  activitySelected: { borderColor: '#145A3B', backgroundColor: '#F0F7F3' },
   activityDate: { color: '#527064', fontWeight: '800', fontSize: 12 },
   priority: { color: '#A06016', fontWeight: '800', fontSize: 12 },
   activityTitle: { color: '#14231C', fontSize: 17, fontWeight: '800' },
