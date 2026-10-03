@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},equipmentProgressByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -823,10 +823,46 @@ async function openDetailsModal(id){
     document.getElementById("detailEvidenceCount").textContent=grouped.photos.length+" PHOTO"+(grouped.photos.length===1?"":"S");
     document.getElementById("detailFuelEvidenceCount").textContent=grouped.fuelPhotos.length+" PHOTO"+(grouped.fuelPhotos.length===1?"":"S");
     document.getElementById("detailEvidenceContent").innerHTML=grouped.photos.length?'<div class="detail-evidence-loading">Loading photo evidence...</div>':'<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
+    document.getElementById("detailEquipmentContributionContent").innerHTML='<div class="detail-evidence-loading">Loading equipment accomplishment...</div>';
+    document.getElementById("detailEquipmentContributionTotal").textContent="TOTAL ACTUAL "+formatQuantity(actual);
+
     document.getElementById("detailModal").style.display="flex";
-    await renderDetailEvidence(id);
-    await renderFuelEvidence(id);
+    await Promise.all([
+      renderDetailEvidence(id),
+      renderFuelEvidence(id),
+      renderEquipmentContribution(id)
+    ]);
   }catch(e){console.error(e);msg("err","Unable to open activity details: "+e.message);}
+}
+async function renderEquipmentContribution(id){
+  const content=document.getElementById("detailEquipmentContributionContent");
+  const total=document.getElementById("detailEquipmentContributionTotal");
+  try{
+    const {data,error}=await supabaseClient.rpc("get_project_activity_equipment_progress",{p_activity_id:id});
+    if(error)throw error;
+    const rows=data||[];
+    state.equipmentProgressByActivity[String(id)]=rows;
+    const combined=rows.reduce((sum,row)=>sum+Number(row.actual_quantity||0),0);
+    total.textContent="TOTAL ACTUAL "+formatQuantity(combined);
+    if(!rows.length){
+      content.innerHTML='<div class="detail-evidence-empty">No equipment has been assigned to this activity yet.</div>';
+      return;
+    }
+    content.innerHTML=rows.map(row=>{
+      const label=esc(row.equipment_name||"Unknown Equipment");
+      const sub=[row.equipment_id,row.plate_number].filter(Boolean).map(esc).join(" • ");
+      const attendanceCount=Number(row.attendance_count||0);
+      return '<div class="detail-equipment-row">'+
+        '<div><div class="detail-equipment-name">'+label+'</div><div class="detail-equipment-id">'+(sub||"Equipment ID not available")+'</div></div>'+
+        '<div class="detail-equipment-qty">'+formatQuantity(row.actual_quantity)+'</div>'+
+        '<div class="detail-equipment-attendance">'+attendanceCount+' SHIFT'+(attendanceCount===1?"":"S")+'</div>'+
+      '</div>';
+    }).join("");
+  }catch(e){
+    console.error(e);
+    content.innerHTML='<div class="detail-evidence-empty">Equipment accomplishment could not be loaded.</div>';
+    total.textContent="TOTAL ACTUAL "+formatQuantity(actualQuantityFor(state.activities.find(a=>a.activity_id===id)));
+  }
 }
 async function renderDetailEvidence(id){
   const content=document.getElementById("detailEvidenceContent");
