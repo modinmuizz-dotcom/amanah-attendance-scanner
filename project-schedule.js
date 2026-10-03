@@ -744,81 +744,74 @@ async function saveDetailProgress(){
     btn.disabled=false;btn.textContent="SAVE PROGRESS";
   }
 }
-function openDetailsModal(id){
-  const a=state.activities.find(x=>x.activity_id===id);
-  if(!a)return;
+async function openDetailsModal(id){
   state.detailActivityId=id;
-  const equipment=equipmentFor(id);
-  const equipmentText=equipment.length
-    ? equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", ")
-    : (a.equipment||"—");
-  const progress=Math.max(0,Math.min(100,Number(a.accomplishment||0)));
-  const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-  document.getElementById("detailActivityName").textContent=a.activity||"Activity";
-  document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
-  document.getElementById("detailStatus").textContent=a.activity_status||"PLANNED";
-  document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
-  document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
-  document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
-  document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
-  document.getElementById("detailTime").textContent=time;
-  const normalizedActivityType = String(a.activity_type || a.activity || "").trim().toUpperCase();
-  const hideDetailManpower =
-    normalizedActivityType === "HAULING" ||
-    normalizedActivityType === "MATERIALS DELIVERY";
+  try{
+    const a=state.activities.find(x=>x.activity_id===id);
+    if(!a)return;
+    const equipment=equipmentFor(id);
+    const equipmentText=equipment.length?equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", "):(a.equipment||"—");
+    const progress=calculatedProgress(a),planned=plannedQuantity(a),actual=actualQuantityFor(a);
+    const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
+    document.getElementById("detailActivityName").textContent=a.activity||"Activity";
+    document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
+    document.getElementById("detailStatus").textContent=calculatedStatus(a);
+    document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
+    document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
+    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+    document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
+    document.getElementById("detailTime").textContent=time;
 
-  const showActivityItem =
-    normalizedActivityType === "HAULING" ||
-    normalizedActivityType === "MATERIALS DELIVERY";
+    const normalizedActivityType=String(a.activity_type||a.activity||"").trim().toUpperCase();
+    const hideDetailManpower=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
+    const showActivityItem=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
+    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING";
+    const detailManpowerCard=document.getElementById("detailManpowerCard");
+    if(detailManpowerCard)detailManpowerCard.style.display=hideDetailManpower?"":"";
+    if(!hideDetailManpower)document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
 
-  const showActivityQuantity =
-    showActivityItem ||
-    normalizedActivityType === "CONCRETE POURING";
+    const itemCard=document.getElementById("detailActivityItemCard");
+    const itemLabel=document.getElementById("detailActivityItemLabel");
+    const itemValue=document.getElementById("detailActivityItem");
+    const quantityCard=document.getElementById("detailActivityQuantityCard");
+    const quantityValue=document.getElementById("detailActivityQuantity");
+    if(itemCard)itemCard.style.display=showActivityItem?"":"none";
+    if(quantityCard)quantityCard.style.display=showActivityQuantity?"":"none";
+    if(showActivityItem){
+      if(itemLabel)itemLabel.textContent=normalizedActivityType==="MATERIALS DELIVERY"?"What is Being Delivered":"What is Being Hauled";
+      if(itemValue)itemValue.textContent=a.activity_item||"—";
+    }else if(itemValue)itemValue.textContent="";
+    if(showActivityQuantity){
+      if(quantityValue)quantityValue.textContent=(a.activity_quantity==null||a.activity_quantity==="")?"—":Number(a.activity_quantity).toLocaleString();
+    }else if(quantityValue)quantityValue.textContent="";
 
-  const detailManpowerCard = document.getElementById("detailManpowerCard");
-  if(detailManpowerCard) detailManpowerCard.style.display = hideDetailManpower ? "none" : "";
+    document.getElementById("detailEquipment").textContent=equipmentText;
+    document.getElementById("detailDescription").textContent=a.description||"No description provided.";
+    document.getElementById("detailProgressText").textContent=Number(progress).toFixed(2).replace(/\.00$/,"")+"%";
+    document.getElementById("detailProgressFill").style.width=progress+"%";
+    document.getElementById("detailPlannedQuantity").textContent=formatQuantity(planned);
+    document.getElementById("detailActualQuantity").textContent=formatQuantity(actual);
+    document.getElementById("detailAutoProgress").textContent=Number(progress).toFixed(2).replace(/\.00$/,"")+"%";
+    document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
+    document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
 
-  if(!hideDetailManpower){
-    document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
-  }
-
-  const itemCard = document.getElementById("detailActivityItemCard");
-  const itemLabel = document.getElementById("detailActivityItemLabel");
-  const itemValue = document.getElementById("detailActivityItem");
-  const quantityCard = document.getElementById("detailActivityQuantityCard");
-  const quantityValue = document.getElementById("detailActivityQuantity");
-
-  if(itemCard) itemCard.style.display = showActivityItem ? "" : "none";
-  if(quantityCard) quantityCard.style.display = showActivityQuantity ? "" : "none";
-
-  if(showActivityItem){
-    if(itemLabel) itemLabel.textContent =
-      normalizedActivityType === "MATERIALS DELIVERY"
-        ? "What is Being Delivered"
-        : "What is Being Hauled";
-    if(itemValue) itemValue.textContent = a.activity_item || "—";
-  }else{
-    if(itemValue) itemValue.textContent = "";
-  }
-
-  if(showActivityQuantity){
-    if(quantityValue) {
-      const q = a.activity_quantity;
-      quantityValue.textContent =
-        q === null || q === undefined || q === "" ? "—" : Number(q).toLocaleString();
-    }
-  }else{
-    if(quantityValue) quantityValue.textContent = "";
-  }
-
-  document.getElementById("detailEquipment").textContent=equipmentText;
-  document.getElementById("detailDescription").textContent=a.description||"No description provided.";
-  document.getElementById("detailProgressText").textContent=progress+"%";
-  document.getElementById("detailProgressFill").style.width=progress+"%";
-  syncDetailProgressInputs(progress);
-  document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
-  document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
-  document.getElementById("detailModal").style.display="flex";
+    const grouped=executionFor(id);
+    document.getElementById("detailEvidenceCount").textContent=grouped.photos.length+" PHOTO"+(grouped.photos.length===1?"":"S");
+    document.getElementById("detailEvidenceContent").innerHTML=grouped.photos.length?'<div class="detail-evidence-loading">Loading photo evidence...</div>':'<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
+    document.getElementById("detailModal").style.display="flex";
+    await renderDetailEvidence(id);
+  }catch(e){console.error(e);msg("err","Unable to open activity details: "+e.message);}
+}
+async function renderDetailEvidence(id){
+  const content=document.getElementById("detailEvidenceContent");
+  const paths=executionFor(id).photos||[];
+  if(!paths.length){content.innerHTML='<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';return;}
+  const results=await Promise.all(paths.map(path=>supabaseClient.storage.from("attendance-activity-evidence").createSignedUrl(path,3600)));
+  content.innerHTML=results.map((result,index)=>{
+    const url=result?.data?.signedUrl;
+    if(result?.error||!url)return '<div class="detail-evidence-card"><div class="detail-evidence-empty">PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
+    return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Driver/operator activity evidence photo '+(index+1)+'"><div class="detail-evidence-label">PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
+  }).join("");
 }
 function closeDetailModal(){
   state.detailActivityId=null;
