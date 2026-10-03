@@ -424,6 +424,7 @@ async function loadAllData() {
     renderEquipment();
     renderProjects();
     renderSuppliers();
+    bindEquipmentDirectActions();
 
     hideMessage(
       'globalMessage'
@@ -4270,7 +4271,10 @@ function setupEvents() {
     )
     .addEventListener(
       'input',
-      renderEquipment
+      () => {
+        renderEquipment();
+        bindEquipmentDirectActions();
+      }
     );
 
 
