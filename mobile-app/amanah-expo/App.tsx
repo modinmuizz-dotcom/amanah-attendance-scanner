@@ -64,10 +64,19 @@ function Login({ onDone }: { onDone: () => void }) {
     setBusy(false);
 
     if (error) {
-      Alert.alert('Sign in failed', error.message);
+      const message = error.message || 'Unable to sign in.';
+      if (/email not confirmed/i.test(message)) {
+        Alert.alert(
+          'Email not confirmed',
+          'This account was created before email confirmation was disabled. Please use a newly created account, or have the existing test account confirmed in Supabase Authentication.',
+        );
+      } else {
+        Alert.alert('Sign in failed', message);
+      }
       return;
     }
 
+    setPassword('');
     onDone();
   }
 
@@ -102,21 +111,34 @@ function Login({ onDone }: { onDone: () => void }) {
     setBusy(false);
 
     if (error) {
-      Alert.alert('Registration failed', error.message);
+      const message = error.message || 'Unable to create the account.';
+      if (/already registered|already exists|user.*exists/i.test(message)) {
+        Alert.alert(
+          'Account already exists',
+          'This email already has an AMANAH login. Use SIGN IN, or use FORGOT PASSWORD if you no longer know the password.',
+        );
+      } else {
+        Alert.alert('Registration failed', message);
+      }
       return;
     }
+
+    setPassword('');
+    setConfirmPassword('');
 
     if (!data.session) {
       Alert.alert(
         'Account created',
-        'Check your registered email and verify it first. Then return to AMANAH and sign in with the password you created.',
+        'The account was created. Return to SIGN IN and use the password you just created.',
       );
-      setPassword('');
-      setConfirmPassword('');
       setMode('login');
       return;
     }
 
+    Alert.alert(
+      'Account ready',
+      'Your AMANAH account is ready. We will now load your Driver / Operator profile.',
+    );
     onDone();
   }
 
