@@ -815,6 +815,7 @@ async function openDetailsModal(id){
     document.getElementById("detailProgressFill").style.width=progress+"%";
     document.getElementById("detailPlannedQuantity").textContent=formatQuantity(planned);
     document.getElementById("detailActualQuantity").textContent=formatQuantity(actual);
+    document.getElementById("detailRemainingQuantity").textContent=formatQuantity(Math.max(planned-actual,0));
     document.getElementById("detailAutoProgress").textContent=Number(progress).toFixed(2).replace(/\.00$/,"")+"%";
     document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
     document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
