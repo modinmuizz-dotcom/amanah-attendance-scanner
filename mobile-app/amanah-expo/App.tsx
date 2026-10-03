@@ -1139,30 +1139,6 @@ function ClockIn({
     }
   }
 
-  if (fuelCameraOpen) {
-    return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Fuel evidence photo</Text>
-          <Text style={styles.muted}>Take a clear photo of the fuel receipt, pump reading, or other proof of the fuel added.</Text>
-          <View style={styles.evidenceCamera}>
-            <CameraView
-              ref={fuelCameraRef}
-              style={styles.camera}
-              facing="back"
-              onCameraReady={() => setFuelCameraReady(true)}
-            />
-            <View style={styles.cameraCaption}>
-              <Text style={styles.cameraCaptionText}>FUEL PHOTO · {fuelCameraReady ? 'READY' : 'STARTING CAMERA...'}</Text>
-            </View>
-          </View>
-          <Button title={fuelCameraReady ? 'TAKE PHOTO' : 'STARTING CAMERA...'} onPress={captureFuelPhoto} disabled={!fuelCameraReady} />
-          <Button title="CANCEL" onPress={() => setFuelCameraOpen(false)} secondary />
-        </View>
-      </ScrollView>
-    );
-  }
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Pressable onPress={back}>
@@ -1544,6 +1520,30 @@ function ClockOut({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (fuelCameraOpen) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Fuel evidence photo</Text>
+          <Text style={styles.muted}>Take a clear photo of the fuel receipt, pump reading, or other proof of the fuel added.</Text>
+          <View style={styles.evidenceCamera}>
+            <CameraView
+              ref={fuelCameraRef}
+              style={styles.camera}
+              facing="back"
+              onCameraReady={() => setFuelCameraReady(true)}
+            />
+            <View style={styles.cameraCaption}>
+              <Text style={styles.cameraCaptionText}>FUEL PHOTO · {fuelCameraReady ? 'READY' : 'STARTING CAMERA...'}</Text>
+            </View>
+          </View>
+          <Button title={fuelCameraReady ? 'TAKE PHOTO' : 'STARTING CAMERA...'} onPress={captureFuelPhoto} disabled={!fuelCameraReady} />
+          <Button title="CANCEL" onPress={() => setFuelCameraOpen(false)} secondary />
+        </View>
+      </ScrollView>
+    );
   }
 
   return (
