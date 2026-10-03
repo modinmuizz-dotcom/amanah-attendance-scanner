@@ -11,7 +11,7 @@ import { supabase } from './src/lib/supabase';
 import { EmployeeProfile, fetchMyEmployeeProfile } from './src/services/employeeIdentity';
 import { ApprovedActivity, Equipment, fetchActiveEquipment, fetchApprovedActivities } from './src/services/approvedActivities';
 
-type Screen = 'home' | 'approved' | 'profile' | 'clockin' | 'clockout';
+type Screen = 'home' | 'approved' | 'history' | 'profile' | 'clockin' | 'clockout';
 
 type ActiveAttendance = {
   attendance_id: string;
@@ -1726,6 +1726,212 @@ function ClockOut({
   );
 }
 
+
+type ActivityHistoryItem = {
+  attendance_id: string;
+  attendance_date: string;
+  time_in: string | null;
+  time_out: string | null;
+  total_hours: number | null;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  activity_id: string | null;
+  activity_category: string;
+  activity_description: string | null;
+  planned_quantity: number | null;
+  actual_quantity: number;
+  activity_status: string | null;
+  activity_approval_status: string | null;
+  meter_type: string | null;
+  meter_in: number | null;
+  meter_out: number | null;
+  meter_used: number | null;
+  meter_unit: string | null;
+  fuel_used: boolean | null;
+  fuel_quantity: number | null;
+  fuel_unit: string | null;
+  fuel_amount: number | null;
+  fuel_photo_path: string | null;
+  photo_1_path: string | null;
+  photo_2_path: string | null;
+  additional_photo_count: number;
+};
+
+async function fetchActivityHistory(employeeId: string): Promise<ActivityHistoryItem[]> {
+  const { data, error } = await supabase.rpc('get_mobile_activity_history', {
+    p_employee_id: employeeId,
+    p_limit: 50,
+  });
+  if (error) throw error;
+  return (data ?? []) as ActivityHistoryItem[];
+}
+
+function History({ employee }: { employee: EmployeeProfile }) {
+  const [items, setItems] = useState<ActivityHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const rows = await fetchActivityHistory(employee.employee_id);
+      setItems(rows);
+
+      const paths = new Set<string>();
+      rows.forEach(row => {
+        [row.photo_1_path, row.photo_2_path, row.fuel_photo_path].forEach(path => {
+          if (path) paths.add(path);
+        });
+      });
+
+      const signed = await Promise.all(
+        Array.from(paths).map(async path => [path, await createEvidenceUrl(path)] as const),
+      );
+
+      const next: Record<string, string> = {};
+      signed.forEach(([path, url]) => {
+        if (url) next[path] = url;
+      });
+      setPhotoUrls(next);
+    } catch (e) {
+      setItems([]);
+      setError(e instanceof Error ? e.message : 'Unable to load activity history.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [employee.employee_id]);
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.eyebrow}>FIELD RECORDS</Text>
+      <Text style={styles.title}>Activity History</Text>
+      <Text style={styles.muted}>
+        Your completed driver/operator work recorded by AMANAH. The newest activity appears first.
+      </Text>
+
+      <Button title={loading ? 'REFRESHING...' : 'REFRESH HISTORY'} onPress={load} secondary disabled={loading} />
+
+      {loading ? (
+        <View style={styles.center}><ActivityIndicator /><Text>Loading your activity history...</Text></View>
+      ) : null}
+
+      {error ? (
+        <View style={styles.error}>
+          <Text style={styles.errorTitle}>Unable to load history</Text>
+          <Text>{error}</Text>
+          <Button title="TRY AGAIN" onPress={load} secondary />
+        </View>
+      ) : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>No activity history yet</Text>
+          <Text style={styles.muted}>Completed activities from your TIME OUT records will appear here.</Text>
+        </View>
+      ) : null}
+
+      {!loading && !error ? items.map((item, index) => {
+        const activityProgress = item.planned_quantity && item.planned_quantity > 0
+          ? Math.min(100, Math.max(0, (Number(item.actual_quantity || 0) / Number(item.planned_quantity)) * 100))
+          : 0;
+
+        const photoPaths = [item.photo_1_path, item.photo_2_path].filter(Boolean) as string[];
+        const totalPhotos = photoPaths.length + Number(item.additional_photo_count || 0) + (item.fuel_photo_path ? 1 : 0);
+
+        return (
+          <View key={item.attendance_id + '-' + (item.activity_id || index)} style={styles.historyCard}>
+            <View style={styles.row}>
+              <Text style={styles.activityDate}>
+                {new Date(item.attendance_date + 'T00:00:00').toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </Text>
+              <Text style={styles.historyStatus}>{String(item.activity_status || 'COMPLETED').toUpperCase()}</Text>
+            </View>
+
+            <Text style={styles.historyActivity}>{item.activity_category}</Text>
+            {item.activity_description ? <Text style={styles.activityItem}>{item.activity_description}</Text> : null}
+            <Text style={styles.project}>{item.project_name || 'Project not specified'}</Text>
+
+            <View style={styles.historyStats}>
+              <View style={styles.historyStat}>
+                <Text style={styles.historyStatLabel}>ACTUAL</Text>
+                <Text style={styles.historyStatValue}>{Number(item.actual_quantity || 0).toLocaleString()}</Text>
+              </View>
+              {item.planned_quantity != null ? (
+                <View style={styles.historyStat}>
+                  <Text style={styles.historyStatLabel}>PLANNED</Text>
+                  <Text style={styles.historyStatValue}>{Number(item.planned_quantity).toLocaleString()}</Text>
+                </View>
+              ) : null}
+              {item.planned_quantity != null ? (
+                <View style={styles.historyStat}>
+                  <Text style={styles.historyStatLabel}>PROGRESS</Text>
+                  <Text style={styles.historyStatValue}>{activityProgress.toFixed(0)}%</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <Text style={styles.meta}>Equipment: {item.equipment_name || '—'}</Text>
+            <Text style={styles.meta}>
+              Time: {item.time_in ? new Date(item.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
+              {' → '}
+              {item.time_out ? new Date(item.time_out).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
+              {item.total_hours != null ? ` · ${Number(item.total_hours).toFixed(2)} hrs` : ''}
+            </Text>
+
+            {item.meter_used != null ? (
+              <Text style={styles.meta}>
+                {item.meter_type === 'ODOMETER' ? 'Distance' : 'Usage'}: {Number(item.meter_used).toLocaleString()} {item.meter_unit || ''}
+              </Text>
+            ) : null}
+
+            {item.fuel_used ? (
+              <Text style={styles.meta}>
+                Fuel: {Number(item.fuel_quantity || 0).toLocaleString()} {item.fuel_unit || 'L'} · ₱{Number(item.fuel_amount || 0).toLocaleString()}
+              </Text>
+            ) : null}
+
+            {totalPhotos > 0 ? (
+              <View style={styles.historyEvidence}>
+                <Text style={styles.label}>PHOTO EVIDENCE</Text>
+                <Text style={styles.meta}>{totalPhotos} photo(s) saved</Text>
+
+                {photoPaths.length > 0 ? (
+                  <View style={styles.historyPhotoRow}>
+                    {photoPaths.map(path => photoUrls[path] ? (
+                      <Image key={path} source={{ uri: photoUrls[path] }} style={styles.historyPhoto} contentFit="cover" />
+                    ) : null)}
+                  </View>
+                ) : null}
+
+                {item.additional_photo_count > 0 ? (
+                  <Text style={styles.savedEvidence}>✓ {item.additional_photo_count} additional work photo(s)</Text>
+                ) : null}
+
+                {item.fuel_photo_path ? (
+                  <Text style={styles.savedEvidence}>✓ Fuel evidence saved</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        );
+      }) : null}
+    </ScrollView>
+  );
+}
+
 function Profile({ employee, signOut }: { employee: EmployeeProfile; signOut: () => void }) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -1796,6 +2002,7 @@ function AppContent() {
     <SafeAreaView style={styles.safe}>
       {screen === 'home' ? <Home employee={employee} activeAttendance={activeAttendance} onApproved={() => setScreen('approved')} onClockIn={() => setScreen('clockin')} onClockOut={() => setScreen('clockout')} /> : null}
       {screen === 'approved' ? <Approved equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} /> : null}
+      {screen === 'history' ? <History employee={employee} /> : null}
       {screen === 'clockin' ? <ClockIn employee={employee} equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} back={() => setScreen('home')} onClockedIn={async () => { setActiveAttendance(await fetchActiveAttendance(employee.employee_id)); setScreen('home'); }} /> : null}
       {screen === 'clockout' && activeAttendance ? <ClockOut employee={employee} attendance={activeAttendance} back={() => setScreen('home')} onCompleted={async () => { setActiveAttendance(await fetchActiveAttendance(employee.employee_id)); setScreen('home'); }} /> : null}
       {screen === 'profile' ? <Profile employee={employee} signOut={() => supabase.auth.signOut()} /> : null}
@@ -1804,6 +2011,7 @@ function AppContent() {
         <View style={styles.nav}>
           <Pressable style={styles.navItem} onPress={() => setScreen('home')}><Text style={screen === 'home' ? styles.navActive : styles.navText}>Home</Text></Pressable>
           <Pressable style={styles.navItem} onPress={() => setScreen('approved')}><Text style={screen === 'approved' ? styles.navActive : styles.navText}>Approved</Text></Pressable>
+          <Pressable style={styles.navItem} onPress={() => setScreen('history')}><Text style={screen === 'history' ? styles.navActive : styles.navText}>History</Text></Pressable>
           <Pressable style={styles.navItem} onPress={() => setScreen('profile')}><Text style={screen === 'profile' ? styles.navActive : styles.navText}>Profile</Text></Pressable>
         </View>
       ) : null}
@@ -1862,6 +2070,16 @@ const styles = StyleSheet.create({
   activityItem: { color: '#527064', fontWeight: '700' },
   project: { color: '#145A3B', fontWeight: '700' },
   meta: { color: '#67746D', lineHeight: 21 },
+  historyCard: { backgroundColor: '#FFF', borderRadius: 18, padding: 16, gap: 8, borderWidth: 1, borderColor: '#E0E9E3' },
+  historyActivity: { color: '#14231C', fontSize: 18, fontWeight: '900' },
+  historyStatus: { color: '#145A3B', backgroundColor: '#EAF4EE', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, fontSize: 10, fontWeight: '900', overflow: 'hidden' },
+  historyStats: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  historyStat: { flex: 1, backgroundColor: '#F4F8F5', borderRadius: 12, padding: 10, gap: 2 },
+  historyStatLabel: { color: '#6A7970', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  historyStatValue: { color: '#145A3B', fontSize: 16, fontWeight: '900' },
+  historyEvidence: { gap: 7, marginTop: 5, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E1EAE4' },
+  historyPhotoRow: { flexDirection: 'row', gap: 8 },
+  historyPhoto: { width: 92, height: 92, borderRadius: 12, backgroundColor: '#EAF1EC' },
   approved: { color: '#145A3B', backgroundColor: '#EAF4EE', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 10, alignSelf: 'flex-start', fontSize: 10, fontWeight: '900', overflow: 'hidden' },
   error: { backgroundColor: '#FFF3F0', borderRadius: 16, padding: 16, gap: 8 },
   errorTitle: { color: '#A2382B', fontWeight: '800' },
