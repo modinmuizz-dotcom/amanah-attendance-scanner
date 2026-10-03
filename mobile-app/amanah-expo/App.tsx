@@ -43,18 +43,80 @@ function Button({ title, onPress, secondary = false, disabled = false }: { title
 }
 
 function Login({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState('modinmuizz@gmail.com');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function signIn() {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      Alert.alert('Missing information', 'Enter your registered email and password.');
+      return;
+    }
+
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
     setBusy(false);
+
     if (error) {
       Alert.alert('Sign in failed', error.message);
       return;
     }
+
+    onDone();
+  }
+
+  async function register() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      Alert.alert('Invalid email', 'Enter the same email address registered in Employee Master Data.');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Password too short', 'Your password must be at least 8 characters.');
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      Alert.alert('Stronger password required', 'Use at least 8 characters with both letters and numbers.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords do not match', 'Enter the same password in both password fields.');
+      return;
+    }
+
+    setBusy(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+    });
+    setBusy(false);
+
+    if (error) {
+      Alert.alert('Registration failed', error.message);
+      return;
+    }
+
+    if (!data.session) {
+      Alert.alert(
+        'Account created',
+        'Check your registered email and verify it first. Then return to AMANAH and sign in with the password you created.',
+      );
+      setPassword('');
+      setConfirmPassword('');
+      setMode('login');
+      return;
+    }
+
     onDone();
   }
 
@@ -63,20 +125,79 @@ function Login({ onDone }: { onDone: () => void }) {
       <ScrollView contentContainerStyle={styles.login}>
         <Text style={styles.brand}>AMANAH</Text>
         <Text style={styles.eyebrow}>FIELD OPERATIONS</Text>
-        <Text style={styles.title}>Driver & Operator Mobile</Text>
-        <Text style={styles.muted}>Sign in with the company Supabase account. The employee profile is detected automatically.</Text>
+        <Text style={styles.title}>{mode === 'login' ? 'Driver & Operator Mobile' : 'Create Mobile Account'}</Text>
+        <Text style={styles.muted}>
+          {mode === 'login'
+            ? 'Sign in with the email registered in Employee Master Data. Your employee profile is detected automatically.'
+            : 'Use the email already registered in Employee Master Data, then create your own password.'}
+        </Text>
+
         <View style={styles.card}>
-          <Text style={styles.label}>EMAIL</Text>
-          <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" style={styles.input} />
+          <Text style={styles.label}>REGISTERED EMAIL</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            style={styles.input}
+            placeholder="driver@example.com"
+          />
+
           <Text style={styles.label}>PASSWORD</Text>
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
-          <Button title={busy ? 'SIGNING IN...' : 'SIGN IN'} onPress={signIn} disabled={busy || !password} />
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType={mode === 'login' ? 'password' : 'newPassword'}
+            style={styles.input}
+            placeholder={mode === 'login' ? 'Your password' : 'At least 8 characters'}
+          />
+
+          {mode === 'register' ? (
+            <>
+              <Text style={styles.label}>CONFIRM PASSWORD</Text>
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                style={styles.input}
+                placeholder="Repeat your password"
+              />
+              <Text style={styles.muted}>
+                Passwords are handled by Supabase Auth. They are not stored in the Employee Master Data table.
+              </Text>
+            </>
+          ) : null}
+
+          <Button
+            title={
+              busy
+                ? (mode === 'login' ? 'SIGNING IN...' : 'CREATING ACCOUNT...')
+                : (mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT')
+            }
+            onPress={mode === 'login' ? signIn : register}
+            disabled={busy || !email || !password || (mode === 'register' && !confirmPassword)}
+          />
+
+          <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')} style={styles.authSwitch}>
+            <Text style={styles.authSwitchText}>
+              {mode === 'login' ? 'NEW DRIVER / OPERATOR? CREATE YOUR ACCOUNT' : 'ALREADY HAVE AN ACCOUNT? SIGN IN'}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
       <StatusBar style="dark" />
     </SafeAreaView>
   );
 }
+
 
 function ActivityCard({ item }: { item: ApprovedActivity }) {
   const start = item.scheduled_start ? new Date(item.scheduled_start) : null;
@@ -2034,6 +2155,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '800', color: '#17251E' },
   label: { fontSize: 12, fontWeight: '800', color: '#527064', letterSpacing: 1.2 },
   input: { borderWidth: 1, borderColor: '#D2DED7', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: '#FBFDFC' },
+  authSwitch: { alignItems: 'center', paddingVertical: 8 },
+  authSwitchText: { color: '#145A3B', fontSize: 11, fontWeight: '900', textAlign: 'center', letterSpacing: 0.7 },
   button: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 4, paddingHorizontal: 14 },
   buttonPrimary: { backgroundColor: '#145A3B' },
   buttonSecondary: { backgroundColor: '#E8F1EB' },
