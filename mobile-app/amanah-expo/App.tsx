@@ -1139,6 +1139,30 @@ function ClockIn({
     }
   }
 
+  if (fuelCameraOpen) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Fuel evidence photo</Text>
+          <Text style={styles.muted}>Take a clear photo of the fuel receipt, pump reading, or other proof of the fuel added.</Text>
+          <View style={styles.evidenceCamera}>
+            <CameraView
+              ref={fuelCameraRef}
+              style={styles.camera}
+              facing="back"
+              onCameraReady={() => setFuelCameraReady(true)}
+            />
+            <View style={styles.cameraCaption}>
+              <Text style={styles.cameraCaptionText}>FUEL PHOTO · {fuelCameraReady ? 'READY' : 'STARTING CAMERA...'}</Text>
+            </View>
+          </View>
+          <Button title={fuelCameraReady ? 'TAKE PHOTO' : 'STARTING CAMERA...'} onPress={captureFuelPhoto} disabled={!fuelCameraReady} />
+          <Button title="CANCEL" onPress={() => setFuelCameraOpen(false)} secondary />
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Pressable onPress={back}>
@@ -1345,6 +1369,11 @@ function ClockOut({
   const [fuelUsed, setFuelUsed] = useState(false);
   const [fuelQuantity, setFuelQuantity] = useState('');
   const [fuelAmount, setFuelAmount] = useState('');
+  const [fuelPhotoLocalUri, setFuelPhotoLocalUri] = useState<string | null>(null);
+  const [fuelPhotoPreviewError, setFuelPhotoPreviewError] = useState(false);
+  const [fuelCameraOpen, setFuelCameraOpen] = useState(false);
+  const [fuelCameraReady, setFuelCameraReady] = useState(false);
+  const fuelCameraRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const meterType = attendance.meter_type?.toUpperCase() === 'ODOMETER' ? 'ODOMETER' : 'HOUR METER';
@@ -1371,6 +1400,63 @@ function ClockOut({
     };
   }, [attendance.attendance_id, employee.employee_id]);
 
+  async function chooseFuelPhoto() {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.75,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      setFuelPhotoLocalUri(result.assets[0].uri);
+      setFuelPhotoPreviewError(false);
+    } catch (e) {
+      Alert.alert('Fuel photo failed', e instanceof Error ? e.message : 'Unable to choose the fuel photo.');
+    }
+  }
+
+  async function takeFuelPhoto() {
+    if (Platform.OS === 'web') {
+      Alert.alert('Use the phone', 'Fuel evidence is captured from the physical phone camera.');
+      return;
+    }
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert('Camera permission required', 'Allow camera access to capture fuel evidence.');
+        return;
+      }
+    }
+    setFuelCameraReady(false);
+    setFuelCameraOpen(true);
+  }
+
+  async function captureFuelPhoto() {
+    if (!fuelCameraOpen || !fuelCameraReady || !fuelCameraRef.current) return;
+    try {
+      const result = await fuelCameraRef.current.takePictureAsync({ quality: 0.65 });
+      if (!result?.uri) throw new Error('The camera did not return a photo.');
+      setFuelPhotoLocalUri(result.uri);
+      setFuelPhotoPreviewError(false);
+      setFuelCameraOpen(false);
+    } catch (e) {
+      Alert.alert('Fuel photo failed', e instanceof Error ? e.message : 'Unable to capture the fuel photo.');
+    }
+  }
+
+  async function uploadFuelEvidence(uri: string) {
+    const arrayBuffer = await readLocalPhoto(uri);
+    const path = 'attendance/' + attendance.attendance_id + '/fuel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
+    const { error: uploadError } = await supabase.storage
+      .from('attendance-fuel-evidence')
+      .upload(path, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: false,
+        cacheControl: '3600',
+      });
+    if (uploadError) throw uploadError;
+    return path;
+  }
   async function completeTimeOut() {
     const numericMeter = Number(meterOut);
     const numericFuelQuantity = Number(fuelQuantity);
@@ -1396,9 +1482,17 @@ function ClockOut({
       return;
     }
 
+    if (fuelUsed && !fuelPhotoLocalUri) {
+      Alert.alert('Fuel photo required', 'Because fuel was added during this shift, upload or capture a fuel evidence photo before Time OUT.');
+      return;
+    }
+
     setLoading(true);
     try {
       const activityDescription = live.activity_item?.trim() || live.description?.trim() || live.activity.trim();
+      const fuelPhotoPath = fuelUsed && fuelPhotoLocalUri
+        ? await uploadFuelEvidence(fuelPhotoLocalUri)
+        : null;
 
       const { data: prepared, error: prepareError } = await supabase.rpc('prepare_attendance_out', {
         p_attendance_id: attendance.attendance_id,
@@ -1429,9 +1523,20 @@ function ClockOut({
       if (completeError) throw completeError;
       if (!completed?.success) throw new Error(completed?.error || 'Unable to complete Time OUT.');
 
+      if (fuelPhotoPath) {
+        const { data: attached, error: attachError } = await supabase.rpc('attach_fuel_evidence', {
+          p_attendance_id: attendance.attendance_id,
+          p_employee_id: employee.employee_id,
+          p_photo_path: fuelPhotoPath,
+        });
+
+        if (attachError) throw attachError;
+        if (!attached?.success) throw new Error(attached?.error || 'Fuel was recorded but the fuel evidence photo could not be linked.');
+      }
+
       Alert.alert(
         'TIME OUT recorded',
-        `${attendance.equipment_name ?? 'Equipment'} completed ${live.activity} with an actual accomplishment of ${live.actual_quantity}.`,
+        `${attendance.equipment_name ?? 'Equipment'} completed ${live.activity} with an actual accomplishment of ${live.actual_quantity}${fuelPhotoPath ? ' and fuel evidence was saved.' : '.'}`,
       );
       onCompleted();
     } catch (e) {
@@ -1507,6 +1612,45 @@ function ClockOut({
             <TextInput value={fuelQuantity} onChangeText={setFuelQuantity} keyboardType="decimal-pad" placeholder="Enter liters" style={styles.input} />
             <Text style={styles.label}>FUEL AMOUNT (PHP)</Text>
             <TextInput value={fuelAmount} onChangeText={setFuelAmount} keyboardType="decimal-pad" placeholder="Enter total amount" style={styles.input} />
+
+            <Text style={styles.label}>FUEL PHOTO EVIDENCE</Text>
+            <Text style={styles.muted}>Required when fuel is YES. Capture the receipt, pump reading, or other proof of fueling.</Text>
+
+            {fuelPhotoLocalUri && !fuelPhotoPreviewError ? (
+              <Image
+                source={{ uri: fuelPhotoLocalUri }}
+                style={styles.photoPreview}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={150}
+                onError={() => setFuelPhotoPreviewError(true)}
+              />
+            ) : (
+              <View style={styles.photoEmptyBox}>
+                <Text style={styles.photoEmpty}>{fuelPhotoLocalUri ? 'PHOTO SELECTED' : 'NO FUEL PHOTO YET'}</Text>
+              </View>
+            )}
+
+            <Text style={styles.savedEvidence}>{fuelPhotoLocalUri ? '✓ FUEL EVIDENCE READY' : 'FUEL EVIDENCE REQUIRED'}</Text>
+
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={fuelPhotoLocalUri ? 'REPLACE FUEL PHOTO' : 'TAKE FUEL PHOTO'}
+                  onPress={takeFuelPhoto}
+                  secondary
+                  disabled={loading}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="CHOOSE FROM PHONE"
+                  onPress={chooseFuelPhoto}
+                  secondary
+                  disabled={loading}
+                />
+              </View>
+            </View>
           </>
         ) : null}
       </View>
