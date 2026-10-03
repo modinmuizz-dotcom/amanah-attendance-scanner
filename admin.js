@@ -1923,6 +1923,7 @@ function openEquipmentModal(
 
       ${selectField(
         'Equipment Type',
+        'equipment_type',
         (
           values.equipment_type &&
           ![
@@ -1959,8 +1960,7 @@ function openEquipmentModal(
                 'WHEEL TYPE BACKHOE'
               ]
         ),
-        values.equipment_type || '',
-        true
+        values.equipment_type || ''
       )}
 
       ${field(
