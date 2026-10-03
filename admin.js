@@ -4545,6 +4545,51 @@ function bindEquipmentDirectActions() {
 })();
 
 /* =========================================================
+   EQUIPMENT CLICK DIAGNOSTIC
+   ========================================================= */
+(function installEquipmentDiagnostic() {
+  function describe(el) {
+    if (!el) return 'NONE';
+    return el.tagName + (el.id ? '#' + el.id : '') +
+      (el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0,3).join('.') : '');
+  }
+
+  function update() {
+    const add = document.getElementById('addEquipmentButton');
+    const edit = document.querySelector('#equipmentTableBody .edit-button');
+    const report = document.getElementById('equipmentClickDiagnostic');
+    if (!report || !add) return;
+
+    const ar = add.getBoundingClientRect();
+    const ae = document.elementFromPoint(ar.left + ar.width / 2, ar.top + ar.height / 2);
+
+    let editText = 'NO EDIT BUTTON';
+    if (edit) {
+      const er = edit.getBoundingClientRect();
+      editText = describe(document.elementFromPoint(er.left + er.width / 2, er.top + er.height / 2));
+    }
+
+    report.innerHTML =
+      '<strong>EQUIPMENT CLICK TEST</strong><br>' +
+      'ADD center sees: <code>' + describe(ae) + '</code><br>' +
+      'EDIT center sees: <code>' + editText + '</code><br>' +
+      'Last pointer: <code>' + (window.__amanahLastPointer || 'none') + '</code>';
+  }
+
+  document.addEventListener('pointerdown', function(event) {
+    window.__amanahLastPointer = describe(event.target) + ' @ ' +
+      Math.round(event.clientX) + ',' + Math.round(event.clientY);
+    update();
+  }, true);
+
+  window.addEventListener('resize', update);
+  window.addEventListener('scroll', update, true);
+
+  setTimeout(update, 1500);
+  setInterval(update, 1000);
+})();
+
+/* =========================================================
    AUTH STATE
    ========================================================= */
 
