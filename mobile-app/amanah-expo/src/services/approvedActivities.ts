@@ -54,12 +54,63 @@ export async function fetchActiveEquipment(): Promise<Equipment[]> {
 export async function fetchApprovedActivities(
   equipmentId?: string | null
 ): Promise<ApprovedActivity[]> {
-  if (!equipmentId) return [];
+  if (equipmentId) {
+    const { data, error } = await supabase.rpc('get_mobile_approved_work', {
+      p_equipment_id: equipmentId,
+    });
 
-  const { data, error } = await supabase.rpc('get_mobile_approved_work', {
-    p_equipment_id: equipmentId,
+    if (error) throw error;
+    return (data ?? []) as ApprovedActivity[];
+  }
+
+  const { data: equipment, error: equipmentError } = await supabase
+    .from('equipment')
+    .select('equipment_id')
+    .eq('status', 'ACTIVE')
+    .order('equipment_id');
+
+  if (equipmentError) throw equipmentError;
+
+  const responses = await Promise.all(
+    (equipment ?? []).map(async (row: any) => {
+      const { data, error } = await supabase.rpc('get_mobile_approved_work', {
+        p_equipment_id: row.equipment_id,
+      });
+      if (error) throw error;
+      return (data ?? []) as ApprovedActivity[];
+    }),
+  );
+
+  const byActivity = new Map<string, ApprovedActivity>();
+
+  for (const item of responses.flat()) {
+    const existing = byActivity.get(item.activity_id);
+    if (!existing) {
+      byActivity.set(item.activity_id, { ...item });
+      continue;
+    }
+
+    const equipmentNames = new Set(
+      existing.equipment_name
+        .split(' • ')
+        .concat(item.equipment_name.split(' • '))
+        .filter(Boolean),
+    );
+
+    existing.equipment_name = Array.from(equipmentNames).join(' • ');
+    existing.assigned_equipment_count = Math.max(
+      existing.assigned_equipment_count,
+      item.assigned_equipment_count,
+    );
+    existing.actual_quantity = Math.max(existing.actual_quantity, item.actual_quantity);
+    existing.remaining_quantity = Math.min(existing.remaining_quantity, item.remaining_quantity);
+    existing.selection_available =
+      existing.selection_available || item.selection_available;
+  }
+
+  return Array.from(byActivity.values()).sort((a, b) => {
+    if (a.is_carryover !== b.is_carryover) return a.is_carryover ? -1 : 1;
+    return new Date(a.scheduled_start ?? a.activity_date).getTime()
+      - new Date(b.scheduled_start ?? b.activity_date).getTime();
   });
-
-  if (error) throw error;
-  return (data ?? []) as ApprovedActivity[];
 }
