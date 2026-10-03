@@ -150,7 +150,7 @@ function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.eyebrow}>UPCOMING APPROVED WORK</Text>
-      <Text style={styles.title}>Next 7 Days</Text>
+      <Text style={styles.title}>Upcoming & Carryover Work</Text>
       <Text style={styles.muted}>Approved work plus unfinished carryover work from the previous 7 days. Filter by equipment to see what that equipment can continue.</Text>
 
       <View style={styles.card}>
