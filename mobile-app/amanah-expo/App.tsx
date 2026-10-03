@@ -209,14 +209,21 @@ async function saveLiveActivityProgress(
 
 async function uploadActivityEvidence(uri: string, attendanceId: string, activityId: string, slot: 1 | 2) {
   const response = await fetch(uri);
-  const blob = await response.blob();
+  if (!response.ok) {
+    throw new Error(`Unable to read the selected photo (${response.status}).`);
+  }
+
+  // Supabase recommends ArrayBuffer for React Native uploads.
+  // Blob/File/FormData can behave incorrectly in React Native.
+  const arrayBuffer = await response.arrayBuffer();
   const path = `attendance/${attendanceId}/${activityId}/activity_${slot}_${Date.now()}.jpg`;
 
   const { error } = await supabase.storage
     .from('attendance-activity-evidence')
-    .upload(path, blob, {
+    .upload(path, arrayBuffer, {
       contentType: 'image/jpeg',
       upsert: false,
+      cacheControl: '3600',
     });
 
   if (error) throw error;
@@ -268,14 +275,20 @@ async function uploadAdditionalActivityEvidence(
   employeeId: string,
 ): Promise<AdditionalEvidence> {
   const response = await fetch(uri);
-  const blob = await response.blob();
+  if (!response.ok) {
+    throw new Error(`Unable to read the selected photo (${response.status}).`);
+  }
+
+  // Use ArrayBuffer for React Native / Expo uploads.
+  const arrayBuffer = await response.arrayBuffer();
   const path = `attendance/${attendanceId}/${activityId}/activity_extra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 
   const { error: uploadError } = await supabase.storage
     .from('attendance-activity-evidence')
-    .upload(path, blob, {
+    .upload(path, arrayBuffer, {
       contentType: 'image/jpeg',
       upsert: false,
+      cacheControl: '3600',
     });
 
   if (uploadError) throw uploadError;
