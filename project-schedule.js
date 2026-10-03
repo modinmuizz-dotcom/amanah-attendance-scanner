@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -84,10 +84,6 @@ async function init(){
   document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
   document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
   document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
-  document.getElementById("detailProgressRange").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("detailProgressNumber").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("saveDetailProgress").addEventListener("click",saveDetailProgress);
-  document.querySelectorAll("[data-progress-quick]").forEach(btn=>btn.addEventListener("click",()=>syncDetailProgressInputs(btn.dataset.progressQuick)));
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -121,11 +117,33 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
-  if(error)throw error;state.activities=acts||[];
-  const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
-  if(relErr)throw relErr;state.assignments=rel||[];renderTables();
+  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError}]=await Promise.all([
+    supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
+    supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
+    supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false})
+  ]);
+  if(activityError)throw activityError;
+  if(relErr)throw relErr;
+  if(executionError)throw executionError;
+  state.activities=acts||[];
+  state.assignments=rel||[];
+  state.executionByActivity={};
+  (execution||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[]};
+    state.executionByActivity[id].actualQuantity+=Number(row.quantity||0);
+    [row.photo_1_path,row.photo_2_path].filter(Boolean).forEach(path=>{
+      if(!state.executionByActivity[id].photos.includes(path))state.executionByActivity[id].photos.push(path);
+    });
+  });
+  renderTables();
 }
+function executionFor(id){return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[]};}
+function plannedQuantity(a){const n=Number(a?.activity_quantity);return Number.isFinite(n)&&n>=0?n:0;}
+function actualQuantityFor(a){const n=Number(executionFor(a.activity_id).actualQuantity||0);return Number.isFinite(n)&&n>=0?n:0;}
+function calculatedProgress(a){const planned=plannedQuantity(a),actual=actualQuantityFor(a);if(planned<=0)return 0;return Math.min(100,Math.max(0,(actual/planned)*100));}
+function calculatedStatus(a){const current=String(a?.activity_status||"PLANNED").toUpperCase();const progress=calculatedProgress(a);if(current==="CANCELLED"||current==="NOT DONE")return current;if(progress>=100&&plannedQuantity(a)>0)return "DONE";if(actualQuantityFor(a)>0)return "IN PROGRESS";return "PLANNED";}
+function formatQuantity(value){const n=Number(value||0);return Number.isFinite(n)?n.toLocaleString("en-PH",{maximumFractionDigits:6}):"0";}
 function selectedProjectName(id){return state.projects.find(p=>p.project_id===id)?.project_name||"";}
 function equipmentFor(id){const ids=state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id);return state.equipment.filter(e=>ids.includes(e.equipment_id));}
 function renderTables(){
@@ -133,13 +151,13 @@ function renderTables(){
   const rows=state.activities.filter(a=>{
     const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
     const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
-    return (!q||text.includes(q))&&(!date||a.activity_date===date)&&(!status||a.activity_status===status)&&(!pid||a.project_id===pid);
+    return (!q||text.includes(q))&&(!date||a.activity_date===date)&&(!status||calculatedStatus(a)===status)&&(!pid||a.project_id===pid);
   });
   const equipCount=rows.reduce((n,a)=>n+equipmentFor(a.activity_id).length,0);
   document.getElementById("mScheduled").textContent=rows.length;
   document.getElementById("mEquip").textContent=equipCount;
-  document.getElementById("mProgress").textContent=rows.filter(a=>a.activity_status==="IN PROGRESS").length;
-  document.getElementById("mDone").textContent=rows.filter(a=>a.activity_status==="DONE").length;
+  document.getElementById("mProgress").textContent=rows.filter(a=>calculatedStatus(a)==="IN PROGRESS").length;
+  document.getElementById("mDone").textContent=rows.filter(a=>calculatedStatus(a)==="DONE").length;
 
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
@@ -150,7 +168,7 @@ function renderTables(){
     if(a.approval_status==="APPROVED" && a.activity_status!=="DONE" && a.activity_status!=="CANCELLED" && a.activity_status!=="REJECTED"){
       action+='<button class="mini amber" data-approved-cancel-request="'+esc(a.activity_id)+'">REQUEST CANCELLATION</button>';
     }
-    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
+    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(calculatedStatus(a))+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const approvedRows=rows.filter(a=>a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status)));
@@ -448,7 +466,7 @@ function renderCalendar(){
     const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
     const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
     const calendarApproved=a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status));
-    return calendarApproved && (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||a.activity_status===filterStatus);
+    return calendarApproved && (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||calculatedStatus(a)===filterStatus);
   });
 
   let out=weekdays.map(d=>'<div class="calendar-weekday">'+d+'</div>').join("");
@@ -481,7 +499,7 @@ function renderCalendar(){
 
     const events=dayActs.slice(0,4).map(a=>{
       const time=(a.scheduled_start?fmtTime(a.scheduled_start):"")+" "+(a.scheduled_end?("– "+fmtTime(a.scheduled_end)):"");
-      const statusCls=calendarStatusClass(a.activity_status);
+      const statusCls=calendarStatusClass(calculatedStatus(a));
       return '<button type="button" class="calendar-event '+statusCls+'" data-cal-update="'+esc(a.activity_id)+'">'+
         '<div class="calendar-event-time">'+esc(time||"ALL DAY")+'</div>'+
         '<div class="calendar-event-name">'+esc(a.activity||"Activity")+'</div>'+
