@@ -2150,3 +2150,8 @@ body.printing-material-estimate .material-estimate-note{
   z-index:50001 !important;
   pointer-events:auto !important;
 }
+
+/* Temporary Equipment click diagnostics are permanently hidden */
+#equipmentClickDiagnostic{
+  display:none !important;
+}
