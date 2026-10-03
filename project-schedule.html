@@ -77,6 +77,17 @@
     .detail-progress-head{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:900}
     .detail-progress-track{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}
     .detail-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#16a34a);border-radius:999px}
+    .detail-equipment-progress{margin-top:16px;padding:14px;border:1px solid #dbe5df;border-radius:12px;background:#fff}
+    .detail-equipment-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .detail-equipment-progress-title{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#1f2937}
+    .detail-equipment-progress-total{font-size:11px;font-weight:900;color:#145A3B}
+    .detail-equipment-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 90px;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #eef2f0}
+    .detail-equipment-row:first-child{border-top:0}
+    .detail-equipment-name{font-weight:900;color:#0f172a}
+    .detail-equipment-id{font-size:10px;color:#64748b;margin-top:2px}
+    .detail-equipment-qty{text-align:right;font-weight:900;color:#145A3B}
+    .detail-equipment-attendance{text-align:right;font-size:10px;font-weight:800;color:#64748b}
+    .detail-equipment-progress-note{margin-top:10px;color:#64748b;font-size:10px;font-weight:700;line-height:1.45}
     .detail-progress-auto{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff}
     .detail-progress-auto-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .detail-progress-stat{padding:10px;border-radius:10px;background:#fff;border:1px solid #dbeafe}
@@ -300,7 +311,20 @@
             <div class="detail-progress-note">Progress is automatic. It is calculated from the operator/driver accomplishment quantity recorded in the mobile app against the planned activity quantity.</div>
           </div>
         </div>
-        <div class="detail-evidence">
+                <div class="detail-equipment-progress">
+          <div class="detail-equipment-progress-head">
+            <span class="detail-equipment-progress-title">EQUIPMENT CONTRIBUTION</span>
+            <span class="detail-equipment-progress-total" id="detailEquipmentContributionTotal">0</span>
+          </div>
+          <div id="detailEquipmentContributionContent">
+            <div class="detail-evidence-empty">Loading equipment accomplishment...</div>
+          </div>
+          <div class="detail-equipment-progress-note">
+            Every operator/driver accomplishment is stored against the equipment that performed the work. The activity's total actual quantity is the combined accomplishment of all assigned equipment.
+          </div>
+        </div>
+
+<div class="detail-evidence">
           <div class="detail-evidence-head">
             <span class="detail-evidence-title">PHOTO EVIDENCE</span>
             <span class="detail-evidence-count" id="detailEvidenceCount">0 PHOTOS</span>
