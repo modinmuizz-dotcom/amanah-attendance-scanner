@@ -241,6 +241,12 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
   const [cameraReady, setCameraReady] = useState(false);
   const [photo1Url, setPhoto1Url] = useState<string | null>(null);
   const [photo2Url, setPhoto2Url] = useState<string | null>(null);
+  const [photo1LocalUri, setPhoto1LocalUri] = useState<string | null>(null);
+  const [photo2LocalUri, setPhoto2LocalUri] = useState<string | null>(null);
+  const [photo1PreviewError, setPhoto1PreviewError] = useState(false);
+  const [photo2PreviewError, setPhoto2PreviewError] = useState(false);
+  const [savedQuantity, setSavedQuantity] = useState<number | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -250,6 +256,10 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
       const data = await fetchLiveActivity(attendance.attendance_id, employee.employee_id);
       setLive(data);
       setQuantity(String(data.actual_quantity ?? 0));
+      setSavedQuantity(Number(data.actual_quantity ?? 0));
+      setLastSavedAt(null);
+      setPhoto1PreviewError(false);
+      setPhoto2PreviewError(false);
       setPhoto1Url(await createEvidenceUrl(data.photo_1_path));
       setPhoto2Url(await createEvidenceUrl(data.photo_2_path));
       setError('');
@@ -276,7 +286,9 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
     try {
       await saveLiveActivityProgress(attendance.attendance_id, employee.employee_id, live.project_activity_id, numeric);
       setLive({ ...live, actual_quantity: numeric });
-      Alert.alert('Accomplishment updated', `Actual accomplishment is now ${numeric}.`);
+      setSavedQuantity(numeric);
+      setLastSavedAt(new Date().toISOString());
+      Alert.alert('Accomplishment saved', `Actual accomplishment is now ${numeric} and has been saved to Supabase.`);
     } catch (e) {
       Alert.alert('Update failed', e instanceof Error ? e.message : 'Unable to update accomplishment.');
     } finally {
@@ -320,9 +332,17 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
         photo_1_path: slot === 1 ? path : live.photo_1_path,
         photo_2_path: slot === 2 ? path : live.photo_2_path,
       });
-      if (slot === 1) setPhoto1Url(signed);
-      if (slot === 2) setPhoto2Url(signed);
-      Alert.alert('Photo uploaded', `Activity evidence photo ${slot} was uploaded successfully.`);
+      if (slot === 1) {
+        setPhoto1LocalUri(result.assets[0].uri);
+        setPhoto1Url(signed);
+        setPhoto1PreviewError(false);
+      }
+      if (slot === 2) {
+        setPhoto2LocalUri(result.assets[0].uri);
+        setPhoto2Url(signed);
+        setPhoto2PreviewError(false);
+      }
+      Alert.alert('Photo uploaded', `Activity evidence photo ${slot} was uploaded successfully and linked to the live activity.`);
     } catch (e) {
       Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the selected photo.');
     } finally {
@@ -379,10 +399,18 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
         photo_1_path: captureSlot === 1 ? path : live.photo_1_path,
         photo_2_path: captureSlot === 2 ? path : live.photo_2_path,
       });
-      if (captureSlot === 1) setPhoto1Url(signed);
-      if (captureSlot === 2) setPhoto2Url(signed);
+      if (captureSlot === 1) {
+        setPhoto1LocalUri(result.uri);
+        setPhoto1Url(signed);
+        setPhoto1PreviewError(false);
+      }
+      if (captureSlot === 2) {
+        setPhoto2LocalUri(result.uri);
+        setPhoto2Url(signed);
+        setPhoto2PreviewError(false);
+      }
       setCaptureSlot(null);
-      Alert.alert('Photo uploaded', `Activity evidence photo ${captureSlot} was uploaded successfully.`);
+      Alert.alert('Photo uploaded', `Activity evidence photo ${captureSlot} was uploaded successfully and linked to the live activity.`);
     } catch (e) {
       Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the activity photo.');
     } finally {
@@ -465,19 +493,51 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
           </View>
 
           <Button title={saving ? 'SAVING...' : 'SAVE ACCOMPLISHMENT'} onPress={saveQuantity} disabled={saving} />
+          <View style={styles.saveStatusCard}>
+            <Text style={styles.saveStatusTitle}>{savedQuantity !== null ? `✓ SAVED TO SUPABASE: ${savedQuantity}` : 'NOT YET SAVED'}</Text>
+            <Text style={styles.saveStatusText}>
+              {lastSavedAt
+                ? `Last saved ${new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                : 'Change the quantity and tap SAVE ACCOMPLISHMENT.'}
+            </Text>
+          </View>
 
           <View style={styles.evidenceCard}>
             <Text style={styles.label}>PHOTO EVIDENCE</Text>
             <Text style={styles.muted}>Upload up to 2 photos for this activity.</Text>
             <View style={styles.photoRow}>
               <View style={styles.photoBox}>
-                {photo1Url ? <Image source={{ uri: photo1Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
-                <Button title={photo1Url ? 'RETAKE PHOTO 1' : 'TAKE PHOTO 1'} onPress={() => openCamera(1)} secondary />
+                {(photo1LocalUri || photo1Url) && !photo1PreviewError ? (
+                  <Image
+                    source={{ uri: photo1LocalUri || photo1Url || undefined }}
+                    style={styles.photoPreview}
+                    resizeMode="cover"
+                    onError={() => setPhoto1PreviewError(true)}
+                  />
+                ) : (
+                  <View style={styles.photoEmptyBox}>
+                    <Text style={styles.photoEmpty}>{photo1Url || photo1LocalUri ? 'PHOTO UPLOADED' : 'No photo'}</Text>
+                  </View>
+                )}
+                <Text style={styles.savedEvidence}>{photo1Url || photo1LocalUri ? '✓ EVIDENCE SAVED' : 'WAITING FOR PHOTO'}</Text>
+                <Button title={photo1Url || photo1LocalUri ? 'RETAKE PHOTO 1' : 'TAKE PHOTO 1'} onPress={() => openCamera(1)} secondary />
                 <Button title="CHOOSE PHOTO 1" onPress={() => chooseFromPhone(1)} secondary disabled={saving} />
               </View>
               <View style={styles.photoBox}>
-                {photo2Url ? <Image source={{ uri: photo2Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
-                <Button title={photo2Url ? 'RETAKE PHOTO 2' : 'TAKE PHOTO 2'} onPress={() => openCamera(2)} secondary />
+                {(photo2LocalUri || photo2Url) && !photo2PreviewError ? (
+                  <Image
+                    source={{ uri: photo2LocalUri || photo2Url || undefined }}
+                    style={styles.photoPreview}
+                    resizeMode="cover"
+                    onError={() => setPhoto2PreviewError(true)}
+                  />
+                ) : (
+                  <View style={styles.photoEmptyBox}>
+                    <Text style={styles.photoEmpty}>{photo2Url || photo2LocalUri ? 'PHOTO UPLOADED' : 'No photo'}</Text>
+                  </View>
+                )}
+                <Text style={styles.savedEvidence}>{photo2Url || photo2LocalUri ? '✓ EVIDENCE SAVED' : 'WAITING FOR PHOTO'}</Text>
+                <Button title={photo2Url || photo2LocalUri ? 'RETAKE PHOTO 2' : 'TAKE PHOTO 2'} onPress={() => openCamera(2)} secondary />
                 <Button title="CHOOSE PHOTO 2" onPress={() => chooseFromPhone(2)} secondary disabled={saving} />
               </View>
             </View>
@@ -1250,7 +1310,12 @@ const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', gap: 10 },
   photoBox: { flex: 1, gap: 7 },
   photoPreview: { width: '100%', height: 120, borderRadius: 12, backgroundColor: '#EAF1EC' },
-  photoEmpty: { width: '100%', height: 120, borderRadius: 12, backgroundColor: '#F0F4F1', color: '#7A8780', textAlign: 'center', textAlignVertical: 'center', paddingTop: 48 },
+  photoEmptyBox: { width: '100%', height: 120, borderRadius: 12, backgroundColor: '#F0F4F1', alignItems: 'center', justifyContent: 'center' },
+  photoEmpty: { color: '#7A8780', textAlign: 'center', fontWeight: '800', fontSize: 12 },
+  savedEvidence: { color: '#145A3B', fontSize: 10, fontWeight: '900', textAlign: 'center' },
+  saveStatusCard: { borderWidth: 1, borderColor: '#BFD8C9', borderRadius: 12, backgroundColor: '#EEF7F1', padding: 12, gap: 4 },
+  saveStatusTitle: { color: '#145A3B', fontWeight: '900', fontSize: 13 },
+  saveStatusText: { color: '#61756B', fontSize: 12 },
   evidenceCamera: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', position: 'relative' },
   cameraCaption: { position: 'absolute', left: 12, right: 12, bottom: 12, alignItems: 'center' },
   cameraCaptionText: { color: '#FFF', backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, fontWeight: '800', fontSize: 11 },
