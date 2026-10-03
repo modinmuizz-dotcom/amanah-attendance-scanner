@@ -4472,6 +4472,35 @@ window.editEquipment = editEquipment;
 })();
 
 /* =========================================================
+   EQUIPMENT DIRECT CLICK BINDING
+   ========================================================= */
+function bindEquipmentDirectActions() {
+  const add = document.getElementById('addEquipmentButton');
+  if (add) {
+    add.disabled = false;
+    add.style.pointerEvents = 'auto';
+    add.onclick = function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      openEquipmentModal('add');
+      return false;
+    };
+  }
+
+  document.querySelectorAll('#equipmentTableBody .edit-button').forEach(button => {
+    button.disabled = false;
+    button.style.pointerEvents = 'auto';
+    button.onclick = function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const encodedId = this.getAttribute('data-equipment-id');
+      if (encodedId) editEquipment(encodedId);
+      return false;
+    };
+  });
+}
+
+/* =========================================================
    AUTH STATE
    ========================================================= */
 
