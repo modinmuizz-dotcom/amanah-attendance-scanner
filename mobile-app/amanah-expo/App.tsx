@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -158,36 +158,286 @@ async function fetchActiveAttendance(employeeId: string): Promise<ActiveAttendan
   return (data as ActiveAttendance | null) ?? null;
 }
 
-async function fetchAttendanceTask(activityId: string) {
-  const { data, error } = await supabase
-    .from('project_activities')
-    .select('activity_id, activity, activity_item, description, activity_quantity, project_name')
-    .eq('activity_id', activityId)
-    .maybeSingle();
+type LiveActivity = {
+  attendance_id: string;
+  project_activity_id: string;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  activity: string;
+  activity_item: string | null;
+  description: string | null;
+  planned_quantity: number | null;
+  actual_quantity: number;
+  photo_1_path: string | null;
+  photo_2_path: string | null;
+};
+
+async function fetchLiveActivity(attendanceId: string, employeeId: string): Promise<LiveActivity> {
+  const { data, error } = await supabase.rpc('get_mobile_active_activity', {
+    p_attendance_id: attendanceId,
+    p_employee_id: employeeId,
+  });
   if (error) throw error;
-  if (!data) throw new Error('The engineer-assigned activity could not be found.');
-  return data as {
-    activity_id: string;
-    activity: string;
-    activity_item: string | null;
-    description: string | null;
-    activity_quantity: number | null;
-    project_name: string;
-  };
+  if (!data?.success) throw new Error(data?.error || 'Unable to load the active activity.');
+  return data as LiveActivity;
 }
 
-const ATTENDANCE_ACTIVITY_TYPES = [
-  'HAULING',
-  'DELIVERY',
-  'TRIP',
-  'LOADS',
-  'CLEARING',
-  'SLOPE',
-  'CLEARING AND HAULING',
-  'ROAD REPAIR',
-  'BATCHING',
-  'OTHER',
-];
+async function saveLiveActivityProgress(
+  attendanceId: string,
+  employeeId: string,
+  activityId: string,
+  quantity: number,
+  photo1Path: string | null = null,
+  photo2Path: string | null = null,
+) {
+  const { data, error } = await supabase.rpc('save_mobile_activity_progress', {
+    p_attendance_id: attendanceId,
+    p_employee_id: employeeId,
+    p_project_activity_id: activityId,
+    p_quantity: quantity,
+    p_photo_1_path: photo1Path,
+    p_photo_2_path: photo2Path,
+  });
+  if (error) throw error;
+  if (!data?.success) throw new Error(data?.error || 'Unable to save activity progress.');
+  return data;
+}
+
+async function uploadActivityEvidence(uri: string, attendanceId: string, activityId: string, slot: 1 | 2) {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const path = `attendance/${attendanceId}/${activityId}/activity_${slot}_${Date.now()}.jpg`;
+
+  const { error } = await supabase.storage
+    .from('attendance-activity-evidence')
+    .upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
+
+  if (error) throw error;
+  return path;
+}
+
+async function createEvidenceUrl(path: string | null) {
+  if (!path) return null;
+  const { data, error } = await supabase.storage
+    .from('attendance-activity-evidence')
+    .createSignedUrl(path, 3600);
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
+function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; attendance: ActiveAttendance }) {
+  const [live, setLive] = useState<LiveActivity | null>(null);
+  const [quantity, setQuantity] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [captureSlot, setCaptureSlot] = useState<1 | 2 | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [photo1Url, setPhoto1Url] = useState<string | null>(null);
+  const [photo2Url, setPhoto2Url] = useState<string | null>(null);
+  const cameraRef = useRef<any>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await fetchLiveActivity(attendance.attendance_id, employee.employee_id);
+      setLive(data);
+      setQuantity(String(data.actual_quantity ?? 0));
+      setPhoto1Url(await createEvidenceUrl(data.photo_1_path));
+      setPhoto2Url(await createEvidenceUrl(data.photo_2_path));
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load the active activity.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [attendance.attendance_id, employee.employee_id]);
+
+  async function saveQuantity() {
+    if (!live) return;
+    const numeric = Number(quantity);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      Alert.alert('Invalid quantity', 'Enter the actual quantity completed so far.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await saveLiveActivityProgress(attendance.attendance_id, employee.employee_id, live.project_activity_id, numeric);
+      setLive({ ...live, actual_quantity: numeric });
+      Alert.alert('Accomplishment updated', `Actual accomplishment is now ${numeric}.`);
+    } catch (e) {
+      Alert.alert('Update failed', e instanceof Error ? e.message : 'Unable to update accomplishment.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function openCamera(slot: 1 | 2) {
+    if (Platform.OS === 'web') {
+      Alert.alert('Use the phone', 'Activity photo evidence is captured from the physical phone camera.');
+      return;
+    }
+
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert('Camera permission required', 'Allow camera access to upload activity evidence.');
+        return;
+      }
+    }
+
+    setCameraReady(false);
+    setCaptureSlot(slot);
+  }
+
+  async function capturePhoto() {
+    if (!live || !captureSlot || !cameraReady || !cameraRef.current) return;
+
+    setSaving(true);
+    try {
+      const result = await cameraRef.current.takePictureAsync({ quality: 0.65 });
+      if (!result?.uri) throw new Error('The camera did not return a photo.');
+
+      const path = await uploadActivityEvidence(
+        result.uri,
+        attendance.attendance_id,
+        live.project_activity_id,
+        captureSlot,
+      );
+
+      const currentQuantity = Number(quantity);
+      await saveLiveActivityProgress(
+        attendance.attendance_id,
+        employee.employee_id,
+        live.project_activity_id,
+        Number.isFinite(currentQuantity) ? currentQuantity : 0,
+        captureSlot === 1 ? path : null,
+        captureSlot === 2 ? path : null,
+      );
+
+      const signed = await createEvidenceUrl(path);
+      setLive({
+        ...live,
+        photo_1_path: captureSlot === 1 ? path : live.photo_1_path,
+        photo_2_path: captureSlot === 2 ? path : live.photo_2_path,
+      });
+      if (captureSlot === 1) setPhoto1Url(signed);
+      if (captureSlot === 2) setPhoto2Url(signed);
+      setCaptureSlot(null);
+      Alert.alert('Photo uploaded', `Activity evidence photo ${captureSlot} was uploaded successfully.`);
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the activity photo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (captureSlot) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Activity evidence photo {captureSlot}</Text>
+        <Text style={styles.muted}>Take a clear photo showing the work completed on site.</Text>
+        <View style={styles.evidenceCamera}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing="back"
+            onCameraReady={() => setCameraReady(true)}
+          />
+          <View style={styles.cameraCaption}>
+            <Text style={styles.cameraCaptionText}>PHOTO {captureSlot} · {cameraReady ? 'READY' : 'STARTING CAMERA...'}</Text>
+          </View>
+        </View>
+        <Button title={saving ? 'UPLOADING...' : 'TAKE PHOTO & UPLOAD'} onPress={capturePhoto} disabled={!cameraReady || saving} />
+        <Button title="CANCEL" onPress={() => setCaptureSlot(null)} secondary />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.row}>
+        <Text style={styles.cardTitle}>ACTIVE ACTIVITY</Text>
+        <Text style={styles.liveBadge}>LIVE</Text>
+      </View>
+
+      {loading ? <ActivityIndicator /> : null}
+      {error ? (
+        <View style={styles.error}>
+          <Text style={styles.errorTitle}>Unable to load live activity</Text>
+          <Text>{error}</Text>
+          <Button title="REFRESH" onPress={load} secondary />
+        </View>
+      ) : null}
+
+      {!loading && !error && live ? (
+        <>
+          <View style={styles.liveTable}>
+            <View style={styles.liveRowHeader}>
+              <Text style={styles.liveCellHeader}>ACTIVITY</Text>
+              <Text style={styles.liveCellHeader}>PLANNED</Text>
+            </View>
+            <View style={styles.liveRow}>
+              <View style={styles.liveMainCell}>
+                <Text style={styles.activityTitle}>{live.activity}</Text>
+                {live.activity_item ? <Text style={styles.activityItem}>{live.activity_item}</Text> : null}
+                <Text style={styles.project}>{live.project_name}</Text>
+              </View>
+              <Text style={styles.liveValue}>
+                {live.planned_quantity != null ? Number(live.planned_quantity).toLocaleString() : '—'}
+              </Text>
+            </View>
+
+            <View style={styles.liveRowHeader}>
+              <Text style={styles.liveCellHeader}>ACTUAL ACCOMPLISHMENT</Text>
+              <Text style={styles.liveCellHeader}>STATUS</Text>
+            </View>
+            <View style={styles.liveRow}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <TextInput
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  style={styles.quantityInput}
+                />
+              </View>
+              <Text style={styles.liveStatus}>{Number(quantity) > 0 ? 'IN PROGRESS' : 'NOT STARTED'}</Text>
+            </View>
+          </View>
+
+          <Button title={saving ? 'SAVING...' : 'SAVE ACCOMPLISHMENT'} onPress={saveQuantity} disabled={saving} />
+
+          <View style={styles.evidenceCard}>
+            <Text style={styles.label}>PHOTO EVIDENCE</Text>
+            <Text style={styles.muted}>Upload up to 2 photos for this activity.</Text>
+            <View style={styles.photoRow}>
+              <View style={styles.photoBox}>
+                {photo1Url ? <Image source={{ uri: photo1Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
+                <Button title={photo1Url ? 'RETAKE PHOTO 1' : 'PHOTO 1'} onPress={() => openCamera(1)} secondary />
+              </View>
+              <View style={styles.photoBox}>
+                {photo2Url ? <Image source={{ uri: photo2Url }} style={styles.photoPreview} /> : <Text style={styles.photoEmpty}>No photo</Text>}
+                <Button title={photo2Url ? 'RETAKE PHOTO 2' : 'PHOTO 2'} onPress={() => openCamera(2)} secondary />
+              </View>
+            </View>
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+}
 
 function Home({
   employee,
@@ -224,7 +474,6 @@ function Home({
             <Text style={styles.greenText}>
               Time in: {new Date(activeAttendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
             </Text>
-            <Button title="VIEW APPROVED ACTIVITIES" onPress={onApproved} />
             <Button title="TIME OUT" onPress={onClockOut} secondary />
           </>
         ) : (
@@ -236,6 +485,8 @@ function Home({
           </>
         )}
       </View>
+
+      {activeAttendance ? <LiveActivity employee={employee} attendance={activeAttendance} /> : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Employee</Text>
@@ -389,6 +640,22 @@ function ClockIn({
 
       if (!attendanceId) {
         throw new Error('Attendance was not returned by the Time IN operation.');
+      }
+
+      try {
+        await saveLiveActivityProgress(
+          attendanceId,
+          employee.employee_id,
+          selectedActivity.activity_id,
+          0,
+        );
+      } catch (progressError) {
+        Alert.alert(
+          'TIME IN recorded',
+          `Attendance was recorded, but the live activity table could not be initialized. You can refresh the app and try again. ${
+            progressError instanceof Error ? progressError.message : ''
+          }`,
+        );
       }
 
       Alert.alert(
@@ -608,53 +875,48 @@ function ClockOut({
   onCompleted: () => void;
 }) {
   const [meterOut, setMeterOut] = useState('');
-  const [completedQuantity, setCompletedQuantity] = useState('');
-  const [task, setTask] = useState<{
-    activity_id: string;
-    activity: string;
-    activity_item: string | null;
-    description: string | null;
-    activity_quantity: number | null;
-    project_name: string;
-  } | null>(null);
-  const [taskError, setTaskError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [live, setLive] = useState<LiveActivity | null>(null);
+  const [fuelUsed, setFuelUsed] = useState(false);
+  const [fuelQuantity, setFuelQuantity] = useState('');
+  const [fuelAmount, setFuelAmount] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const meterType = attendance.meter_type?.toUpperCase() === 'ODOMETER' ? 'ODOMETER' : 'HOUR METER';
   const meterUnit = meterType === 'ODOMETER' ? 'KM' : 'HRS';
 
   useEffect(() => {
     let active = true;
-    async function loadTask() {
-      if (!attendance.project_activity_id) {
-        setTaskError('This active attendance does not have an engineer-assigned activity linked to it.');
-        return;
-      }
-
-      try {
-        const data = await fetchAttendanceTask(attendance.project_activity_id);
+    fetchLiveActivity(attendance.attendance_id, employee.employee_id)
+      .then(data => {
         if (active) {
-          setTask(data);
-          setTaskError('');
+          setLive(data);
+          setError('');
         }
-      } catch (e) {
-        if (active) {
-          setTaskError(e instanceof Error ? e.message : 'Unable to load the engineer-assigned activity.');
-        }
-      }
-    }
+      })
+      .catch(e => {
+        if (active) setError(e instanceof Error ? e.message : 'Unable to load the live activity.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-    loadTask();
     return () => {
       active = false;
     };
-  }, [attendance.project_activity_id]);
+  }, [attendance.attendance_id, employee.employee_id]);
 
   async function completeTimeOut() {
     const numericMeter = Number(meterOut);
-    const numericQuantity = Number(completedQuantity);
+    const numericFuelQuantity = Number(fuelQuantity);
+    const numericFuelAmount = Number(fuelAmount);
 
-    if (!task) {
-      Alert.alert('Activity unavailable', 'The engineer-assigned activity could not be loaded.');
+    if (!live) {
+      Alert.alert('Activity unavailable', 'The live activity could not be loaded.');
+      return;
+    }
+
+    if (!Number.isFinite(live.actual_quantity) || live.actual_quantity <= 0) {
+      Alert.alert('Accomplishment required', 'Enter and save the actual accomplishment in the ACTIVE ACTIVITY table before Time OUT.');
       return;
     }
 
@@ -663,26 +925,25 @@ function ClockOut({
       return;
     }
 
-    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
-      Alert.alert('Quantity required', 'Enter the quantity you actually completed for this assigned activity.');
+    if (fuelUsed && (!Number.isFinite(numericFuelQuantity) || numericFuelQuantity <= 0 || !Number.isFinite(numericFuelAmount) || numericFuelAmount < 0)) {
+      Alert.alert('Fuel information required', 'Enter the fuel quantity in liters and the total fuel amount.');
       return;
     }
 
     setLoading(true);
     try {
-      const activityDescription =
-        task.activity_item?.trim() ||
-        task.description?.trim() ||
-        task.activity.trim();
+      const activityDescription = live.activity_item?.trim() || live.description?.trim() || live.activity.trim();
 
       const { data: prepared, error: prepareError } = await supabase.rpc('prepare_attendance_out', {
         p_attendance_id: attendance.attendance_id,
         p_employee_id: employee.employee_id,
         p_meter_out: numericMeter,
         p_activities: [{
-          activity_category: task.activity,
+          activity_category: live.activity,
           activity_description: activityDescription,
-          quantity: numericQuantity,
+          quantity: live.actual_quantity,
+          photo_1_path: live.photo_1_path,
+          photo_2_path: live.photo_2_path,
         }],
       });
 
@@ -693,10 +954,10 @@ function ClockOut({
         p_attendance_id: attendance.attendance_id,
         p_employee_id: employee.employee_id,
         p_time_out: new Date().toISOString(),
-        p_fuel_used: false,
-        p_fuel_quantity: null,
-        p_fuel_unit: null,
-        p_fuel_amount: null,
+        p_fuel_used: fuelUsed,
+        p_fuel_quantity: fuelUsed ? numericFuelQuantity : null,
+        p_fuel_unit: fuelUsed ? 'Liter' : null,
+        p_fuel_amount: fuelUsed ? numericFuelAmount : null,
       });
 
       if (completeError) throw completeError;
@@ -704,7 +965,7 @@ function ClockOut({
 
       Alert.alert(
         'TIME OUT recorded',
-        `${attendance.equipment_name ?? 'Equipment'} completed ${task.activity} with an actual quantity of ${numericQuantity}.`,
+        `${attendance.equipment_name ?? 'Equipment'} completed ${live.activity} with an actual accomplishment of ${live.actual_quantity}.`,
       );
       onCompleted();
     } catch (e) {
@@ -727,50 +988,26 @@ function ClockOut({
         <Text style={styles.cardTitle}>Current shift</Text>
         <Text style={styles.meta}>Equipment: {attendance.equipment_name ?? '—'}</Text>
         <Text style={styles.meta}>Project: {attendance.project_name ?? '—'}</Text>
-        <Text style={styles.meta}>
-          Time in: {new Date(attendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-        </Text>
-        <Text style={styles.muted}>Equipment and project are taken automatically from the active attendance.</Text>
+        <Text style={styles.meta}>Time in: {new Date(attendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Engineer-assigned activity</Text>
-
-        {taskError ? (
-          <View style={styles.error}>
-            <Text style={styles.errorTitle}>Activity unavailable</Text>
-            <Text>{taskError}</Text>
-          </View>
-        ) : null}
-
-        {task ? (
-          <View style={styles.activitySelectedCard}>
-            <Text style={styles.activityDate}>
-              {task.activity_quantity != null
-                ? `Planned quantity: ${Number(task.activity_quantity).toLocaleString()}`
-                : 'Engineer-assigned work'}
+        <Text style={styles.cardTitle}>Active activity</Text>
+        {loading ? <ActivityIndicator /> : null}
+        {error ? <View style={styles.error}><Text style={styles.errorTitle}>Activity unavailable</Text><Text>{error}</Text></View> : null}
+        {!loading && !error && live ? (
+          <>
+            <Text style={styles.activityTitle}>{live.activity}</Text>
+            {live.activity_item ? <Text style={styles.activityItem}>{live.activity_item}</Text> : null}
+            <Text style={styles.project}>{live.project_name}</Text>
+            <Text style={styles.meta}>
+              Planned: {live.planned_quantity != null ? Number(live.planned_quantity).toLocaleString() : '—'}
+              {' · '}
+              Accomplished: {Number(live.actual_quantity).toLocaleString()}
             </Text>
-            <Text style={styles.activityTitle}>{task.activity}</Text>
-            {task.activity_item ? <Text style={styles.activityItem}>{task.activity_item}</Text> : null}
-            {task.description ? <Text style={styles.muted}>{task.description}</Text> : null}
-            <Text style={styles.project}>{task.project_name}</Text>
-          </View>
-        ) : (
-          <ActivityIndicator />
-        )}
-
-        <Text style={styles.muted}>
-          The activity type and description are already supplied by the engineer. The operator only reports the quantity actually completed.
-        </Text>
-
-        <Text style={styles.label}>ACTUAL QUANTITY COMPLETED</Text>
-        <TextInput
-          value={completedQuantity}
-          onChangeText={setCompletedQuantity}
-          keyboardType="decimal-pad"
-          placeholder="Enter quantity completed"
-          style={styles.input}
-        />
+            <Text style={styles.muted}>Activity details and accomplishment are taken from the live activity table.</Text>
+          </>
+        ) : null}
       </View>
 
       <View style={styles.card}>
@@ -784,13 +1021,35 @@ function ClockOut({
           style={styles.input}
         />
         <Text style={styles.muted}>Unit: {meterUnit} · Meter In: {attendance.meter_in ?? '—'}</Text>
-
-        <Button
-          title={loading ? 'RECORDING TIME OUT...' : 'CONFIRM TIME OUT'}
-          onPress={completeTimeOut}
-          disabled={loading || !meterOut || !completedQuantity || !task}
-        />
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Fuel</Text>
+        <Text style={styles.muted}>Was fuel added during this shift?</Text>
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Button title="NO" onPress={() => setFuelUsed(false)} secondary={!fuelUsed} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button title="YES" onPress={() => setFuelUsed(true)} secondary={!fuelUsed} />
+          </View>
+        </View>
+
+        {fuelUsed ? (
+          <>
+            <Text style={styles.label}>FUEL QUANTITY (LITERS)</Text>
+            <TextInput value={fuelQuantity} onChangeText={setFuelQuantity} keyboardType="decimal-pad" placeholder="Enter liters" style={styles.input} />
+            <Text style={styles.label}>FUEL AMOUNT (PHP)</Text>
+            <TextInput value={fuelAmount} onChangeText={setFuelAmount} keyboardType="decimal-pad" placeholder="Enter total amount" style={styles.input} />
+          </>
+        ) : null}
+      </View>
+
+      <Button
+        title={loading ? 'RECORDING TIME OUT...' : 'CONFIRM TIME OUT'}
+        onPress={completeTimeOut}
+        disabled={loading || !meterOut || !live}
+      />
     </ScrollView>
   );
 }
@@ -929,4 +1188,21 @@ const styles = StyleSheet.create({
   success: { color: '#145A3B', fontWeight: '900' },
   code: { backgroundColor: '#F4F7F5', borderRadius: 12, padding: 10, fontSize: 10, lineHeight: 14, color: '#5C6962' },
   back: { color: '#145A3B', fontWeight: '900', fontSize: 15 },
+  liveBadge: { color: '#145A3B', backgroundColor: '#E5F2EA', fontSize: 10, fontWeight: '900', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 9, overflow: 'hidden' },
+  liveTable: { borderWidth: 1, borderColor: '#D9E6DE', borderRadius: 14, overflow: 'hidden', backgroundColor: '#FBFDFC' },
+  liveRowHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#EEF6F1' },
+  liveCellHeader: { color: '#527064', fontWeight: '900', fontSize: 10, letterSpacing: 1 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderTopWidth: 1, borderTopColor: '#E1EAE4' },
+  liveMainCell: { flex: 1, gap: 3, paddingRight: 10 },
+  liveValue: { color: '#145A3B', fontSize: 16, fontWeight: '900', minWidth: 60, textAlign: 'right' },
+  liveStatus: { color: '#A06016', fontSize: 10, fontWeight: '900', minWidth: 85, textAlign: 'right' },
+  quantityInput: { borderWidth: 1, borderColor: '#BFD1C6', borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, backgroundColor: '#FFF', fontSize: 18, fontWeight: '800' },
+  evidenceCard: { gap: 10, marginTop: 4 },
+  photoRow: { flexDirection: 'row', gap: 10 },
+  photoBox: { flex: 1, gap: 7 },
+  photoPreview: { width: '100%', height: 120, borderRadius: 12, backgroundColor: '#EAF1EC' },
+  photoEmpty: { width: '100%', height: 120, borderRadius: 12, backgroundColor: '#F0F4F1', color: '#7A8780', textAlign: 'center', textAlignVertical: 'center', paddingTop: 48 },
+  evidenceCamera: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', position: 'relative' },
+  cameraCaption: { position: 'absolute', left: 12, right: 12, bottom: 12, alignItems: 'center' },
+  cameraCaptionText: { color: '#FFF', backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, fontWeight: '800', fontSize: 11 },
 });
