@@ -1350,6 +1350,7 @@ function ClockOut({
   const [fuelCameraOpen, setFuelCameraOpen] = useState(false);
   const [fuelCameraReady, setFuelCameraReady] = useState(false);
   const fuelCameraRef = useRef<any>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const meterType = attendance.meter_type?.toUpperCase() === 'ODOMETER' ? 'ODOMETER' : 'HOUR METER';
