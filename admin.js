@@ -1213,9 +1213,8 @@ function renderEquipment() {
             <button
               type="button"
               class="small-button edit-button"
-              onclick="window.editEquipment('${encodeURIComponent(
-                equipment.equipment_id
-              )}')"
+              onclick="window.editEquipment('${encodeURIComponent(equipment.equipment_id)}')"
+              data-equipment-id="${encodeURIComponent(equipment.equipment_id)}"
             >
               EDIT
             </button>
@@ -4423,6 +4422,54 @@ function setupEvents() {
 
 }
 
+
+/* =========================================================
+   GLOBAL EQUIPMENT ACTION FALLBACK
+   Guarantees the Equipment tab controls remain clickable even if
+   a later page-level listener fails to initialize.
+   ========================================================= */
+window.openEquipmentModal = openEquipmentModal;
+window.editEquipment = editEquipment;
+
+(function installEquipmentActionFallback() {
+  const bind = () => {
+    if (document.documentElement.dataset.amanahEquipmentFallbackBound === '1') {
+      return;
+    }
+
+    document.documentElement.dataset.amanahEquipmentFallbackBound = '1';
+
+    document.addEventListener('click', event => {
+      const addButton = event.target.closest('#addEquipmentButton');
+      if (addButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        if (typeof window.openEquipmentModal === 'function') {
+          window.openEquipmentModal('add');
+        }
+        return;
+      }
+
+      const editButton = event.target.closest('#equipmentTableBody .edit-button');
+      if (editButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        const encodedId = editButton.dataset.equipmentId;
+        if (encodedId && typeof window.editEquipment === 'function') {
+          window.editEquipment(encodedId);
+        }
+      }
+    }, true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind, { once: true });
+  } else {
+    bind();
+  }
+})();
 
 /* =========================================================
    AUTH STATE
