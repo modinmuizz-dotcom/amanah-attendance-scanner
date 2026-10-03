@@ -1,17 +1,26 @@
 {
   "expo": {
-    "name": "amanah-expo",
-    "slug": "amanah-expo",
-    "version": "1.0.0",
+    "name": "AMANAH Driver Operator Mobile",
+    "slug": "amanah-driver-operator-mobile",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AMANAH to use your camera to scan the station QR code.",
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B5D3B",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
