@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { File as ExpoFile } from 'expo-file-system';
 
 import { supabase } from './src/lib/supabase';
 import { EmployeeProfile, fetchMyEmployeeProfile } from './src/services/employeeIdentity';
@@ -207,15 +208,34 @@ async function saveLiveActivityProgress(
   return data;
 }
 
-async function uploadActivityEvidence(uri: string, attendanceId: string, activityId: string, slot: 1 | 2) {
-  const response = await fetch(uri);
-  if (!response.ok) {
-    throw new Error(`Unable to read the selected photo (${response.status}).`);
+async function readLocalPhoto(uri: string): Promise<ArrayBuffer> {
+  try {
+    const file = new ExpoFile(uri);
+    if (!file.exists) {
+      throw new Error('The selected photo is no longer available on the device.');
+    }
+    return await file.arrayBuffer();
+  } catch (fileError) {
+    // Some Android media providers expose content:// URIs. Expo File handles
+    // these, but keep a network fetch fallback for normal file:// URIs.
+    try {
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error(`Unable to read the selected photo (${response.status}).`);
+      }
+      return await response.arrayBuffer();
+    } catch (fetchError) {
+      throw new Error(
+        fetchError instanceof Error
+          ? fetchError.message
+          : 'Unable to read the selected photo from the phone.',
+      );
+    }
   }
+}
 
-  // Supabase recommends ArrayBuffer for React Native uploads.
-  // Blob/File/FormData can behave incorrectly in React Native.
-  const arrayBuffer = await response.arrayBuffer();
+async function uploadActivityEvidence(uri: string, attendanceId: string, activityId: string, slot: 1 | 2) {
+  const arrayBuffer = await readLocalPhoto(uri);
   const path = `attendance/${attendanceId}/${activityId}/activity_${slot}_${Date.now()}.jpg`;
 
   const { error } = await supabase.storage
@@ -274,13 +294,7 @@ async function uploadAdditionalActivityEvidence(
   activityId: string,
   employeeId: string,
 ): Promise<AdditionalEvidence> {
-  const response = await fetch(uri);
-  if (!response.ok) {
-    throw new Error(`Unable to read the selected photo (${response.status}).`);
-  }
-
-  // Use ArrayBuffer for React Native / Expo uploads.
-  const arrayBuffer = await response.arrayBuffer();
+  const arrayBuffer = await readLocalPhoto(uri);
   const path = `attendance/${attendanceId}/${activityId}/activity_extra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 
   const { error: uploadError } = await supabase.storage
@@ -314,6 +328,49 @@ async function uploadAdditionalActivityEvidence(
   };
 }
 
+
+async function replaceAdditionalActivityEvidence(
+  evidenceId: string,
+  oldPath: string,
+  uri: string,
+  attendanceId: string,
+  activityId: string,
+): Promise<AdditionalEvidence> {
+  const arrayBuffer = await readLocalPhoto(uri);
+  const newPath = `attendance/${attendanceId}/${activityId}/activity_extra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('attendance-activity-evidence')
+    .upload(newPath, arrayBuffer, {
+      contentType: 'image/jpeg',
+      upsert: false,
+      cacheControl: '3600',
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from('activity_evidence_photos')
+    .update({ photo_path: newPath, created_at: new Date().toISOString() })
+    .eq('evidence_id', evidenceId)
+    .eq('attendance_id', attendanceId)
+    .eq('project_activity_id', activityId)
+    .select('evidence_id, photo_path, created_at')
+    .single();
+
+  if (error) throw error;
+
+  // The old object is no longer referenced by the activity record. We keep
+  // it in storage for now so a failed replacement can never destroy evidence.
+  void oldPath;
+
+  return {
+    evidence_id: data.evidence_id,
+    photo_path: data.photo_path,
+    signed_url: await createEvidenceUrl(data.photo_path),
+    created_at: data.created_at,
+  };
+}
 function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; attendance: ActiveAttendance }) {
   const [live, setLive] = useState<LiveActivity | null>(null);
   const [quantity, setQuantity] = useState('');
@@ -435,6 +492,51 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
     } finally {
       setSaving(false);
     }
+  }
+
+  async function replaceExtraPhoto(photo: AdditionalEvidence) {
+    if (!live) return;
+
+    Alert.alert(
+      'REPLACE PHOTO',
+      'Replace this uploaded activity evidence photo with a new photo?',
+      [
+        { text: 'CANCEL', style: 'cancel' },
+        {
+          text: 'REPLACE',
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.75,
+              });
+
+              if (result.canceled || !result.assets?.length) return;
+
+              setSaving(true);
+              const replacement = await replaceAdditionalActivityEvidence(
+                photo.evidence_id,
+                photo.photo_path,
+                result.assets[0].uri,
+                attendance.attendance_id,
+                live.project_activity_id,
+              );
+
+              setExtraEvidence(previous =>
+                previous.map(item => item.evidence_id === photo.evidence_id ? replacement : item),
+              );
+
+              Alert.alert('Photo replaced', 'The activity evidence photo has been replaced successfully.');
+            } catch (e) {
+              Alert.alert('Photo replacement failed', e instanceof Error ? e.message : 'Unable to replace the photo.');
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function addMorePhotoEvidence() {
@@ -756,6 +858,12 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                     )}
                     <Text style={styles.savedEvidence}>✓ EVIDENCE SAVED</Text>
                     <Text style={styles.extraPhotoLabel}>PHOTO {index + 3}</Text>
+                    <Button
+                      title="REPLACE PHOTO"
+                      onPress={() => replaceExtraPhoto(photo)}
+                      secondary
+                      disabled={saving}
+                    />
                   </View>
                 ))}
               </View>
