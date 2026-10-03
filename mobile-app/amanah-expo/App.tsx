@@ -231,6 +231,75 @@ async function createEvidenceUrl(path: string | null) {
   return data?.signedUrl ?? null;
 }
 
+
+
+type AdditionalEvidence = {
+  evidence_id: string;
+  photo_path: string;
+  signed_url: string | null;
+  created_at: string;
+};
+
+async function fetchAdditionalActivityEvidence(attendanceId: string, activityId: string): Promise<AdditionalEvidence[]> {
+  const { data, error } = await supabase
+    .from('activity_evidence_photos')
+    .select('evidence_id, photo_path, created_at')
+    .eq('attendance_id', attendanceId)
+    .eq('project_activity_id', activityId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return await Promise.all(
+    (data ?? []).map(async (row: any) => ({
+      evidence_id: row.evidence_id,
+      photo_path: row.photo_path,
+      signed_url: await createEvidenceUrl(row.photo_path),
+      created_at: row.created_at,
+    })),
+  );
+}
+
+async function uploadAdditionalActivityEvidence(
+  uri: string,
+  attendanceId: string,
+  activityId: string,
+  employeeId: string,
+): Promise<AdditionalEvidence> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const path = `attendance/${attendanceId}/${activityId}/activity_extra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('attendance-activity-evidence')
+    .upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from('activity_evidence_photos')
+    .insert({
+      attendance_id: attendanceId,
+      project_activity_id: activityId,
+      employee_id: employeeId,
+      photo_path: path,
+    })
+    .select('evidence_id, photo_path, created_at')
+    .single();
+
+  if (error) throw error;
+
+  return {
+    evidence_id: data.evidence_id,
+    photo_path: data.photo_path,
+    signed_url: await createEvidenceUrl(data.photo_path),
+    created_at: data.created_at,
+  };
+}
+
 function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; attendance: ActiveAttendance }) {
   const [live, setLive] = useState<LiveActivity | null>(null);
   const [quantity, setQuantity] = useState('');
@@ -245,6 +314,9 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
   const [photo2LocalUri, setPhoto2LocalUri] = useState<string | null>(null);
   const [photo1PreviewError, setPhoto1PreviewError] = useState(false);
   const [photo2PreviewError, setPhoto2PreviewError] = useState(false);
+  const [extraEvidence, setExtraEvidence] = useState<AdditionalEvidence[]>([]);
+  const [extraCaptureOpen, setExtraCaptureOpen] = useState(false);
+  const [extraCameraReady, setExtraCameraReady] = useState(false);
   const [savedQuantity, setSavedQuantity] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const cameraRef = useRef<any>(null);
@@ -262,6 +334,7 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
       setPhoto2PreviewError(false);
       setPhoto1Url(await createEvidenceUrl(data.photo_1_path));
       setPhoto2Url(await createEvidenceUrl(data.photo_2_path));
+      setExtraEvidence(await fetchAdditionalActivityEvidence(attendance.attendance_id, data.project_activity_id));
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to load the active activity.');
@@ -350,6 +423,88 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
     }
   }
 
+  async function addMorePhotoEvidence() {
+    if (!live) return;
+    if (Platform.OS === 'web') {
+      Alert.alert('Use the phone', 'Additional activity evidence is captured from the physical phone.');
+      return;
+    }
+
+    Alert.alert(
+      'ADD PHOTO EVIDENCE',
+      'Choose how you want to add another work evidence photo.',
+      [
+        { text: 'TAKE PHOTO', onPress: () => openExtraCamera() },
+        { text: 'CHOOSE FROM PHONE', onPress: () => chooseAdditionalPhoto() },
+        { text: 'CANCEL', style: 'cancel' },
+      ],
+    );
+  }
+
+  async function chooseAdditionalPhoto() {
+    if (!live) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.75,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      setSaving(true);
+      const evidence = await uploadAdditionalActivityEvidence(
+        result.assets[0].uri,
+        attendance.attendance_id,
+        live.project_activity_id,
+        employee.employee_id,
+      );
+      setExtraEvidence(previous => [...previous, evidence]);
+      Alert.alert('Photo uploaded', 'Additional activity evidence was saved to Supabase.');
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the additional photo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function openExtraCamera() {
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert('Camera permission required', 'Allow camera access to add additional activity evidence.');
+        return;
+      }
+    }
+    setExtraCameraReady(false);
+    setExtraCaptureOpen(true);
+  }
+
+  async function captureExtraPhoto() {
+    if (!live || !extraCaptureOpen || !extraCameraReady || !cameraRef.current) return;
+
+    setSaving(true);
+    try {
+      const result = await cameraRef.current.takePictureAsync({ quality: 0.65 });
+      if (!result?.uri) throw new Error('The camera did not return a photo.');
+
+      const evidence = await uploadAdditionalActivityEvidence(
+        result.uri,
+        attendance.attendance_id,
+        live.project_activity_id,
+        employee.employee_id,
+      );
+      setExtraEvidence(previous => [...previous, evidence]);
+      setExtraCaptureOpen(false);
+      Alert.alert('Photo uploaded', 'Additional activity evidence was saved to Supabase.');
+    } catch (e) {
+      Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the additional photo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function openCamera(slot: 1 | 2) {
     if (Platform.OS === 'web') {
       Alert.alert('Use the phone', 'Activity photo evidence is captured from the physical phone camera.');
@@ -416,6 +571,28 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
     } finally {
       setSaving(false);
     }
+  }
+
+  if (extraCaptureOpen) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Additional activity evidence</Text>
+        <Text style={styles.muted}>Take another clear photo showing the work completed on site.</Text>
+        <View style={styles.evidenceCamera}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing="back"
+            onCameraReady={() => setExtraCameraReady(true)}
+          />
+          <View style={styles.cameraCaption}>
+            <Text style={styles.cameraCaptionText}>ADDITIONAL PHOTO · {extraCameraReady ? 'READY' : 'STARTING CAMERA...'}</Text>
+          </View>
+        </View>
+        <Button title={saving ? 'UPLOADING...' : 'TAKE PHOTO & UPLOAD'} onPress={captureExtraPhoto} disabled={!extraCameraReady || saving} />
+        <Button title="CANCEL" onPress={() => setExtraCaptureOpen(false)} secondary />
+      </View>
+    );
   }
 
   if (captureSlot) {
@@ -541,6 +718,38 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                 <Button title="CHOOSE PHOTO 2" onPress={() => chooseFromPhone(2)} secondary disabled={saving} />
               </View>
             </View>
+          <View style={styles.extraEvidenceSection}>
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>ADDITIONAL PHOTO EVIDENCE</Text>
+                <Text style={styles.muted}>No limit. Add more photos as the work progresses.</Text>
+              </View>
+              <Text style={styles.extraCount}>{extraEvidence.length} ADDED</Text>
+            </View>
+
+            {extraEvidence.length ? (
+              <View style={styles.extraPhotoGrid}>
+                {extraEvidence.map((photo, index) => (
+                  <View key={photo.evidence_id} style={styles.extraPhotoBox}>
+                    {photo.signed_url ? (
+                      <Image source={{ uri: photo.signed_url }} style={styles.extraPhotoPreview} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.photoEmptyBox}><Text style={styles.photoEmpty}>PHOTO SAVED</Text></View>
+                    )}
+                    <Text style={styles.savedEvidence}>✓ EVIDENCE SAVED</Text>
+                    <Text style={styles.extraPhotoLabel}>PHOTO {index + 3}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <Button
+              title={saving ? 'UPLOADING...' : '＋ ADD MORE PHOTO EVIDENCE'}
+              onPress={addMorePhotoEvidence}
+              secondary
+              disabled={saving}
+            />
+          </View>
           </View>
         </>
       ) : null}
@@ -1306,6 +1515,12 @@ const styles = StyleSheet.create({
   liveValue: { color: '#145A3B', fontSize: 16, fontWeight: '900', minWidth: 60, textAlign: 'right' },
   liveStatus: { color: '#A06016', fontSize: 10, fontWeight: '900', minWidth: 85, textAlign: 'right' },
   quantityInput: { borderWidth: 1, borderColor: '#BFD1C6', borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, backgroundColor: '#FFF', fontSize: 18, fontWeight: '800' },
+  extraEvidenceSection: { gap: 10, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#E1EAE4' },
+  extraCount: { color: '#145A3B', fontSize: 10, fontWeight: '900' },
+  extraPhotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 2 },
+  extraPhotoBox: { width: '47%', gap: 5 },
+  extraPhotoPreview: { width: '100%', height: 110, borderRadius: 12, backgroundColor: '#EAF1EC' },
+  extraPhotoLabel: { color: '#527064', fontSize: 10, fontWeight: '900', textAlign: 'center' },
   evidenceCard: { gap: 10, marginTop: 4 },
   photoRow: { flexDirection: 'row', gap: 10 },
   photoBox: { flex: 1, gap: 7 },
