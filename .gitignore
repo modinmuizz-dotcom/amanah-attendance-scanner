@@ -1,0 +1,5 @@
+# AMANAH mobile Expo local files
+mobile-app/amanah-expo/.env
+mobile-app/amanah-expo/.env.local
+mobile-app/amanah-expo/node_modules/
+mobile-app/amanah-expo/.expo/
