@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -688,7 +689,9 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                   <Image
                     source={{ uri: photo1LocalUri || photo1Url || undefined }}
                     style={styles.photoPreview}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={150}
                     onError={() => setPhoto1PreviewError(true)}
                   />
                 ) : (
@@ -705,7 +708,9 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                   <Image
                     source={{ uri: photo2LocalUri || photo2Url || undefined }}
                     style={styles.photoPreview}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={150}
                     onError={() => setPhoto2PreviewError(true)}
                   />
                 ) : (
@@ -732,7 +737,7 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                 {extraEvidence.map((photo, index) => (
                   <View key={photo.evidence_id} style={styles.extraPhotoBox}>
                     {photo.signed_url ? (
-                      <Image source={{ uri: photo.signed_url }} style={styles.extraPhotoPreview} resizeMode="cover" />
+                      <Image source={{ uri: photo.signed_url }} style={styles.extraPhotoPreview} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                     ) : (
                       <View style={styles.photoEmptyBox}><Text style={styles.photoEmpty}>PHOTO SAVED</Text></View>
                     )}
