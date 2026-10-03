@@ -60,7 +60,9 @@ export async function fetchApprovedActivities(
     });
 
     if (error) throw error;
-    return (data ?? []) as ApprovedActivity[];
+    return ((data ?? []) as ApprovedActivity[]).filter(
+      item => !item.is_carryover || item.selection_available || item.activity_status === 'DONE',
+    );
   }
 
   const { data: equipment, error: equipmentError } = await supabase
