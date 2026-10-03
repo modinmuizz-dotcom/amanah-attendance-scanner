@@ -817,8 +817,58 @@ function closeDetailModal(){
   state.detailActivityId=null;
   document.getElementById("detailModal").style.display="none";
 }
-function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=a.activity_status||"PLANNED";document.getElementById("modalProgress").value=a.accomplishment??0;document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
-function closeModal(){state.editingActivityId=null;document.getElementById("statusModal").style.display="none";}
-document.getElementById("modalStatus").addEventListener("change",()=>{const s=document.getElementById("modalStatus").value;if(s==="DONE")document.getElementById("modalProgress").value=100;if(s==="NOT DONE"||s==="CANCELLED")document.getElementById("modalProgress").value=0;});
-async function saveStatus(){if(!state.editingActivityId)return;const activity=state.activities.find(x=>x.activity_id===state.editingActivityId);const status=document.getElementById("modalStatus").value,progress=Math.max(0,Math.min(100,Number(document.getElementById("modalProgress").value||0))),remarks=document.getElementById("modalRemarks").value.trim();if(status==="CANCELLED"){closeModal();if(activity?.approval_status==="PENDING"){await cancelActivityRequest(state.editingActivityId);return;}if(activity?.approval_status==="APPROVED"){await requestActivityCancellation(state.editingActivityId);return;}msg("err","This activity cannot be cancelled from its current status.");return;}const payload={activity_status:status,accomplishment:status==="DONE"?100:progress,completion_remarks:remarks||null,completed_at:status==="DONE"?new Date().toISOString():null};const btn=document.getElementById("saveStatus");btn.disabled=true;btn.textContent="SAVING...";try{const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);if(error)throw error;msg("ok","Activity status updated successfully.");closeModal();await loadActivities();}catch(e){console.error(e);msg("err","Could not update activity status: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE STATUS";}}
+function openModal(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  state.editingActivityId=id;
+  document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");
+  document.getElementById("modalStatus").value=calculatedStatus(a);
+  document.getElementById("modalProgress").value=Number(calculatedProgress(a)).toFixed(2).replace(/\.00$/,"")+"%";
+  document.getElementById("modalRemarks").value=a.completion_remarks||"";
+  document.getElementById("statusModal").style.display="flex";
+}
+function closeModal(){
+  state.editingActivityId=null;
+  document.getElementById("statusModal").style.display="none";
+}
+async function saveStatus(){
+  if(!state.editingActivityId)return;
+  const activity=state.activities.find(x=>x.activity_id===state.editingActivityId);
+  if(!activity)return;
+  const requestedStatus=document.getElementById("modalStatus").value;
+  const remarks=document.getElementById("modalRemarks").value.trim();
+  const progress=calculatedProgress(activity);
+
+  if(requestedStatus==="CANCELLED"){
+    closeModal();
+    if(activity?.approval_status==="PENDING"){await cancelActivityRequest(state.editingActivityId);return;}
+    if(activity?.approval_status==="APPROVED"){await requestActivityCancellation(state.editingActivityId);return;}
+    msg("err","This activity cannot be cancelled from its current status.");
+    return;
+  }
+
+  const status=requestedStatus==="NOT DONE"?"NOT DONE":calculatedStatus(activity);
+  const payload={
+    activity_status:status,
+    accomplishment:progress,
+    completion_remarks:remarks||null,
+    completed_at:status==="DONE"?new Date().toISOString():null
+  };
+  const btn=document.getElementById("saveStatus");
+  btn.disabled=true;
+  btn.textContent="SAVING...";
+  try{
+    const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);
+    if(error)throw error;
+    msg("ok","Activity status saved. Progress remains automatic at "+Number(progress).toFixed(2).replace(/\.00$/,"")+"% based on actual quantity.");
+    closeModal();
+    await loadActivities();
+  }catch(e){
+    console.error(e);
+    msg("err","Could not update activity status: "+e.message);
+  }finally{
+    btn.disabled=false;
+    btn.textContent="SAVE STATUS";
+  }
+}
 document.addEventListener("DOMContentLoaded",()=>{init().catch(e=>{console.error(e);msg("err","Could not initialize schedule: "+e.message)})});
