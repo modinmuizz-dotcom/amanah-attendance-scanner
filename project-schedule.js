@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -32,10 +32,6 @@ async function init(){
   document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
   document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
   document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
-  document.getElementById("detailProgressRange").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("detailProgressNumber").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("saveDetailProgress").addEventListener("click",saveDetailProgress);
-  document.querySelectorAll("[data-progress-quick]").forEach(btn=>btn.addEventListener("click",()=>syncDetailProgressInputs(btn.dataset.progressQuick)));
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -68,10 +64,72 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
-  if(error)throw error;state.activities=acts||[];
-  const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
-  if(relErr)throw relErr;state.assignments=rel||[];renderTables();
+  const [
+    {data:acts,error:activityError},
+    {data:rel,error:relErr},
+    {data:execution,error:executionError}
+  ]=await Promise.all([
+    supabaseClient.from("project_activities")
+      .select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,scheduled_start,scheduled_end,priority,completed_at,completion_remarks,activity_item,activity_quantity")
+      .order("activity_date",{ascending:false})
+      .order("scheduled_start",{ascending:false}),
+    supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
+    supabaseClient.from("attendance_activities")
+      .select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at")
+      .not("project_activity_id","is",null)
+      .order("created_at",{ascending:false})
+  ]);
+  if(activityError)throw activityError;
+  if(relErr)throw relErr;
+  if(executionError)throw executionError;
+
+  state.activities=acts||[];
+  state.assignments=rel||[];
+  state.executionByActivity={};
+
+  (execution||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id]){
+      state.executionByActivity[id]={actualQuantity:0,photos:[]};
+    }
+    state.executionByActivity[id].actualQuantity+=Number(row.quantity||0);
+    [row.photo_1_path,row.photo_2_path].filter(Boolean).forEach(path=>{
+      if(!state.executionByActivity[id].photos.includes(path)){
+        state.executionByActivity[id].photos.push(path);
+      }
+    });
+  });
+
+  renderTables();
+}
+function executionFor(id){
+  return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[]};
+}
+function plannedQuantity(a){
+  const n=Number(a?.activity_quantity);
+  return Number.isFinite(n)&&n>=0?n:0;
+}
+function actualQuantityFor(a){
+  const n=Number(executionFor(a.activity_id).actualQuantity||0);
+  return Number.isFinite(n)&&n>=0?n:0;
+}
+function calculatedProgress(a){
+  const planned=plannedQuantity(a);
+  const actual=actualQuantityFor(a);
+  if(planned<=0)return 0;
+  return Math.min(100,Math.max(0,(actual/planned)*100));
+}
+function calculatedStatus(a){
+  const current=String(a?.activity_status||"PLANNED").toUpperCase();
+  const progress=calculatedProgress(a);
+  if(current==="CANCELLED" || current==="NOT DONE")return current;
+  if(progress>=100 && plannedQuantity(a)>0)return "DONE";
+  if(actualQuantityFor(a)>0)return "IN PROGRESS";
+  return "PLANNED";
+}
+function formatQuantity(value){
+  const n=Number(value||0);
+  return Number.isFinite(n)?n.toLocaleString("en-PH",{maximumFractionDigits:6}):"0";
 }
 function selectedProjectName(id){return state.projects.find(p=>p.project_id===id)?.project_name||"";}
 function equipmentFor(id){const ids=state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id);return state.equipment.filter(e=>ids.includes(e.equipment_id));}
@@ -91,7 +149,7 @@ function renderTables(){
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
     const action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
-    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
+    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong></td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(calculatedStatus(a))+'</td><td>'+esc(Number(calculatedProgress(a)).toFixed(2).replace(/\.00$/,""))+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const assignments=rows.flatMap(a=>equipmentFor(a.activity_id).map(e=>({a,e})));
@@ -508,40 +566,138 @@ async function saveDetailProgress(){
     btn.disabled=false;btn.textContent="SAVE PROGRESS";
   }
 }
-function openDetailsModal(id){
-  const a=state.activities.find(x=>x.activity_id===id);
-  if(!a)return;
+async function openDetailsModal(id){
   state.detailActivityId=id;
-  const equipment=equipmentFor(id);
-  const equipmentText=equipment.length
-    ? equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", ")
-    : (a.equipment||"—");
-  const progress=Math.max(0,Math.min(100,Number(a.accomplishment||0)));
-  const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-  document.getElementById("detailActivityName").textContent=a.activity||"Activity";
-  document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
-  document.getElementById("detailStatus").textContent=a.activity_status||"PLANNED";
-  document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
-  document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
-  document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
-  document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
-  document.getElementById("detailTime").textContent=time;
-  document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
-  document.getElementById("detailEquipment").textContent=equipmentText;
-  document.getElementById("detailDescription").textContent=a.description||"No description provided.";
-  document.getElementById("detailProgressText").textContent=progress+"%";
-  document.getElementById("detailProgressFill").style.width=progress+"%";
-  syncDetailProgressInputs(progress);
-  document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
-  document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
-  document.getElementById("detailModal").style.display="flex";
+
+  try{
+    const [{data:latest,error:latestError},{data:rows,error:rowsError}]=await Promise.all([
+      supabaseClient.from("project_activities")
+        .select("activity_id,project_id,project_name,activity_date,activity,description,manpower,equipment,accomplishment,remarks,activity_status,scheduled_start,scheduled_end,priority,completed_at,completion_remarks,activity_item,activity_quantity")
+        .eq("activity_id",id)
+        .maybeSingle(),
+      supabaseClient.from("attendance_activities")
+        .select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at")
+        .eq("project_activity_id",id)
+        .order("created_at",{ascending:false})
+    ]);
+
+    if(latestError)throw latestError;
+    if(rowsError)throw rowsError;
+    if(latest){
+      const idx=state.activities.findIndex(x=>x.activity_id===id);
+      if(idx>=0)state.activities[idx]=latest;
+      else state.activities.push(latest);
+    }
+
+    const a=state.activities.find(x=>x.activity_id===id);
+    if(!a)return;
+
+    const grouped={actualQuantity:0,photos:[]};
+    (rows||[]).forEach(row=>{
+      grouped.actualQuantity+=Number(row.quantity||0);
+      [row.photo_1_path,row.photo_2_path].filter(Boolean).forEach(path=>{
+        if(!grouped.photos.includes(path))grouped.photos.push(path);
+      });
+    });
+    state.executionByActivity[String(id)]=grouped;
+
+    const equipment=equipmentFor(id);
+    const equipmentText=equipment.length
+      ? equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", ")
+      : (a.equipment||"—");
+    const planned=plannedQuantity(a);
+    const actual=actualQuantityFor(a);
+    const progress=calculatedProgress(a);
+    const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
+
+    document.getElementById("detailActivityName").textContent=a.activity||"Activity";
+    document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
+    document.getElementById("detailStatus").textContent=calculatedStatus(a);
+    document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
+    document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
+    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+    document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
+    document.getElementById("detailTime").textContent=time;
+    document.getElementById("detailManpower").textContent=(a.manpower??0)+" personnel";
+    document.getElementById("detailEquipment").textContent=equipmentText;
+    document.getElementById("detailDescription").textContent=a.description||"No description provided.";
+    document.getElementById("detailProgressText").textContent=Number(progress).toFixed(2).replace(/\\.00$/,"")+"%";
+    document.getElementById("detailProgressFill").style.width=Math.min(100,Math.max(0,progress))+"%";
+    document.getElementById("detailPlannedQuantity").textContent=formatQuantity(planned);
+    document.getElementById("detailActualQuantity").textContent=formatQuantity(actual);
+    document.getElementById("detailAutoProgress").textContent=Number(progress).toFixed(2).replace(/\\.00$/,"")+"%";
+    document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
+    document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
+    document.getElementById("detailEvidenceCount").textContent=grouped.photos.length+" PHOTO"+(grouped.photos.length===1?"":"S");
+    document.getElementById("detailEvidenceContent").innerHTML=grouped.photos.length
+      ? '<div class="detail-evidence-loading">Loading photo evidence...</div>'
+      : '<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
+
+    document.getElementById("detailModal").style.display="flex";
+    await renderDetailEvidence(id);
+  }catch(e){
+    console.error(e);
+    msg("err","Unable to open activity details: "+e.message);
+  }
 }
+
+async function renderDetailEvidence(id){
+  const content=document.getElementById("detailEvidenceContent");
+  const execution=executionFor(id);
+  const paths=execution.photos||[];
+  if(!paths.length){
+    content.innerHTML='<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
+    return;
+  }
+
+  const results=await Promise.all(paths.map(path=>
+    supabaseClient.storage.from("attendance-activity-evidence").createSignedUrl(path,3600)
+  ));
+
+  content.innerHTML=results.map((result,index)=>{
+    const url=result?.data?.signedUrl;
+    if(result?.error||!url){
+      return '<div class="detail-evidence-card"><div class="detail-evidence-empty">PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
+    }
+    return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Driver/operator activity evidence photo '+(index+1)+'"><div class="detail-evidence-label">PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
+  }).join("");
+}
+
 function closeDetailModal(){
   state.detailActivityId=null;
   document.getElementById("detailModal").style.display="none";
 }
-function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=a.activity_status||"PLANNED";document.getElementById("modalProgress").value=a.accomplishment??0;document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
+function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=calculatedStatus(a);document.getElementById("modalProgress").value=Number(calculatedProgress(a)).toFixed(2).replace(/\\.00$/,"")+"%";document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
 function closeModal(){state.editingActivityId=null;document.getElementById("statusModal").style.display="none";}
-document.getElementById("modalStatus").addEventListener("change",()=>{const s=document.getElementById("modalStatus").value;if(s==="DONE")document.getElementById("modalProgress").value=100;if(s==="NOT DONE"||s==="CANCELLED")document.getElementById("modalProgress").value=0;});
-async function saveStatus(){if(!state.editingActivityId)return;const status=document.getElementById("modalStatus").value,progress=Math.max(0,Math.min(100,Number(document.getElementById("modalProgress").value||0))),remarks=document.getElementById("modalRemarks").value.trim();const payload={activity_status:status,accomplishment:status==="DONE"?100:progress,completion_remarks:remarks||null,completed_at:status==="DONE"?new Date().toISOString():null};const btn=document.getElementById("saveStatus");btn.disabled=true;btn.textContent="SAVING...";try{const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);if(error)throw error;msg("ok","Activity status updated successfully.");closeModal();await loadActivities();}catch(e){console.error(e);msg("err","Could not update activity status: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE STATUS";}}
+async function saveStatus(){
+  if(!state.editingActivityId)return;
+  const a=state.activities.find(x=>x.activity_id===state.editingActivityId);
+  if(!a)return;
+  const requestedStatus=document.getElementById("modalStatus").value;
+  const remarks=document.getElementById("modalRemarks").value.trim();
+  const progress=calculatedProgress(a);
+  const status=(requestedStatus==="NOT DONE"||requestedStatus==="CANCELLED")
+    ? requestedStatus
+    : calculatedStatus(a);
+  const payload={
+    activity_status:status,
+    accomplishment:progress,
+    completion_remarks:remarks||null,
+    completed_at:status==="DONE"?new Date().toISOString():null
+  };
+  const btn=document.getElementById("saveStatus");
+  btn.disabled=true;btn.textContent="SAVING...";
+  try{
+    const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);
+    if(error)throw error;
+    msg("ok",`Activity status saved. Progress remains automatic at ${Number(progress).toFixed(2).replace(/\\.00$/,"")}%, based on actual quantity.`);
+    closeModal();
+    await loadActivities();
+  }catch(e){
+    console.error(e);
+    msg("err","Could not update activity status: "+e.message);
+  }finally{
+    btn.disabled=false;btn.textContent="SAVE STATUS";
+  }
+}
 document.addEventListener("DOMContentLoaded",()=>{init().catch(e=>{console.error(e);msg("err","Could not initialize schedule: "+e.message)})});
