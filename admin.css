@@ -2086,3 +2086,27 @@ body.printing-material-estimate .material-estimate-note{
   letter-spacing:.05em;
   text-transform:uppercase;
 }
+
+
+/* =========================================================
+   EQUIPMENT MASTER — HARDENED CLICK TARGETS
+   ========================================================= */
+
+#equipmentTab{
+  position:relative;
+  z-index:10002;
+}
+
+#equipmentTab .section-header,
+#equipmentTab .action-buttons{
+  position:relative;
+  z-index:10003;
+}
+
+#equipmentTab #addEquipmentButton,
+#equipmentTab .edit-button{
+  position:relative;
+  z-index:10004;
+  pointer-events:auto !important;
+  cursor:pointer !important;
+}
