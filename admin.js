@@ -1920,10 +1920,45 @@ function openEquipmentModal(
         true
       )}
 
-      ${field(
+      ${selectField(
         'Equipment Type',
-        'equipment_type',
-        values.equipment_type,
+        (
+          values.equipment_type &&
+          ![
+            'EXCAVATOR',
+            'BULLDOZER',
+            'LOADER',
+            'MOTOR GRADER',
+            'DUMP TRUCK',
+            'ROAD ROLLER',
+            'TRANSIT MIXER',
+            'WHEEL TYPE BACKHOE'
+          ].includes(
+            String(values.equipment_type).trim().toUpperCase()
+          )
+            ? [
+                values.equipment_type,
+                'EXCAVATOR',
+                'BULLDOZER',
+                'LOADER',
+                'MOTOR GRADER',
+                'DUMP TRUCK',
+                'ROAD ROLLER',
+                'TRANSIT MIXER',
+                'WHEEL TYPE BACKHOE'
+              ]
+            : [
+                'EXCAVATOR',
+                'BULLDOZER',
+                'LOADER',
+                'MOTOR GRADER',
+                'DUMP TRUCK',
+                'ROAD ROLLER',
+                'TRANSIT MIXER',
+                'WHEEL TYPE BACKHOE'
+              ]
+        ),
+        values.equipment_type || '',
         true
       )}
 
