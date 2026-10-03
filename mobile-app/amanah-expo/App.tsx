@@ -265,6 +265,7 @@ type AdditionalEvidence = {
   evidence_id: string;
   photo_path: string;
   signed_url: string | null;
+  local_uri?: string | null;
   created_at: string;
 };
 
@@ -283,6 +284,7 @@ async function fetchAdditionalActivityEvidence(attendanceId: string, activityId:
       evidence_id: row.evidence_id,
       photo_path: row.photo_path,
       signed_url: await createEvidenceUrl(row.photo_path),
+      local_uri: null,
       created_at: row.created_at,
     })),
   );
@@ -324,6 +326,7 @@ async function uploadAdditionalActivityEvidence(
     evidence_id: data.evidence_id,
     photo_path: data.photo_path,
     signed_url: await createEvidenceUrl(data.photo_path),
+    local_uri: uri,
     created_at: data.created_at,
   };
 }
@@ -387,6 +390,7 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
   const [photo2PreviewError, setPhoto2PreviewError] = useState(false);
   const [extraEvidence, setExtraEvidence] = useState<AdditionalEvidence[]>([]);
   const [extraCaptureOpen, setExtraCaptureOpen] = useState(false);
+  const [extraReplaceTarget, setExtraReplaceTarget] = useState<AdditionalEvidence | null>(null);
   const [extraCameraReady, setExtraCameraReady] = useState(false);
   const [savedQuantity, setSavedQuantity] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -499,42 +503,43 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
 
     Alert.alert(
       'REPLACE PHOTO',
-      'Replace this uploaded activity evidence photo with a new photo?',
+      'Choose how you want to replace this activity evidence photo.',
       [
+        { text: 'TAKE NEW PHOTO', onPress: () => {
+          setExtraReplaceTarget(photo);
+          openExtraCamera();
+        }},
+        { text: 'CHOOSE FROM PHONE', onPress: async () => {
+          try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              quality: 0.75,
+            });
+
+            if (result.canceled || !result.assets?.length) return;
+
+            setSaving(true);
+            const replacement = await replaceAdditionalActivityEvidence(
+              photo.evidence_id,
+              photo.photo_path,
+              result.assets[0].uri,
+              attendance.attendance_id,
+              live.project_activity_id,
+            );
+
+            setExtraEvidence(previous =>
+              previous.map(item => item.evidence_id === photo.evidence_id ? replacement : item),
+            );
+
+            Alert.alert('Photo replaced', 'The activity evidence photo has been replaced successfully.');
+          } catch (e) {
+            Alert.alert('Photo replacement failed', e instanceof Error ? e.message : 'Unable to replace the photo.');
+          } finally {
+            setSaving(false);
+          }
+        }},
         { text: 'CANCEL', style: 'cancel' },
-        {
-          text: 'REPLACE',
-          onPress: async () => {
-            try {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                allowsEditing: true,
-                quality: 0.75,
-              });
-
-              if (result.canceled || !result.assets?.length) return;
-
-              setSaving(true);
-              const replacement = await replaceAdditionalActivityEvidence(
-                photo.evidence_id,
-                photo.photo_path,
-                result.assets[0].uri,
-                attendance.attendance_id,
-                live.project_activity_id,
-              );
-
-              setExtraEvidence(previous =>
-                previous.map(item => item.evidence_id === photo.evidence_id ? replacement : item),
-              );
-
-              Alert.alert('Photo replaced', 'The activity evidence photo has been replaced successfully.');
-            } catch (e) {
-              Alert.alert('Photo replacement failed', e instanceof Error ? e.message : 'Unable to replace the photo.');
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
       ],
     );
   }
@@ -605,15 +610,31 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
       const result = await cameraRef.current.takePictureAsync({ quality: 0.65 });
       if (!result?.uri) throw new Error('The camera did not return a photo.');
 
-      const evidence = await uploadAdditionalActivityEvidence(
-        result.uri,
-        attendance.attendance_id,
-        live.project_activity_id,
-        employee.employee_id,
-      );
-      setExtraEvidence(previous => [...previous, evidence]);
-      setExtraCaptureOpen(false);
-      Alert.alert('Photo uploaded', 'Additional activity evidence was saved to Supabase.');
+      if (extraReplaceTarget) {
+        const replacement = await replaceAdditionalActivityEvidence(
+          extraReplaceTarget.evidence_id,
+          extraReplaceTarget.photo_path,
+          result.uri,
+          attendance.attendance_id,
+          live.project_activity_id,
+        );
+        setExtraEvidence(previous =>
+          previous.map(item => item.evidence_id === extraReplaceTarget.evidence_id ? replacement : item),
+        );
+        setExtraReplaceTarget(null);
+        setExtraCaptureOpen(false);
+        Alert.alert('Photo replaced', 'The activity evidence photo has been replaced successfully.');
+      } else {
+        const evidence = await uploadAdditionalActivityEvidence(
+          result.uri,
+          attendance.attendance_id,
+          live.project_activity_id,
+          employee.employee_id,
+        );
+        setExtraEvidence(previous => [...previous, evidence]);
+        setExtraCaptureOpen(false);
+        Alert.alert('Photo uploaded', 'Additional activity evidence was saved to Supabase.');
+      }
     } catch (e) {
       Alert.alert('Photo upload failed', e instanceof Error ? e.message : 'Unable to upload the additional photo.');
     } finally {
@@ -706,7 +727,7 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
           </View>
         </View>
         <Button title={saving ? 'UPLOADING...' : 'TAKE PHOTO & UPLOAD'} onPress={captureExtraPhoto} disabled={!extraCameraReady || saving} />
-        <Button title="CANCEL" onPress={() => setExtraCaptureOpen(false)} secondary />
+        <Button title="CANCEL" onPress={() => { setExtraReplaceTarget(null); setExtraCaptureOpen(false); }} secondary />
       </View>
     );
   }
@@ -852,7 +873,7 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                 {extraEvidence.map((photo, index) => (
                   <View key={photo.evidence_id} style={styles.extraPhotoBox}>
                     {photo.signed_url ? (
-                      <Image source={{ uri: photo.signed_url }} style={styles.extraPhotoPreview} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+                      <Image source={{ uri: photo.local_uri || photo.signed_url || undefined }} style={styles.extraPhotoPreview} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                     ) : (
                       <View style={styles.photoEmptyBox}><Text style={styles.photoEmpty}>PHOTO SAVED</Text></View>
                     )}
