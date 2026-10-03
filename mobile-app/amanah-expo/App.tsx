@@ -43,7 +43,7 @@ function Button({ title, onPress, secondary = false, disabled = false }: { title
 }
 
 function Login({ onDone }: { onDone: () => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -120,16 +120,48 @@ function Login({ onDone }: { onDone: () => void }) {
     onDone();
   }
 
+  async function sendReset() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      Alert.alert('Invalid email', 'Enter your registered AMANAH email address.');
+      return;
+    }
+
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
+    setBusy(false);
+
+    if (error) {
+      Alert.alert('Reset request failed', error.message);
+      return;
+    }
+
+    Alert.alert(
+      'Password reset sent',
+      'Check your email for the secure password reset link, then return to AMANAH and sign in with your new password.',
+    );
+    setMode('login');
+  }
+
+  const isLogin = mode === 'login';
+  const isRegister = mode === 'register';
+  const isReset = mode === 'reset';
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.login}>
         <Text style={styles.brand}>AMANAH</Text>
         <Text style={styles.eyebrow}>FIELD OPERATIONS</Text>
-        <Text style={styles.title}>{mode === 'login' ? 'Driver & Operator Mobile' : 'Create Mobile Account'}</Text>
+        <Text style={styles.title}>
+          {isReset ? 'Reset Password' : isLogin ? 'Driver & Operator Mobile' : 'Create Mobile Account'}
+        </Text>
         <Text style={styles.muted}>
-          {mode === 'login'
-            ? 'Sign in with the email registered in Employee Master Data. Your employee profile is detected automatically.'
-            : 'Use the email already registered in Employee Master Data, then create your own password.'}
+          {isReset
+            ? 'Enter the email registered in AMANAH. Supabase will send a secure password reset link.'
+            : isLogin
+              ? 'Sign in with the email registered in Employee Master Data. Your employee profile is detected automatically.'
+              : 'Use the email already registered in Employee Master Data, then create your own password.'}
         </Text>
 
         <View style={styles.card}>
@@ -145,19 +177,23 @@ function Login({ onDone }: { onDone: () => void }) {
             placeholder="driver@example.com"
           />
 
-          <Text style={styles.label}>PASSWORD</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType={mode === 'login' ? 'password' : 'newPassword'}
-            style={styles.input}
-            placeholder={mode === 'login' ? 'Your password' : 'At least 8 characters'}
-          />
+          {!isReset ? (
+            <>
+              <Text style={styles.label}>PASSWORD</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType={isLogin ? 'password' : 'newPassword'}
+                style={styles.input}
+                placeholder={isLogin ? 'Your password' : 'At least 8 characters'}
+              />
+            </>
+          ) : null}
 
-          {mode === 'register' ? (
+          {isRegister ? (
             <>
               <Text style={styles.label}>CONFIRM PASSWORD</Text>
               <TextInput
@@ -171,7 +207,7 @@ function Login({ onDone }: { onDone: () => void }) {
                 placeholder="Repeat your password"
               />
               <Text style={styles.muted}>
-                Passwords are handled by Supabase Auth. They are not stored in the Employee Master Data table.
+                Passwords are handled by Supabase Auth. They are not stored in Employee Master Data.
               </Text>
             </>
           ) : null}
@@ -179,18 +215,27 @@ function Login({ onDone }: { onDone: () => void }) {
           <Button
             title={
               busy
-                ? (mode === 'login' ? 'SIGNING IN...' : 'CREATING ACCOUNT...')
-                : (mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT')
+                ? (isReset ? 'SENDING RESET...' : isLogin ? 'SIGNING IN...' : 'CREATING ACCOUNT...')
+                : (isReset ? 'SEND RESET LINK' : isLogin ? 'SIGN IN' : 'CREATE ACCOUNT')
             }
-            onPress={mode === 'login' ? signIn : register}
-            disabled={busy || !email || !password || (mode === 'register' && !confirmPassword)}
+            onPress={isReset ? sendReset : isLogin ? signIn : register}
+            disabled={busy || !email || (!isReset && (!password || (isRegister && !confirmPassword)))}
           />
 
-          <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')} style={styles.authSwitch}>
-            <Text style={styles.authSwitchText}>
-              {mode === 'login' ? 'NEW DRIVER / OPERATOR? CREATE YOUR ACCOUNT' : 'ALREADY HAVE AN ACCOUNT? SIGN IN'}
-            </Text>
-          </Pressable>
+          {isLogin ? (
+            <>
+              <Pressable onPress={() => setMode('reset')} style={styles.authSwitch}>
+                <Text style={styles.authSwitchText}>FORGOT PASSWORD?</Text>
+              </Pressable>
+              <Pressable onPress={() => setMode('register')} style={styles.authSwitch}>
+                <Text style={styles.authSwitchText}>NEW DRIVER / OPERATOR? CREATE YOUR ACCOUNT</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable onPress={() => setMode('login')} style={styles.authSwitch}>
+              <Text style={styles.authSwitchText}>BACK TO SIGN IN</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
       <StatusBar style="dark" />
