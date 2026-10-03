@@ -157,7 +157,21 @@ function manualPayrollEmployee(){
 }
 
 function manualPayrollIsHourly(employee){
-  return normalizeDepartment(employee?.department)==='TRUCKERS';
+  /*
+   * AMANAH drivers/operators are paid on a DAILY basis.
+   * Treat employees whose position identifies them as DRIVER/OPERATOR,
+   * and employees in the TRUCKERS department, as daily-rate employees.
+   * Keep the function name for compatibility with the existing UI logic.
+   */
+  const position=String(employee?.position||'').trim().toUpperCase();
+  const department=normalizeDepartment(employee?.department);
+
+  const isDriverOperator=
+    position.includes('DRIVER') ||
+    position.includes('OPERATOR') ||
+    department==='TRUCKERS';
+
+  return !isDriverOperator;
 }
 
 function manualPayrollRate(employee){
