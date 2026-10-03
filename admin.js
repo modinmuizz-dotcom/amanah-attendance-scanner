@@ -1803,6 +1803,14 @@ function openEmployeeModal(
         values.contact_number
       )}
 
+      ${field(
+        'Email',
+        'email',
+        values.email,
+        false,
+        'email'
+      )}
+
       ${isSeniorManager ? '' : field(
         'Date Hired',
         'date_hired',
@@ -3713,6 +3721,10 @@ async function saveEmployee(
 
     contact_number:
       values.contact_number.trim() ||
+      null,
+
+    email:
+      values.email.trim() ||
       null,
 
     date_hired:
