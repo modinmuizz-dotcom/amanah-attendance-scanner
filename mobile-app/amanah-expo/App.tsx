@@ -7,7 +7,19 @@ import { supabase } from './src/lib/supabase';
 import { EmployeeProfile, fetchMyEmployeeProfile } from './src/services/employeeIdentity';
 import { ApprovedActivity, Equipment, fetchActiveEquipment, fetchApprovedActivities } from './src/services/approvedActivities';
 
-type Screen = 'home' | 'approved' | 'profile' | 'clockin';
+type Screen = 'home' | 'approved' | 'profile' | 'clockin' | 'clockout';
+
+type ActiveAttendance = {
+  attendance_id: string;
+  attendance_date: string;
+  time_in: string;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  meter_type: string | null;
+  meter_in: number | null;
+};
 
 const STATION = {
   type: 'AMANAH_ATTENDANCE_V1',
@@ -131,7 +143,46 @@ function Approved({ equipment, selected, setSelected }: { equipment: Equipment[]
   );
 }
 
-function Home({ employee, onApproved, onClockIn }: { employee: EmployeeProfile; onApproved: () => void; onClockIn: () => void }) {
+async function fetchActiveAttendance(employeeId: string): Promise<ActiveAttendance | null> {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('attendance_id,attendance_date,time_in,equipment_id,equipment_name,project_id,project_name,meter_type,meter_in')
+    .eq('employee_id', employeeId)
+    .eq('status', 'IN')
+    .order('time_in', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as ActiveAttendance | null) ?? null;
+}
+
+const ATTENDANCE_ACTIVITY_TYPES = [
+  'HAULING',
+  'DELIVERY',
+  'TRIP',
+  'LOADS',
+  'CLEARING',
+  'SLOPE',
+  'CLEARING AND HAULING',
+  'ROAD REPAIR',
+  'BATCHING',
+  'OTHER',
+];
+
+function Home({
+  employee,
+  activeAttendance,
+  onApproved,
+  onClockIn,
+  onClockOut,
+}: {
+  employee: EmployeeProfile;
+  activeAttendance: ActiveAttendance | null;
+  onApproved: () => void;
+  onClockIn: () => void;
+  onClockOut: () => void;
+}) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.row}>
@@ -145,10 +196,26 @@ function Home({ employee, onApproved, onClockIn }: { employee: EmployeeProfile; 
 
       <View style={styles.greenCard}>
         <Text style={styles.greenLabel}>CURRENT ATTENDANCE</Text>
-        <Text style={styles.greenTitle}>Ready for a new shift?</Text>
-        <Text style={styles.greenText}>Review approved work first. Scan the permanent station QR only when you are ready to clock in.</Text>
-        <Button title="VIEW APPROVED ACTIVITIES" onPress={onApproved} />
-        <Button title="SCAN & CLOCK IN" onPress={onClockIn} secondary />
+        {activeAttendance ? (
+          <>
+            <Text style={styles.greenTitle}>Shift is active.</Text>
+            <Text style={styles.greenText}>
+              {activeAttendance.equipment_name ?? 'Equipment'} · {activeAttendance.project_name ?? 'Project'}
+            </Text>
+            <Text style={styles.greenText}>
+              Time in: {new Date(activeAttendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            </Text>
+            <Button title="VIEW APPROVED ACTIVITIES" onPress={onApproved} />
+            <Button title="TIME OUT" onPress={onClockOut} secondary />
+          </>
+        ) : (
+          <>
+            <Text style={styles.greenTitle}>Ready for a new shift?</Text>
+            <Text style={styles.greenText}>Review approved work first. Scan the permanent station QR only when you are ready to clock in.</Text>
+            <Button title="VIEW APPROVED ACTIVITIES" onPress={onApproved} />
+            <Button title="SCAN & CLOCK IN" onPress={onClockIn} secondary />
+          </>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -509,6 +576,179 @@ function ClockIn({
   );
 }
 
+function ClockOut({
+  employee,
+  attendance,
+  back,
+  onCompleted,
+}: {
+  employee: EmployeeProfile;
+  attendance: ActiveAttendance;
+  back: () => void;
+  onCompleted: () => void;
+}) {
+  const [meterOut, setMeterOut] = useState('');
+  const [activities, setActivities] = useState([
+    { activity_category: 'HAULING', activity_description: '', quantity: '' },
+  ]);
+  const [loading, setLoading] = useState(false);
+  const meterType = attendance.meter_type?.toUpperCase() === 'ODOMETER' ? 'ODOMETER' : 'HOUR METER';
+  const meterUnit = meterType === 'ODOMETER' ? 'KM' : 'HRS';
+
+  function updateActivity(index: number, field: 'activity_category' | 'activity_description' | 'quantity', value: string) {
+    setActivities(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  }
+
+  function addActivity() {
+    setActivities(prev => [...prev, { activity_category: 'HAULING', activity_description: '', quantity: '' }]);
+  }
+
+  function removeActivity(index: number) {
+    if (activities.length === 1) return;
+    setActivities(prev => prev.filter((_, i) => i !== index));
+  }
+
+  async function completeTimeOut() {
+    const numericMeter = Number(meterOut);
+    if (!Number.isFinite(numericMeter) || numericMeter < 0) {
+      Alert.alert('Meter Out required', 'Enter the current meter reading before Time OUT.');
+      return;
+    }
+
+    const preparedActivities = activities.map((item) => ({
+      activity_category: item.activity_category.trim(),
+      activity_description: item.activity_description.trim(),
+      quantity: Number(item.quantity),
+    }));
+
+    const invalid = preparedActivities.find(
+      item => !item.activity_category || !item.activity_description || !Number.isFinite(item.quantity) || item.quantity <= 0
+    );
+
+    if (invalid) {
+      Alert.alert('Activity information required', 'Every activity needs a type, description, and quantity greater than zero.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: prepared, error: prepareError } = await supabase.rpc('prepare_attendance_out', {
+        p_attendance_id: attendance.attendance_id,
+        p_employee_id: employee.employee_id,
+        p_meter_out: numericMeter,
+        p_activities: preparedActivities,
+      });
+
+      if (prepareError) throw prepareError;
+      if (!prepared?.success) throw new Error(prepared?.error || 'Unable to prepare Time OUT.');
+
+      const { data: completed, error: completeError } = await supabase.rpc('complete_attendance', {
+        p_attendance_id: attendance.attendance_id,
+        p_employee_id: employee.employee_id,
+        p_time_out: new Date().toISOString(),
+        p_fuel_used: false,
+        p_fuel_quantity: null,
+        p_fuel_unit: null,
+        p_fuel_amount: null,
+      });
+
+      if (completeError) throw completeError;
+      if (!completed?.success) throw new Error(completed?.error || 'Unable to complete Time OUT.');
+
+      Alert.alert(
+        'TIME OUT recorded',
+        `${attendance.equipment_name ?? 'Equipment'} completed the shift. ${prepared.meter_used ?? 0} ${meterUnit} used and ${prepared.activity_count ?? activities.length} activity item(s) recorded.`,
+      );
+      onCompleted();
+    } catch (e) {
+      Alert.alert('TIME OUT failed', e instanceof Error ? e.message : 'Unable to record Time OUT.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Pressable onPress={back}>
+        <Text style={styles.back}>‹ Back</Text>
+      </Pressable>
+
+      <Text style={styles.eyebrow}>ATTENDANCE OUT</Text>
+      <Text style={styles.title}>Time out</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Current shift</Text>
+        <Text style={styles.meta}>Equipment: {attendance.equipment_name ?? '—'}</Text>
+        <Text style={styles.meta}>Project: {attendance.project_name ?? '—'}</Text>
+        <Text style={styles.meta}>
+          Time in: {new Date(attendance.time_in).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        </Text>
+        <Text style={styles.muted}>Equipment and project are taken automatically from the active attendance.</Text>
+
+        <Text style={styles.label}>CURRENT {meterType} READING</Text>
+        <TextInput
+          value={meterOut}
+          onChangeText={setMeterOut}
+          keyboardType="decimal-pad"
+          placeholder={meterType === 'ODOMETER' ? 'Enter odometer out' : 'Enter hour meter out'}
+          style={styles.input}
+        />
+        <Text style={styles.muted}>Unit: {meterUnit} · Meter In: {attendance.meter_in ?? '—'}</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Activities completed</Text>
+        <Text style={styles.muted}>Add every activity completed during this shift. Unit is not required.</Text>
+
+        {activities.map((item, index) => (
+          <View key={index} style={styles.activityForm}>
+            <Text style={styles.label}>ACTIVITY {index + 1}</Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {ATTENDANCE_ACTIVITY_TYPES.map(type => (
+                <Pressable
+                  key={type}
+                  onPress={() => updateActivity(index, 'activity_category', type)}
+                  style={[
+                    styles.chip,
+                    item.activity_category === type && styles.chipSelected,
+                  ]}
+                >
+                  <Text style={[styles.chipText, item.activity_category === type && styles.chipTextSelected]}>
+                    {type}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <TextInput
+              value={item.activity_description}
+              onChangeText={value => updateActivity(index, 'activity_description', value)}
+              placeholder="What work did you complete?"
+              style={styles.input}
+            />
+
+            <TextInput
+              value={item.quantity}
+              onChangeText={value => updateActivity(index, 'quantity', value)}
+              keyboardType="decimal-pad"
+              placeholder="Quantity"
+              style={styles.input}
+            />
+
+            {activities.length > 1 ? (
+              <Button title="REMOVE ACTIVITY" onPress={() => removeActivity(index)} secondary />
+            ) : null}
+          </View>
+        ))}
+
+        <Button title="+ ADD ANOTHER ACTIVITY" onPress={addActivity} secondary />
+        <Button title={loading ? 'RECORDING TIME OUT...' : 'CONFIRM TIME OUT'} onPress={completeTimeOut} disabled={loading || !meterOut} />
+      </View>
+    </ScrollView>
+  );
+}
+
 function Profile({ employee, signOut }: { employee: EmployeeProfile; signOut: () => void }) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -534,6 +774,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState('');
+  const [activeAttendance, setActiveAttendance] = useState<ActiveAttendance | null>(null);
 
   async function hydrate() {
     const { data: { session: s } } = await supabase.auth.getSession();
@@ -541,14 +782,17 @@ export default function App() {
     if (s) {
       try {
         setError('');
-        setEmployee(await fetchMyEmployeeProfile());
+        const employeeProfile = await fetchMyEmployeeProfile();
+        setEmployee(employeeProfile);
         setEquipment(await fetchActiveEquipment());
+        setActiveAttendance(await fetchActiveAttendance(employeeProfile.employee_id));
       } catch (e) {
         setEmployee(null);
         setError(e instanceof Error ? e.message : 'Employee profile could not be loaded.');
       }
     } else {
       setEmployee(null);
+      setActiveAttendance(null);
     }
     setReady(true);
   }
@@ -565,12 +809,13 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {screen === 'home' ? <Home employee={employee} onApproved={() => setScreen('approved')} onClockIn={() => setScreen('clockin')} /> : null}
+      {screen === 'home' ? <Home employee={employee} activeAttendance={activeAttendance} onApproved={() => setScreen('approved')} onClockIn={() => setScreen('clockin')} onClockOut={() => setScreen('clockout')} /> : null}
       {screen === 'approved' ? <Approved equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} /> : null}
-      {screen === 'clockin' ? <ClockIn employee={employee} equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} back={() => setScreen('home')} onClockedIn={() => setScreen('home')} /> : null}
+      {screen === 'clockin' ? <ClockIn employee={employee} equipment={equipment} selected={selectedEquipment} setSelected={setSelectedEquipment} back={() => setScreen('home')} onClockedIn={async () => { setActiveAttendance(await fetchActiveAttendance(employee.employee_id)); setScreen('home'); }} /> : null}
+      {screen === 'clockout' && activeAttendance ? <ClockOut employee={employee} attendance={activeAttendance} back={() => setScreen('home')} onCompleted={async () => { setActiveAttendance(await fetchActiveAttendance(employee.employee_id)); setScreen('home'); }} /> : null}
       {screen === 'profile' ? <Profile employee={employee} signOut={() => supabase.auth.signOut()} /> : null}
 
-      {screen !== 'clockin' ? (
+      {screen !== 'clockin' && screen !== 'clockout' ? (
         <View style={styles.nav}>
           <Pressable style={styles.navItem} onPress={() => setScreen('home')}><Text style={screen === 'home' ? styles.navActive : styles.navText}>Home</Text></Pressable>
           <Pressable style={styles.navItem} onPress={() => setScreen('approved')}><Text style={screen === 'approved' ? styles.navActive : styles.navText}>Approved</Text></Pressable>
@@ -619,6 +864,7 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: '#FFF' },
   activity: { backgroundColor: '#FFF', borderRadius: 16, padding: 15, marginTop: 10, gap: 5, borderWidth: 1, borderColor: '#E2E9E4' },
   activitySelected: { borderColor: '#145A3B', backgroundColor: '#F0F7F3' },
+  activityForm: { backgroundColor: '#F8FBF9', borderRadius: 14, padding: 14, gap: 9, borderWidth: 1, borderColor: '#E0E9E3' },
   scannerFrame: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#101713', gap: 10 },
   camera: { width: '100%', height: 420 },
   scannerOverlay: { position: 'absolute', left: 0, right: 0, top: 0, height: 420, alignItems: 'center', justifyContent: 'center', padding: 24 },
