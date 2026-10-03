@@ -16,6 +16,8 @@ export type ApprovedActivity = {
   activity: string;
   activity_item: string | null;
   activity_quantity: number | null;
+  actual_quantity: number;
+  remaining_quantity: number;
   description: string | null;
   scheduled_start: string | null;
   scheduled_end: string | null;
@@ -24,7 +26,14 @@ export type ApprovedActivity = {
   approval_status: string;
   equipment_id: string;
   equipment_name: string;
-};
+  assigned_equipment_count: number;
+  claimed_equipment_count: number;
+  eligible_equipment_count: number;
+  is_carryover: boolean;
+  carryover_from_date: string | null;
+  selection_available: boolean;
+  selection_reason: string | null;
+}
 
 function localDay(days: number) {
   const d = new Date();
@@ -45,50 +54,65 @@ export async function fetchActiveEquipment(): Promise<Equipment[]> {
 export async function fetchApprovedActivities(
   equipmentId?: string | null
 ): Promise<ApprovedActivity[]> {
-  let assignmentsQuery = supabase
-    .from('project_activity_equipment')
-    .select('activity_id, equipment_id');
+  if (equipmentId) {
+    const { data, error } = await supabase.rpc('get_mobile_approved_work', {
+      p_equipment_id: equipmentId,
+    });
 
-  if (equipmentId) assignmentsQuery = assignmentsQuery.eq('equipment_id', equipmentId);
+    if (error) throw error;
+    return ((data ?? []) as ApprovedActivity[]).filter(
+      item => !item.is_carryover || item.selection_available || item.activity_status === 'DONE',
+    );
+  }
 
-  const { data: assignments, error: assignmentError } = await assignmentsQuery;
-  if (assignmentError) throw assignmentError;
-
-  const ids = [...new Set((assignments ?? []).map((r: any) => r.activity_id))];
-  if (!ids.length) return [];
-
-  const { data: activities, error } = await supabase
-    .from('project_activities')
-    .select('activity_id, project_id, project_name, activity_date, activity, activity_item, activity_quantity, description, scheduled_start, scheduled_end, priority, activity_status, approval_status')
-    .in('activity_id', ids)
-    .eq('approval_status', 'APPROVED')
-    .not('activity_status', 'in', '(CANCELLED,REJECTED,DONE)')
-    .gte('scheduled_start', localDay(0).toISOString())
-    .lt('scheduled_start', localDay(7).toISOString())
-    .order('scheduled_start', { ascending: true });
-
-  if (error) throw error;
-
-  const equipmentIds = [...new Set((assignments ?? []).map((r: any) => r.equipment_id))];
   const { data: equipment, error: equipmentError } = await supabase
     .from('equipment')
-    .select('equipment_id, equipment_name')
-    .in('equipment_id', equipmentIds);
+    .select('equipment_id')
+    .eq('status', 'ACTIVE')
+    .order('equipment_id');
 
   if (equipmentError) throw equipmentError;
 
-  const names = new Map((equipment ?? []).map((e: any) => [e.equipment_id, e.equipment_name]));
-  const assignmentMap = new Map<string, any>();
-  for (const row of assignments ?? []) {
-    assignmentMap.set(row.activity_id, row);
+  const responses = await Promise.all(
+    (equipment ?? []).map(async (row: any) => {
+      const { data, error } = await supabase.rpc('get_mobile_approved_work', {
+        p_equipment_id: row.equipment_id,
+      });
+      if (error) throw error;
+      return (data ?? []) as ApprovedActivity[];
+    }),
+  );
+
+  const byActivity = new Map<string, ApprovedActivity>();
+
+  for (const item of responses.flat()) {
+    const existing = byActivity.get(item.activity_id);
+    if (!existing) {
+      byActivity.set(item.activity_id, { ...item });
+      continue;
+    }
+
+    const equipmentNames = new Set(
+      existing.equipment_name
+        .split(' • ')
+        .concat(item.equipment_name.split(' • '))
+        .filter(Boolean),
+    );
+
+    existing.equipment_name = Array.from(equipmentNames).join(' • ');
+    existing.assigned_equipment_count = Math.max(
+      existing.assigned_equipment_count,
+      item.assigned_equipment_count,
+    );
+    existing.actual_quantity = Math.max(existing.actual_quantity, item.actual_quantity);
+    existing.remaining_quantity = Math.min(existing.remaining_quantity, item.remaining_quantity);
+    existing.selection_available =
+      existing.selection_available || item.selection_available;
   }
 
-  return (activities ?? []).map((a: any) => {
-    const assignment = assignmentMap.get(a.activity_id);
-    return {
-      ...a,
-      equipment_id: assignment.equipment_id,
-      equipment_name: names.get(assignment.equipment_id) ?? 'Equipment',
-    };
+  return Array.from(byActivity.values()).sort((a, b) => {
+    if (a.is_carryover !== b.is_carryover) return a.is_carryover ? -1 : 1;
+    return new Date(a.scheduled_start ?? a.activity_date).getTime()
+      - new Date(b.scheduled_start ?? b.activity_date).getTime();
   });
 }

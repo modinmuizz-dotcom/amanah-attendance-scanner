@@ -74,6 +74,7 @@ async function loadActivitySiteData(){
     const [
       attendanceResult,
       activityResult,
+      extraEvidenceResult,
       projectResult
     ]=await Promise.all([
       supabaseClient
@@ -84,12 +85,17 @@ async function loadActivitySiteData(){
         .select('id,attendance_id,activity_category,activity_description,quantity,photo_1_path,photo_2_path,created_at')
         .order('created_at',{ascending:false}),
       supabaseClient
+        .from('activity_evidence_photos')
+        .select('evidence_id,attendance_id,project_activity_id,photo_path,created_at')
+        .order('created_at',{ascending:false}),
+      supabaseClient
         .from('projects')
         .select('project_id,project_name,location')
     ]);
 
     if(attendanceResult.error)throw attendanceResult.error;
     if(activityResult.error)throw activityResult.error;
+    if(extraEvidenceResult.error)throw extraEvidenceResult.error;
     if(projectResult.error)throw projectResult.error;
 
     projectLocations=new Map(
@@ -105,6 +111,13 @@ async function loadActivitySiteData(){
         .map(row=>[String(row.attendance_id),row])
     );
 
+    const extraByAttendance=new Map();
+    (extraEvidenceResult.data||[]).forEach(photo=>{
+      const key=String(photo.attendance_id);
+      if(!extraByAttendance.has(key))extraByAttendance.set(key,[]);
+      extraByAttendance.get(key).push(photo.photo_path);
+    });
+
     allActivityRecords=(activityResult.data||[])
       .map(activity=>{
         const attendance=attendanceById.get(String(activity.attendance_id));
@@ -117,7 +130,8 @@ async function loadActivitySiteData(){
         return {
           ...activity,
           attendance,
-          location
+          location,
+          extra_photo_paths:extraByAttendance.get(String(activity.attendance_id))||[]
         };
       })
       .filter(Boolean);
@@ -204,7 +218,7 @@ function renderActivitySite(){
   );
 
   const photos=records.reduce(
-    (count,r)=>count+(r.photo_1_path?1:0)+(r.photo_2_path?1:0),
+    (count,r)=>count+(r.photo_1_path?1:0)+(r.photo_2_path?1:0)+(r.extra_photo_paths?.length||0),
     0
   );
 
@@ -227,7 +241,7 @@ function renderActivitySite(){
 
   body.innerHTML=records.map((record,index)=>{
     const a=record.attendance;
-    const photoCount=(record.photo_1_path?1:0)+(record.photo_2_path?1:0);
+    const photoCount=(record.photo_1_path?1:0)+(record.photo_2_path?1:0)+(record.extra_photo_paths?.length||0);
 
     return `
       <tr>
@@ -287,7 +301,8 @@ async function openEvidence(record){
 
   const paths=[
     record.photo_1_path,
-    record.photo_2_path
+    record.photo_2_path,
+    ...(record.extra_photo_paths||[])
   ].filter(Boolean);
 
   if(!paths.length){
