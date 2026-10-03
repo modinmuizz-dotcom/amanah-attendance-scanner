@@ -2137,3 +2137,16 @@ body.printing-material-estimate .material-estimate-note{
   pointer-events:auto !important;
   cursor:pointer !important;
 }
+
+/* Equipment modal must sit above every AMANAH shell layer */
+#modal{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:50000 !important;
+  pointer-events:auto !important;
+}
+#modal .modal-card{
+  position:relative !important;
+  z-index:50001 !important;
+  pointer-events:auto !important;
+}
