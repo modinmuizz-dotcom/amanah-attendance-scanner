@@ -12,6 +12,15 @@ export type ApprovedActivity = {
   activity_id: string;
   project_id: string;
   project_name: string;
+  phase_id: string | null;
+  phase_name: string | null;
+  section_id: string | null;
+  section_name: string | null;
+  work_component_id: string | null;
+  work_component_name: string | null;
+  component_side: string | null;
+  station_start_m: number | null;
+  station_end_m: number | null;
   activity_date: string;
   activity: string;
   activity_item: string | null;
