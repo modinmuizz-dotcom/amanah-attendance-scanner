@@ -285,6 +285,16 @@ function ActivityCard({ item }: { item: ApprovedActivity }) {
       <Text style={styles.activityTitle}>{item.activity}</Text>
       {item.activity_item ? <Text style={styles.activityItem}>{item.activity_item}</Text> : null}
       <Text style={styles.project}>{item.project_name}</Text>
+      {item.work_component_name ? (
+        <Text style={styles.meta}>
+          Work: {item.work_component_name}{item.component_side && item.component_side !== 'NONE' ? ` · ${item.component_side}` : ''}
+        </Text>
+      ) : null}
+      {(item.station_start_m != null || item.station_end_m != null) ? (
+        <Text style={styles.meta}>
+          Station: {item.station_start_m != null ? item.station_start_m.toLocaleString() : '—'} → {item.station_end_m != null ? item.station_end_m.toLocaleString() : '—'}
+        </Text>
+      ) : null}
       <Text style={styles.meta}>Equipment: {item.equipment_name}</Text>
       <Text style={styles.meta}>
         {start ? start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Time TBD'}
@@ -1504,6 +1514,18 @@ function ClockIn({
                       <Text style={styles.activityItem}>{item.activity_item}</Text>
                     ) : null}
                     <Text style={styles.project}>{item.project_name}</Text>
+                    {item.phase_name ? <Text style={styles.meta}>Phase: {item.phase_name}</Text> : null}
+                    {item.section_name ? <Text style={styles.meta}>Section: {item.section_name}</Text> : null}
+                    {item.work_component_name ? (
+                      <Text style={styles.meta}>
+                        Work: {item.work_component_name}{item.component_side && item.component_side !== 'NONE' ? ` · ${item.component_side}` : ''}
+                      </Text>
+                    ) : null}
+                    {(item.station_start_m != null || item.station_end_m != null) ? (
+                      <Text style={styles.meta}>
+                        Station: {item.station_start_m != null ? item.station_start_m.toLocaleString() : '—'} → {item.station_end_m != null ? item.station_end_m.toLocaleString() : '—'}
+                      </Text>
+                    ) : null}
 
                     <Text style={styles.meta}>
                       {item.scheduled_start
