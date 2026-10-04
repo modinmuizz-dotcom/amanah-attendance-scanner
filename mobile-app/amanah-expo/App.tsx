@@ -394,6 +394,15 @@ type LiveActivity = {
   equipment_name: string | null;
   project_id: string | null;
   project_name: string | null;
+  phase_id: string | null;
+  phase_name: string | null;
+  section_id: string | null;
+  section_name: string | null;
+  work_component_id: string | null;
+  work_component_name: string | null;
+  component_side: string | null;
+  station_start_m: number | null;
+  station_end_m: number | null;
   activity: string;
   activity_item: string | null;
   description: string | null;
@@ -1008,6 +1017,18 @@ function LiveActivity({ employee, attendance }: { employee: EmployeeProfile; att
                 <Text style={styles.activityTitle}>{live.activity}</Text>
                 {live.activity_item ? <Text style={styles.activityItem}>{live.activity_item}</Text> : null}
                 <Text style={styles.project}>{live.project_name}</Text>
+                {live.phase_name ? <Text style={styles.meta}>Phase: {live.phase_name}</Text> : null}
+                {live.section_name ? <Text style={styles.meta}>Section: {live.section_name}</Text> : null}
+                {live.work_component_name ? (
+                  <Text style={styles.meta}>
+                    Work: {live.work_component_name}{live.component_side && live.component_side !== 'NONE' ? ` · ${live.component_side}` : ''}
+                  </Text>
+                ) : null}
+                {(live.station_start_m != null || live.station_end_m != null) ? (
+                  <Text style={styles.meta}>
+                    Station: {live.station_start_m != null ? live.station_start_m.toLocaleString() : '—'} → {live.station_end_m != null ? live.station_end_m.toLocaleString() : '—'}
+                  </Text>
+                ) : null}
               </View>
               <Text style={styles.liveValue}>
                 {live.planned_quantity != null ? Number(live.planned_quantity).toLocaleString() : '—'}
