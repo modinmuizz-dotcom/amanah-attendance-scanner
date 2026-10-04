@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>AMANAH Road Project Structure</title>
+  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="road-project-structure.css?v=1">
+</head>
+<body>
+  <main class="road-structure-wrap">
+    <header class="road-structure-header">
+      <div>
+        <div class="eyebrow">PROJECT ARCHITECTURE</div>
+        <h1>ROAD PROJECT STRUCTURE</h1>
+        <p>Define the project hierarchy before scheduling work: Phase → Road Section → Work Components.</p>
+      </div>
+      <button class="back-button" id="backToProjects" type="button">← PROJECT MASTER</button>
+    </header>
+
+    <div id="notice" class="notice" role="status"></div>
+
+    <section class="project-summary panel">
+      <div class="summary-main">
+        <span class="summary-label">ROAD PROJECT</span>
+        <h2 id="projectName">Loading...</h2>
+        <div class="summary-meta" id="projectMeta">—</div>
+      </div>
+      <div class="summary-stats">
+        <div><small>ROAD LENGTH</small><strong id="roadLength">—</strong></div>
+        <div><small>SHOULDERING</small><strong id="roadShouldering">—</strong></div>
+        <div><small>PHASES</small><strong id="phaseCount">0</strong></div>
+        <div><small>SECTIONS</small><strong id="sectionCount">0</strong></div>
+        <div><small>COMPONENTS</small><strong id="componentCount">0</strong></div>
+      </div>
+    </section>
+
+    <section class="architecture-grid">
+      <section class="panel stage-panel">
+        <div class="panel-head">
+          <div><h2>1. PHASES</h2><p>Create separate phases for one road project, even when work areas are not contiguous.</p></div>
+          <button class="primary-btn" id="addPhaseButton" type="button">+ ADD PHASE</button>
+        </div>
+        <div id="phaseList" class="entity-list"></div>
+      </section>
+
+      <section class="panel stage-panel">
+        <div class="panel-head">
+          <div><h2>2. ROAD SECTIONS</h2><p>Select a phase, then define each station range that belongs to it.</p></div>
+          <button class="primary-btn" id="addSectionButton" type="button" disabled>+ ADD SECTION</button>
+        </div>
+        <div id="selectedPhaseBanner" class="selection-banner">Select a phase to manage its road sections.</div>
+        <div id="sectionList" class="entity-list"></div>
+      </section>
+
+      <section class="panel stage-panel wide">
+        <div class="panel-head">
+          <div><h2>3. WORK COMPONENTS</h2><p>Each section can have its own left lane, right lane, optional shoulders, median, drainage, sidewalk or other work.</p></div>
+          <div class="button-cluster">
+            <button class="soft-btn" id="quickTwoLaneButton" type="button" disabled>CREATE LEFT + RIGHT LANE</button>
+            <button class="primary-btn" id="addComponentButton" type="button" disabled>+ ADD COMPONENT</button>
+          </div>
+        </div>
+        <div id="selectedSectionBanner" class="selection-banner">Select a road section to manage its work components.</div>
+        <div id="componentList" class="entity-list"></div>
+      </section>
+    </section>
+
+    <section class="panel design-rules">
+      <div class="panel-head"><div><h2>ROAD ARCHITECTURE RULES</h2><p>These rules keep the structure consistent across all future road projects.</p></div></div>
+      <div class="rule-grid">
+        <div><strong>Stationing is primary.</strong><span>Left/right is defined relative to increasing station direction.</span></div>
+        <div><strong>Shouldering is optional.</strong><span>No shoulder records are created unless the project actually includes them.</span></div>
+        <div><strong>Components are independent.</strong><span>Each lane or shoulder can have a different station range and planned quantity.</span></div>
+        <div><strong>Future map-ready.</strong><span>Sections and components already contain PostGIS LineString geometry for the embedded AMANAH map.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop hidden" id="entityModal">
+    <div class="entity-modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div><span class="eyebrow" id="modalEyebrow">ROAD STRUCTURE</span><h3 id="modalTitle">ADD RECORD</h3></div>
+        <button class="modal-close" id="modalClose" type="button">×</button>
+      </div>
+      <form id="entityForm" class="modal-body">
+        <div id="modalFields" class="form-grid"></div>
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn" id="modalCancel">CANCEL</button>
+          <button type="submit" class="primary-btn">SAVE</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="road-project-structure.js?v=1"></script>
+</body>
+</html>
