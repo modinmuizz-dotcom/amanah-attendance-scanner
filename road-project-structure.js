@@ -121,21 +121,53 @@ async function loadProject() {
 }
 
 async function loadStructure() {
-  const [{data: phases,error:pError},{data: sections,error:sError},{data: components,error:cError}] = await Promise.all([
-    supabaseClient.from('project_phases').select('*').eq('project_id',projectId).order('sequence_no').order('created_at'),
-    supabaseClient.from('project_sections').select('*').order('station_start_m', {nullsFirst:true}).order('created_at'),
-    supabaseClient.from('project_work_components').select('*').order('sort_order').order('created_at')
-  ]);
-  if (pError) throw pError;
-  if (sError) throw sError;
-  if (cError) throw cError;
-  state.phases = phases || [];
-  state.sections = sections || [];
-  state.components = components || [];
+  const {data: phases, error: phaseError} = await supabaseClient
+    .from('project_phases')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('sequence_no')
+    .order('created_at');
+  if (phaseError) throw phaseError;
 
-  if (!state.phases.some(x=>x.phase_id===state.selectedPhaseId)) state.selectedPhaseId = state.phases[0]?.phase_id || null;
+  const phaseRows = phases || [];
+  const phaseIds = phaseRows.map(x => x.phase_id);
+
+  let sectionRows = [];
+  if (phaseIds.length) {
+    const {data, error} = await supabaseClient
+      .from('project_sections')
+      .select('*')
+      .in('phase_id', phaseIds)
+      .order('station_start_m', {nullsFirst:true})
+      .order('created_at');
+    if (error) throw error;
+    sectionRows = data || [];
+  }
+
+  const sectionIds = sectionRows.map(x => x.section_id);
+  let componentRows = [];
+  if (sectionIds.length) {
+    const {data, error} = await supabaseClient
+      .from('project_work_components')
+      .select('*')
+      .in('section_id', sectionIds)
+      .order('sort_order')
+      .order('created_at');
+    if (error) throw error;
+    componentRows = data || [];
+  }
+
+  state.phases = phaseRows;
+  state.sections = sectionRows;
+  state.components = componentRows;
+
+  if (!state.phases.some(x=>x.phase_id===state.selectedPhaseId)) {
+    state.selectedPhaseId = state.phases[0]?.phase_id || null;
+  }
   const visibleSections = state.sections.filter(x=>x.phase_id===state.selectedPhaseId);
-  if (!visibleSections.some(x=>x.section_id===state.selectedSectionId)) state.selectedSectionId = visibleSections[0]?.section_id || null;
+  if (!visibleSections.some(x=>x.section_id===state.selectedSectionId)) {
+    state.selectedSectionId = visibleSections[0]?.section_id || null;
+  }
 
   renderAll();
 }
