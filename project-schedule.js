@@ -68,7 +68,9 @@ async function init(){
   if(!session){location.href="admin.html";return;}
   document.getElementById("activityDate").value=today();
   document.getElementById("clearForm").addEventListener("click",clearForm);
-  document.getElementById("saveSchedule").addEventListener("click",saveSchedule);\n  document.getElementById("project").addEventListener("change",()=>loadStructureForProject(document.getElementById("project").value,""));\n  document.getElementById("editProject").addEventListener("change",()=>loadStructureForProject(document.getElementById("editProject").value,"edit"));
+  document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
+  document.getElementById("project").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("project").value,"");bindStructureControlEvents("");});
+  document.getElementById("editProject").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("editProject").value,"edit");bindStructureControlEvents("edit");});
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
   ["activityType","activityItem","activityQuantity","pouringStation"].forEach(id=>{
     const el=document.getElementById(id);
@@ -100,6 +102,7 @@ async function init(){
   document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
+  await loadStructureForProject(document.getElementById("project").value,"");
   updateInitialStatusUI();
   updateActivityTypeFields("");
 }
@@ -752,7 +755,9 @@ function openEditModal(id){
   document.getElementById("editPriority").value=a.priority||"NORMAL";
   document.getElementById("editDescription").value=a.description||"";
   document.getElementById("editManpower").value=a.manpower??0;
-  document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";\n  await loadStructureForProject(a.project_id,"edit");\n  renderStructureControls("edit",state.editStructure,{phaseId:a.phase_id||"",sectionId:a.section_id||"",componentId:a.work_component_id||"",stationStart:a.station_start_m??"",stationEnd:a.station_end_m??""});
+  document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";
+  await loadStructureForProject(a.project_id,"edit");
+  renderStructureControls("edit",state.editStructure,{phaseId:a.phase_id||"",sectionId:a.section_id||"",componentId:a.work_component_id||"",stationStart:a.station_start_m??"",stationEnd:a.station_end_m??""});
   document.getElementById("editEquipmentSearch").value="";
   state.editingScheduleEquipment=new Set(state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id));
   renderEditEquipment();
@@ -779,6 +784,10 @@ async function saveEditSchedule(){
   const priority=document.getElementById("editPriority").value;
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
+  const editProjectRecord=state.projects.find(x=>x.project_id===pid);
+  const editStructure=selectedStructure("edit");
+  if(editProjectRecord?.project_type==="CONCRETING OF ROAD" && (!editStructure.phaseId || !editStructure.sectionId || !editStructure.componentId)) return msg("err","Road activities require Phase, Road Section and Work Component.");
+  if(editStructure.stationStart!=="" && editStructure.stationEnd!=="" && Number(editStructure.stationEnd)<Number(editStructure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const editActivityDetailError=validateActivityTypeDetails("edit");
   if(editActivityDetailError)return msg("err",editActivityDetailError);
   if(!state.editingScheduleEquipment.size)return msg("err","Please select the equipment required on site.");
@@ -791,6 +800,11 @@ async function saveEditSchedule(){
     const payload={
       project_id:pid,
       project_name:p?.project_name||null,
+      phase_id:editStructure.phaseId||null,
+      section_id:editStructure.sectionId||null,
+      work_component_id:editStructure.componentId||null,
+      station_start_m:editStructure.stationStart===""?null:Number(editStructure.stationStart),
+      station_end_m:editStructure.stationEnd===""?null:Number(editStructure.stationEnd),
       activity_date:date,
       activity,
       activity_item:activityItem||null,
@@ -840,7 +854,13 @@ async function saveEditSchedule(){
   }
 }
 
-function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}\nfunction structureForActivity(a){\n  const phase=state.structure.phases.find(x=>x.phase_id===a.phase_id)||state.editStructure.phases.find(x=>x.phase_id===a.phase_id);\n  const section=state.structure.sections.find(x=>x.section_id===a.section_id)||state.editStructure.sections.find(x=>x.section_id===a.section_id);\n  const component=state.structure.components.find(x=>x.work_component_id===a.work_component_id)||state.editStructure.components.find(x=>x.work_component_id===a.work_component_id);\n  return {phase,section,component};\n}
+function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}
+function structureForActivity(a){
+  const phase=state.structure.phases.find(x=>x.phase_id===a.phase_id)||state.editStructure.phases.find(x=>x.phase_id===a.phase_id);
+  const section=state.structure.sections.find(x=>x.section_id===a.section_id)||state.editStructure.sections.find(x=>x.section_id===a.section_id);
+  const component=state.structure.components.find(x=>x.work_component_id===a.work_component_id)||state.editStructure.components.find(x=>x.work_component_id===a.work_component_id);
+  return {phase,section,component};
+}
 function formatActivityDate(date){
   if(!date)return "—";
   const d=new Date(date+"T00:00:00");
@@ -910,7 +930,9 @@ async function openDetailsModal(id){
     document.getElementById("detailStatus").textContent=calculatedStatus(a);
     document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
     document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
-    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";\n  const struct=structureForActivity(a);\n  const detailStructure=document.getElementById("detailStructure");\n  if(detailStructure) detailStructure.textContent=[struct.phase?.phase_name,struct.section?.section_name,struct.component?.component_name,(a.station_start_m!=null||a.station_end_m!=null)?(stationDisplay(a.station_start_m)+" → "+stationDisplay(a.station_end_m)):null].filter(Boolean).join(" • ")||"Not assigned";
+    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+  const struct=structureForActivity(a);\n  const detailStructure=document.getElementById("detailStructure");
+  if(detailStructure) detailStructure.textContent=[struct.phase?.phase_name,struct.section?.section_name,struct.component?.component_name,(a.station_start_m!=null||a.station_end_m!=null)?(stationDisplay(a.station_start_m)+" → "+stationDisplay(a.station_end_m)):null].filter(Boolean).join(" • ")||"Not assigned";
     document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
     document.getElementById("detailTime").textContent=time;
 
