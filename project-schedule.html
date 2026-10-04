@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>AMANAH Activity Calendar</title>
   <link rel="stylesheet" href="style.css?v=4">
-  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=4">\n  <style>\n    .road-structure-box{padding:14px 16px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff}.road-structure-title{font-size:11px;font-weight:900;letter-spacing:.08em;color:#1d4ed8}.road-structure-note{margin-top:5px;color:#475569;font-size:11px;line-height:1.45;font-weight:700}.road-structure-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}.road-structure-grid .field label{font-size:10px}@media(max-width:900px){.road-structure-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.road-structure-grid{grid-template-columns:1fr}}\n  </style>
   <style>
     :root{
       --navy:#0f172a;--blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--greenSoft:#ecfdf5;
@@ -202,6 +202,19 @@
       <div class="form">
         <div class="grid">
           <div class="field"><label>Project</label><select id="project"></select></div>
+          <div class="field full road-structure-panel" id="roadStructurePanel" style="display:none">
+            <div class="road-structure-box">
+              <div class="road-structure-title">ROAD WORK LOCATION</div>
+              <div class="road-structure-note" id="roadStructureNote">Select a road project to load its Phase → Road Section → Work Component hierarchy.</div>
+              <div class="road-structure-grid">
+                <div class="field"><label>Phase</label><select id="projectPhase"><option value="">SELECT PHASE</option></select></div>
+                <div class="field"><label>Road Section</label><select id="projectSection"><option value="">SELECT ROAD SECTION</option></select></div>
+                <div class="field"><label>Work Component</label><select id="projectWorkComponent"><option value="">SELECT WORK COMPONENT</option></select></div>
+                <div class="field"><label>Activity Station Start (m)</label><input id="activityStationStart" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 120"></div>
+                <div class="field"><label>Activity Station End (m)</label><input id="activityStationEnd" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 180"></div>
+              </div>
+            </div>
+          </div>
           <div class="field"><label>Activity Date</label><input type="date" id="activityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="startTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="endTime"></div>
@@ -291,6 +304,7 @@
         <div class="detail-grid">
           <div class="detail-card"><label>Project</label><div class="value" id="detailProject"></div></div>
           <div class="detail-card"><label>Project Location</label><div class="value" id="detailLocation"></div></div>
+          <div class="detail-card full"><label>Road Work Location</label><div class="value" id="detailStructure">Not assigned</div></div>
           <div class="detail-card"><label>Activity Date</label><div class="value" id="detailDate"></div></div>
           <div class="detail-card"><label>Scheduled Time</label><div class="value" id="detailTime"></div></div>
           <div class="detail-card" id="detailManpowerCard"><label id="detailManpowerLabel">Manpower</label><div class="value" id="detailManpower"></div></div>
@@ -386,6 +400,19 @@
       <div class="modal-body">
         <div class="grid">
           <div class="field"><label>Project</label><select id="editProject"></select></div>
+          <div class="field full road-structure-panel" id="editroadStructurePanel" style="display:none">
+            <div class="road-structure-box">
+              <div class="road-structure-title">ROAD WORK LOCATION</div>
+              <div class="road-structure-note" id="editroadStructureNote">Select a road project to load its Phase → Road Section → Work Component hierarchy.</div>
+              <div class="road-structure-grid">
+                <div class="field"><label>Phase</label><select id="editprojectPhase"><option value="">SELECT PHASE</option></select></div>
+                <div class="field"><label>Road Section</label><select id="editprojectSection"><option value="">SELECT ROAD SECTION</option></select></div>
+                <div class="field"><label>Work Component</label><select id="editprojectWorkComponent"><option value="">SELECT WORK COMPONENT</option></select></div>
+                <div class="field"><label>Activity Station Start (m)</label><input id="editactivityStationStart" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 120"></div>
+                <div class="field"><label>Activity Station End (m)</label><input id="editactivityStationEnd" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 180"></div>
+              </div>
+            </div>
+          </div>
           <div class="field"><label>Activity Date</label><input type="date" id="editActivityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="editStartTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="editEndTime"></div>
@@ -420,7 +447,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=20"></script>
+  <script src="project-schedule.js?v=21"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
