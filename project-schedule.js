@@ -69,8 +69,8 @@ async function init(){
   document.getElementById("activityDate").value=today();
   document.getElementById("clearForm").addEventListener("click",clearForm);
   document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
-  document.getElementById("project").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("project").value,"");bindStructureControlEvents("");});
-  document.getElementById("editProject").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("editProject").value,"edit");bindStructureControlEvents("edit");});
+  document.getElementById("project").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("project").value,"");});
+  document.getElementById("editProject").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("editProject").value,"edit");});
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
   ["activityType","activityItem","activityQuantity","pouringStation"].forEach(id=>{
     const el=document.getElementById(id);
@@ -678,6 +678,10 @@ async function saveSchedule(){
   const {type:activityType, item:activityItem, quantity:activityQuantity, pouringStation}=getActivityTypeDetails("");
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
+  const projectRecord=state.projects.find(x=>x.project_id===pid);
+  const structure=selectedStructure("");
+  if(projectRecord?.project_type==="CONCRETING OF ROAD" && (!structure.phaseId || !structure.sectionId || !structure.componentId)) return msg("err","Road activities require Phase, Road Section and Work Component.");
+  if(structure.stationStart!=="" && structure.stationEnd!=="" && Number(structure.stationEnd)<Number(structure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const activityDetailError=validateActivityTypeDetails("");
   if(activityDetailError)return msg("err",activityDetailError);
   if(!state.selectedEquipment.size)return msg("err","Please select the equipment required on site.");
@@ -740,7 +744,7 @@ function renderEditEquipment(){
   summary.textContent=n?n+" equipment selected.":"No equipment selected.";
   summary.classList.toggle("has",!!n);
 }
-function openEditModal(id){
+async function openEditModal(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
   state.editingScheduleId=id;
