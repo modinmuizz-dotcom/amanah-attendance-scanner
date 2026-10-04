@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "AMANAH Driver Operator Mobile",
+    "slug": "amanah-driver-operator-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AMANAH to use your camera to scan the station QR code and capture activity evidence photos.",
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}

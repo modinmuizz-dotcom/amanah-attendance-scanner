@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},equipmentProgressByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1),structure:{phases:[],sections:[],components:[]},editStructure:{phases:[],sections:[],components:[]}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -69,6 +69,8 @@ async function init(){
   document.getElementById("activityDate").value=today();
   document.getElementById("clearForm").addEventListener("click",clearForm);
   document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
+  document.getElementById("project").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("project").value,"");});
+  document.getElementById("editProject").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("editProject").value,"edit");});
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
   ["activityType","activityItem","activityQuantity","pouringStation"].forEach(id=>{
     const el=document.getElementById(id);
@@ -90,10 +92,6 @@ async function init(){
   document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
   document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
   document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
-  document.getElementById("detailProgressRange").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("detailProgressNumber").addEventListener("input",e=>syncDetailProgressInputs(e.target.value));
-  document.getElementById("saveDetailProgress").addEventListener("click",saveDetailProgress);
-  document.querySelectorAll("[data-progress-quick]").forEach(btn=>btn.addEventListener("click",()=>syncDetailProgressInputs(btn.dataset.progressQuick)));
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -104,16 +102,137 @@ async function init(){
   document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
+  await loadStructureForProject(document.getElementById("project").value,"");
   updateInitialStatusUI();
   updateActivityTypeFields("");
 }
 async function loadProjects(){
-  const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name");
+  const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location,project_type").order("project_name");
   if(error)throw error; state.projects=data||[];
   const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+" — "+esc(p.location||p.project_id)+"</option>").join("");
   document.getElementById("project").innerHTML=opts;
   document.getElementById("editProject").innerHTML=opts;
   document.getElementById("fProject").innerHTML='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+'</option>').join("");
+}
+
+function isRoadProjectById(projectId){
+  return state.projects.find(p=>p.project_id===projectId)?.project_type==="CONCRETING OF ROAD";
+}
+function selectedStructure(prefix=""){
+  const root=prefix==="edit"?"edit":"";
+  return {
+    phaseId: document.getElementById(root+"projectPhase")?.value || "",
+    sectionId: document.getElementById(root+"projectSection")?.value || "",
+    componentId: document.getElementById(root+"projectWorkComponent")?.value || "",
+    stationStart: document.getElementById(root+"activityStationStart")?.value ?? "",
+    stationEnd: document.getElementById(root+"activityStationEnd")?.value ?? ""
+  };
+}
+function stationDisplay(value){
+  if(value===null||value===undefined||value==="") return "—";
+  const n=Number(value); if(!Number.isFinite(n)) return String(value);
+  const km=Math.floor(Math.abs(n)/1000), rem=Math.abs(n)-km*1000;
+  return "STA "+(n<0?"-":"")+km+"+"+rem.toFixed(3).padStart(7,"0");
+}
+function renderStructureControls(prefix, structure, selected={}){
+  const root=prefix==="edit"?"edit":"";
+  const phaseSelect=document.getElementById(root+"projectPhase");
+  const sectionSelect=document.getElementById(root+"projectSection");
+  const componentSelect=document.getElementById(root+"projectWorkComponent");
+  const panel=document.getElementById(root+"roadStructurePanel");
+  const note=document.getElementById(root+"roadStructureNote");
+  const start=document.getElementById(root+"activityStationStart");
+  const end=document.getElementById(root+"activityStationEnd");
+  const projectId=document.getElementById(root+"Project")?.value || document.getElementById(root+"project")?.value || "";
+  if(!panel||!phaseSelect||!sectionSelect||!componentSelect) return;
+  const road=isRoadProjectById(projectId);
+  panel.style.display=road?"":"none";
+  if(note) note.textContent=road
+    ? "Required for road projects: select the phase, road section and exact work component. Station range is inherited from the selected component and may be narrowed for the activity."
+    : "Road structure is available only for CONCRETING OF ROAD projects.";
+  if(!road){
+    phaseSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    sectionSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    componentSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    if(start) start.value="";
+    if(end) end.value="";
+    return;
+  }
+  const phases=structure.phases||[], sections=structure.sections||[], components=structure.components||[];
+  phaseSelect.innerHTML='<option value="">SELECT PHASE</option>'+phases.map(p=>'<option value="'+esc(p.phase_id)+'">'+esc((p.phase_code?p.phase_code+" — ":"")+p.phase_name)+'</option>').join("");
+  if(selected.phaseId) phaseSelect.value=selected.phaseId;
+  const phaseId=phaseSelect.value||"";
+  const phaseSections=sections.filter(s=>s.phase_id===phaseId);
+  sectionSelect.innerHTML='<option value="">SELECT ROAD SECTION</option>'+phaseSections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc((s.section_code?s.section_code+" — ":"")+s.section_name)+" • "+esc(stationDisplay(s.station_start_m)+" → "+stationDisplay(s.station_end_m))+'</option>').join("");
+  if(selected.sectionId) sectionSelect.value=selected.sectionId;
+  const sectionId=sectionSelect.value||"";
+  const sectionComponents=components.filter(c=>c.section_id===sectionId && c.is_active!==false);
+  componentSelect.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+sectionComponents.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+" • "+esc(c.component_side||"NONE")+'</option>').join("");
+  if(selected.componentId) componentSelect.value=selected.componentId;
+  const component=components.find(c=>c.work_component_id===componentSelect.value);
+  if(component){
+    if(start && (selected.stationStart==="" || selected.stationStart===null || selected.stationStart===undefined)) start.value=component.station_start_m??"";
+    if(end && (selected.stationEnd==="" || selected.stationEnd===null || selected.stationEnd===undefined)) end.value=component.station_end_m??"";
+  } else {
+    const section=sections.find(s=>s.section_id===sectionId);
+    if(start && (selected.stationStart==="" || selected.stationStart===null || selected.stationStart===undefined)) start.value=section?.station_start_m??"";
+    if(end && (selected.stationEnd==="" || selected.stationEnd===null || selected.stationEnd===undefined)) end.value=section?.station_end_m??"";
+  }
+}
+async function loadStructureForProject(projectId,prefix=""){
+  const target=prefix==="edit"?"edit":"";
+  const blank={phases:[],sections:[],components:[]};
+  if(!projectId){ if(prefix==="edit") state.editStructure=blank; else state.structure=blank; renderStructureControls(prefix,blank,{}); return; }
+  const project=state.projects.find(p=>p.project_id===projectId);
+  if(project?.project_type!=="CONCRETING OF ROAD"){ if(prefix==="edit") state.editStructure=blank; else state.structure=blank; renderStructureControls(prefix,blank,{}); return; }
+  const {data:phases,error:phaseError}=await supabaseClient.from("project_phases").select("*").eq("project_id",projectId).order("sequence_no").order("created_at");
+  if(phaseError) throw phaseError;
+  const phaseIds=(phases||[]).map(p=>p.phase_id);
+  let sections=[];
+  if(phaseIds.length){
+    const {data,error}=await supabaseClient.from("project_sections").select("*").in("phase_id",phaseIds).order("station_start_m",{nullsFirst:true}).order("created_at");
+    if(error) throw error; sections=data||[];
+  }
+  const sectionIds=sections.map(s=>s.section_id);
+  let components=[];
+  if(sectionIds.length){
+    const {data,error}=await supabaseClient.from("project_work_components").select("*").in("section_id",sectionIds).order("sort_order").order("created_at");
+    if(error) throw error; components=data||[];
+  }
+  const obj={phases:phases||[],sections,components};
+  if(prefix==="edit") state.editStructure=obj; else state.structure=obj;
+  renderStructureControls(prefix,obj,{});
+}
+function bindStructureControlEvents(prefix=""){
+  const root=prefix==="edit"?"edit":"";
+  const phase=document.getElementById(root+"projectPhase");
+  const section=document.getElementById(root+"projectSection");
+  const component=document.getElementById(root+"projectWorkComponent");
+  const start=document.getElementById(root+"activityStationStart");
+  const end=document.getElementById(root+"activityStationEnd");
+  if(!phase||!section||!component)return;
+  phase.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:"",componentId:"",stationStart:"",stationEnd:""});
+  });
+  section.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:section.value,componentId:"",stationStart:"",stationEnd:""});
+  });
+  component.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:section.value,componentId:component.value,stationStart:"",stationEnd:""});
+  });
+  [start,end].forEach(el=>el?.addEventListener("input",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    const comp=st.components.find(c=>c.work_component_id===component.value);
+    if(comp){
+      const s=Number(start?.value), e=Number(end?.value);
+      if(Number.isFinite(s)&&Number.isFinite(e)&& (s<Number(comp.station_start_m)||e>Number(comp.station_end_m))){
+        el.setCustomValidity("Activity station range must stay inside the selected work component.");
+      }else el.setCustomValidity("");
+    }
+  }));
 }
 async function loadEquipment(){
   const {data,error}=await supabaseClient.from("equipment").select("equipment_id,equipment_name,equipment_type,plate_number,status").eq("status","ACTIVE").order("equipment_name");
@@ -127,11 +246,56 @@ function renderEquipment(){
   const n=state.selectedEquipment.size;const s=document.getElementById("equipmentSummary");s.textContent=n?n+" equipment selected.":"No equipment selected.";s.classList.toggle("has",!!n);
 }
 async function loadActivities(){
-  const {data:acts,error}=await supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,pouring_station,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false});
-  if(error)throw error;state.activities=acts||[];
-  const {data:rel,error:relErr}=await supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id");
-  if(relErr)throw relErr;state.assignments=rel||[];renderTables();
+  const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError},{data:fuelEvidence,error:fuelEvidenceError},{data:extraEvidence,error:extraEvidenceError}]=await Promise.all([
+    supabaseClient.from("project_activities").select("activity_id,project_id,project_name,phase_id,section_id,work_component_id,station_start_m,station_end_m,activity_date,activity,activity_item,activity_quantity,pouring_station,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
+    supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
+    supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false}),
+    supabaseClient.from("attendance").select("project_activity_id,fuel_photo_path,created_at").not("project_activity_id","is",null).not("fuel_photo_path","is",null).order("created_at",{ascending:false}),
+    supabaseClient.from("activity_evidence_photos").select("project_activity_id,photo_path,created_at").order("created_at",{ascending:false})
+  ]);
+  if(activityError)throw activityError;
+  if(relErr)throw relErr;
+  if(executionError)throw executionError;
+  if(fuelEvidenceError)throw fuelEvidenceError;
+  if(extraEvidenceError)throw extraEvidenceError;
+
+  state.activities=acts||[];
+  state.assignments=rel||[];
+  state.executionByActivity={};
+
+  (execution||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
+    state.executionByActivity[id].actualQuantity+=Number(row.quantity||0);
+    [row.photo_1_path,row.photo_2_path].filter(Boolean).forEach(path=>{
+      if(!state.executionByActivity[id].photos.includes(path))state.executionByActivity[id].photos.push(path);
+    });
+  });
+
+  (extraEvidence||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
+    if(row.photo_path&&!state.executionByActivity[id].photos.includes(row.photo_path)){
+      state.executionByActivity[id].photos.push(row.photo_path);
+    }
+  });
+
+  (fuelEvidence||[]).forEach(row=>{
+    const id=String(row.project_activity_id);
+    if(!state.executionByActivity[id])state.executionByActivity[id]={actualQuantity:0,photos:[],fuelPhotos:[]};
+    if(row.fuel_photo_path&&!state.executionByActivity[id].fuelPhotos.includes(row.fuel_photo_path)){
+      state.executionByActivity[id].fuelPhotos.push(row.fuel_photo_path);
+    }
+  });
+
+  renderTables();
 }
+function executionFor(id){return state.executionByActivity[String(id)]||{actualQuantity:0,photos:[],fuelPhotos:[]};}
+function plannedQuantity(a){const n=Number(a?.activity_quantity);return Number.isFinite(n)&&n>=0?n:0;}
+function actualQuantityFor(a){const n=Number(executionFor(a.activity_id).actualQuantity||0);return Number.isFinite(n)&&n>=0?n:0;}
+function calculatedProgress(a){const planned=plannedQuantity(a),actual=actualQuantityFor(a);if(planned<=0)return 0;return Math.min(100,Math.max(0,(actual/planned)*100));}
+function calculatedStatus(a){const current=String(a?.activity_status||"PLANNED").toUpperCase();const progress=calculatedProgress(a);if(current==="CANCELLED"||current==="NOT DONE")return current;if(progress>=100&&plannedQuantity(a)>0)return "DONE";if(actualQuantityFor(a)>0)return "IN PROGRESS";return "PLANNED";}
+function formatQuantity(value){const n=Number(value||0);return Number.isFinite(n)?n.toLocaleString("en-PH",{maximumFractionDigits:6}):"0";}
 function selectedProjectName(id){return state.projects.find(p=>p.project_id===id)?.project_name||"";}
 function equipmentFor(id){const ids=state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id);return state.equipment.filter(e=>ids.includes(e.equipment_id));}
 function renderTables(){
@@ -139,13 +303,13 @@ function renderTables(){
   const rows=state.activities.filter(a=>{
     const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
     const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
-    return (!q||text.includes(q))&&(!date||a.activity_date===date)&&(!status||a.activity_status===status)&&(!pid||a.project_id===pid);
+    return (!q||text.includes(q))&&(!date||a.activity_date===date)&&(!status||calculatedStatus(a)===status)&&(!pid||a.project_id===pid);
   });
   const equipCount=rows.reduce((n,a)=>n+equipmentFor(a.activity_id).length,0);
   document.getElementById("mScheduled").textContent=rows.length;
   document.getElementById("mEquip").textContent=equipCount;
-  document.getElementById("mProgress").textContent=rows.filter(a=>a.activity_status==="IN PROGRESS").length;
-  document.getElementById("mDone").textContent=rows.filter(a=>a.activity_status==="DONE").length;
+  document.getElementById("mProgress").textContent=rows.filter(a=>calculatedStatus(a)==="IN PROGRESS").length;
+  document.getElementById("mDone").textContent=rows.filter(a=>calculatedStatus(a)==="DONE").length;
 
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
@@ -156,7 +320,7 @@ function renderTables(){
     if(a.approval_status==="APPROVED" && a.activity_status!=="DONE" && a.activity_status!=="CANCELLED" && a.activity_status!=="REJECTED"){
       action+='<button class="mini amber" data-approved-cancel-request="'+esc(a.activity_id)+'">REQUEST CANCELLATION</button>';
     }
-    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
+    return '<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc(time)+'</td><td><strong>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</strong></td><td><strong>'+esc(a.activity||"")+'</strong>'+(a.activity_item?'<br><small style="color:#64748b">'+esc(a.activity_item)+'</small>':'')+(a.activity_quantity!=null?'<br><small style="color:#2563eb;font-weight:800">QTY: '+esc(a.activity_quantity)+'</small>':'')+(executionFor(a.activity_id).photos.length?'<br><small style="color:#145A3B;font-weight:900">📷 '+executionFor(a.activity_id).photos.length+' EVIDENCE</small>':'')+'</td><td style="white-space:normal;max-width:240px">'+esc(a.description||"")+'</td><td class="equip-list-text">'+esc(eq.map(e=>e.equipment_name).join(", ")||a.equipment||"—")+'</td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(calculatedStatus(a))+'</td><td>'+esc(a.accomplishment??0)+'%</td><td><div class="row-actions">'+action+'</div></td></tr>';
   }).join(""):'<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:30px">No scheduled activities found.</td></tr>';
 
   const approvedRows=rows.filter(a=>a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status)));
@@ -454,7 +618,7 @@ function renderCalendar(){
     const eqNames=equipmentFor(a.activity_id).map(e=>e.equipment_name).join(" ");
     const text=[a.activity,a.project_name,a.description,eqNames].join(" ").toLowerCase();
     const calendarApproved=a.approval_status==='APPROVED' || (!a.approval_status && !['PENDING APPROVAL','REJECTED'].includes(a.activity_status));
-    return calendarApproved && (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||a.activity_status===filterStatus);
+    return calendarApproved && (!q||text.includes(q))&&(!filterProject||a.project_id===filterProject)&&(!filterStatus||calculatedStatus(a)===filterStatus);
   });
 
   let out=weekdays.map(d=>'<div class="calendar-weekday">'+d+'</div>').join("");
@@ -487,11 +651,12 @@ function renderCalendar(){
 
     const events=dayActs.slice(0,4).map(a=>{
       const time=(a.scheduled_start?fmtTime(a.scheduled_start):"")+" "+(a.scheduled_end?("– "+fmtTime(a.scheduled_end)):"");
-      const statusCls=calendarStatusClass(a.activity_status);
+      const statusCls=calendarStatusClass(calculatedStatus(a));
       return '<button type="button" class="calendar-event '+statusCls+'" data-cal-update="'+esc(a.activity_id)+'">'+
         '<div class="calendar-event-time">'+esc(time||"ALL DAY")+'</div>'+
         '<div class="calendar-event-name">'+esc(a.activity||"Activity")+'</div>'+
         '<div class="calendar-event-project">'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</div>'+
+        (executionFor(a.activity_id).photos.length ? '<div class="calendar-event-project">📷 '+executionFor(a.activity_id).photos.length+' EVIDENCE</div>' : '')+
       '</button>';
     }).join("");
 
@@ -513,6 +678,10 @@ async function saveSchedule(){
   const {type:activityType, item:activityItem, quantity:activityQuantity, pouringStation}=getActivityTypeDetails("");
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
+  const projectRecord=state.projects.find(x=>x.project_id===pid);
+  const structure=selectedStructure("");
+  if(projectRecord?.project_type==="CONCRETING OF ROAD" && (!structure.phaseId || !structure.sectionId || !structure.componentId)) return msg("err","Road activities require Phase, Road Section and Work Component.");
+  if(structure.stationStart!=="" && structure.stationEnd!=="" && Number(structure.stationEnd)<Number(structure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const activityDetailError=validateActivityTypeDetails("");
   if(activityDetailError)return msg("err",activityDetailError);
   if(!state.selectedEquipment.size)return msg("err","Please select the equipment required on site.");
@@ -523,7 +692,7 @@ async function saveSchedule(){
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SUBMITTING...";
   try{
     const {data,error:insertError}=await supabaseClient.from("project_activities").insert({
-      project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
+      project_id:pid,project_name:p?.project_name||null,phase_id:structure.phaseId||null,section_id:structure.sectionId||null,work_component_id:structure.componentId||null,station_start_m:structure.stationStart===""?null:Number(structure.stationStart),station_end_m:structure.stationEnd===""?null:Number(structure.stationEnd),activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
       description:description||null,manpower,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
       approval_status:"PENDING",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null
     }).select("activity_id").single();
@@ -538,7 +707,7 @@ async function saveSchedule(){
       p_entity_id:data.activity_id,
       p_title:activity,
       p_description:"Activity submitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
+      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:structure.phaseId||"",section_id:structure.sectionId||"",work_component_id:structure.componentId||"",station_start_m:structure.stationStart||"",station_end_m:structure.stationEnd||"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
 
@@ -547,7 +716,7 @@ async function saveSchedule(){
   }catch(e){console.error(e);msg("err","Could not submit activity: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("pouringStation").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("pouringStation").value="";document.getElementById("projectPhase").value="";document.getElementById("projectSection").innerHTML="<option value=\"\">SELECT ROAD SECTION</option>";document.getElementById("projectWorkComponent").innerHTML="<option value=\"\">SELECT WORK COMPONENT</option>";document.getElementById("activityStationStart").value="";document.getElementById("activityStationEnd").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
@@ -575,7 +744,7 @@ function renderEditEquipment(){
   summary.textContent=n?n+" equipment selected.":"No equipment selected.";
   summary.classList.toggle("has",!!n);
 }
-function openEditModal(id){
+async function openEditModal(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
   state.editingScheduleId=id;
@@ -591,6 +760,8 @@ function openEditModal(id){
   document.getElementById("editDescription").value=a.description||"";
   document.getElementById("editManpower").value=a.manpower??0;
   document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";
+  await loadStructureForProject(a.project_id,"edit");
+  renderStructureControls("edit",state.editStructure,{phaseId:a.phase_id||"",sectionId:a.section_id||"",componentId:a.work_component_id||"",stationStart:a.station_start_m??"",stationEnd:a.station_end_m??""});
   document.getElementById("editEquipmentSearch").value="";
   state.editingScheduleEquipment=new Set(state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id));
   renderEditEquipment();
@@ -617,6 +788,10 @@ async function saveEditSchedule(){
   const priority=document.getElementById("editPriority").value;
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
+  const editProjectRecord=state.projects.find(x=>x.project_id===pid);
+  const editStructure=selectedStructure("edit");
+  if(editProjectRecord?.project_type==="CONCRETING OF ROAD" && (!editStructure.phaseId || !editStructure.sectionId || !editStructure.componentId)) return msg("err","Road activities require Phase, Road Section and Work Component.");
+  if(editStructure.stationStart!=="" && editStructure.stationEnd!=="" && Number(editStructure.stationEnd)<Number(editStructure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const editActivityDetailError=validateActivityTypeDetails("edit");
   if(editActivityDetailError)return msg("err",editActivityDetailError);
   if(!state.editingScheduleEquipment.size)return msg("err","Please select the equipment required on site.");
@@ -629,6 +804,11 @@ async function saveEditSchedule(){
     const payload={
       project_id:pid,
       project_name:p?.project_name||null,
+      phase_id:editStructure.phaseId||null,
+      section_id:editStructure.sectionId||null,
+      work_component_id:editStructure.componentId||null,
+      station_start_m:editStructure.stationStart===""?null:Number(editStructure.stationStart),
+      station_end_m:editStructure.stationEnd===""?null:Number(editStructure.stationEnd),
       activity_date:date,
       activity,
       activity_item:activityItem||null,
@@ -663,7 +843,7 @@ async function saveEditSchedule(){
       p_entity_id:id,
       p_title:activity,
       p_description:"Edited activity resubmitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
+      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:editStructure.phaseId||"",section_id:editStructure.sectionId||"",work_component_id:editStructure.componentId||"",station_start_m:editStructure.stationStart||"",station_end_m:editStructure.stationEnd||"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
     closeEditModal();
@@ -679,6 +859,12 @@ async function saveEditSchedule(){
 }
 
 function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}
+function structureForActivity(a){
+  const phase=state.structure.phases.find(x=>x.phase_id===a.phase_id)||state.editStructure.phases.find(x=>x.phase_id===a.phase_id);
+  const section=state.structure.sections.find(x=>x.section_id===a.section_id)||state.editStructure.sections.find(x=>x.section_id===a.section_id);
+  const component=state.structure.components.find(x=>x.work_component_id===a.work_component_id)||state.editStructure.components.find(x=>x.work_component_id===a.work_component_id);
+  return {phase,section,component};
+}
 function formatActivityDate(date){
   if(!date)return "—";
   const d=new Date(date+"T00:00:00");
@@ -734,93 +920,193 @@ async function saveDetailProgress(){
     btn.disabled=false;btn.textContent="SAVE PROGRESS";
   }
 }
-function openDetailsModal(id){
-  const a=state.activities.find(x=>x.activity_id===id);
-  if(!a)return;
+async function openDetailsModal(id){
   state.detailActivityId=id;
-  const equipment=equipmentFor(id);
-  const equipmentText=equipment.length
-    ? equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", ")
-    : (a.equipment||"—");
-  const progress=Math.max(0,Math.min(100,Number(a.accomplishment||0)));
-  const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-  document.getElementById("detailActivityName").textContent=a.activity||"Activity";
-  document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
-  document.getElementById("detailStatus").textContent=a.activity_status||"PLANNED";
-  document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
-  document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
-  document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
-  document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
-  document.getElementById("detailTime").textContent=time;
-  const normalizedActivityType = String(a.activity_type || a.activity || "").trim().toUpperCase();
-  const hideDetailManpower =
-    normalizedActivityType === "HAULING" ||
-    normalizedActivityType === "MATERIALS DELIVERY";
+  try{
+    const a=state.activities.find(x=>x.activity_id===id);
+    if(!a)return;
+    const equipment=equipmentFor(id);
+    const equipmentText=equipment.length?equipment.map(e=>e.equipment_name+(e.plate_number?" • "+e.plate_number:"")).join(", "):(a.equipment||"—");
+    const progress=calculatedProgress(a),planned=plannedQuantity(a),actual=actualQuantityFor(a);
+    const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
+    document.getElementById("detailActivityName").textContent=a.activity||"Activity";
+    document.getElementById("detailProjectName").textContent=(a.project_name||selectedProjectName(a.project_id)||"")+(a.project_id?" • "+a.project_id:"");
+    document.getElementById("detailStatus").textContent=calculatedStatus(a);
+    document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
+    document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
+    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+  const struct=structureForActivity(a);\n  const detailStructure=document.getElementById("detailStructure");
+  if(detailStructure) detailStructure.textContent=[struct.phase?.phase_name,struct.section?.section_name,struct.component?.component_name,(a.station_start_m!=null||a.station_end_m!=null)?(stationDisplay(a.station_start_m)+" → "+stationDisplay(a.station_end_m)):null].filter(Boolean).join(" • ")||"Not assigned";
+    document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
+    document.getElementById("detailTime").textContent=time;
 
-  const showActivityItem =
-    normalizedActivityType === "HAULING" ||
-    normalizedActivityType === "MATERIALS DELIVERY";
+    const normalizedActivityType=String(a.activity_type||a.activity||"").trim().toUpperCase();
+    const hideDetailManpower=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
+    const showActivityItem=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
+    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING";
+    const detailManpowerCard=document.getElementById("detailManpowerCard");
+    const detailManpowerLabel=document.getElementById("detailManpowerLabel");
+    const detailPouringStationCard=document.getElementById("detailPouringStationCard");
+    if(detailManpowerCard)detailManpowerCard.style.display=hideDetailManpower?"":"";
+    if(detailManpowerLabel)detailManpowerLabel.textContent=normalizedActivityType==="CONCRETE POURING"?"Group Labor":"Manpower";
+    if(detailPouringStationCard)detailPouringStationCard.style.display=normalizedActivityType==="CONCRETE POURING"?"":"none";
+    if(normalizedActivityType==="CONCRETE POURING")document.getElementById("detailPouringStation").textContent=a.pouring_station||"Not provided";
+    if(!hideDetailManpower)document.getElementById("detailManpower").textContent=(a.manpower??0)+" groups/personnel";
 
-  const showActivityQuantity =
-    showActivityItem ||
-    normalizedActivityType === "CONCRETE POURING";
+    const itemCard=document.getElementById("detailActivityItemCard");
+    const itemLabel=document.getElementById("detailActivityItemLabel");
+    const itemValue=document.getElementById("detailActivityItem");
+    const quantityCard=document.getElementById("detailActivityQuantityCard");
+    const quantityValue=document.getElementById("detailActivityQuantity");
+    if(itemCard)itemCard.style.display=showActivityItem?"":"none";
+    if(quantityCard)quantityCard.style.display=showActivityQuantity?"":"none";
+    if(showActivityItem){
+      if(itemLabel)itemLabel.textContent=normalizedActivityType==="MATERIALS DELIVERY"?"What is Being Delivered":"What is Being Hauled";
+      if(itemValue)itemValue.textContent=a.activity_item||"—";
+    }else if(itemValue)itemValue.textContent="";
+    if(showActivityQuantity){
+      if(quantityValue)quantityValue.textContent=(a.activity_quantity==null||a.activity_quantity==="")?"—":Number(a.activity_quantity).toLocaleString();
+    }else if(quantityValue)quantityValue.textContent="";
 
-  const detailManpowerCard = document.getElementById("detailManpowerCard");
-  const detailManpowerLabel = document.getElementById("detailManpowerLabel");
-  const detailPouringStationCard = document.getElementById("detailPouringStationCard");
-  if(detailManpowerCard) detailManpowerCard.style.display = hideDetailManpower ? "none" : "";
-  if(detailManpowerLabel) detailManpowerLabel.textContent = normalizedActivityType==="CONCRETE POURING" ? "Group Labor" : "Manpower";
-  if(detailPouringStationCard) detailPouringStationCard.style.display = normalizedActivityType==="CONCRETE POURING" ? "" : "none";
-  if(normalizedActivityType==="CONCRETE POURING") document.getElementById("detailPouringStation").textContent = a.pouring_station || "Not provided";
+    document.getElementById("detailEquipment").textContent=equipmentText;
+    document.getElementById("detailDescription").textContent=a.description||"No description provided.";
+    document.getElementById("detailProgressText").textContent=Number(progress).toFixed(2).replace(/\.00$/,"")+"%";
+    document.getElementById("detailProgressFill").style.width=progress+"%";
+    document.getElementById("detailPlannedQuantity").textContent=formatQuantity(planned);
+    document.getElementById("detailActualQuantity").textContent=formatQuantity(actual);
+    document.getElementById("detailRemainingQuantity").textContent=formatQuantity(Math.max(planned-actual,0));
+    document.getElementById("detailAutoProgress").textContent=Number(progress).toFixed(2).replace(/\.00$/,"")+"%";
+    document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
+    document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
 
-  if(!hideDetailManpower){
-    document.getElementById("detailManpower").textContent=(a.manpower??0)+(normalizedActivityType==="CONCRETE POURING" ? " groups" : " personnel");
-  }
+    const grouped=executionFor(id);
+    document.getElementById("detailEvidenceCount").textContent=grouped.photos.length+" PHOTO"+(grouped.photos.length===1?"":"S");
+    document.getElementById("detailFuelEvidenceCount").textContent=grouped.fuelPhotos.length+" PHOTO"+(grouped.fuelPhotos.length===1?"":"S");
+    document.getElementById("detailEvidenceContent").innerHTML=grouped.photos.length?'<div class="detail-evidence-loading">Loading photo evidence...</div>':'<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';
+    document.getElementById("detailEquipmentContributionContent").innerHTML='<div class="detail-evidence-loading">Loading equipment accomplishment...</div>';
+    document.getElementById("detailEquipmentContributionTotal").textContent="TOTAL ACTUAL "+formatQuantity(actual);
 
-  const itemCard = document.getElementById("detailActivityItemCard");
-  const itemLabel = document.getElementById("detailActivityItemLabel");
-  const itemValue = document.getElementById("detailActivityItem");
-  const quantityCard = document.getElementById("detailActivityQuantityCard");
-  const quantityValue = document.getElementById("detailActivityQuantity");
-
-  if(itemCard) itemCard.style.display = showActivityItem ? "" : "none";
-  if(quantityCard) quantityCard.style.display = showActivityQuantity ? "" : "none";
-
-  if(showActivityItem){
-    if(itemLabel) itemLabel.textContent =
-      normalizedActivityType === "MATERIALS DELIVERY"
-        ? "What is Being Delivered"
-        : "What is Being Hauled";
-    if(itemValue) itemValue.textContent = a.activity_item || "—";
-  }else{
-    if(itemValue) itemValue.textContent = "";
-  }
-
-  if(showActivityQuantity){
-    if(quantityValue) {
-      const q = a.activity_quantity;
-      quantityValue.textContent =
-        q === null || q === undefined || q === "" ? "—" : Number(q).toLocaleString();
+    document.getElementById("detailModal").style.display="flex";
+    await Promise.all([
+      renderDetailEvidence(id),
+      renderFuelEvidence(id),
+      renderEquipmentContribution(id)
+    ]);
+  }catch(e){console.error(e);msg("err","Unable to open activity details: "+e.message);}
+}
+async function renderEquipmentContribution(id){
+  const content=document.getElementById("detailEquipmentContributionContent");
+  const total=document.getElementById("detailEquipmentContributionTotal");
+  try{
+    const {data,error}=await supabaseClient.rpc("get_project_activity_equipment_progress",{p_activity_id:id});
+    if(error)throw error;
+    const rows=data||[];
+    state.equipmentProgressByActivity[String(id)]=rows;
+    const combined=rows.reduce((sum,row)=>sum+Number(row.actual_quantity||0),0);
+    total.textContent="TOTAL ACTUAL "+formatQuantity(combined);
+    if(!rows.length){
+      content.innerHTML='<div class="detail-evidence-empty">No equipment has been assigned to this activity yet.</div>';
+      return;
     }
-  }else{
-    if(quantityValue) quantityValue.textContent = "";
+    content.innerHTML=rows.map(row=>{
+      const label=esc(row.equipment_name||"Unknown Equipment");
+      const sub=[row.equipment_id,row.plate_number].filter(Boolean).map(esc).join(" • ");
+      const attendanceCount=Number(row.attendance_count||0);
+      return '<div class="detail-equipment-row">'+
+        '<div><div class="detail-equipment-name">'+label+'</div><div class="detail-equipment-id">'+(sub||"Equipment ID not available")+'</div></div>'+
+        '<div class="detail-equipment-qty">'+formatQuantity(row.actual_quantity)+'</div>'+
+        '<div class="detail-equipment-attendance">'+attendanceCount+' SHIFT'+(attendanceCount===1?"":"S")+'</div>'+
+      '</div>';
+    }).join("");
+  }catch(e){
+    console.error(e);
+    content.innerHTML='<div class="detail-evidence-empty">Equipment accomplishment could not be loaded.</div>';
+    total.textContent="TOTAL ACTUAL "+formatQuantity(actualQuantityFor(state.activities.find(a=>a.activity_id===id)));
   }
-
-  document.getElementById("detailEquipment").textContent=equipmentText;
-  document.getElementById("detailDescription").textContent=a.description||"No description provided.";
-  document.getElementById("detailProgressText").textContent=progress+"%";
-  document.getElementById("detailProgressFill").style.width=progress+"%";
-  syncDetailProgressInputs(progress);
-  document.getElementById("detailRemarks").textContent=a.completion_remarks||a.remarks||"No remarks recorded.";
-  document.getElementById("detailCompletedAt").textContent=a.completed_at?"Completed at: "+new Date(a.completed_at).toLocaleString():"";
-  document.getElementById("detailModal").style.display="flex";
+}
+async function renderDetailEvidence(id){
+  const content=document.getElementById("detailEvidenceContent");
+  const paths=executionFor(id).photos||[];
+  if(!paths.length){content.innerHTML='<div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div>';return;}
+  const results=await Promise.all(paths.map(path=>supabaseClient.storage.from("attendance-activity-evidence").createSignedUrl(path,3600)));
+  content.innerHTML=results.map((result,index)=>{
+    const url=result?.data?.signedUrl;
+    if(result?.error||!url)return '<div class="detail-evidence-card"><div class="detail-evidence-empty">PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
+    return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Driver/operator activity evidence photo '+(index+1)+'"><div class="detail-evidence-label">PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
+  }).join("");
+}
+async function renderFuelEvidence(id){
+  const content=document.getElementById("detailFuelEvidenceContent");
+  const paths=executionFor(id).fuelPhotos||[];
+  if(!paths.length){
+    content.innerHTML='<div class="detail-evidence-empty">No fuel evidence photo recorded for this activity.</div>';
+    return;
+  }
+  const results=await Promise.all(paths.map(path=>supabaseClient.storage.from("attendance-fuel-evidence").createSignedUrl(path,3600)));
+  content.innerHTML=results.map((result,index)=>{
+    const url=result?.data?.signedUrl;
+    if(result?.error||!url){
+      return '<div class="detail-evidence-card"><div class="detail-evidence-empty">FUEL PHOTO '+(index+1)+' COULD NOT BE OPENED.</div></div>';
+    }
+    return '<div class="detail-evidence-card"><a href="'+esc(url)+'" target="_blank" rel="noopener"><img src="'+esc(url)+'" alt="Fuel evidence photo '+(index+1)+'"><div class="detail-evidence-label">FUEL PHOTO '+(index+1)+' • OPEN FULL SIZE</div></a></div>';
+  }).join("");
 }
 function closeDetailModal(){
   state.detailActivityId=null;
   document.getElementById("detailModal").style.display="none";
 }
-function openModal(id){const a=state.activities.find(x=>x.activity_id===id);if(!a)return;state.editingActivityId=id;document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");document.getElementById("modalStatus").value=a.activity_status||"PLANNED";document.getElementById("modalProgress").value=a.accomplishment??0;document.getElementById("modalRemarks").value=a.completion_remarks||"";document.getElementById("statusModal").style.display="flex";}
-function closeModal(){state.editingActivityId=null;document.getElementById("statusModal").style.display="none";}
-document.getElementById("modalStatus").addEventListener("change",()=>{const s=document.getElementById("modalStatus").value;if(s==="DONE")document.getElementById("modalProgress").value=100;if(s==="NOT DONE"||s==="CANCELLED")document.getElementById("modalProgress").value=0;});
-async function saveStatus(){if(!state.editingActivityId)return;const activity=state.activities.find(x=>x.activity_id===state.editingActivityId);const status=document.getElementById("modalStatus").value,progress=Math.max(0,Math.min(100,Number(document.getElementById("modalProgress").value||0))),remarks=document.getElementById("modalRemarks").value.trim();if(status==="CANCELLED"){closeModal();if(activity?.approval_status==="PENDING"){await cancelActivityRequest(state.editingActivityId);return;}if(activity?.approval_status==="APPROVED"){await requestActivityCancellation(state.editingActivityId);return;}msg("err","This activity cannot be cancelled from its current status.");return;}const payload={activity_status:status,accomplishment:status==="DONE"?100:progress,completion_remarks:remarks||null,completed_at:status==="DONE"?new Date().toISOString():null};const btn=document.getElementById("saveStatus");btn.disabled=true;btn.textContent="SAVING...";try{const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);if(error)throw error;msg("ok","Activity status updated successfully.");closeModal();await loadActivities();}catch(e){console.error(e);msg("err","Could not update activity status: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE STATUS";}}
+function openModal(id){
+  const a=state.activities.find(x=>x.activity_id===id);
+  if(!a)return;
+  state.editingActivityId=id;
+  document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");
+  document.getElementById("modalStatus").value=calculatedStatus(a);
+  document.getElementById("modalProgress").value=Number(calculatedProgress(a)).toFixed(2).replace(/\.00$/,"")+"%";
+  document.getElementById("modalRemarks").value=a.completion_remarks||"";
+  document.getElementById("statusModal").style.display="flex";
+}
+function closeModal(){
+  state.editingActivityId=null;
+  document.getElementById("statusModal").style.display="none";
+}
+async function saveStatus(){
+  if(!state.editingActivityId)return;
+  const activity=state.activities.find(x=>x.activity_id===state.editingActivityId);
+  if(!activity)return;
+  const requestedStatus=document.getElementById("modalStatus").value;
+  const remarks=document.getElementById("modalRemarks").value.trim();
+  const progress=calculatedProgress(activity);
+
+  if(requestedStatus==="CANCELLED"){
+    closeModal();
+    if(activity?.approval_status==="PENDING"){await cancelActivityRequest(state.editingActivityId);return;}
+    if(activity?.approval_status==="APPROVED"){await requestActivityCancellation(state.editingActivityId);return;}
+    msg("err","This activity cannot be cancelled from its current status.");
+    return;
+  }
+
+  const status=requestedStatus==="NOT DONE"?"NOT DONE":calculatedStatus(activity);
+  const payload={
+    activity_status:status,
+    accomplishment:progress,
+    completion_remarks:remarks||null,
+    completed_at:status==="DONE"?new Date().toISOString():null
+  };
+  const btn=document.getElementById("saveStatus");
+  btn.disabled=true;
+  btn.textContent="SAVING...";
+  try{
+    const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);
+    if(error)throw error;
+    msg("ok","Activity status saved. Progress remains automatic at "+Number(progress).toFixed(2).replace(/\.00$/,"")+"% based on actual quantity.");
+    closeModal();
+    await loadActivities();
+  }catch(e){
+    console.error(e);
+    msg("err","Could not update activity status: "+e.message);
+  }finally{
+    btn.disabled=false;
+    btn.textContent="SAVE STATUS";
+  }
+}
 document.addEventListener("DOMContentLoaded",()=>{init().catch(e=>{console.error(e);msg("err","Could not initialize schedule: "+e.message)})});

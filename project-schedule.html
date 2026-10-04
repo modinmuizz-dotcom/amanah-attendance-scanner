@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f172a">
   <title>AMANAH Activity Calendar</title>
   <link rel="stylesheet" href="style.css?v=4">
-  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=4">\n  <style>\n    .road-structure-box{padding:14px 16px;border:1px solid #dbeafe;border-radius:14px;background:#eff6ff}.road-structure-title{font-size:11px;font-weight:900;letter-spacing:.08em;color:#1d4ed8}.road-structure-note{margin-top:5px;color:#475569;font-size:11px;line-height:1.45;font-weight:700}.road-structure-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}.road-structure-grid .field label{font-size:10px}@media(max-width:900px){.road-structure-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.road-structure-grid{grid-template-columns:1fr}}\n  </style>
   <style>
     :root{
       --navy:#0f172a;--blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--greenSoft:#ecfdf5;
@@ -77,19 +77,34 @@
     .detail-progress-head{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:900}
     .detail-progress-track{height:9px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}
     .detail-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#16a34a);border-radius:999px}
-    .detail-progress-editor{margin-top:12px;padding:12px;border:1px dashed #bfdbfe;border-radius:12px;background:#eff6ff}
-    .detail-progress-editor-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
-    .detail-progress-editor-title{font-size:10px;font-weight:900;letter-spacing:.08em;color:#1d4ed8;text-transform:uppercase}
-    .detail-progress-value{font-size:18px;font-weight:900;color:#0f172a}
-    .detail-progress-controls{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
-    .detail-progress-range{width:100%;accent-color:#2563eb}
-    .detail-progress-number{width:100%;min-height:42px;padding:9px 10px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#0f172a;font-weight:900;text-align:center}
-    .detail-progress-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-    .detail-progress-quick button{border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:8px;padding:6px 9px;font-size:10px;font-weight:900}
-    .detail-progress-quick button:hover{background:#dbeafe}
-    .detail-progress-actions{display:flex;justify-content:flex-end;margin-top:10px}
-    .detail-progress-save{min-height:38px;padding:9px 13px;border:0;border-radius:9px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:10px;font-weight:900}
-    .detail-progress-save:disabled{opacity:.65;cursor:wait}
+    .detail-equipment-progress{margin-top:16px;padding:14px;border:1px solid #dbe5df;border-radius:12px;background:#fff}
+    .detail-equipment-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .detail-equipment-progress-title{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#1f2937}
+    .detail-equipment-progress-total{font-size:11px;font-weight:900;color:#145A3B}
+    .detail-equipment-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 90px;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #eef2f0}
+    .detail-equipment-row:first-child{border-top:0}
+    .detail-equipment-name{font-weight:900;color:#0f172a}
+    .detail-equipment-id{font-size:10px;color:#64748b;margin-top:2px}
+    .detail-equipment-qty{text-align:right;font-weight:900;color:#145A3B}
+    .detail-equipment-attendance{text-align:right;font-size:10px;font-weight:800;color:#64748b}
+    .detail-equipment-progress-note{margin-top:10px;color:#64748b;font-size:10px;font-weight:700;line-height:1.45}
+    .detail-progress-auto{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff}
+    .detail-progress-auto-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .detail-progress-stat{padding:10px;border-radius:10px;background:#fff;border:1px solid #dbeafe}
+    .detail-progress-stat label{display:block;color:#64748b;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .detail-progress-stat strong{display:block;margin-top:4px;color:#0f172a;font-size:17px;font-weight:900}
+    .detail-progress-note{margin-top:10px;color:#475569;font-size:10px;font-weight:700;line-height:1.5}
+    .detail-evidence{margin-top:16px;padding:14px;border:1px solid var(--gray200);border-radius:12px;background:#fff}
+    .detail-evidence-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .detail-evidence-title{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .detail-evidence-count{font-size:10px;font-weight:900;color:#15803d}
+    .detail-evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+    .detail-evidence-card{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#f8fafc}
+    .detail-evidence-card a{display:block;color:inherit;text-decoration:none}
+    .detail-evidence-card img{display:block;width:100%;height:220px;object-fit:cover;background:#e2e8f0}
+    .detail-evidence-label{padding:9px 10px;font-size:10px;font-weight:900;color:#334155}
+    .detail-evidence-empty{padding:18px;text-align:center;color:#94a3b8;font-size:11px;font-weight:700}
+    .detail-evidence-loading{padding:18px;text-align:center;color:#64748b;font-size:11px;font-weight:800}
     .detail-remark{margin-top:16px;padding:13px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--gray200)}
     .detail-remark label{display:block;margin-bottom:6px;color:var(--gray500);font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
     .detail-remark p{margin:0;color:#334155;font-size:12px;line-height:1.55;white-space:pre-wrap}
@@ -187,6 +202,19 @@
       <div class="form">
         <div class="grid">
           <div class="field"><label>Project</label><select id="project"></select></div>
+          <div class="field full road-structure-panel" id="roadStructurePanel" style="display:none">
+            <div class="road-structure-box">
+              <div class="road-structure-title">ROAD WORK LOCATION</div>
+              <div class="road-structure-note" id="roadStructureNote">Select a road project to load its Phase → Road Section → Work Component hierarchy.</div>
+              <div class="road-structure-grid">
+                <div class="field"><label>Phase</label><select id="projectPhase"><option value="">SELECT PHASE</option></select></div>
+                <div class="field"><label>Road Section</label><select id="projectSection"><option value="">SELECT ROAD SECTION</option></select></div>
+                <div class="field"><label>Work Component</label><select id="projectWorkComponent"><option value="">SELECT WORK COMPONENT</option></select></div>
+                <div class="field"><label>Activity Station Start (m)</label><input id="activityStationStart" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 120"></div>
+                <div class="field"><label>Activity Station End (m)</label><input id="activityStationEnd" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 180"></div>
+              </div>
+            </div>
+          </div>
           <div class="field"><label>Activity Date</label><input type="date" id="activityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="startTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="endTime"></div>
@@ -276,6 +304,7 @@
         <div class="detail-grid">
           <div class="detail-card"><label>Project</label><div class="value" id="detailProject"></div></div>
           <div class="detail-card"><label>Project Location</label><div class="value" id="detailLocation"></div></div>
+          <div class="detail-card full"><label>Road Work Location</label><div class="value" id="detailStructure">Not assigned</div></div>
           <div class="detail-card"><label>Activity Date</label><div class="value" id="detailDate"></div></div>
           <div class="detail-card"><label>Scheduled Time</label><div class="value" id="detailTime"></div></div>
           <div class="detail-card" id="detailManpowerCard"><label id="detailManpowerLabel">Manpower</label><div class="value" id="detailManpower"></div></div>
@@ -289,29 +318,43 @@
         <div class="detail-progress">
           <div class="detail-progress-head"><span>ACTIVITY PROGRESS</span><strong id="detailProgressText">0%</strong></div>
           <div class="detail-progress-track"><div class="detail-progress-fill" id="detailProgressFill" style="width:0%"></div></div>
+          <div class="detail-progress-auto">
+            <div class="detail-progress-auto-grid">
+              <div class="detail-progress-stat"><label>Planned Quantity</label><strong id="detailPlannedQuantity">0</strong></div>
+              <div class="detail-progress-stat"><label>Actual Quantity</label><strong id="detailActualQuantity">0</strong></div>
+              <div class="detail-progress-stat"><label>Remaining Quantity</label><strong id="detailRemainingQuantity">0</strong></div>
+              <div class="detail-progress-stat"><label>Auto Progress</label><strong id="detailAutoProgress">0%</strong></div>
+            </div>
+            <div class="detail-progress-note">Progress is automatic. It is calculated from the operator/driver accomplishment quantity recorded in the mobile app against the planned activity quantity.</div>
+          </div>
+        </div>
+                <div class="detail-equipment-progress">
+          <div class="detail-equipment-progress-head">
+            <span class="detail-equipment-progress-title">EQUIPMENT CONTRIBUTION</span>
+            <span class="detail-equipment-progress-total" id="detailEquipmentContributionTotal">0</span>
+          </div>
+          <div id="detailEquipmentContributionContent">
+            <div class="detail-evidence-empty">Loading equipment accomplishment...</div>
+          </div>
+          <div class="detail-equipment-progress-note">
+            Every operator/driver accomplishment is stored against the equipment that performed the work. The activity's total actual quantity is the combined accomplishment of all assigned equipment.
+          </div>
+        </div>
 
-          <div class="detail-progress-editor">
-            <div class="detail-progress-editor-head">
-              <span class="detail-progress-editor-title">ENGINEER PROGRESS UPDATE</span>
-              <span class="detail-progress-value" id="detailProgressEditorValue">0%</span>
-            </div>
-            <div class="detail-progress-controls">
-              <input class="detail-progress-range" id="detailProgressRange" type="range" min="0" max="100" step="1" value="0" aria-label="Activity progress percentage">
-              <input class="detail-progress-number" id="detailProgressNumber" type="number" min="0" max="100" step="1" value="0" aria-label="Activity progress percentage">
-            </div>
-            <div class="detail-progress-quick">
-              <button type="button" data-progress-quick="0">0%</button>
-              <button type="button" data-progress-quick="25">25%</button>
-              <button type="button" data-progress-quick="50">50%</button>
-              <button type="button" data-progress-quick="75">75%</button>
-              <button type="button" data-progress-quick="100">100%</button>
-            </div>
-            <div style="margin-top:8px;color:#64748b;font-size:10px;font-weight:700">
-              Save the current percentage. 1–99% automatically sets the activity to IN PROGRESS; 100% marks it DONE.
-            </div>
-            <div class="detail-progress-actions">
-              <button class="detail-progress-save" id="saveDetailProgress" type="button">SAVE PROGRESS</button>
-            </div>
+<div class="detail-evidence">
+          <div class="detail-evidence-head">
+            <span class="detail-evidence-title">PHOTO EVIDENCE</span>
+            <span class="detail-evidence-count" id="detailEvidenceCount">0 PHOTOS</span>
+          </div>
+          <div id="detailEvidenceContent"><div class="detail-evidence-empty">No driver/operator photo evidence recorded yet.</div></div>
+        </div>
+        <div class="detail-evidence">
+          <div class="detail-evidence-head">
+            <span class="detail-evidence-title">FUEL EVIDENCE</span>
+            <span class="detail-evidence-count" id="detailFuelEvidenceCount">0 PHOTOS</span>
+          </div>
+          <div id="detailFuelEvidenceContent">
+            <div class="detail-evidence-empty">No fuel evidence photo recorded for this activity.</div>
           </div>
         </div>
 
@@ -337,7 +380,7 @@
         <div id="modalActivityName" style="font-weight:900;font-size:16px;margin-bottom:16px"></div>
         <div class="grid">
           <div class="field"><label>Status</label><select id="modalStatus"><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select></div>
-          <div class="field"><label>Progress (%)</label><input type="number" id="modalProgress" min="0" max="100" value="0"></div>
+          <div class="field"><label>Progress (%)</label><input id="modalProgress" value="AUTO" readonly style="background:#f8fafc;color:#334155;font-weight:900"></div>
           <div class="field full"><label>Completion / Status Remarks</label><textarea id="modalRemarks" placeholder="Explain what was completed, delayed, or not done..."></textarea></div>
         </div>
       </div>
@@ -357,6 +400,19 @@
       <div class="modal-body">
         <div class="grid">
           <div class="field"><label>Project</label><select id="editProject"></select></div>
+          <div class="field full road-structure-panel" id="editroadStructurePanel" style="display:none">
+            <div class="road-structure-box">
+              <div class="road-structure-title">ROAD WORK LOCATION</div>
+              <div class="road-structure-note" id="editroadStructureNote">Select a road project to load its Phase → Road Section → Work Component hierarchy.</div>
+              <div class="road-structure-grid">
+                <div class="field"><label>Phase</label><select id="editprojectPhase"><option value="">SELECT PHASE</option></select></div>
+                <div class="field"><label>Road Section</label><select id="editprojectSection"><option value="">SELECT ROAD SECTION</option></select></div>
+                <div class="field"><label>Work Component</label><select id="editprojectWorkComponent"><option value="">SELECT WORK COMPONENT</option></select></div>
+                <div class="field"><label>Activity Station Start (m)</label><input id="editactivityStationStart" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 120"></div>
+                <div class="field"><label>Activity Station End (m)</label><input id="editactivityStationEnd" type="number" min="0" step="0.001" inputmode="decimal" placeholder="Example: 180"></div>
+              </div>
+            </div>
+          </div>
           <div class="field"><label>Activity Date</label><input type="date" id="editActivityDate"></div>
           <div class="field"><label>Start Time</label><input type="time" id="editStartTime"></div>
           <div class="field"><label>End Time</label><input type="time" id="editEndTime"></div>
@@ -391,7 +447,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=20"></script>
+  <script src="project-schedule.js?v=21"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>

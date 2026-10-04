@@ -233,3 +233,21 @@ Never use or recommend:
 DATA DON'T DELETE / DATA DONT DELETE
 
 The current AMANAH system is Supabase + GitHub.
+
+
+## 2026-10-04 — ROAD PROJECT ARCHITECTURE IMPLEMENTED
+
+The Road Project architecture is now implemented on the `amanah-mobile-integration` branch.
+
+Structure:
+- Project → Phase → Road Section → Work Component → Activity
+- Road sections use station start/end in meters.
+- Standard lane components: LEFT LANE and RIGHT LANE.
+- Shoulders are optional and are never created automatically.
+- Optional component types: SHOULDER, MEDIAN, DRAINAGE, SIDEWALK, OTHER.
+- Each work component may have its own station range, planned quantity, status and optional PostGIS LineString geometry.
+- `project_activities` now links to phase, section and work component and can store activity-specific station start/end.
+- Activity Calendar requires the full Phase → Road Section → Work Component hierarchy for new road activities.
+- Mobile Approved Work now returns and displays phase, section, work component, side and station range.
+- New Road Structure page: `road-project-structure.html?project_id=...`
+- PostGIS is enabled for embedded project map support.
