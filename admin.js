@@ -1362,6 +1362,15 @@ function renderProjects() {
               EDIT
             </button>
 
+            ${project.project_type === 'CONCRETING OF ROAD' ? `
+              <button
+                class="small-button material-estimate-button"
+                onclick="window.location.href='road-project-structure.html?project_id=${encodeURIComponent(project.project_id)}'"
+              >
+                ROAD STRUCTURE
+              </button>
+            ` : ''}
+
             <button
               class="small-button material-estimate-button"
               onclick="openMaterialEstimate('${encodeURIComponent(project.project_id)}')"
