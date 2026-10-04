@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},equipmentProgressByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1)};
+const state={projects:[],equipment:[],activities:[],assignments:[],executionByActivity:{},equipmentProgressByActivity:{},selectedEquipment:new Set(),editingActivityId:null,editingScheduleId:null,detailActivityId:null,editingScheduleEquipment:new Set(),calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1),structure:{phases:[],sections:[],components:[]},editStructure:{phases:[],sections:[],components:[]}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function msg(kind,text){const ok=document.getElementById("ok"),err=document.getElementById("err");ok.style.display=kind==="ok"?"block":"none";err.style.display=kind==="err"?"block":"none";if(kind==="ok")ok.textContent=text;else err.textContent=text;window.scrollTo({top:0,behavior:"smooth"});}
@@ -68,7 +68,7 @@ async function init(){
   if(!session){location.href="admin.html";return;}
   document.getElementById("activityDate").value=today();
   document.getElementById("clearForm").addEventListener("click",clearForm);
-  document.getElementById("saveSchedule").addEventListener("click",saveSchedule);
+  document.getElementById("saveSchedule").addEventListener("click",saveSchedule);\n  document.getElementById("project").addEventListener("change",()=>loadStructureForProject(document.getElementById("project").value,""));\n  document.getElementById("editProject").addEventListener("change",()=>loadStructureForProject(document.getElementById("editProject").value,"edit"));
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
   ["activityType","activityItem","activityQuantity","pouringStation"].forEach(id=>{
     const el=document.getElementById(id);
@@ -104,12 +104,132 @@ async function init(){
   updateActivityTypeFields("");
 }
 async function loadProjects(){
-  const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location").order("project_name");
+  const {data,error}=await supabaseClient.from("projects").select("project_id,project_name,location,project_type").order("project_name");
   if(error)throw error; state.projects=data||[];
   const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+" — "+esc(p.location||p.project_id)+"</option>").join("");
   document.getElementById("project").innerHTML=opts;
   document.getElementById("editProject").innerHTML=opts;
   document.getElementById("fProject").innerHTML='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+'</option>').join("");
+}
+
+function isRoadProjectById(projectId){
+  return state.projects.find(p=>p.project_id===projectId)?.project_type==="CONCRETING OF ROAD";
+}
+function selectedStructure(prefix=""){
+  const root=prefix==="edit"?"edit":"";
+  return {
+    phaseId: document.getElementById(root+"projectPhase")?.value || "",
+    sectionId: document.getElementById(root+"projectSection")?.value || "",
+    componentId: document.getElementById(root+"projectWorkComponent")?.value || "",
+    stationStart: document.getElementById(root+"activityStationStart")?.value ?? "",
+    stationEnd: document.getElementById(root+"activityStationEnd")?.value ?? ""
+  };
+}
+function stationDisplay(value){
+  if(value===null||value===undefined||value==="") return "—";
+  const n=Number(value); if(!Number.isFinite(n)) return String(value);
+  const km=Math.floor(Math.abs(n)/1000), rem=Math.abs(n)-km*1000;
+  return "STA "+(n<0?"-":"")+km+"+"+rem.toFixed(3).padStart(7,"0");
+}
+function renderStructureControls(prefix, structure, selected={}){
+  const root=prefix==="edit"?"edit":"";
+  const phaseSelect=document.getElementById(root+"projectPhase");
+  const sectionSelect=document.getElementById(root+"projectSection");
+  const componentSelect=document.getElementById(root+"projectWorkComponent");
+  const panel=document.getElementById(root+"roadStructurePanel");
+  const note=document.getElementById(root+"roadStructureNote");
+  const start=document.getElementById(root+"activityStationStart");
+  const end=document.getElementById(root+"activityStationEnd");
+  const projectId=document.getElementById(root+"Project")?.value || document.getElementById(root+"project")?.value || "";
+  if(!panel||!phaseSelect||!sectionSelect||!componentSelect) return;
+  const road=isRoadProjectById(projectId);
+  panel.style.display=road?"":"none";
+  if(note) note.textContent=road
+    ? "Required for road projects: select the phase, road section and exact work component. Station range is inherited from the selected component and may be narrowed for the activity."
+    : "Road structure is available only for CONCRETING OF ROAD projects.";
+  if(!road){
+    phaseSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    sectionSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    componentSelect.innerHTML='<option value="">NOT REQUIRED</option>';
+    if(start) start.value="";
+    if(end) end.value="";
+    return;
+  }
+  const phases=structure.phases||[], sections=structure.sections||[], components=structure.components||[];
+  phaseSelect.innerHTML='<option value="">SELECT PHASE</option>'+phases.map(p=>'<option value="'+esc(p.phase_id)+'">'+esc((p.phase_code?p.phase_code+" — ":"")+p.phase_name)+'</option>').join("");
+  if(selected.phaseId) phaseSelect.value=selected.phaseId;
+  const phaseId=phaseSelect.value||"";
+  const phaseSections=sections.filter(s=>s.phase_id===phaseId);
+  sectionSelect.innerHTML='<option value="">SELECT ROAD SECTION</option>'+phaseSections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc((s.section_code?s.section_code+" — ":"")+s.section_name)+" • "+esc(stationDisplay(s.station_start_m)+" → "+stationDisplay(s.station_end_m))+'</option>').join("");
+  if(selected.sectionId) sectionSelect.value=selected.sectionId;
+  const sectionId=sectionSelect.value||"";
+  const sectionComponents=components.filter(c=>c.section_id===sectionId && c.is_active!==false);
+  componentSelect.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+sectionComponents.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+" • "+esc(c.component_side||"NONE")+'</option>').join("");
+  if(selected.componentId) componentSelect.value=selected.componentId;
+  const component=components.find(c=>c.work_component_id===componentSelect.value);
+  if(component){
+    if(start && (selected.stationStart==="" || selected.stationStart===null || selected.stationStart===undefined)) start.value=component.station_start_m??"";
+    if(end && (selected.stationEnd==="" || selected.stationEnd===null || selected.stationEnd===undefined)) end.value=component.station_end_m??"";
+  } else {
+    const section=sections.find(s=>s.section_id===sectionId);
+    if(start && (selected.stationStart==="" || selected.stationStart===null || selected.stationStart===undefined)) start.value=section?.station_start_m??"";
+    if(end && (selected.stationEnd==="" || selected.stationEnd===null || selected.stationEnd===undefined)) end.value=section?.station_end_m??"";
+  }
+}
+async function loadStructureForProject(projectId,prefix=""){
+  const target=prefix==="edit"?"edit":"";
+  const blank={phases:[],sections:[],components:[]};
+  if(!projectId){ if(prefix==="edit") state.editStructure=blank; else state.structure=blank; renderStructureControls(prefix,blank,{}); return; }
+  const project=state.projects.find(p=>p.project_id===projectId);
+  if(project?.project_type!=="CONCRETING OF ROAD"){ if(prefix==="edit") state.editStructure=blank; else state.structure=blank; renderStructureControls(prefix,blank,{}); return; }
+  const {data:phases,error:phaseError}=await supabaseClient.from("project_phases").select("*").eq("project_id",projectId).order("sequence_no").order("created_at");
+  if(phaseError) throw phaseError;
+  const phaseIds=(phases||[]).map(p=>p.phase_id);
+  let sections=[];
+  if(phaseIds.length){
+    const {data,error}=await supabaseClient.from("project_sections").select("*").in("phase_id",phaseIds).order("station_start_m",{nullsFirst:true}).order("created_at");
+    if(error) throw error; sections=data||[];
+  }
+  const sectionIds=sections.map(s=>s.section_id);
+  let components=[];
+  if(sectionIds.length){
+    const {data,error}=await supabaseClient.from("project_work_components").select("*").in("section_id",sectionIds).order("sort_order").order("created_at");
+    if(error) throw error; components=data||[];
+  }
+  const obj={phases:phases||[],sections,components};
+  if(prefix==="edit") state.editStructure=obj; else state.structure=obj;
+  renderStructureControls(prefix,obj,{});
+}
+function bindStructureControlEvents(prefix=""){
+  const root=prefix==="edit"?"edit":"";
+  const phase=document.getElementById(root+"projectPhase");
+  const section=document.getElementById(root+"projectSection");
+  const component=document.getElementById(root+"projectWorkComponent");
+  const start=document.getElementById(root+"activityStationStart");
+  const end=document.getElementById(root+"activityStationEnd");
+  if(!phase||!section||!component)return;
+  phase.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:"",componentId:"",stationStart:"",stationEnd:""});
+  });
+  section.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:section.value,componentId:"",stationStart:"",stationEnd:""});
+  });
+  component.addEventListener("change",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    renderStructureControls(prefix,st,{phaseId:phase.value,sectionId:section.value,componentId:component.value,stationStart:"",stationEnd:""});
+  });
+  [start,end].forEach(el=>el?.addEventListener("input",()=>{
+    const st=prefix==="edit"?state.editStructure:state.structure;
+    const comp=st.components.find(c=>c.work_component_id===component.value);
+    if(comp){
+      const s=Number(start?.value), e=Number(end?.value);
+      if(Number.isFinite(s)&&Number.isFinite(e)&& (s<Number(comp.station_start_m)||e>Number(comp.station_end_m))){
+        el.setCustomValidity("Activity station range must stay inside the selected work component.");
+      }else el.setCustomValidity("");
+    }
+  }));
 }
 async function loadEquipment(){
   const {data,error}=await supabaseClient.from("equipment").select("equipment_id,equipment_name,equipment_type,plate_number,status").eq("status","ACTIVE").order("equipment_name");
@@ -124,7 +244,7 @@ function renderEquipment(){
 }
 async function loadActivities(){
   const [{data:acts,error:activityError},{data:rel,error:relErr},{data:execution,error:executionError},{data:fuelEvidence,error:fuelEvidenceError},{data:extraEvidence,error:extraEvidenceError}]=await Promise.all([
-    supabaseClient.from("project_activities").select("activity_id,project_id,project_name,activity_date,activity,activity_item,activity_quantity,pouring_station,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
+    supabaseClient.from("project_activities").select("activity_id,project_id,project_name,phase_id,section_id,work_component_id,station_start_m,station_end_m,activity_date,activity,activity_item,activity_quantity,pouring_station,description,manpower,equipment,accomplishment,remarks,activity_status,approval_status,approval_remarks,scheduled_start,scheduled_end,priority,completed_at,completion_remarks").order("activity_date",{ascending:false}).order("scheduled_start",{ascending:false}),
     supabaseClient.from("project_activity_equipment").select("activity_id,equipment_id"),
     supabaseClient.from("attendance_activities").select("project_activity_id,quantity,photo_1_path,photo_2_path,created_at").not("project_activity_id","is",null).order("created_at",{ascending:false}),
     supabaseClient.from("attendance").select("project_activity_id,fuel_photo_path,created_at").not("project_activity_id","is",null).not("fuel_photo_path","is",null).order("created_at",{ascending:false}),
@@ -565,7 +685,7 @@ async function saveSchedule(){
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SUBMITTING...";
   try{
     const {data,error:insertError}=await supabaseClient.from("project_activities").insert({
-      project_id:pid,project_name:p?.project_name||null,activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
+      project_id:pid,project_name:p?.project_name||null,phase_id:structure.phaseId||null,section_id:structure.sectionId||null,work_component_id:structure.componentId||null,station_start_m:structure.stationStart===""?null:Number(structure.stationStart),station_end_m:structure.stationEnd===""?null:Number(structure.stationEnd),activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
       description:description||null,manpower,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
       approval_status:"PENDING",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null
     }).select("activity_id").single();
@@ -580,7 +700,7 @@ async function saveSchedule(){
       p_entity_id:data.activity_id,
       p_title:activity,
       p_description:"Activity submitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
+      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:structure.phaseId||"",section_id:structure.sectionId||"",work_component_id:structure.componentId||"",station_start_m:structure.stationStart||"",station_end_m:structure.stationEnd||"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
 
@@ -589,7 +709,7 @@ async function saveSchedule(){
   }catch(e){console.error(e);msg("err","Could not submit activity: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("pouringStation").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("pouringStation").value="";document.getElementById("projectPhase").value="";document.getElementById("projectSection").innerHTML="<option value=\"\">SELECT ROAD SECTION</option>";document.getElementById("projectWorkComponent").innerHTML="<option value=\"\">SELECT WORK COMPONENT</option>";document.getElementById("activityStationStart").value="";document.getElementById("activityStationEnd").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
@@ -632,7 +752,7 @@ function openEditModal(id){
   document.getElementById("editPriority").value=a.priority||"NORMAL";
   document.getElementById("editDescription").value=a.description||"";
   document.getElementById("editManpower").value=a.manpower??0;
-  document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";
+  document.getElementById("editCurrentStatus").value=a.activity_status||"PLANNED";\n  await loadStructureForProject(a.project_id,"edit");\n  renderStructureControls("edit",state.editStructure,{phaseId:a.phase_id||"",sectionId:a.section_id||"",componentId:a.work_component_id||"",stationStart:a.station_start_m??"",stationEnd:a.station_end_m??""});
   document.getElementById("editEquipmentSearch").value="";
   state.editingScheduleEquipment=new Set(state.assignments.filter(x=>x.activity_id===id).map(x=>x.equipment_id));
   renderEditEquipment();
@@ -705,7 +825,7 @@ async function saveEditSchedule(){
       p_entity_id:id,
       p_title:activity,
       p_description:"Edited activity resubmitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
+      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:editStructure.phaseId||"",section_id:editStructure.sectionId||"",work_component_id:editStructure.componentId||"",station_start_m:editStructure.stationStart||"",station_end_m:editStructure.stationEnd||"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower,description:description||""}
     });
     if(approvalError)throw approvalError;
     closeEditModal();
@@ -720,7 +840,7 @@ async function saveEditSchedule(){
   }
 }
 
-function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}
+function selectedProjectLocation(id){return state.projects.find(p=>p.project_id===id)?.location||"";}\nfunction structureForActivity(a){\n  const phase=state.structure.phases.find(x=>x.phase_id===a.phase_id)||state.editStructure.phases.find(x=>x.phase_id===a.phase_id);\n  const section=state.structure.sections.find(x=>x.section_id===a.section_id)||state.editStructure.sections.find(x=>x.section_id===a.section_id);\n  const component=state.structure.components.find(x=>x.work_component_id===a.work_component_id)||state.editStructure.components.find(x=>x.work_component_id===a.work_component_id);\n  return {phase,section,component};\n}
 function formatActivityDate(date){
   if(!date)return "—";
   const d=new Date(date+"T00:00:00");
@@ -790,7 +910,7 @@ async function openDetailsModal(id){
     document.getElementById("detailStatus").textContent=calculatedStatus(a);
     document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
     document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
-    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
+    document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";\n  const struct=structureForActivity(a);\n  const detailStructure=document.getElementById("detailStructure");\n  if(detailStructure) detailStructure.textContent=[struct.phase?.phase_name,struct.section?.section_name,struct.component?.component_name,(a.station_start_m!=null||a.station_end_m!=null)?(stationDisplay(a.station_start_m)+" → "+stationDisplay(a.station_end_m)):null].filter(Boolean).join(" • ")||"Not assigned";
     document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
     document.getElementById("detailTime").textContent=time;
 
