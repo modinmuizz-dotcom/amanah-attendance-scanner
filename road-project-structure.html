@@ -57,7 +57,7 @@
           <button class="secondary-btn" id="mapFit" type="button">FIT ALIGNMENT</button>
           <button class="secondary-btn" id="mapStyleToggle" type="button">SATELLITE</button>
           <button class="soft-btn" id="mapSetCenter" type="button">SAVE VIEW</button>
-          <button class="soft-btn" id="mapToken" type="button">MAP SETTINGS</button>
+          <button class="soft-btn" id="mapToken" type="button" onclick="AMANAH_OPEN_MAPBOX_SETTINGS()">MAP SETTINGS</button>
         </div>
       </div>
 
@@ -143,6 +143,20 @@
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
   <script src="road-project-map-config.js?v=1"></script>
   <script src="road-project-map.js?v=26"></script>
-  <script src="road-project-structure.js?v=3"></script>
+  <script>
+    window.AMANAH_OPEN_MAPBOX_SETTINGS=function(){
+      const current=localStorage.getItem('amanah_mapbox_public_token')||window.AMANAH_MAPBOX_TOKEN||'';
+      const value=window.prompt('Enter your Mapbox PUBLIC access token. AMANAH stores it only in this browser.',current);
+      if(value===null)return;
+      const token=String(value).trim();
+      if(!/^pk\./.test(token)){
+        window.alert('That does not look like a Mapbox public token. Public tokens normally start with pk.');
+        return;
+      }
+      localStorage.setItem('amanah_mapbox_public_token',token);
+      window.location.reload();
+    };
+  </script>
+    <script src="road-project-structure.js?v=3"></script>
 </body>
 </html>
