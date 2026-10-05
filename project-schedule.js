@@ -101,13 +101,9 @@ async function init(){
   document.getElementById("clearEquipment").addEventListener("click",()=>{state.selectedEquipment.clear();renderEquipment();});
   ["fSearch","fDate","fStatus","fProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderTables));
   document.getElementById("clearFilters").addEventListener("click",()=>{document.getElementById("fSearch").value="";document.getElementById("fDate").value="";document.getElementById("fStatus").value="";document.getElementById("fProject").value="";renderTables();});
-  document.getElementById("closeModal").addEventListener("click",closeModal);
-  document.getElementById("cancelModal").addEventListener("click",closeModal);
-  document.getElementById("saveStatus").addEventListener("click",saveStatus);
   document.getElementById("closeDetailModal").addEventListener("click",closeDetailModal);
   document.getElementById("closeDetailButton").addEventListener("click",closeDetailModal);
   document.getElementById("detailEditButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openEditModal(id);});
-  document.getElementById("detailUpdateButton").addEventListener("click",()=>{const id=state.detailActivityId;closeDetailModal();openModal(id);});
   document.getElementById("closeEditModal").addEventListener("click",closeEditModal);
   document.getElementById("cancelEditModal").addEventListener("click",closeEditModal);
   document.getElementById("saveEditSchedule").addEventListener("click",saveEditSchedule);
@@ -334,7 +330,7 @@ function renderTables(){
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
     const canEdit=a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL";
-    let action=(canEdit?'<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button>':'')+'<button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
+    let action=(canEdit?'<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button>':'')+'<button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
     if(a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL"){
       action+='<button class="mini amber" data-cancel-request="'+esc(a.activity_id)+'">CANCEL REQUEST</button>';
     }
@@ -349,7 +345,6 @@ function renderTables(){
   document.getElementById("equipmentTable").innerHTML=assignments.length?assignments.map(({a,e})=>'<tr><td>'+esc(a.activity_date||"—")+'</td><td>'+esc((a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—"))+'</td><td><strong>'+esc(e.equipment_name)+'</strong><br><small style="color:#64748b">'+esc(e.equipment_id)+" • "+esc(e.plate_number||"")+'</small></td><td>'+esc(a.project_name||selectedProjectName(a.project_id)||"")+'</td><td><strong>'+esc(a.activity||"")+'</strong></td><td>'+esc(a.priority||"NORMAL")+'</td><td>'+statusPill(a.activity_status||"PLANNED")+'</td></tr>').join(""):'<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px">No equipment schedules found.</td></tr>';
 
   document.querySelectorAll("[data-edit]").forEach(btn=>btn.addEventListener("click",()=>openEditModal(btn.dataset.edit)));
-  document.querySelectorAll("[data-update]").forEach(btn=>btn.addEventListener("click",()=>openModal(btn.dataset.update)));
   document.querySelectorAll("[data-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteActivity(btn.dataset.delete)));
   document.querySelectorAll("[data-cancel-request]").forEach(btn=>btn.addEventListener("click",()=>cancelActivityRequest(btn.dataset.cancelRequest)));
   document.querySelectorAll("[data-approved-cancel-request]").forEach(btn=>btn.addEventListener("click",()=>requestActivityCancellation(btn.dataset.approvedCancelRequest)));
@@ -1085,59 +1080,5 @@ async function renderFuelEvidence(id){
 function closeDetailModal(){
   state.detailActivityId=null;
   document.getElementById("detailModal").style.display="none";
-}
-function openModal(id){
-  const a=state.activities.find(x=>x.activity_id===id);
-  if(!a)return;
-  state.editingActivityId=id;
-  document.getElementById("modalActivityName").textContent=(a.project_name||"")+" — "+(a.activity||"");
-  document.getElementById("modalStatus").value=calculatedStatus(a);
-  document.getElementById("modalProgress").value=Number(calculatedProgress(a)).toFixed(2).replace(/\.00$/,"")+"%";
-  document.getElementById("modalRemarks").value=a.completion_remarks||"";
-  document.getElementById("statusModal").style.display="flex";
-}
-function closeModal(){
-  state.editingActivityId=null;
-  document.getElementById("statusModal").style.display="none";
-}
-async function saveStatus(){
-  if(!state.editingActivityId)return;
-  const activity=state.activities.find(x=>x.activity_id===state.editingActivityId);
-  if(!activity)return;
-  const requestedStatus=document.getElementById("modalStatus").value;
-  const remarks=document.getElementById("modalRemarks").value.trim();
-  const progress=calculatedProgress(activity);
-
-  if(requestedStatus==="CANCELLED"){
-    closeModal();
-    if(activity?.approval_status==="PENDING"){await cancelActivityRequest(state.editingActivityId);return;}
-    if(activity?.approval_status==="APPROVED"){await requestActivityCancellation(state.editingActivityId);return;}
-    msg("err","This activity cannot be cancelled from its current status.");
-    return;
-  }
-
-  const status=requestedStatus==="NOT DONE"?"NOT DONE":calculatedStatus(activity);
-  const payload={
-    activity_status:status,
-    accomplishment:progress,
-    completion_remarks:remarks||null,
-    completed_at:status==="DONE"?new Date().toISOString():null
-  };
-  const btn=document.getElementById("saveStatus");
-  btn.disabled=true;
-  btn.textContent="SAVING...";
-  try{
-    const {error}=await supabaseClient.from("project_activities").update(payload).eq("activity_id",state.editingActivityId);
-    if(error)throw error;
-    msg("ok","Activity status saved. Progress remains automatic at "+Number(progress).toFixed(2).replace(/\.00$/,"")+"% based on actual quantity.");
-    closeModal();
-    await loadActivities();
-  }catch(e){
-    console.error(e);
-    msg("err","Could not update activity status: "+e.message);
-  }finally{
-    btn.disabled=false;
-    btn.textContent="SAVE STATUS";
-  }
 }
 document.addEventListener("DOMContentLoaded",()=>{init().catch(e=>{console.error(e);msg("err","Could not initialize schedule: "+e.message)})});
