@@ -84,5 +84,14 @@ button{cursor:pointer}
 .modal-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.form-field label{display:block;margin-bottom:6px;color:var(--gray700);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.form-field input,.form-field select,.form-field textarea{width:100%;min-height:44px;border:1px solid var(--gray300);border-radius:10px;padding:10px 12px;outline:none;background:#fff}.form-field textarea{min-height:88px;resize:vertical}.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(37,99,235,.08)}
 .full-field{grid-column:1/-1}.checkbox-field{display:flex;align-items:center;gap:9px;padding-top:25px}.checkbox-field input{width:18px;height:18px}.checkbox-field label{margin:0}
 .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.confirm-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.64);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:6000}
+.confirm-backdrop.hidden{display:none}
+.confirm-modal{width:min(520px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 30px 90px rgba(15,23,42,.28);padding:22px}
+.confirm-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#fef3c7;color:#92400e;font-size:22px;font-weight:900;margin-bottom:14px}
+.confirm-content h3{margin:5px 0 8px;font-size:19px;color:#0f172a;letter-spacing:-.02em}
+.confirm-content p{margin:0;color:#64748b;font-size:12px;line-height:1.65}
+.confirm-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.danger-btn{border:0;border-radius:11px;min-height:42px;padding:0 15px;background:#dc2626;color:#fff;font-size:11px;font-weight:900}
+.danger-btn:hover{background:#b91c1c}
 @media(max-width:1050px){.road-map-toolbar{grid-template-columns:1fr 1fr}.map-toolbar-actions{grid-column:1/-1;justify-content:flex-start}.summary-stats{min-width:0;grid-template-columns:repeat(3,1fr)}.architecture-grid{grid-template-columns:1fr}.stage-panel.wide{grid-column:auto}.rule-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.road-map-toolbar{grid-template-columns:1fr}.map-toolbar-actions{grid-column:auto}.road-map-canvas{height:420px}.road-map-footer{flex-direction:column;align-items:flex-start}.road-map-legend{justify-content:flex-start}.road-structure-wrap{width:min(100% - 18px,1440px);padding-top:18px}.road-structure-header{flex-direction:column;align-items:stretch}.summary-stats{grid-template-columns:repeat(2,1fr)}.project-summary{flex-direction:column}.form-grid{grid-template-columns:1fr}.full-field{grid-column:auto}.component-card{grid-template-columns:1fr 1fr}.component-card .component-name{grid-column:1/-1}.rule-grid{grid-template-columns:1fr}.panel-head{flex-direction:column}.button-cluster{justify-content:flex-start}}
