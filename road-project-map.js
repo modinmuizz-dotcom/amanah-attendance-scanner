@@ -245,12 +245,20 @@
   function showEmbeddedMapFallback(){
     const iframe=qs('roadMapFallback');
     const leafletEl=qs('roadMapLeaflet');
+    const mapEl=qs('roadMap');
     if(iframe){
       iframe.style.display='block';
       iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
     }
-    if(leafletEl) leafletEl.style.display='none';
-    setDrawMessage('Using embedded map view. Coordinate and line tools remain available for the project data.','info');
+    // Keep the transparent Leaflet layer ON TOP of the embedded map so
+    // DRAW / START POINT / END POINT can still capture mouse clicks.
+    if(leafletEl){
+      leafletEl.style.display='block';
+      leafletEl.classList.add('map-interaction-overlay');
+    }
+    if(mapEl)mapEl.classList.add('embedded-map-mode');
+    if(map)map.invalidateSize();
+    setDrawMessage('Embedded map view active. Drawing and coordinate tools are enabled.','info');
   }
 
   function setDrawMessage(text,type='info'){
