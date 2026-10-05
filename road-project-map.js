@@ -128,25 +128,80 @@
   async function loadData(){
     const projectId=new URLSearchParams(location.search).get('project_id');
     if(!projectId) throw new Error('Missing project_id.');
-    const {data,error}=await client.rpc('get_road_project_map_data',{p_project_id:projectId});
-    if(error) throw error;
-    projectData=data||{project:null,phases:[],sections:[],components:[]};
+
+    // Load the lightweight project structure directly from Supabase tables.
+    // This keeps the map responsive even if the PostGIS aggregation RPC is slow.
+    const {data:projectRows,error:projectError}=await client.from('projects')
+      .select('project_id,project_name,location,project_type,project_details')
+      .eq('project_id',projectId)
+      .limit(1);
+    if(projectError) throw projectError;
+    if(!projectRows?.length) throw new Error('Road project not found.');
+
+    const {data:phases,error:phaseError}=await client.from('project_phases')
+      .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
+      .eq('project_id',projectId)
+      .order('sequence_no',{ascending:true});
+    if(phaseError) throw phaseError;
+
+    const phaseIds=(phases||[]).map(p=>p.phase_id);
+    let sections=[];
+    if(phaseIds.length){
+      const {data,error}=await client.from('project_sections')
+        .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng,geometry')
+        .in('phase_id',phaseIds)
+        .order('station_start_m',{ascending:true});
+      if(error) throw error;
+      sections=(data||[]).map(s=>{
+        let geometry=s.geometry;
+        // PostGIS geometry may be returned as WKB text by PostgREST.
+        // Keep it only when it is already GeoJSON; otherwise start/end
+        // coordinates still provide a complete map anchor.
+        if(typeof geometry==='string') geometry=null;
+        return {...s,geometry};
+      });
+    }
+
+    const sectionIds=sections.map(s=>s.section_id);
+    let components=[];
+    if(sectionIds.length){
+      const {data,error}=await client.from('project_work_components')
+        .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,geometry,sort_order')
+        .in('section_id',sectionIds)
+        .eq('is_active',true)
+        .order('sort_order',{ascending:true});
+      if(error) throw error;
+      components=(data||[]).map(c=>{
+        let geometry=c.geometry;
+        if(typeof geometry==='string') geometry=null;
+        return {...c,geometry};
+      });
+    }
+
+    projectData={
+      project:projectRows[0],
+      phases:phases||[],
+      sections,
+      components
+    };
+
     const projectNameEl=qs('roadMapProjectName');
     if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
     populateTargets();
     renderLayers();
-    if(!allGeometryBounds().length){
+
+    const bounds=allGeometryBounds();
+    if(bounds.length){
+      map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+    }else{
       const d=projectData.project?.project_details||{};
       if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
         map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
       }else{
         map.setView([7.1907,124.383],13);
       }
-    }else{
-      map.fitBounds(L.latLngBounds(allGeometryBounds()),{padding:[35,35]});
     }
   }
-
   function setDrawMessage(text,type='info'){
     const el=qs('roadMapNotice');
     if(!el)return;
