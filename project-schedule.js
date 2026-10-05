@@ -333,7 +333,8 @@ function renderTables(){
 
   document.getElementById("activityTable").innerHTML=rows.length?rows.map(a=>{
     const eq=equipmentFor(a.activity_id);const time=(a.scheduled_start?fmtTime(a.scheduled_start):"—")+" - "+(a.scheduled_end?fmtTime(a.scheduled_end):"—");
-    let action='<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button><button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
+    const canEdit=a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL";
+    let action=(canEdit?'<button class="mini edit" data-edit="'+esc(a.activity_id)+'">✎ EDIT</button>':'')+'<button class="mini blue" data-update="'+esc(a.activity_id)+'">UPDATE</button><button class="mini red" data-delete="'+esc(a.activity_id)+'">DELETE</button>';
     if(a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL"){
       action+='<button class="mini amber" data-cancel-request="'+esc(a.activity_id)+'">CANCEL REQUEST</button>';
     }
@@ -768,6 +769,10 @@ function renderEditEquipment(){
 async function openEditModal(id){
   const a=state.activities.find(x=>x.activity_id===id);
   if(!a)return;
+  if(a.approval_status!=="PENDING" || a.activity_status!=="PENDING APPROVAL"){
+    msg("err","Only activities that are still PENDING APPROVAL can be edited.");
+    return;
+  }
   state.editingScheduleId=id;
   document.getElementById("editProject").value=a.project_id||"";
   document.getElementById("editActivityDate").value=a.activity_date||localDateInput(a.scheduled_start);
@@ -1007,6 +1012,11 @@ async function openDetailsModal(id){
     document.getElementById("detailEquipmentContributionContent").innerHTML='<div class="detail-evidence-loading">Loading equipment accomplishment...</div>';
     document.getElementById("detailEquipmentContributionTotal").textContent="TOTAL ACTUAL "+formatQuantity(actual);
 
+    const detailEditButton=document.getElementById("detailEditButton");
+    if(detailEditButton){
+      const canEdit=a.approval_status==="PENDING" && a.activity_status==="PENDING APPROVAL";
+      detailEditButton.style.display=canEdit?"":"none";
+    }
     document.getElementById("detailModal").style.display="flex";
     await Promise.all([
       renderDetailEvidence(id),
