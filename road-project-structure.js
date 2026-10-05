@@ -416,6 +416,7 @@ async function saveModal() {
   }
   closeModal();
   await loadStructure();
+  if (window.AMANAHRoadMap?.refresh) await window.AMANAHRoadMap.refresh();
   showNotice((m.mode==='add'?'Added ':'Updated ')+m.type+'.','ok');
 }
 
@@ -438,6 +439,7 @@ async function quickTwoLaneSet() {
   })));
   if(error) throw error;
   await loadStructure();
+  if (window.AMANAHRoadMap?.refresh) await window.AMANAHRoadMap.refresh();
   showNotice('Standard LEFT LANE + RIGHT LANE components created. Shoulders remain optional.','ok');
 }
 
@@ -461,6 +463,7 @@ async function deleteRecord(type,id) {
   }
   if(type==='section' && state.selectedSectionId===id) state.selectedSectionId=null;
   await loadStructure();
+  if (window.AMANAHRoadMap?.refresh) await window.AMANAHRoadMap.refresh();
   showNotice('Deleted '+config.label+'.','ok');
 }
 
@@ -498,6 +501,7 @@ async function init() {
   await loadProject();
   await loadStructure();
   bindEvents();
+  if (window.AMANAHRoadMap?.init) await window.AMANAHRoadMap.init();
 }
 
 supabaseClient.auth.onAuthStateChange((_event,session)=>{
