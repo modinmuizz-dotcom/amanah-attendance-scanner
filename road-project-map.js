@@ -378,28 +378,62 @@
     if(!mapEl||!window.L)return;
     map=L.map(mapEl,{zoomControl:true});
 
-    // Use a reliable ArcGIS street basemap first. If its tiles fail,
-    // automatically fall back to the official OSM tile endpoint.
-    const arcgisUrl='https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
-    basemapLayer=L.tileLayer(arcgisUrl,{
-      maxZoom:19,
-      maxNativeZoom:19,
-      attribution:'Map tiles © Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), OpenStreetMap contributors'
-    }).addTo(map);
-
-    let tileErrorCount=0;
-    basemapLayer.on('tileerror',()=>{
-      tileErrorCount++;
-      if(tileErrorCount>=2 && !basemapFallbackUsed){
-        basemapFallbackUsed=true;
-        if(basemapLayer) map.removeLayer(basemapLayer);
-        basemapLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-          maxZoom:19,
-          attribution:'© OpenStreetMap contributors'
-        }).addTo(map);
-        setDrawMessage('Primary map service was unavailable. Switched to OpenStreetMap.','info');
+    // Try several public street-map tile providers. Some networks block
+    // individual tile hosts, so AMANAH automatically rotates to the next one.
+    const basemapProviders=[
+      {
+        name:'OpenStreetMap',
+        url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'OpenStreetMap DE',
+        url:'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'OSM France',
+        url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'CARTO',
+        url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        options:{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}
       }
-    });
+    ];
+
+    let providerIndex=0;
+    let tileErrorCount=0;
+
+    function useBasemap(index){
+      providerIndex=index;
+      tileErrorCount=0;
+      const provider=basemapProviders[providerIndex];
+      if(basemapLayer){
+        map.removeLayer(basemapLayer);
+        basemapLayer=null;
+      }
+      basemapLayer=L.tileLayer(provider.url,provider.options).addTo(map);
+      setDrawMessage('Loading '+provider.name+' map tiles...','info');
+
+      basemapLayer.on('tileload',()=>{
+        setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
+      });
+
+      basemapLayer.on('tileerror',()=>{
+        tileErrorCount++;
+        if(tileErrorCount>=3){
+          if(providerIndex<basemapProviders.length-1){
+            useBasemap(providerIndex+1);
+          }else{
+            setDrawMessage('Map tiles could not be loaded from the available public map services.','err');
+          }
+        }
+      });
+    }
+
+    useBasemap(0);
 
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
