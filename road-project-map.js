@@ -8,7 +8,9 @@
   let projectData={project:null,phases:[],sections:[],components:[]};
   let drawMode=null;
   let mapCenterMode=false;
+  let pointMode=null;
   let centerMarker=null;
+  let pointLayer=null;
   let statusLayer=null;
 
   const qs=id=>document.getElementById(id);
@@ -37,6 +39,7 @@
     if(drawnItems) drawnItems.clearLayers();
     if(statusLayer){statusLayer.clearLayers();} 
     if(centerMarker){centerMarker.remove();centerMarker=null;}
+    if(pointLayer){pointLayer.clearLayers();}
   }
 
   function featureLine(coords,style,props){
@@ -49,6 +52,17 @@
   function renderLayers(){
     clearMapLayers();
     if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
+
+    projectData.sections.forEach(s=>{
+      if(s.start_lat!=null && s.start_lng!=null){
+        const m=L.marker([Number(s.start_lat),Number(s.start_lng)],{title:'Start Point'}).addTo(statusLayer);
+        m.bindPopup('<strong>START POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.start_lat).toFixed(6))+' • Lng '+esc(Number(s.start_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_start_m)));
+      }
+      if(s.end_lat!=null && s.end_lng!=null){
+        const m=L.marker([Number(s.end_lat),Number(s.end_lng)],{title:'End Point'}).addTo(statusLayer);
+        m.bindPopup('<strong>END POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.end_lat).toFixed(6))+' • Lng '+esc(Number(s.end_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_end_m)));
+      }
+    });
 
     projectData.sections.forEach(s=>{
       if(!s.geometry?.coordinates)return;
@@ -82,7 +96,11 @@
 
   function allGeometryBounds(){
     const bounds=[];
-    projectData.sections.forEach(s=>s.geometry?.coordinates?.forEach(c=>bounds.push([c[1],c[0]])));
+    projectData.sections.forEach(s=>{
+      s.geometry?.coordinates?.forEach(c=>bounds.push([c[1],c[0]]));
+      if(s.start_lat!=null&&s.start_lng!=null)bounds.push([Number(s.start_lat),Number(s.start_lng)]);
+      if(s.end_lat!=null&&s.end_lng!=null)bounds.push([Number(s.end_lat),Number(s.end_lng)]);
+    });
     projectData.components.forEach(c=>c.geometry?.coordinates?.forEach(p=>bounds.push([p[1],p[0]])));
     return bounds;
   }
@@ -113,7 +131,7 @@
     const {data,error}=await client.rpc('get_road_project_map_data',{p_project_id:projectId});
     if(error) throw error;
     projectData=data||{project:null,phases:[],sections:[],components:[]};
-    qs('roadMapProjectName').textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
+    qs('undefined').textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
     populateTargets();
     renderLayers();
     if(!allGeometryBounds().length){
@@ -134,6 +152,41 @@
     el.textContent=text;
     el.className='road-map-notice '+type;
     el.style.display='block';
+  }
+
+  function selectedSection(){
+    const id=qs('mapTarget').value;
+    if(qs('mapTargetType').value!=='SECTION' || !id)return null;
+    return projectData.sections.find(s=>s.section_id===id)||null;
+  }
+
+  function setPointMode(kind){
+    const section=selectedSection();
+    if(!section){
+      setDrawMessage('Select MAP TARGET = ROAD SECTION and choose a road section first.','err');
+      return;
+    }
+    pointMode=kind;
+    qs('mapStartPoint').classList.toggle('active',kind==='START');
+    qs('mapEndPoint').classList.toggle('active',kind==='END');
+    setDrawMessage('Click the actual '+kind.toLowerCase()+' point on the map. The coordinate will be saved to '+section.section_code+' — '+section.section_name+'.','info');
+  }
+
+  async function saveSectionPoint(section,kind,lat,lng){
+    const args={
+      p_section_id:section.section_id,
+      p_start_lat:kind==='START' ? lat : (section.start_lat==null?null:Number(section.start_lat)),
+      p_start_lng:kind==='START' ? lng : (section.start_lng==null?null:Number(section.start_lng)),
+      p_end_lat:kind==='END' ? lat : (section.end_lat==null?null:Number(section.end_lat)),
+      p_end_lng:kind==='END' ? lng : (section.end_lng==null?null:Number(section.end_lng))
+    };
+    const {error}=await client.rpc('save_road_section_start_end',args);
+    if(error){setDrawMessage(error.message||'Unable to save coordinate.','err');return;}
+    setDrawMessage(kind+' point saved at '+lat.toFixed(6)+', '+lng.toFixed(6)+'.','ok');
+    pointMode=null;
+    qs('mapStartPoint').classList.remove('active');
+    qs('mapEndPoint').classList.remove('active');
+    await loadData();
   }
 
   function startLineDrawing(){
@@ -238,6 +291,8 @@
     qs('mapTargetType').addEventListener('change',populateTargets);
     qs('mapDrawLine').addEventListener('click',startLineDrawing);
     qs('mapClearLine').addEventListener('click',clearSelectedGeometry);
+    qs('mapStartPoint').addEventListener('click',()=>setPointMode('START'));
+    qs('mapEndPoint').addEventListener('click',()=>setPointMode('END'));
     qs('mapFit').addEventListener('click',()=>{
       const bounds=allGeometryBounds();
       if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
@@ -251,6 +306,12 @@
     });
 
     map.on('click',async e=>{
+      if(pointMode){
+        const section=selectedSection();
+        const kind=pointMode;
+        if(section) await saveSectionPoint(section,kind,e.latlng.lat,e.latlng.lng);
+        return;
+      }
       if(mapCenterMode){
         mapCenterMode=false;
         qs('mapSetCenter').textContent='SET MAP CENTER';
