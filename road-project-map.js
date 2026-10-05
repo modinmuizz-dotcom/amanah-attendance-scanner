@@ -14,6 +14,7 @@
   let statusLayer=null;
   let basemapLayer=null;
   let basemapFallbackUsed=false;
+  let embeddedMapActive=false;
 
   const qs=id=>document.getElementById(id);
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -242,23 +243,44 @@
     }catch(_error){}
   }
 
+  function syncEmbeddedViewport(){
+    if(!embeddedMapActive||!map)return;
+    const iframe=qs('roadMapFallback');
+    if(!iframe)return;
+    const b=map.getBounds();
+    if(!b.isValid())return;
+    const padLat=Math.max((b.getNorth()-b.getSouth())*0.04,0.001);
+    const padLng=Math.max((b.getEast()-b.getWest())*0.04,0.001);
+    const west=b.getWest()-padLng;
+    const south=b.getSouth()-padLat;
+    const east=b.getEast()+padLng;
+    const north=b.getNorth()+padLat;
+    iframe.src='https://www.openstreetmap.org/export/embed.html?bbox='
+      +encodeURIComponent(west)+','+encodeURIComponent(south)+','+encodeURIComponent(east)+','+encodeURIComponent(north)
+      +'&layer=mapnik';
+  }
+
   function showEmbeddedMapFallback(){
     const iframe=qs('roadMapFallback');
     const leafletEl=qs('roadMapLeaflet');
     const mapEl=qs('roadMap');
+    embeddedMapActive=true;
     if(iframe){
       iframe.style.display='block';
       iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
     }
-    // Keep the transparent Leaflet layer ON TOP of the embedded map so
-    // DRAW / START POINT / END POINT can still capture mouse clicks.
     if(leafletEl){
       leafletEl.style.display='block';
       leafletEl.classList.add('map-interaction-overlay');
     }
     if(mapEl)mapEl.classList.add('embedded-map-mode');
-    if(map)map.invalidateSize();
-    setDrawMessage('Embedded map view active. Drawing and coordinate tools are enabled.','info');
+    if(map){
+      map.invalidateSize();
+      // Match the Leaflet interaction viewport to the embedded map viewport.
+      map.fitBounds(L.latLngBounds([[7.14,124.30],[7.24,124.46]]),{padding:[0,0],animate:false});
+      setTimeout(syncEmbeddedViewport,50);
+    }
+    setDrawMessage('Embedded map view active. Drag or zoom the map; the map image will follow.','info');
   }
 
   function setDrawMessage(text,type='info'){
@@ -464,6 +486,7 @@
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
 
+    map.on('moveend',syncEmbeddedViewport);
     setTimeout(()=>map.invalidateSize(),150);
 
     qs('mapTargetType').addEventListener('change',populateTargets);
