@@ -935,7 +935,8 @@ async function openDetailsModal(id){
     document.getElementById("detailPriority").textContent=a.priority||"NORMAL";
     document.getElementById("detailProject").textContent=a.project_name||selectedProjectName(a.project_id)||"—";
     document.getElementById("detailLocation").textContent=selectedProjectLocation(a.project_id)||"—";
-  const struct=structureForActivity(a);\n  const detailStructure=document.getElementById("detailStructure");
+  const struct=structureForActivity(a);
+  const detailStructure=document.getElementById("detailStructure");
   if(detailStructure) detailStructure.textContent=[struct.phase?.phase_name,struct.section?.section_name,struct.component?.component_name,(a.station_start_m!=null||a.station_end_m!=null)?(stationDisplay(a.station_start_m)+" → "+stationDisplay(a.station_end_m)):null].filter(Boolean).join(" • ")||"Not assigned";
     document.getElementById("detailDate").textContent=formatActivityDate(a.activity_date);
     document.getElementById("detailTime").textContent=time;
