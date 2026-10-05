@@ -221,7 +221,7 @@
           <div class="field"><label>Activity Type</label><input id="activityType" list="activityTypeOptions" autocomplete="off" placeholder="Select or type activity..."><datalist id="activityTypeOptions"><option value="HAULING"></option><option value="MATERIALS DELIVERY"></option><option value="CONCRETE POURING"></option><option value="ROAD EMBANKMENT"></option><option value="BASE PREPARATION"></option></datalist><div class="helper">Select an activity type or type your own activity.</div></div>
           <div class="field" id="activityItemField"><label id="activityItemLabel">What is being hauled / delivered?</label><input id="activityItem" placeholder="Example: Gravel, Cement, Sand"></div>
           <div class="field" id="activityQuantityField"><label>Quantity</label><input type="number" id="activityQuantity" min="0" step="any" inputmode="decimal" placeholder="Enter quantity"></div>
-          <div class="field" id="pouringStationField" style="display:none"><label>Pouring Station / Start to Expected End</label><input id="pouringStation" placeholder="Example: STA. 0+120 TO STA. 0+180"><div class="helper">Concrete pouring only. Enter the station/location range to be poured, from the starting station to the expected ending station.</div></div>
+          </div>
           <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field" id="manpowerField"><label id="manpowerLabel">Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
@@ -309,7 +309,7 @@
           <div class="detail-card"><label>Activity Date</label><div class="value" id="detailDate"></div></div>
           <div class="detail-card"><label>Scheduled Time</label><div class="value" id="detailTime"></div></div>
           <div class="detail-card" id="detailManpowerCard"><label id="detailManpowerLabel">Manpower</label><div class="value" id="detailManpower"></div></div>
-          <div class="detail-card" id="detailPouringStationCard" style="display:none"><label>Pouring Station / Start to Expected End</label><div class="value" id="detailPouringStation"></div></div>
+          </div>
           <div class="detail-card"><label>Equipment Required</label><div class="value" id="detailEquipment"></div></div>
           <div class="detail-card" id="detailActivityItemCard"><label id="detailActivityItemLabel">Activity Material</label><div class="value" id="detailActivityItem"></div></div>
           <div class="detail-card" id="detailActivityQuantityCard"><label>Quantity</label><div class="value" id="detailActivityQuantity"></div></div>
@@ -420,7 +420,7 @@
           <div class="field"><label>Activity Type</label><input id="editActivityType" list="activityTypeOptions" autocomplete="off" placeholder="Select or type activity..."><div class="helper">Select an activity type or type your own activity.</div></div>
           <div class="field" id="editActivityItemField"><label id="editActivityItemLabel">What is being hauled / delivered?</label><input id="editActivityItem" placeholder="Example: Gravel, Cement, Sand"></div>
           <div class="field" id="editActivityQuantityField"><label>Quantity</label><input type="number" id="editActivityQuantity" min="0" step="any" inputmode="decimal" placeholder="Enter quantity"></div>
-          <div class="field" id="editPouringStationField" style="display:none"><label>Pouring Station / Start to Expected End</label><input id="editPouringStation" placeholder="Example: STA. 0+120 TO STA. 0+180"><div class="helper">Concrete pouring only. Enter the station/location range to be poured, from the starting station to the expected ending station.</div></div>
+          </div>
           <div class="field"><label>Priority</label><select id="editPriority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="editDescription" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field" id="editManpowerField"><label id="editManpowerLabel">Manpower</label><input type="number" id="editManpower" min="0" value="0"></div>
@@ -449,7 +449,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=23"></script>
+  <script src="project-schedule.js?v=24"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
