@@ -102,3 +102,19 @@ button{cursor:pointer}
 .danger-btn:hover{background:#b91c1c}
 @media(max-width:1050px){.road-map-toolbar{grid-template-columns:1fr 1fr}.map-toolbar-actions{grid-column:1/-1;justify-content:flex-start}.summary-stats{min-width:0;grid-template-columns:repeat(3,1fr)}.architecture-grid{grid-template-columns:1fr}.stage-panel.wide{grid-column:auto}.rule-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.road-map-toolbar{grid-template-columns:1fr}.map-toolbar-actions{grid-column:auto}.road-map-canvas{height:420px}.road-map-footer{flex-direction:column;align-items:flex-start}.road-map-legend{justify-content:flex-start}.road-structure-wrap{width:min(100% - 18px,1440px);padding-top:18px}.road-structure-header{flex-direction:column;align-items:stretch}.summary-stats{grid-template-columns:repeat(2,1fr)}.project-summary{flex-direction:column}.form-grid{grid-template-columns:1fr}.full-field{grid-column:auto}.component-card{grid-template-columns:1fr 1fr}.component-card .component-name{grid-column:1/-1}.rule-grid{grid-template-columns:1fr}.panel-head{flex-direction:column}.button-cluster{justify-content:flex-start}}
+
+/* AMANAH ROAD ALIGNMENT ENGINE / MAPBOX */
+#roadMapLeaflet{position:absolute;inset:0;z-index:2;background:#e5e7eb}
+#roadMapLeaflet .mapboxgl-canvas{outline:none}
+#roadMapLeaflet .mapboxgl-ctrl-group{border-radius:10px;overflow:hidden;box-shadow:0 5px 18px rgba(15,23,42,.16)}
+#roadMapLeaflet .mapboxgl-ctrl button{width:34px;height:34px}
+.mapboxgl-ctrl-scale{font-size:10px!important;font-weight:800!important}
+.map-token-required{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:linear-gradient(135deg,#eef4ff,#f8fafc);color:#0f172a}
+.map-token-required .map-token-icon{width:58px;height:58px;border-radius:16px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:12px;font-weight:900;letter-spacing:.08em;margin-bottom:14px}
+.map-token-required h3{margin:0;font-size:18px}.map-token-required p{max-width:520px;margin:8px 0 18px;color:#64748b;font-size:12px;line-height:1.6}
+.alignment-footer{background:#f8fafc;border-top:1px solid #e2e8f0}
+#roadAlignmentSummary{display:flex;flex-direction:column;gap:3px}.alignment-footer strong{font-size:9px;letter-spacing:.08em;color:#1d4ed8}.alignment-footer span{font-size:11px;color:#475569;font-weight:800}
+.legend-line.alignment{background:#2563eb;height:7px}
+#mapDeleteAlignment{color:#b91c1c;background:#fef2f2;border-color:#fecaca}
+.map-toolbar-actions{justify-content:flex-start!important}
+@media(max-width:1050px){.road-map-toolbar{grid-template-columns:1fr}.map-toolbar-actions{grid-column:auto}}
