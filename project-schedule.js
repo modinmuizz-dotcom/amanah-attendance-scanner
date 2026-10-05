@@ -27,15 +27,13 @@ function getActivityTypeDetails(prefix=""){
   const item=(controlEl(prefix,"activityItem")?.value||"").trim();
   const qtyRaw=controlEl(prefix,"activityQuantity")?.value||"";
   const quantity=qtyRaw===""?null:Number(qtyRaw);
-  const pouringStation=(controlEl(prefix,"pouringStation")?.value||"").trim();
   const groupLaborInCharge=(controlEl(prefix,"groupLaborInCharge")?.value||"").trim();
-  return {type,item,quantity,pouringStation,groupLaborInCharge};
+  return {type,item,quantity,groupLaborInCharge};
 }
 function updateActivityTypeFields(prefix=""){
   const {type}=getActivityTypeDetails(prefix);
   const needsItem=type==="HAULING"||type==="MATERIALS DELIVERY";
   const needsQuantity=needsItem||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION";
-  const isConcretePouring=type==="CONCRETE POURING";
   const isRoadWorkLocationActivity=type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION";
   const projectId=controlEl(prefix,"project")?.value||"";
   const showRoadWorkLocation=isRoadProjectById(projectId)&&isRoadWorkLocationActivity;
@@ -43,13 +41,9 @@ function updateActivityTypeFields(prefix=""){
   const itemField=controlEl(prefix,"activityItemField");
   const qtyField=controlEl(prefix,"activityQuantityField");
   const itemLabel=controlEl(prefix,"activityItemLabel");
-  const pouringStationField=controlEl(prefix,"pouringStationField");
-  const pouringStationInput=controlEl(prefix,"pouringStation");
   if(itemField)itemField.style.display=needsItem?"":"none";
   if(qtyField)qtyField.style.display=needsQuantity?"":"none";
   if(itemLabel)itemLabel.textContent=type==="MATERIALS DELIVERY"?"What is being delivered?":"What is being hauled?";
-  if(pouringStationField)pouringStationField.style.display=isConcretePouring?"":"none";
-  if(!isConcretePouring&&pouringStationInput)pouringStationInput.value="";
 
   const manpowerField=controlEl(prefix,"manpowerField");
   const manpowerLabel=controlEl(prefix,"manpowerLabel");
@@ -94,7 +88,7 @@ async function init(){
   document.getElementById("project").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("project").value,"");updateActivityTypeFields("");});
   document.getElementById("editProject").addEventListener("change",async()=>{await loadStructureForProject(document.getElementById("editProject").value,"edit");updateActivityTypeFields("edit");});
   document.getElementById("initialStatus").addEventListener("change",updateInitialStatusUI);
-  ["activityType","activityItem","activityQuantity","pouringStation","groupLaborInCharge"].forEach(id=>{
+  ["activityType","activityItem","activityQuantity","groupLaborInCharge"].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener("input",()=>updateActivityTypeFields(""));
   });
@@ -699,7 +693,7 @@ function renderCalendar(){
 async function saveSchedule(){
   clearMsg();
   const pid=document.getElementById("project").value,date=document.getElementById("activityDate").value,start=document.getElementById("startTime").value,end=document.getElementById("endTime").value,activity=document.getElementById("activityType").value.trim().toUpperCase(),description=document.getElementById("description").value.trim(),manpower=Number(document.getElementById("manpower").value||0),priority=document.getElementById("priority").value;
-  const {type:activityType, item:activityItem, quantity:activityQuantity, pouringStation, groupLaborInCharge}=getActivityTypeDetails("");
+  const {type:activityType, item:activityItem, quantity:activityQuantity, groupLaborInCharge}=getActivityTypeDetails("");
   if(!pid)return msg("err","Please select a project.");
   if(!date)return msg("err","Please select the activity date.");
   const projectRecord=state.projects.find(x=>x.project_id===pid);
@@ -717,7 +711,7 @@ async function saveSchedule(){
   const btn=document.getElementById("saveSchedule");btn.disabled=true;btn.textContent="SUBMITTING...";
   try{
     const {data,error:insertError}=await supabaseClient.from("project_activities").insert({
-      project_id:pid,project_name:p?.project_name||null,phase_id:needsRoadWorkLocation?structure.phaseId:null,section_id:needsRoadWorkLocation?structure.sectionId:null,work_component_id:needsRoadWorkLocation?structure.componentId:null,station_start_m:needsRoadWorkLocation&&structure.stationStart!==""?Number(structure.stationStart):null,station_end_m:needsRoadWorkLocation&&structure.stationEnd!==""?Number(structure.stationEnd):null,activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
+      project_id:pid,project_name:p?.project_name||null,phase_id:needsRoadWorkLocation?structure.phaseId:null,section_id:needsRoadWorkLocation?structure.sectionId:null,work_component_id:needsRoadWorkLocation?structure.componentId:null,station_start_m:needsRoadWorkLocation&&structure.stationStart!==""?Number(structure.stationStart):null,station_end_m:needsRoadWorkLocation&&structure.stationEnd!==""?Number(structure.stationEnd):null,activity_date:date,activity,activity_item:activityItem||null,activity_quantity:activityQuantity,
       description:description||null,manpower:needsRoadWorkLocation?0:manpower,group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||null):null,equipment:equipmentNames,accomplishment:0,remarks:null,activity_status:"PENDING APPROVAL",
       approval_status:"PENDING",scheduled_start:ss,scheduled_end:se,priority,completed_at:null,completion_remarks:null
     }).select("activity_id").single();
@@ -732,7 +726,7 @@ async function saveSchedule(){
       p_entity_id:data.activity_id,
       p_title:activity,
       p_description:"Activity submitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:needsRoadWorkLocation?structure.phaseId:"",section_id:needsRoadWorkLocation?structure.sectionId:"",work_component_id:needsRoadWorkLocation?structure.componentId:"",station_start_m:needsRoadWorkLocation?structure.stationStart:"",station_end_m:needsRoadWorkLocation?structure.stationEnd:"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower:needsRoadWorkLocation?0:manpower,group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||""):"",description:description||""}
+      p_payload:{project_name:p?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:needsRoadWorkLocation?structure.phaseId:"",section_id:needsRoadWorkLocation?structure.sectionId:"",work_component_id:needsRoadWorkLocation?structure.componentId:"",station_start_m:needsRoadWorkLocation?structure.stationStart:"",station_end_m:needsRoadWorkLocation?structure.stationEnd:"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:equipmentNames,manpower:needsRoadWorkLocation?0:manpower,group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||""):"",description:description||""}
     });
     if(approvalError)throw approvalError;
 
@@ -741,7 +735,7 @@ async function saveSchedule(){
   }catch(e){console.error(e);msg("err","Could not submit activity: "+e.message)}finally{btn.disabled=false;btn.textContent="SAVE SCHEDULE";}
 }
 function updateInitialStatusUI(){const s=document.getElementById("initialStatus").value;const progress=s==="DONE"?100:0;const el=document.getElementById("initialStatus");el.style.color=s==="DONE"?"#15803d":s==="IN PROGRESS"?"#c2410c":s==="NOT DONE"?"#b91c1c":s==="CANCELLED"?"#475569":"#1d4ed8";el.style.background=s==="DONE"?"#ecfdf5":s==="IN PROGRESS"?"#fff7ed":s==="NOT DONE"?"#fef2f2":s==="CANCELLED"?"#f1f5f9":"#eff6ff";}
-function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("pouringStation").value="";document.getElementById("groupLaborInCharge").value="";document.getElementById("projectPhase").value="";document.getElementById("projectSection").innerHTML="<option value=\"\">SELECT ROAD SECTION</option>";document.getElementById("projectWorkComponent").innerHTML="<option value=\"\">SELECT WORK COMPONENT</option>";document.getElementById("activityStationStart").value="";document.getElementById("activityStationEnd").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
+function clearForm(){document.getElementById("activityDate").value=today();document.getElementById("startTime").value="";document.getElementById("endTime").value="";document.getElementById("activityType").value="";document.getElementById("activityItem").value="";document.getElementById("activityQuantity").value="";document.getElementById("groupLaborInCharge").value="";document.getElementById("projectPhase").value="";document.getElementById("projectSection").innerHTML="<option value=\"\">SELECT ROAD SECTION</option>";document.getElementById("projectWorkComponent").innerHTML="<option value=\"\">SELECT WORK COMPONENT</option>";document.getElementById("activityStationStart").value="";document.getElementById("activityStationEnd").value="";document.getElementById("description").value="";document.getElementById("manpower").value="0";document.getElementById("priority").value="NORMAL";document.getElementById("initialStatus").value="PENDING APPROVAL";updateInitialStatusUI();updateActivityTypeFields("");state.selectedEquipment.clear();renderEquipment();}
 
 function localDateInput(iso){
   if(!iso)return "";
@@ -808,7 +802,7 @@ async function saveEditSchedule(){
   const start=document.getElementById("editStartTime").value;
   const end=document.getElementById("editEndTime").value;
   const activity=document.getElementById("editActivityType").value.trim().toUpperCase();
-  const {type:activityType,item:activityItem,quantity:activityQuantity,pouringStation,groupLaborInCharge}=getActivityTypeDetails("edit");
+  const {type:activityType,item:activityItem,quantity:activityQuantity,groupLaborInCharge}=getActivityTypeDetails("edit");
   const description=document.getElementById("editDescription").value.trim();
   const manpower=Number(document.getElementById("editManpower").value||0);
   const priority=document.getElementById("editPriority").value;
@@ -840,7 +834,6 @@ async function saveEditSchedule(){
       activity,
       activity_item:activityItem||null,
       activity_quantity:activityQuantity,
-      pouring_station:activityType==="CONCRETE POURING"?(pouringStation||null):null,
       description:description||null,
       manpower:needsRoadWorkLocation?0:manpower,
       group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||null):null,
@@ -871,7 +864,7 @@ async function saveEditSchedule(){
       p_entity_id:id,
       p_title:activity,
       p_description:"Edited activity resubmitted by Engineer for General Manager approval.",
-      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:needsRoadWorkLocation?editStructure.phaseId:"",section_id:needsRoadWorkLocation?editStructure.sectionId:"",work_component_id:needsRoadWorkLocation?editStructure.componentId:"",station_start_m:needsRoadWorkLocation?editStructure.stationStart:"",station_end_m:needsRoadWorkLocation?editStructure.stationEnd:"",pouring_station:activityType==="CONCRETE POURING"?(pouringStation||""):"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower:needsRoadWorkLocation?0:manpower,group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||""):"",description:description||""}
+      p_payload:{project_name:p2?.project_name||"",activity,activity_type:activityType,activity_item:activityItem||"",activity_quantity:activityQuantity,phase_id:needsRoadWorkLocation?editStructure.phaseId:"",section_id:needsRoadWorkLocation?editStructure.sectionId:"",work_component_id:needsRoadWorkLocation?editStructure.componentId:"",station_start_m:needsRoadWorkLocation?editStructure.stationStart:"",station_end_m:needsRoadWorkLocation?editStructure.stationEnd:"",activity_date:date,time:(start||end)?((start||"")+" - "+(end||"")):"ALL DAY",priority,equipment:eqNames,manpower:needsRoadWorkLocation?0:manpower,group_labor_in_charge:needsRoadWorkLocation?(groupLaborInCharge||""):"",description:description||""}
     });
     if(approvalError)throw approvalError;
     closeEditModal();
@@ -975,11 +968,8 @@ async function openDetailsModal(id){
     const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION";
     const detailManpowerCard=document.getElementById("detailManpowerCard");
     const detailManpowerLabel=document.getElementById("detailManpowerLabel");
-    const detailPouringStationCard=document.getElementById("detailPouringStationCard");
     if(detailManpowerCard)detailManpowerCard.style.display=hideDetailManpower?"":"";
     if(detailManpowerLabel)detailManpowerLabel.textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION")?"WHO'S GROUP LABOR IN-CHARGE?":"Manpower";
-    if(detailPouringStationCard)detailPouringStationCard.style.display=normalizedActivityType==="CONCRETE POURING"?"":"none";
-    if(normalizedActivityType==="CONCRETE POURING")document.getElementById("detailPouringStation").textContent=a.pouring_station||"Not provided";
     if(!hideDetailManpower)document.getElementById("detailManpower").textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION")?(a.group_labor_in_charge||"Not specified"):(a.manpower??0)+" groups/personnel";
 
     const itemCard=document.getElementById("detailActivityItemCard");
