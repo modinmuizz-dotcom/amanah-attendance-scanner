@@ -225,6 +225,7 @@
           <div class="field"><label>Priority</label><select id="priority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="description" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field" id="manpowerField"><label id="manpowerLabel">Manpower</label><input type="number" id="manpower" min="0" value="0"></div>
+          <div class="field" id="groupLaborField" style="display:none"><label>WHO'S GROUP LABOR IS IN-CHARGE?</label><input type="text" id="groupLaborInCharge" placeholder="Enter group labor in-charge"></div>
           <div class="field"><label>Approval Status</label><select id="initialStatus" style="font-weight:900" disabled><option selected>PENDING APPROVAL</option></select><div class="helper">Every new activity created by the Engineer must be approved by the General Manager before it becomes an approved schedule.</div></div>
           <div class="field full"><label>Equipment Required on Site</label>
             <div class="equipment-box">
@@ -423,6 +424,7 @@
           <div class="field"><label>Priority</label><select id="editPriority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
           <div class="field full"><label>Description</label><textarea id="editDescription" placeholder="Describe the work that must be performed..."></textarea></div>
           <div class="field" id="editManpowerField"><label id="editManpowerLabel">Manpower</label><input type="number" id="editManpower" min="0" value="0"></div>
+          <div class="field" id="editGroupLaborField" style="display:none"><label>WHO'S GROUP LABOR IS IN-CHARGE?</label><input type="text" id="editGroupLaborInCharge" placeholder="Enter group labor in-charge"></div>
           <div class="field"><label>Current Status</label><input id="editCurrentStatus" readonly style="background:#f8fafc;color:#334155;font-weight:900"></div>
           <div class="field full">
             <label>Equipment Required on Site</label>
@@ -447,7 +449,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=21"></script>
+  <script src="project-schedule.js?v=22"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
