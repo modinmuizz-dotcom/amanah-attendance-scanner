@@ -57,6 +57,14 @@ function detailCard(label,value,opts={}){
   const accent=opts.accent?' detail-card-accent-'+opts.accent:'';
   return '<div class="detail-card'+full+accent+'"><div class="detail-label">'+esc(label)+'</div><div class="detail-value">'+esc(value==null||value===''?'—':value)+'</div></div>';
 }
+function stationLabel(value){
+  if(value===null||value===undefined||value==='') return '—';
+  const n=Number(value);
+  if(!Number.isFinite(n)) return String(value);
+  const km=Math.floor(Math.abs(n)/1000);
+  const rem=Math.abs(n)-km*1000;
+  return 'STA '+(n<0?'-':'')+km+'+'+rem.toFixed(3).padStart(7,'0');
+}
 
 function payloadCards(a, historical=false){
   const p=a.payload||{};
@@ -90,11 +98,12 @@ function payloadCards(a, historical=false){
           ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
           ${detailCard('PROJECT',p.project_name)}
           ${detailCard('ACTIVITY TYPE',p.activity_type||p.activity||a.title)}
+          ${(p.phase_id||p.section_id||p.work_component_id||p.station_start_m!=null||p.station_end_m!=null) ? detailCard('ROAD WORK LOCATION', [ [p.phase_code,p.phase_name].filter(Boolean).join(' — '), [p.section_code,p.section_name].filter(Boolean).join(' — '), p.work_component_name||p.work_component, (p.station_start_m!=null||p.station_end_m!=null) ? stationLabel(p.station_start_m)+' → '+stationLabel(p.station_end_m) : null ].filter(Boolean).join(' • '), {full:true,accent:'road'}) : ''}
           ${detailCard('ITEM / MATERIAL',p.activity_item||'—')}
           ${detailCard('QUANTITY',p.activity_quantity??'—')}
           ${detailCard('ACTIVITY DATE',p.activity_date)}
           ${detailCard('TIME',p.time)}
-          ${detailCard('MANPOWER',p.manpower??0)}
+          ${(p.group_labor_in_charge && ['CONCRETE POURING','ROAD EMBANKMENT','BASE PREPARATION'].includes(String(p.activity_type||p.activity||'').toUpperCase())) ? detailCard("WHO'S GROUP LABOR IN-CHARGE?",p.group_labor_in_charge) : detailCard('MANPOWER',p.manpower??0)}
           ${detailCard('EQUIPMENT',equipment.length?equipment.join(', '):'—',{full:true})}
           ${detailCard('DESCRIPTION',p.description||a.description||'No additional description provided.',{full:true})}
         </div>
