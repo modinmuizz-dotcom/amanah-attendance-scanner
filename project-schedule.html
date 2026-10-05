@@ -369,23 +369,7 @@
       <div class="modal-actions">
         <button class="btn gray" id="closeDetailButton" type="button">CLOSE</button>
         <button class="btn blue" id="detailEditButton" type="button">✎ EDIT ACTIVITY</button>
-        <button class="btn blue" id="detailUpdateButton" type="button">UPDATE STATUS</button>
       </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" id="statusModal">
-    <div class="modal">
-      <div class="modal-head"><h3>UPDATE ACTIVITY STATUS</h3><button class="modal-x" id="closeModal">×</button></div>
-      <div class="modal-body">
-        <div id="modalActivityName" style="font-weight:900;font-size:16px;margin-bottom:16px"></div>
-        <div class="grid">
-          <div class="field"><label>Status</label><select id="modalStatus"><option>PLANNED</option><option>IN PROGRESS</option><option>DONE</option><option>NOT DONE</option><option>CANCELLED</option></select></div>
-          <div class="field"><label>Progress (%)</label><input id="modalProgress" value="AUTO" readonly style="background:#f8fafc;color:#334155;font-weight:900"></div>
-          <div class="field full"><label>Completion / Status Remarks</label><textarea id="modalRemarks" placeholder="Explain what was completed, delayed, or not done..."></textarea></div>
-        </div>
-      </div>
-      <div class="modal-actions"><button class="btn gray" id="cancelModal">CANCEL</button><button class="btn blue" id="saveStatus">SAVE STATUS</button></div>
     </div>
   </div>
 
@@ -449,7 +433,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-schedule.js?v=26"></script>
+  <script src="project-schedule.js?v=27"></script>
   <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
