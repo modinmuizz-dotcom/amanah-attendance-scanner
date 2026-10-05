@@ -7,7 +7,9 @@
   <title>AMANAH Road Project Structure</title>
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="amanah-ui.css?v=4">
-  <link rel="stylesheet" href="road-project-structure.css?v=1">
+  <link rel="stylesheet" href="road-project-structure.css?v=2">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 </head>
 <body>
   <main class="road-structure-wrap">
@@ -34,6 +36,46 @@
         <div><small>PHASES</small><strong id="phaseCount">0</strong></div>
         <div><small>SECTIONS</small><strong id="sectionCount">0</strong></div>
         <div><small>COMPONENTS</small><strong id="componentCount">0</strong></div>
+      </div>
+    </section>
+
+    <section class="panel road-map-panel">
+      <div class="panel-head">
+        <div>
+          <h2>PROJECT MAP</h2>
+          <p>View the actual road alignment, sections and work components on a live map. Draw and save the real project geometry directly on the map.</p>
+        </div>
+        <span class="map-project-chip" id="roadMapProjectName">ROAD PROJECT</span>
+      </div>
+      <div class="road-map-toolbar">
+        <div class="map-field">
+          <label>MAP TARGET</label>
+          <select id="mapTargetType">
+            <option value="SECTION">ROAD SECTION</option>
+            <option value="COMPONENT">WORK COMPONENT</option>
+          </select>
+        </div>
+        <div class="map-field map-target-field">
+          <label id="mapTargetLabel">SELECT ROAD SECTION</label>
+          <select id="mapTarget"><option value="">SELECT ROAD SECTION</option></select>
+        </div>
+        <div class="map-toolbar-actions">
+          <button class="soft-btn" id="mapDrawLine" type="button">DRAW / REPLACE LINE</button>
+          <button class="secondary-btn" id="mapClearLine" type="button">CLEAR LINE</button>
+          <button class="secondary-btn" id="mapFit" type="button">FIT PROJECT</button>
+          <button class="secondary-btn" id="mapSetCenter" type="button">SET MAP CENTER</button>
+        </div>
+      </div>
+      <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
+      <div id="roadMap" class="road-map-canvas"></div>
+      <div class="road-map-footer">
+        <div><strong>MAP DATA</strong><span id="roadMapSummary">Loading map data...</span></div>
+        <div class="road-map-legend">
+          <span><i class="legend-line planned"></i>PLANNED</span>
+          <span><i class="legend-line progress"></i>IN PROGRESS</span>
+          <span><i class="legend-line done"></i>DONE</span>
+          <span><i class="legend-line delayed"></i>NOT DONE / CANCELLED</span>
+        </div>
       </div>
     </section>
 
@@ -96,6 +138,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="road-project-structure.js?v=1"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="road-project-map.js?v=1"></script>
+  <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
