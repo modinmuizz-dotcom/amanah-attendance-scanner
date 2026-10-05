@@ -27,7 +27,7 @@ function getActivityTypeDetails(prefix=""){
 function updateActivityTypeFields(prefix=""){
   const {type}=getActivityTypeDetails(prefix);
   const needsItem=type==="HAULING"||type==="MATERIALS DELIVERY";
-  const needsQuantity=needsItem||type==="CONCRETE POURING";
+  const needsQuantity=needsItem||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT";
   const isConcretePouring=type==="CONCRETE POURING";
   const itemField=document.getElementById(prefix+"activityItemField");
   const qtyField=document.getElementById(prefix+"activityQuantityField");
@@ -57,7 +57,7 @@ function validateActivityTypeDetails(prefix=""){
   if((type==="HAULING"||type==="MATERIALS DELIVERY") && !item){
     return type==="HAULING" ? "Please enter what is being hauled." : "Please enter what is being delivered.";
   }
-  if((type==="HAULING"||type==="MATERIALS DELIVERY"||type==="CONCRETE POURING") && (quantity===null || !Number.isFinite(quantity) || quantity<=0)){
+  if((type==="HAULING"||type==="MATERIALS DELIVERY"||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT") && (quantity===null || !Number.isFinite(quantity) || quantity<=0)){
     return "Please enter a quantity greater than 0.";
   }
   return null;
@@ -944,7 +944,7 @@ async function openDetailsModal(id){
     const normalizedActivityType=String(a.activity_type||a.activity||"").trim().toUpperCase();
     const hideDetailManpower=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
     const showActivityItem=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
-    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING";
+    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT";
     const detailManpowerCard=document.getElementById("detailManpowerCard");
     const detailManpowerLabel=document.getElementById("detailManpowerLabel");
     const detailPouringStationCard=document.getElementById("detailPouringStationCard");
