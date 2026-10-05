@@ -117,6 +117,8 @@ async function init(){
   document.getElementById("calendarPrev").addEventListener("click",()=>changeCalendarMonth(-1));
   document.getElementById("calendarNext").addEventListener("click",()=>changeCalendarMonth(1));
   document.getElementById("calendarToday").addEventListener("click",()=>{state.calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);renderCalendar();});
+  bindStructureControlEvents("");
+  bindStructureControlEvents("edit");
   await Promise.all([loadProjects(),loadEquipment(),loadActivities()]);
   await loadStructureForProject(document.getElementById("project").value,"");
   updateInitialStatusUI();
