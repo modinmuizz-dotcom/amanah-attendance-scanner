@@ -242,6 +242,17 @@
     }catch(_error){}
   }
 
+  function showEmbeddedMapFallback(){
+    const iframe=qs('roadMapFallback');
+    const leafletEl=qs('roadMapLeaflet');
+    if(iframe){
+      iframe.style.display='block';
+      iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
+    }
+    if(leafletEl) leafletEl.style.display='none';
+    setDrawMessage('Using embedded map view. Coordinate and line tools remain available for the project data.','info');
+  }
+
   function setDrawMessage(text,type='info'){
     const el=qs('roadMapNotice');
     if(!el)return;
@@ -375,8 +386,9 @@
 
   async function init(){
     const mapEl=qs('roadMap');
+    const leafletEl=qs('roadMapLeaflet')||mapEl;
     if(!mapEl||!window.L)return;
-    map=L.map(mapEl,{zoomControl:true});
+    map=L.map(leafletEl,{zoomControl:true});
 
     // Try several public street-map tile providers. Some networks block
     // individual tile hosts, so AMANAH automatically rotates to the next one.
@@ -427,13 +439,18 @@
           if(providerIndex<basemapProviders.length-1){
             useBasemap(providerIndex+1);
           }else{
-            setDrawMessage('Map tiles could not be loaded from the available public map services.','err');
+            showEmbeddedMapFallback();
           }
         }
       });
     }
 
     useBasemap(0);
+    setTimeout(()=>{
+      if(!basemapLayer || !basemapLayer._tiles || Object.keys(basemapLayer._tiles||{}).length===0){
+        showEmbeddedMapFallback();
+      }
+    },5000);
 
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
