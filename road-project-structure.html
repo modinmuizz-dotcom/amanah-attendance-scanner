@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="amanah-ui.css?v=4">
   <link rel="stylesheet" href="road-project-structure.css?v=2">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css" rel="stylesheet"><link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.1/mapbox-gl-draw.css" rel="stylesheet">
 </head>
 <body>
   <main class="road-structure-wrap">
@@ -42,7 +42,7 @@
       <div class="panel-head">
         <div>
           <h2>PROJECT MAP</h2>
-          <p>Simple project location map. Drag and zoom normally. Use SET PROJECT LOCATION when you want to place the project marker.</p>
+          <p>Primary road alignment is the project map source of truth. Draw it, edit it, optionally snap it to the road network, then save it to Supabase/PostGIS.</p>
         </div>
         <span class="map-project-chip" id="roadMapProjectName">ROAD PROJECT</span>
       </div>
@@ -66,7 +66,7 @@
           <span><i class="legend-line planned"></i>PLANNED</span>
           <span><i class="legend-line progress"></i>IN PROGRESS</span>
           <span><i class="legend-line done"></i>DONE</span>
-          <span><i class="legend-line delayed"></i>NOT DONE / CANCELLED</span>
+          <span><i class="legend-line delayed"></i>NOT DONE / CANCELLED</span>\n          <span><i class="legend-line alignment"></i>PRIMARY ALIGNMENT</span>
         </div>
       </div>
     </section>
