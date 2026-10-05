@@ -1,7 +1,12 @@
 (function(){
   const SUPABASE_URL='https://bafmycjninxomufhkjvy.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY='sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
-  const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  let client=null;
+  try{
+    if(window.supabase?.createClient) client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  }catch(error){
+    console.error('AMANAH Supabase init error:',error);
+  }
 
   let map=null, draw=null, projectData={project:null,phases:[],sections:[],components:[],alignment:null};
   let alignmentFeatureId=null, satellite=false, pendingMode=null;
@@ -377,8 +382,9 @@
       return;
     }
 
-    if(!window.mapboxgl||!window.MapboxDraw||!window.turf){
-      notice('Map libraries failed to load. Refresh the page and try again.','err');
+    if(!window.mapboxgl){
+      mapEl.innerHTML='<div class="map-token-required"><h3>Mapbox library did not load</h3><p>Check the browser network/console for api.mapbox.com errors.</p></div>';
+      notice('Mapbox GL JS failed to load.','err');
       return;
     }
 
@@ -402,16 +408,26 @@
     map.addControl(new mapboxgl.NavigationControl({visualizePitch:false}),'top-right');
     map.addControl(new mapboxgl.ScaleControl({maxWidth:160,unit:'metric'}),'bottom-left');
 
-    draw=new MapboxDraw({
-      displayControlsDefault:false,
-      controls:{line_string:true,trash:true},
-      defaultMode:'simple_select',
-      styles:[
-        {id:'gl-draw-line',type:'line',filter:['all',['==','$type','LineString'],['!=','mode','static']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2563eb','line-width':5,'line-opacity':.95}},
-        {id:'gl-draw-line-static',type:'line',filter:['all',['==','$type','LineString'],['==','mode','static']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2563eb','line-width':5,'line-opacity':.95}}
-      ]
-    });
-    map.addControl(draw,'top-left');
+    if(window.MapboxDraw){
+      try{
+        draw=new MapboxDraw({
+          displayControlsDefault:false,
+          controls:{},
+          defaultMode:'simple_select',
+          styles:[
+            {id:'gl-draw-line',type:'line',filter:['all',['==','$type','LineString'],['!=','mode','static']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2563eb','line-width':5,'line-opacity':.95}},
+            {id:'gl-draw-line-static',type:'line',filter:['all',['==','$type','LineString'],['==','mode','static']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2563eb','line-width':5,'line-opacity':.95}}
+          ]
+        });
+        map.addControl(draw,'top-left');
+      }catch(error){
+        console.error('AMANAH Mapbox Draw init error:',error);
+        draw=null;
+        notice('Map loaded, but drawing tools failed to initialize.','err');
+      }
+    }else{
+      notice('Map loaded. Drawing library is still unavailable.','info');
+    }
 
     // Bind the AMANAH toolbar immediately. Do not wait for Mapbox's
     // style/load event; otherwise a slow or blocked Mapbox load would
@@ -419,7 +435,9 @@
     bindButtons();
 
     map.on('load',async()=>{
-      await loadData();
+      requestAnimationFrame(()=>map.resize());
+      if(client) await loadData();
+      else notice('Map loaded. Supabase connection is unavailable, so project data is not shown yet.','err');
     });
 
     map.on('draw.create',e=>{
