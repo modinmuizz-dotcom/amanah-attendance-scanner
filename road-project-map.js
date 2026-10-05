@@ -161,16 +161,53 @@
     await loadData();
   }
 
+  function professionalConfirm(targetType,targetLabel){
+    return new Promise(resolve=>{
+      const modal=qs('mapConfirmModal');
+      const message=qs('mapConfirmMessage');
+      const ok=qs('mapConfirmOk');
+      const cancel=qs('mapConfirmCancel');
+      if(!modal||!ok||!cancel){resolve(window.confirm('Remove the saved map line for this '+targetType.toLowerCase()+'?'));return;}
+      message.textContent='Remove the saved map line for '+targetLabel+'? This will remove only the geographic line from the map. The road structure, station range, planned quantity and activity data will remain unchanged.';
+      modal.classList.remove('hidden');
+      const cleanup=value=>{
+        modal.classList.add('hidden');
+        ok.removeEventListener('click',onOk);
+        cancel.removeEventListener('click',onCancel);
+        modal.removeEventListener('click',onBackdrop);
+        document.removeEventListener('keydown',onKey);
+        resolve(value);
+      };
+      const onOk=()=>cleanup(true);
+      const onCancel=()=>cleanup(false);
+      const onBackdrop=e=>{if(e.target===modal)cleanup(false);};
+      const onKey=e=>{if(e.key==='Escape')cleanup(false);};
+      ok.addEventListener('click',onOk);
+      cancel.addEventListener('click',onCancel);
+      modal.addEventListener('click',onBackdrop);
+      document.addEventListener('keydown',onKey);
+      setTimeout(()=>ok.focus(),50);
+    });
+  }
+
   async function clearSelectedGeometry(){
     const targetId=qs('mapTarget').value;
     const targetType=qs('mapTargetType').value;
     if(!targetId){setDrawMessage('Select a target first.','err');return;}
-    if(!confirm('Remove the saved map line for this '+targetType.toLowerCase()+'?'))return;
+    const target=targetType==='SECTION'
+      ? projectData.sections.find(x=>x.section_id===targetId)
+      : projectData.components.find(x=>x.work_component_id===targetId);
+    const targetLabel=target
+      ? (targetType==='SECTION'
+        ? (target.section_code+' — '+target.section_name)
+        : (target.component_name+' • '+(target.component_side||'NONE')))
+      : 'this '+targetType.toLowerCase();
+    if(!(await professionalConfirm(targetType,targetLabel)))return;
     const rpc=targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
     const args=targetType==='SECTION'?{p_section_id:targetId,p_geojson:null}:{p_work_component_id:targetId,p_geojson:null};
     const {error}=await client.rpc(rpc,args);
     if(error){setDrawMessage(error.message||'Unable to clear geometry.','err');return;}
-    setDrawMessage('Saved map line removed.','ok');
+    setDrawMessage('Saved map line removed successfully.','ok');
     await loadData();
   }
 
