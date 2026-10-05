@@ -190,6 +190,7 @@
         map.setView([7.1907,124.383],13);
       }
     }
+    loadGeometryOverlay(projectId);
   }
   async function loadGeometryOverlay(projectId){
     try{
@@ -205,7 +206,6 @@
       const bounds=allGeometryBounds();
       if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
     }catch(_error){}
-    loadGeometryOverlay(projectId);
   }
 
   function setDrawMessage(text,type='info'){
