@@ -131,7 +131,8 @@
     const {data,error}=await client.rpc('get_road_project_map_data',{p_project_id:projectId});
     if(error) throw error;
     projectData=data||{project:null,phases:[],sections:[],components:[]};
-    qs('undefined').textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
+    const projectNameEl=qs('roadMapProjectName');
+    if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
     populateTargets();
     renderLayers();
     if(!allGeometryBounds().length){
