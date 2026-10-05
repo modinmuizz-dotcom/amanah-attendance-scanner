@@ -121,6 +121,21 @@
     </section>
   </main>
 
+  <div class="confirm-backdrop hidden" id="mapConfirmModal" role="dialog" aria-modal="true" aria-labelledby="mapConfirmTitle">
+    <div class="confirm-modal">
+      <div class="confirm-icon">!</div>
+      <div class="confirm-content">
+        <span class="eyebrow">MAP ACTION</span>
+        <h3 id="mapConfirmTitle">REMOVE SAVED MAP LINE?</h3>
+        <p id="mapConfirmMessage">This will remove the saved geographic line from the project map. The road section or work component itself will remain unchanged.</p>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="secondary-btn" id="mapConfirmCancel">KEEP LINE</button>
+        <button type="button" class="danger-btn" id="mapConfirmOk">REMOVE LINE</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop hidden" id="entityModal">
     <div class="entity-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
@@ -140,7 +155,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=1"></script>
+  <script src="road-project-map.js?v=2"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
