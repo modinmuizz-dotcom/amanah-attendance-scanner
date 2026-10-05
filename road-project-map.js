@@ -382,8 +382,15 @@
       return;
     }
 
+    if(typeof mapboxgl.supported==='function' && !mapboxgl.supported()){
+      mapEl.innerHTML='<div class="map-token-required"><h3>Mapbox cannot render in this browser</h3><p>WebGL2 is unavailable or disabled. Use an up-to-date Chrome/Edge with hardware acceleration enabled.</p></div>';
+      notice('Mapbox requires WebGL2 in the browser.','err');
+      return;
+    }
+
     mapboxgl.accessToken=token;
     map=new mapboxgl.Map({
+      accessToken:token,
       container:mapEl,
       style:'mapbox://styles/mapbox/standard',
       center:[124.383,7.1907],
@@ -434,8 +441,11 @@
     });
 
     map.on('error',e=>{
-      if(e?.error?.status===401||String(e?.error?.message||'').toLowerCase().includes('token')){
-        notice('Mapbox rejected the public token. Open MAP SETTINGS and enter a valid token.','err');
+      const msg=String(e?.error?.message||e?.error||'Mapbox map error');
+      if(e?.error?.status===401||/token|unauthori|forbidden|access/i.test(msg)){
+        notice('Mapbox rejected the public token. Check the token restrictions in Mapbox and confirm this GitHub Pages domain is allowed.','err');
+      }else{
+        notice('Mapbox error: '+msg.slice(0,180),'err');
       }
     });
   }
