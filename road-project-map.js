@@ -97,10 +97,13 @@
   function populateTargets(){
     const targetType=qs('mapTargetType').value;
     const target=qs('mapTarget');
+    const label=qs('mapTargetLabel');
     if(targetType==='SECTION'){
+      if(label)label.textContent='SELECT ROAD SECTION';
       target.innerHTML='<option value="">SELECT ROAD SECTION</option>'+projectData.sections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc(s.section_code+' — '+s.section_name)+' • '+esc(stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m))+'</option>').join('');
       return;
     }
+    if(label)label.textContent='SELECT WORK COMPONENT';
     target.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+projectData.components.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+' • '+esc(c.component_side||'NONE')+' • '+esc(stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m))+'</option>').join('');
   }
 
