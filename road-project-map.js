@@ -417,10 +417,12 @@
 
     let providerIndex=0;
     let tileErrorCount=0;
+    let tileLoaded=false;
 
     function useBasemap(index){
       providerIndex=index;
       tileErrorCount=0;
+      tileLoaded=false;
       const provider=basemapProviders[providerIndex];
       if(basemapLayer){
         map.removeLayer(basemapLayer);
@@ -430,6 +432,7 @@
       setDrawMessage('Loading '+provider.name+' map tiles...','info');
 
       basemapLayer.on('tileload',()=>{
+        tileLoaded=true;
         setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
       });
 
@@ -447,10 +450,8 @@
 
     useBasemap(0);
     setTimeout(()=>{
-      if(!basemapLayer || !basemapLayer._tiles || Object.keys(basemapLayer._tiles||{}).length===0){
-        showEmbeddedMapFallback();
-      }
-    },5000);
+      if(!tileLoaded) showEmbeddedMapFallback();
+    },4500);
 
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
