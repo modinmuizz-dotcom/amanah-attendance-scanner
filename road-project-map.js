@@ -406,8 +406,12 @@
     });
     map.addControl(draw,'top-left');
 
+    // Bind the AMANAH toolbar immediately. Do not wait for Mapbox's
+    // style/load event; otherwise a slow or blocked Mapbox load would
+    // leave DRAW / MAP SETTINGS / FIT etc. unclickable.
+    bindButtons();
+
     map.on('load',async()=>{
-      bindButtons();
       await loadData();
     });
 
