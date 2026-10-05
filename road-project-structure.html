@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="amanah-ui.css?v=4">
   <link rel="stylesheet" href="road-project-structure.css?v=2">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 </head>
 <body>
   <main class="road-structure-wrap">
@@ -43,41 +42,24 @@
       <div class="panel-head">
         <div>
           <h2>PROJECT MAP</h2>
-          <p>View the actual road alignment, sections and work components on a live map. Draw and save the real project geometry directly on the map.</p>
+          <p>Simple project location map. Drag and zoom normally. Use SET PROJECT LOCATION when you want to place the project marker.</p>
         </div>
         <span class="map-project-chip" id="roadMapProjectName">ROAD PROJECT</span>
       </div>
+
       <div class="road-map-toolbar">
-        <div class="map-field">
-          <label>MAP TARGET</label>
-          <select id="mapTargetType">
-            <option value="SECTION">ROAD SECTION</option>
-            <option value="COMPONENT">WORK COMPONENT</option>
-          </select>
-        </div>
-        <div class="map-field map-target-field">
-          <label id="mapTargetLabel">SELECT ROAD SECTION</label>
-          <select id="mapTarget"><option value="">SELECT ROAD SECTION</option></select>
-        </div>
         <div class="map-toolbar-actions">
-          <button class="soft-btn" id="mapDrawLine" type="button">DRAW / REPLACE LINE</button>
-          <button class="secondary-btn" id="mapClearLine" type="button">CLEAR LINE</button>
-          <button class="secondary-btn" id="mapStartPoint" type="button">SET START POINT</button>
-          <button class="secondary-btn" id="mapEndPoint" type="button">SET END POINT</button>
-          <button class="secondary-btn" id="mapFit" type="button">FIT PROJECT</button>
-          <button class="secondary-btn" id="mapSetCenter" type="button">SET MAP CENTER</button>
+          <button class="soft-btn" id="mapSetCenter" type="button">SET PROJECT LOCATION</button>
+          <button class="secondary-btn" id="mapFit" type="button">FIT SAVED GEOMETRY</button>
         </div>
       </div>
+
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
+
       <div id="roadMap" class="road-map-canvas">
         <div id="roadMapLeaflet"></div>
-        <iframe id="roadMapFallback"
-          title="AMANAH project map"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik"
-          loading="eager"
-          referrerpolicy="no-referrer"
-          style="display:none;width:100%;height:100%;border:0;"></iframe>
       </div>
+
       <div class="road-map-footer">
         <div><strong>MAP DATA</strong><span id="roadMapSummary">Loading map data...</span></div>
         <div class="road-map-legend">
@@ -126,25 +108,10 @@
         <div><strong>Stationing is primary.</strong><span>Left/right is defined relative to increasing station direction.</span></div>
         <div><strong>Shouldering is optional.</strong><span>No shoulder records are created unless the project actually includes them.</span></div>
         <div><strong>Components are independent.</strong><span>Each lane or shoulder can have a different station range and planned quantity.</span></div>
-        <div><strong>Future map-ready.</strong><span>Sections and components already contain PostGIS LineString geometry for the embedded AMANAH map.</span></div>
+        <div><strong>Map is intentionally simple.</strong><span>Project location and saved geometry are shown without drawing or editing tools.</span></div>
       </div>
     </section>
   </main>
-
-  <div class="confirm-backdrop hidden" id="mapConfirmModal" role="dialog" aria-modal="true" aria-labelledby="mapConfirmTitle">
-    <div class="confirm-modal">
-      <div class="confirm-icon">!</div>
-      <div class="confirm-content">
-        <span class="eyebrow">MAP ACTION</span>
-        <h3 id="mapConfirmTitle">REMOVE SAVED MAP LINE?</h3>
-        <p id="mapConfirmMessage">This will remove the saved geographic line from the project map. The road section or work component itself will remain unchanged.</p>
-      </div>
-      <div class="confirm-actions">
-        <button type="button" class="secondary-btn" id="mapConfirmCancel">KEEP LINE</button>
-        <button type="button" class="danger-btn" id="mapConfirmOk">REMOVE LINE</button>
-      </div>
-    </div>
-  </div>
 
   <div class="modal-backdrop hidden" id="entityModal">
     <div class="entity-modal" role="dialog" aria-modal="true">
@@ -164,8 +131,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=16"></script>
-  <script src="road-project-structure.js?v=2"></script>
+  <script src="road-project-map.js?v=17"></script>
+  <script src="road-project-structure.js?v=3"></script>
 </body>
 </html>
