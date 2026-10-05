@@ -12,6 +12,8 @@
   let centerMarker=null;
   let pointLayer=null;
   let statusLayer=null;
+  let basemapLayer=null;
+  let basemapFallbackUsed=false;
 
   const qs=id=>document.getElementById(id);
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -375,12 +377,34 @@
     const mapEl=qs('roadMap');
     if(!mapEl||!window.L)return;
     map=L.map(mapEl,{zoomControl:true});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      maxZoom:20,
-      attribution:'© OpenStreetMap contributors'
+
+    // Use a reliable ArcGIS street basemap first. If its tiles fail,
+    // automatically fall back to the official OSM tile endpoint.
+    const arcgisUrl='https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+    basemapLayer=L.tileLayer(arcgisUrl,{
+      maxZoom:19,
+      maxNativeZoom:19,
+      attribution:'Map tiles © Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), OpenStreetMap contributors'
     }).addTo(map);
+
+    let tileErrorCount=0;
+    basemapLayer.on('tileerror',()=>{
+      tileErrorCount++;
+      if(tileErrorCount>=2 && !basemapFallbackUsed){
+        basemapFallbackUsed=true;
+        if(basemapLayer) map.removeLayer(basemapLayer);
+        basemapLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+          maxZoom:19,
+          attribution:'© OpenStreetMap contributors'
+        }).addTo(map);
+        setDrawMessage('Primary map service was unavailable. Switched to OpenStreetMap.','info');
+      }
+    });
+
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
+
+    setTimeout(()=>map.invalidateSize(),150);
 
     qs('mapTargetType').addEventListener('change',populateTargets);
     qs('mapDrawLine').addEventListener('click',startLineDrawing);
