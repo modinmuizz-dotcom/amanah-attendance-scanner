@@ -34,9 +34,9 @@ function getActivityTypeDetails(prefix=""){
 function updateActivityTypeFields(prefix=""){
   const {type}=getActivityTypeDetails(prefix);
   const needsItem=type==="HAULING"||type==="MATERIALS DELIVERY";
-  const needsQuantity=needsItem||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT";
+  const needsQuantity=needsItem||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION";
   const isConcretePouring=type==="CONCRETE POURING";
-  const isRoadWorkLocationActivity=type==="CONCRETE POURING"||type==="ROAD EMBANKMENT";
+  const isRoadWorkLocationActivity=type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION";
   const projectId=controlEl(prefix,"project")?.value||"";
   const showRoadWorkLocation=isRoadProjectById(projectId)&&isRoadWorkLocationActivity;
 
@@ -76,10 +76,10 @@ function validateActivityTypeDetails(prefix=""){
   if((type==="HAULING"||type==="MATERIALS DELIVERY") && !item){
     return type==="HAULING" ? "Please enter what is being hauled." : "Please enter what is being delivered.";
   }
-  if((type==="HAULING"||type==="MATERIALS DELIVERY"||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT") && (quantity===null || !Number.isFinite(quantity) || quantity<=0)){
+  if((type==="HAULING"||type==="MATERIALS DELIVERY"||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION") && (quantity===null || !Number.isFinite(quantity) || quantity<=0)){
     return "Please enter a quantity greater than 0.";
   }
-  if((type==="CONCRETE POURING"||type==="ROAD EMBANKMENT") && !groupLaborInCharge){
+  if((type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION") && !groupLaborInCharge){
     return "Please enter who is in charge of the group labor for this activity.";
   }
   return null;
@@ -169,11 +169,11 @@ function renderStructureControls(prefix, structure, selected={}){
   if(!panel||!phaseSelect||!sectionSelect||!componentSelect) return;
   const road=isRoadProjectById(projectId);
   const {type}=getActivityTypeDetails(prefix);
-  const showRoadWorkLocation=road&&(type==="CONCRETE POURING"||type==="ROAD EMBANKMENT");
+  const showRoadWorkLocation=road&&(type==="CONCRETE POURING"||type==="ROAD EMBANKMENT"||type==="BASE PREPARATION");
   panel.style.display=showRoadWorkLocation?"":"none";
   if(note) note.textContent=showRoadWorkLocation
-    ? "Required for concrete pouring and road embankment: select the phase, road section, exact work component and activity station range."
-    : "Road work location is shown only for CONCRETE POURING and ROAD EMBANKMENT.";
+    ? "Required for concrete pouring, road embankment and base preparation: select the phase, road section, exact work component and activity station range."
+    : "Road work location is shown only for CONCRETE POURING, ROAD EMBANKMENT and BASE PREPARATION.";
   if(!road){
     phaseSelect.innerHTML='<option value="">NOT REQUIRED</option>';
     sectionSelect.innerHTML='<option value="">NOT REQUIRED</option>';
@@ -704,8 +704,8 @@ async function saveSchedule(){
   if(!date)return msg("err","Please select the activity date.");
   const projectRecord=state.projects.find(x=>x.project_id===pid);
   const structure=selectedStructure("");
-  const needsRoadWorkLocation=projectRecord?.project_type==="CONCRETING OF ROAD" && (activityType==="CONCRETE POURING"||activityType==="ROAD EMBANKMENT");
-  if(needsRoadWorkLocation && (!structure.phaseId || !structure.sectionId || !structure.componentId)) return msg("err","Concrete pouring and road embankment activities require Phase, Road Section and Work Component.");
+  const needsRoadWorkLocation=projectRecord?.project_type==="CONCRETING OF ROAD" && (activityType==="CONCRETE POURING"||activityType==="ROAD EMBANKMENT"||activityType==="BASE PREPARATION");
+  if(needsRoadWorkLocation && (!structure.phaseId || !structure.sectionId || !structure.componentId)) return msg("err","Concrete pouring, road embankment and base preparation activities require Phase, Road Section and Work Component.");
   if(needsRoadWorkLocation && structure.stationStart!=="" && structure.stationEnd!=="" && Number(structure.stationEnd)<Number(structure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const activityDetailError=validateActivityTypeDetails("");
   if(activityDetailError)return msg("err",activityDetailError);
@@ -816,7 +816,7 @@ async function saveEditSchedule(){
   if(!date)return msg("err","Please select the activity date.");
   const editProjectRecord=state.projects.find(x=>x.project_id===pid);
   const editStructure=selectedStructure("edit");
-  const needsRoadWorkLocation=editProjectRecord?.project_type==="CONCRETING OF ROAD" && (activityType==="CONCRETE POURING"||activityType==="ROAD EMBANKMENT");
+  const needsRoadWorkLocation=editProjectRecord?.project_type==="CONCRETING OF ROAD" && (activityType==="CONCRETE POURING"||activityType==="ROAD EMBANKMENT"||activityType==="BASE PREPARATION");
   if(needsRoadWorkLocation && (!editStructure.phaseId || !editStructure.sectionId || !editStructure.componentId)) return msg("err","Concrete pouring and road embankment activities require Phase, Road Section and Work Component.");
   if(needsRoadWorkLocation && editStructure.stationStart!=="" && editStructure.stationEnd!=="" && Number(editStructure.stationEnd)<Number(editStructure.stationStart)) return msg("err","Activity Station End cannot be lower than Station Start.");
   const editActivityDetailError=validateActivityTypeDetails("edit");
@@ -972,15 +972,15 @@ async function openDetailsModal(id){
     const normalizedActivityType=String(a.activity_type||a.activity||"").trim().toUpperCase();
     const hideDetailManpower=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
     const showActivityItem=normalizedActivityType==="HAULING"||normalizedActivityType==="MATERIALS DELIVERY";
-    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT";
+    const showActivityQuantity=showActivityItem||normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION";
     const detailManpowerCard=document.getElementById("detailManpowerCard");
     const detailManpowerLabel=document.getElementById("detailManpowerLabel");
     const detailPouringStationCard=document.getElementById("detailPouringStationCard");
     if(detailManpowerCard)detailManpowerCard.style.display=hideDetailManpower?"":"";
-    if(detailManpowerLabel)detailManpowerLabel.textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT")?"WHO'S GROUP LABOR IN-CHARGE?":"Manpower";
+    if(detailManpowerLabel)detailManpowerLabel.textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION")?"WHO'S GROUP LABOR IN-CHARGE?":"Manpower";
     if(detailPouringStationCard)detailPouringStationCard.style.display=normalizedActivityType==="CONCRETE POURING"?"":"none";
     if(normalizedActivityType==="CONCRETE POURING")document.getElementById("detailPouringStation").textContent=a.pouring_station||"Not provided";
-    if(!hideDetailManpower)document.getElementById("detailManpower").textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT")?(a.group_labor_in_charge||"Not specified"):(a.manpower??0)+" groups/personnel";
+    if(!hideDetailManpower)document.getElementById("detailManpower").textContent=(normalizedActivityType==="CONCRETE POURING"||normalizedActivityType==="ROAD EMBANKMENT"||normalizedActivityType==="BASE PREPARATION")?(a.group_labor_in_charge||"Not specified"):(a.manpower??0)+" groups/personnel";
 
     const itemCard=document.getElementById("detailActivityItemCard");
     const itemLabel=document.getElementById("detailActivityItemLabel");
