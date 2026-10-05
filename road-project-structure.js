@@ -261,6 +261,10 @@ function openModal(type, mode='add', record=null) {
       formField('Section Name','section_name',s.section_name||'', 'text', null, true) +
       formField('Station Start (m)','station_start_m',s.station_start_m ?? '') +
       formField('Station End (m)','station_end_m',s.station_end_m ?? '') +
+      formField('Start Latitude','start_lat',s.start_lat ?? '') +
+      formField('Start Longitude','start_lng',s.start_lng ?? '') +
+      formField('End Latitude','end_lat',s.end_lat ?? '') +
+      formField('End Longitude','end_lng',s.end_lng ?? '') +
       formField('Status','status',s.status||'PLANNED','select',[{value:'PLANNED',label:'PLANNED'},{value:'IN PROGRESS',label:'IN PROGRESS'},{value:'DONE',label:'DONE'},{value:'ON HOLD',label:'ON HOLD'},{value:'CANCELLED',label:'CANCELLED'}]) +
       formTextarea('Notes','notes',s.notes||'');
   }
@@ -329,6 +333,10 @@ function readModalValues() {
       section_name:get('section_name').value.trim(),
       station_start_m:nullableNumber(get('station_start_m').value),
       station_end_m:nullableNumber(get('station_end_m').value),
+      start_lat:nullableNumber(get('start_lat').value),
+      start_lng:nullableNumber(get('start_lng').value),
+      end_lat:nullableNumber(get('end_lat').value),
+      end_lng:nullableNumber(get('end_lng').value),
       status:get('status').value,
       notes:get('notes').value.trim()||null
     };
