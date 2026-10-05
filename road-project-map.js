@@ -148,34 +148,23 @@
     let sections=[];
     if(phaseIds.length){
       const {data,error}=await client.from('project_sections')
-        .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng,geometry')
+        .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
         .in('phase_id',phaseIds)
         .order('station_start_m',{ascending:true});
       if(error) throw error;
-      sections=(data||[]).map(s=>{
-        let geometry=s.geometry;
-        // PostGIS geometry may be returned as WKB text by PostgREST.
-        // Keep it only when it is already GeoJSON; otherwise start/end
-        // coordinates still provide a complete map anchor.
-        if(typeof geometry==='string') geometry=null;
-        return {...s,geometry};
-      });
+      sections=(data||[]).map(s=>({...s,geometry:null}));
     }
 
     const sectionIds=sections.map(s=>s.section_id);
     let components=[];
     if(sectionIds.length){
       const {data,error}=await client.from('project_work_components')
-        .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,geometry,sort_order')
+        .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
         .in('section_id',sectionIds)
         .eq('is_active',true)
         .order('sort_order',{ascending:true});
       if(error) throw error;
-      components=(data||[]).map(c=>{
-        let geometry=c.geometry;
-        if(typeof geometry==='string') geometry=null;
-        return {...c,geometry};
-      });
+      components=(data||[]).map(c=>({...c,geometry:null}));
     }
 
     projectData={
@@ -202,6 +191,23 @@
       }
     }
   }
+  async function loadGeometryOverlay(projectId){
+    try{
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('MAP_GEOMETRY_TIMEOUT')),3500));
+      const request=client.rpc('get_road_project_map_data',{p_project_id:projectId});
+      const {data}=await Promise.race([request,timeout]);
+      if(!data)return;
+      const sectionMap=new Map((data.sections||[]).map(s=>[s.section_id,s.geometry]));
+      const componentMap=new Map((data.components||[]).map(c=>[c.work_component_id,c.geometry]));
+      projectData.sections=projectData.sections.map(s=>({...s,geometry:sectionMap.get(s.section_id)||null}));
+      projectData.components=projectData.components.map(c=>({...c,geometry:componentMap.get(c.work_component_id)||null}));
+      renderLayers();
+      const bounds=allGeometryBounds();
+      if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+    }catch(_error){}
+    loadGeometryOverlay(projectId);
+  }
+
   function setDrawMessage(text,type='info'){
     const el=qs('roadMapNotice');
     if(!el)return;
