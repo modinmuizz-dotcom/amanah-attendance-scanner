@@ -12,17 +12,23 @@ function statusPill(s){const cls={"PLANNED":"planned","IN PROGRESS":"progress","
 function fmtTime(iso){if(!iso)return "—";const d=new Date(iso);return d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});}
 function fmtDate(iso){if(!iso)return "—";const d=new Date(iso);return d.toLocaleDateString();}
 function isoFromLocal(date,time){if(!date||!time)return null;return new Date(date+"T"+time).toISOString();}
+function controlId(prefix,name){
+  return prefix==="edit" ? "edit"+name.charAt(0).toUpperCase()+name.slice(1) : name;
+}
+function controlEl(prefix,name){
+  return document.getElementById(controlId(prefix,name));
+}
 function getActivityTypeValue(prefix=""){
-  const el=document.getElementById(prefix+"activityType");
+  const el=controlEl(prefix,"activityType");
   return (el?.value||"").trim();
 }
 function getActivityTypeDetails(prefix=""){
   const type=getActivityTypeValue(prefix).toUpperCase();
-  const item=(document.getElementById(prefix+"activityItem")?.value||"").trim();
-  const qtyRaw=document.getElementById(prefix+"activityQuantity")?.value||"";
+  const item=(controlEl(prefix,"activityItem")?.value||"").trim();
+  const qtyRaw=controlEl(prefix,"activityQuantity")?.value||"";
   const quantity=qtyRaw===""?null:Number(qtyRaw);
-  const pouringStation=(document.getElementById(prefix+"pouringStation")?.value||"").trim();
-  const groupLaborInCharge=(document.getElementById(prefix+"groupLaborInCharge")?.value||"").trim();
+  const pouringStation=(controlEl(prefix,"pouringStation")?.value||"").trim();
+  const groupLaborInCharge=(controlEl(prefix,"groupLaborInCharge")?.value||"").trim();
   return {type,item,quantity,pouringStation,groupLaborInCharge};
 }
 function updateActivityTypeFields(prefix=""){
@@ -31,35 +37,38 @@ function updateActivityTypeFields(prefix=""){
   const needsQuantity=needsItem||type==="CONCRETE POURING"||type==="ROAD EMBANKMENT";
   const isConcretePouring=type==="CONCRETE POURING";
   const isRoadWorkLocationActivity=type==="CONCRETE POURING"||type==="ROAD EMBANKMENT";
-  const root=prefix==="edit"?"edit":"";
-  const projectId=document.getElementById(root+"Project")?.value || document.getElementById(root+"project")?.value || "";
+  const projectId=controlEl(prefix,"project")?.value||"";
   const showRoadWorkLocation=isRoadProjectById(projectId)&&isRoadWorkLocationActivity;
-  const itemField=document.getElementById(prefix+"activityItemField");
-  const qtyField=document.getElementById(prefix+"activityQuantityField");
-  const itemLabel=document.getElementById(prefix+"activityItemLabel");
-  const pouringStationField=document.getElementById(prefix+"pouringStationField");
-  const pouringStationInput=document.getElementById(prefix+"pouringStation");
+
+  const itemField=controlEl(prefix,"activityItemField");
+  const qtyField=controlEl(prefix,"activityQuantityField");
+  const itemLabel=controlEl(prefix,"activityItemLabel");
+  const pouringStationField=controlEl(prefix,"pouringStationField");
+  const pouringStationInput=controlEl(prefix,"pouringStation");
   if(itemField)itemField.style.display=needsItem?"":"none";
   if(qtyField)qtyField.style.display=needsQuantity?"":"none";
   if(itemLabel)itemLabel.textContent=type==="MATERIALS DELIVERY"?"What is being delivered?":"What is being hauled?";
   if(pouringStationField)pouringStationField.style.display=isConcretePouring?"":"none";
-  if(!isConcretePouring && pouringStationInput)pouringStationInput.value="";
-  const manpowerField=document.getElementById(prefix+"manpowerField");
-  const manpowerLabel=document.getElementById(prefix+"manpowerLabel");
-  const groupLaborField=document.getElementById(prefix+"groupLaborField");
-  const groupLaborInput=document.getElementById(prefix+"groupLaborInCharge");
+  if(!isConcretePouring&&pouringStationInput)pouringStationInput.value="";
+
+  const manpowerField=controlEl(prefix,"manpowerField");
+  const manpowerLabel=controlEl(prefix,"manpowerLabel");
+  const groupLaborField=controlEl(prefix,"groupLaborField");
+  const groupLaborInput=controlEl(prefix,"groupLaborInCharge");
   const hideManpower=type==="HAULING"||type==="MATERIALS DELIVERY"||isRoadWorkLocationActivity;
-  if(manpowerField)manpowerField.style.display=hideManpower ? "none" : "";
-  if(groupLaborField)groupLaborField.style.display=showRoadWorkLocation ? "" : "none";
+  if(manpowerField)manpowerField.style.display=hideManpower?"none":"";
+  if(groupLaborField)groupLaborField.style.display=showRoadWorkLocation?"":"none";
   if(hideManpower){
-    const manpowerInput=document.getElementById(prefix+"manpower");
+    const manpowerInput=controlEl(prefix,"manpower");
     if(manpowerInput)manpowerInput.value="0";
   }
-  if(!showRoadWorkLocation && groupLaborInput)groupLaborInput.value="";
-  const roadPanel=document.getElementById(root+"roadStructurePanel");
-  if(roadPanel)roadPanel.style.display=showRoadWorkLocation ? "" : "none";
-  if(!needsItem && document.getElementById(prefix+"activityItem"))document.getElementById(prefix+"activityItem").value="";
-  if(!needsQuantity && document.getElementById(prefix+"activityQuantity"))document.getElementById(prefix+"activityQuantity").value="";
+  if(!showRoadWorkLocation&&groupLaborInput)groupLaborInput.value="";
+
+  const roadPanel=controlEl(prefix,"roadStructurePanel");
+  if(roadPanel)roadPanel.style.display=showRoadWorkLocation?"":"none";
+
+  if(!needsItem&&controlEl(prefix,"activityItem"))controlEl(prefix,"activityItem").value="";
+  if(!needsQuantity&&controlEl(prefix,"activityQuantity"))controlEl(prefix,"activityQuantity").value="";
 }
 function validateActivityTypeDetails(prefix=""){
   const {type,item,quantity,groupLaborInCharge}=getActivityTypeDetails(prefix);
