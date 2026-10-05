@@ -270,17 +270,20 @@
       iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
     }
     if(leafletEl){
-      leafletEl.style.display='block';
-      leafletEl.classList.add('map-interaction-overlay');
+      // In embedded mode the iframe is the real visible/pannable map.
+      // Hide the Leaflet panes/markers so they cannot drift independently
+      // of the embedded map and appear to jump to random locations.
+      leafletEl.style.display='none';
+      leafletEl.classList.remove('map-interaction-overlay');
     }
     if(mapEl)mapEl.classList.add('embedded-map-mode');
     if(map){
       map.invalidateSize();
-      // Match the Leaflet interaction viewport to the embedded map viewport.
-      map.fitBounds(L.latLngBounds([[7.14,124.30],[7.24,124.46]]),{padding:[0,0],animate:false});
-      setTimeout(syncEmbeddedViewport,50);
+      map.getContainer().style.pointerEvents='none';
+      if(statusLayer)statusLayer.clearLayers();
+      if(centerMarker){centerMarker.remove();centerMarker=null;}
     }
-    setDrawMessage('Embedded map view active. Drag or zoom the map; the map image will follow.','info');
+    setDrawMessage('Embedded map view active. The map can be panned and zoomed normally.','info');
   }
 
   function setDrawMessage(text,type='info'){
