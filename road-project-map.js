@@ -125,76 +125,108 @@
     target.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+projectData.components.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+' • '+esc(c.component_side||'NONE')+' • '+esc(stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m))+'</option>').join('');
   }
 
+  function withTimeout(promise,ms,label){
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timed out after '+ms+' ms.')),ms));
+    return Promise.race([promise,timeout]);
+  }
+
   async function loadData(){
     const projectId=new URLSearchParams(location.search).get('project_id');
     if(!projectId) throw new Error('Missing project_id.');
 
-    // Load the lightweight project structure directly from Supabase tables.
-    // This keeps the map responsive even if the PostGIS aggregation RPC is slow.
-    const {data:projectRows,error:projectError}=await client.from('projects')
-      .select('project_id,project_name,location,project_type,project_details')
-      .eq('project_id',projectId)
-      .limit(1);
-    if(projectError) throw projectError;
-    if(!projectRows?.length) throw new Error('Road project not found.');
+    setDrawMessage('Loading project map data...','info');
 
-    const {data:phases,error:phaseError}=await client.from('project_phases')
-      .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
-      .eq('project_id',projectId)
-      .order('sequence_no',{ascending:true});
-    if(phaseError) throw phaseError;
+    try{
+      const [projectResult,phaseResult]=await Promise.all([
+        withTimeout(
+          client.from('projects')
+            .select('project_id,project_name,location,project_type,project_details')
+            .eq('project_id',projectId)
+            .limit(1),
+          4000,'Project'
+        ),
+        withTimeout(
+          client.from('project_phases')
+            .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
+            .eq('project_id',projectId)
+            .order('sequence_no',{ascending:true}),
+          4000,'Phase'
+        )
+      ]);
 
-    const phaseIds=(phases||[]).map(p=>p.phase_id);
-    let sections=[];
-    if(phaseIds.length){
-      const {data,error}=await client.from('project_sections')
-        .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
-        .in('phase_id',phaseIds)
-        .order('station_start_m',{ascending:true});
-      if(error) throw error;
-      sections=(data||[]).map(s=>({...s,geometry:null}));
-    }
+      if(projectResult.error) throw projectResult.error;
+      if(phaseResult.error) throw phaseResult.error;
+      if(!projectResult.data?.length) throw new Error('Road project not found.');
 
-    const sectionIds=sections.map(s=>s.section_id);
-    let components=[];
-    if(sectionIds.length){
-      const {data,error}=await client.from('project_work_components')
-        .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
-        .in('section_id',sectionIds)
-        .eq('is_active',true)
-        .order('sort_order',{ascending:true});
-      if(error) throw error;
-      components=(data||[]).map(c=>({...c,geometry:null}));
-    }
+      const phases=phaseResult.data||[];
+      const phaseIds=phases.map(p=>p.phase_id);
 
-    projectData={
-      project:projectRows[0],
-      phases:phases||[],
-      sections,
-      components
-    };
-
-    const projectNameEl=qs('roadMapProjectName');
-    if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
-    populateTargets();
-    renderLayers();
-
-    const bounds=allGeometryBounds();
-    if(bounds.length){
-      map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
-    }else{
-      const d=projectData.project?.project_details||{};
-      if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-        map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
-      }else{
-        map.setView([7.1907,124.383],13);
+      let sections=[];
+      if(phaseIds.length){
+        const result=await withTimeout(
+          client.from('project_sections')
+            .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
+            .in('phase_id',phaseIds)
+            .order('station_start_m',{ascending:true}),
+          4000,'Road section'
+        );
+        if(result.error) throw result.error;
+        sections=(result.data||[]).map(s=>({...s,geometry:null}));
       }
+
+      const sectionIds=sections.map(s=>s.section_id);
+      let components=[];
+      if(sectionIds.length){
+        const result=await withTimeout(
+          client.from('project_work_components')
+            .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
+            .in('section_id',sectionIds)
+            .eq('is_active',true)
+            .order('sort_order',{ascending:true}),
+          4000,'Work component'
+        );
+        if(result.error) throw result.error;
+        components=(result.data||[]).map(c=>({...c,geometry:null}));
+      }
+
+      projectData={
+        project:projectResult.data[0],
+        phases,
+        sections,
+        components
+      };
+
+      const projectNameEl=qs('roadMapProjectName');
+      if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
+
+      populateTargets();
+      renderLayers();
+
+      const bounds=allGeometryBounds();
+      if(bounds.length){
+        map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+      }else{
+        const d=projectData.project?.project_details||{};
+        if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
+          map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
+        }else{
+          map.setView([7.1907,124.383],13);
+        }
+      }
+
+      setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
+
+      // Geometry is optional for initial rendering and loads separately.
+      loadGeometryOverlay(projectId);
+    }catch(error){
+      console.error('AMANAH Road Map load error:',error);
+      setDrawMessage(error?.message||'Unable to load project map data.','err');
+      updateMapSummary();
     }
-    loadGeometryOverlay(projectId);
   }
   async function loadGeometryOverlay(projectId){
     try{
-      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('MAP_GEOMETRY_TIMEOUT')),3500));
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('MAP_GEOMETRY_TIMEOUT')),2500));
       const request=client.rpc('get_road_project_map_data',{p_project_id:projectId});
       const {data}=await Promise.race([request,timeout]);
       if(!data)return;
