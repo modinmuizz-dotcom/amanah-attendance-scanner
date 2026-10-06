@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
+const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],pickupRequests:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,pickupItemId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -108,7 +108,7 @@ function bind(){
  document.getElementById("detailPrimaryAction").addEventListener("click",primaryDetailAction);
  document.getElementById("closePo").addEventListener("click",closePoModal);
  document.getElementById("cancelPo").addEventListener("click",closePoModal);
- document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);
+ document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
  ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
  ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
  document.getElementById("clearPrFilters").addEventListener("click",()=>{document.getElementById("prSearch").value="";document.getElementById("prStatus").value="";document.getElementById("prProject").value="";renderRequests();});
@@ -187,8 +187,15 @@ async function loadRequests(){
 }
 async function loadOrders(){
  const {data,error}=await supabaseClient.from("purchase_orders").select("*").order("po_date",{ascending:false}).order("created_at",{ascending:false}); if(error)throw error;
- state.orders=data||[]; if(!state.orders.length){state.orderItems=[];return;}
- const {data:items,error:ierr}=await supabaseClient.from("purchase_order_items").select("*").in("purchase_order_id",state.orders.map(x=>x.purchase_order_id)); if(ierr)throw ierr; state.orderItems=items||[];
+ state.orders=data||[];
+ if(!state.orders.length){state.orderItems=[];state.pickupRequests=[];return;}
+ const poIds=state.orders.map(x=>x.purchase_order_id);
+ const {data:items,error:ierr}=await supabaseClient.from("purchase_order_items").select("*").in("purchase_order_id",poIds);
+ if(ierr)throw ierr;
+ state.orderItems=items||[];
+ const {data:pickups,error:pErr}=await supabaseClient.from("material_pickup_requests").select("*").in("purchase_order_id",poIds).order("created_at",{ascending:false});
+ if(pErr)throw pErr;
+ state.pickupRequests=pickups||[];
 }
 function renderAll(){renderRequests();renderOrders();renderMetrics();}
 function renderMetrics(){
@@ -637,7 +644,110 @@ async function openSupplyModal(itemId){
  alt.style.display=showAlternative?"inline-block":"none";
  alt.textContent="SOURCE ALTERNATIVE ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
 
+ const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
+ const pickupBtn=document.getElementById("requestPickup");
+ const canPickup=["AVAILABLE","PARTIALLY AVAILABLE","SUBSTITUTE APPROVED"].includes(String(item.supply_status||"").toUpperCase()) && remaining>0;
+ pickupBtn.style.display=canPickup?"inline-block":"none";
+ pickupBtn.disabled=!!activePickup;
+ pickupBtn.textContent=activePickup ? "PICKUP REQUEST SENT" : "REQUEST MATERIAL PICKUP ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
+
  document.getElementById("supplyModal").style.display="flex";
+}
+
+
+async function openPickupRequestModal(){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
+ if(!item)return;
+ const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
+ if(!order)return;
+ const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
+ if(remaining<=0)return showSupplyValidation("There is no confirmed quantity remaining for pickup.");
+ const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
+ if(activePickup)return showSupplyValidation("A pickup request is already pending or approved for this material line.");
+
+ state.pickupItemId=item.purchase_order_item_id;
+ document.getElementById("pickupFromPO").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(order.supplier_name||"")+" • "+(order.project_name||"");
+ document.getElementById("pickupMaterial").textContent=item.material_name||"—";
+ document.getElementById("pickupQuantity").value=remaining;
+ document.getElementById("pickupUnit").textContent=item.unit||"—";
+ document.getElementById("pickupDate").value=today();
+ document.getElementById("pickupStart").value="08:00";
+ document.getElementById("pickupEnd").value="17:00";
+ document.getElementById("pickupLocation").value=order.supplier_address||"";
+ document.getElementById("pickupUnitSelect").innerHTML='<option value="">SELECT PICKUP UNIT</option>'+
+   state.equipment.map(e=>'<option value="'+esc(e.equipment_id)+'">'+esc(e.equipment_name)+" • "+esc(e.equipment_id)+" • "+esc(e.plate_number||"")+'</option>').join("");
+ document.getElementById("pickupRemarks").value="";
+ clearPickupValidation();
+ document.getElementById("pickupModal").style.display="flex";
+}
+
+function clearPickupValidation(){
+ const box=document.getElementById("pickupValidation");
+ if(!box)return;
+ box.textContent="";
+ box.style.display="none";
+}
+
+function showPickupValidation(message){
+ const box=document.getElementById("pickupValidation");
+ if(!box)return msg(message,"err");
+ box.textContent=message;
+ box.style.display="block";
+}
+
+function closePickupRequestModal(){
+ document.getElementById("pickupModal").style.display="none";
+ state.pickupItemId=null;
+ clearPickupValidation();
+}
+
+async function submitPickupRequest(){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===state.pickupItemId);
+ if(!item)return;
+ const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
+ if(!order)return;
+ const qty=Number(document.getElementById("pickupQuantity").value||0);
+ const equipmentId=document.getElementById("pickupUnitSelect").value;
+ const pickupDate=document.getElementById("pickupDate").value;
+ const start=document.getElementById("pickupStart").value;
+ const end=document.getElementById("pickupEnd").value;
+ const location=document.getElementById("pickupLocation").value.trim();
+ const remarks=document.getElementById("pickupRemarks").value.trim();
+
+ const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
+ if(!equipmentId)return showPickupValidation("Please select the pickup unit/equipment.");
+ if(!pickupDate)return showPickupValidation("Please select the pickup date.");
+ if(!(qty>0) || qty>remaining)return showPickupValidation("Pickup quantity must be greater than zero and cannot exceed the remaining confirmed quantity of "+remaining+" "+(item.unit||"")+".");
+ if(!location)return showPickupValidation("Pickup location is required.");
+ if(!start||!end||end<=start)return showPickupValidation("Pickup end time must be later than pickup start time.");
+
+ const btn=document.getElementById("submitPickup");
+ btn.disabled=true;btn.textContent="SUBMITTING...";
+ try{
+   const {data,error}=await supabaseClient.rpc("amanah_create_material_pickup_request",{
+     p_purchase_order_item_id:item.purchase_order_item_id,
+     p_equipment_id:equipmentId,
+     p_pickup_date:pickupDate,
+     p_start_time:start,
+     p_end_time:end,
+     p_pickup_location:location,
+     p_quantity:qty,
+     p_remarks:remarks||null
+   });
+   if(error)throw error;
+
+   closePickupRequestModal();
+   closeSupplyModal();
+   await loadOrders();
+   renderAll();
+   await openPODetails(item.purchase_order_id);
+   msg((data?.pickup_request_no||"Material Pickup Request")+" sent to Approval Center for General Manager approval.","ok");
+ }catch(error){
+   console.error(error);
+   showPickupValidation(error.message||"Unable to create Material Pickup Request.");
+ }finally{
+   btn.disabled=false;btn.textContent="SEND TO APPROVAL CENTER";
+ }
 }
 
 function closeSupplyModal(){
