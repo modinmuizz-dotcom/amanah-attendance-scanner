@@ -133,7 +133,8 @@ function payloadCards(a, historical=false){
         <div class="detail-grid detail-grid-3">
           ${isCancellation ? detailCard('REQUEST ACTION','CANCEL') : ''}
           ${detailCard('REQUEST NO.',p.request_no||a.title)}
-          ${detailCard('REQUESTED BY',a.requested_by_name||p.requester_name||a.requester_email)}
+          ${detailCard('REQUESTING SITE ENGINEER',p.requester_name||'—')}
+          ${detailCard('ENCODED BY',a.requested_by_name||'—')}
           ${detailCard('SUBMITTED',formatDateTime(a.submitted_at))}
           ${detailCard('PROJECT',p.project_name)}
           ${detailCard('LOCATION',p.project_location)}
@@ -192,14 +193,33 @@ async function requireAccess(){
   const {data:{session}}=await supabaseClient.auth.getSession();
   if(!session){location.href='admin.html';return false;}
   await supabaseClient.rpc('amanah_register_current_user');
-  const {data:role}=await supabaseClient.rpc('amanah_get_current_role');
-  const {data:permissionRows,error}=await supabaseClient.rpc('amanah_get_current_permissions');
-  if(error)throw error;
+
+  const [{data:role,error:roleError},{data:permissionRows,error:permissionError}]=await Promise.all([
+    supabaseClient.rpc('amanah_get_current_role'),
+    supabaseClient.rpc('amanah_get_current_permissions')
+  ]);
+
+  if(roleError)throw roleError;
+  if(permissionError)throw permissionError;
+
   const perms=new Set((permissionRows||[]).map(x=>x.permission_key));
-  if(!perms.has('approvals.view')){
-    document.querySelector('.approvals-page').innerHTML='<section class="approval-panel" style="padding:45px;text-align:center"><div class="approval-kicker">ACCESS CONTROL</div><h2>APPROVAL CENTER</h2><p style="color:#64748b">Only the General Manager / Administrator can access the approval queue.</p><button class="button primary" type="button" onclick="location.href=\'dashboard.html\'">RETURN TO DASHBOARD</button></section>';
+  const allowedRoles=new Set(['GENERAL MANAGER','ADMINISTRATOR','SUPER ADMIN']);
+  const normalizedRole=String(role||'UNASSIGNED').toUpperCase();
+
+  if(!perms.has('approvals.view') || !allowedRoles.has(normalizedRole)){
+    document.querySelector('.approvals-page').innerHTML=
+      '<section class="approval-panel" style="padding:45px;text-align:center">'+
+      '<div class="approval-kicker">ACCESS CONTROL</div>'+
+      '<h2>APPROVAL CENTER</h2>'+
+      '<p style="color:#64748b">The Approval Center is restricted to the General Manager and authorized system administrators.</p>'+
+      '<button class="button primary" type="button" onclick="location.href=\'dashboard.html\'">RETURN TO DASHBOARD</button>'+
+      '</section>';
     return false;
   }
+
+  document.querySelector('.gm-badge strong').textContent=
+    normalizedRole==='GENERAL MANAGER'?'GENERAL MANAGER':'AUTHORIZED ADMINISTRATOR';
+
   return true;
 }
 async function loadApprovals(){
