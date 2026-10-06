@@ -173,6 +173,26 @@
           <label>RECEIVED QTY</label>
           <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0">
         </div>
+
+        <div class="field full">
+          <div style="margin-top:4px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:10px;font-weight:900;letter-spacing:.08em;color:#475569">
+            RECEIVING DETAILS
+          </div>
+        </div>
+
+        <div class="field">
+          <label>RECEIVED DATE</label>
+          <input id="supplyReceivedDate" type="date">
+        </div>
+        <div class="field">
+          <label>DELIVERY REFERENCE</label>
+          <input id="supplyDeliveryReference" placeholder="DR / Invoice / Delivery Receipt No.">
+        </div>
+        <div class="field full">
+          <label>RECEIVING REMARKS</label>
+          <textarea id="supplyReceivingRemarks" placeholder="Record delivery condition, shortages, damaged items, or other receiving notes."></textarea>
+        </div>
+
         <div class="field">
           <label>EXPECTED AVAILABILITY</label>
           <input id="supplyAvailabilityDate" type="date">
@@ -231,7 +251,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=19"></script>
+<script src="purchasing.js?v=20"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
