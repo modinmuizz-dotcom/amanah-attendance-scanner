@@ -529,9 +529,13 @@
     const panel=qs('projectAlignmentControls');
     if(panel)panel.style.display=active?'block':'none';
 
-    ['mapStartPoint','mapEndPoint'].forEach(id=>{
+    ['mapStartPoint','mapEndPoint','mapSetCenter'].forEach(id=>{
       const el=qs(id);
-      if(el)el.disabled=active;
+      if(el){
+        // Section tools stay available outside Project Alignment.
+        el.style.display=active?'none':'';
+        el.disabled=false;
+      }
     });
 
     const draw=qs('mapDrawLine');
@@ -539,6 +543,12 @@
       draw.style.display=active?'none':'';
       if(!active)draw.textContent='DRAW / REPLACE LINE';
     }
+
+    const fit=qs('mapFit');
+    if(fit)fit.textContent='FIT ALIGNMENT';
+
+    const clear=qs('mapClearLine');
+    if(clear)clear.textContent=active?'CLEAR ALIGNMENT':'CLEAR LINE';
 
     const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
     showCurveEditor(active&&mode==='CUSTOM_CURVE');
@@ -561,8 +571,8 @@
 
     updateProjectDistanceSummary();
 
-    // Keep coordinate inputs blank until the engineer explicitly enters them
-    // or clicks USE MAP CENTER.
+    // Project Alignment is always centered/fitted from its saved geometry.
+    // SET MAP CENTER is intentionally hidden in this mode.
   }
 
   function readCoordinateInputsSilently(){
