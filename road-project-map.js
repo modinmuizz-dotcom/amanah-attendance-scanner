@@ -217,6 +217,7 @@
 
       populateTargets();
       updateProjectAlignmentControls();
+      updateProjectDistanceSummary();
       renderLayers();
 
       const bounds=allGeometryBounds();
@@ -403,6 +404,7 @@
     try{
       projectAlignmentState.controlPoints=readControlPointsFromInputs();
       renderProjectPreview();
+      updateProjectDistanceSummary();
     }catch(error){
       setDrawMessage(error.message||'Invalid control point.','err');
     }
@@ -432,6 +434,16 @@
     const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
     showControlPointEditor(active&&mode==='CUSTOM_CURVE');
 
+    ['projectStartLat','projectStartLng','projectEndLat','projectEndLng'].forEach(id=>{
+      const el=qs(id);
+      if(el&&!el.dataset.distanceBound){
+        el.dataset.distanceBound='1';
+        el.addEventListener('input',updateProjectDistanceSummary);
+      }
+    });
+
+    updateProjectDistanceSummary();
+
     if(active){
       const d=projectData.project?.project_details||{};
       const lat=Number(d.map_lat),lng=Number(d.map_lng);
@@ -442,6 +454,69 @@
         qs('projectEndLng').value='';
       }
     }
+  }
+
+  function readCoordinateInputsSilently(){
+    const ids=['projectStartLat','projectStartLng','projectEndLat','projectEndLng'];
+    const values=ids.map(id=>Number(qs(id)?.value));
+    if(values.some(v=>!Number.isFinite(v)))return null;
+    const [startLat,startLng,endLat,endLng]=values;
+    if(startLat<-90||startLat>90||endLat<-90||endLat>90||startLng<-180||startLng>180||endLng<-180||endLng>180)return null;
+    return {
+      start:{lat:startLat,lng:startLng},
+      end:{lat:endLat,lng:endLng}
+    };
+  }
+
+  function distanceMetersBetween(a,b){
+    if(!a||!b||!window.L)return 0;
+    return L.latLng(a.lat,a.lng).distanceTo(L.latLng(b.lat,b.lng));
+  }
+
+  function calculatePathDistance(points){
+    if(!points||points.length<2)return 0;
+    let total=0;
+    for(let i=1;i<points.length;i++) total+=distanceMetersBetween(points[i-1],points[i]);
+    return total;
+  }
+
+  function formatDistance(meters){
+    if(!Number.isFinite(meters))return '—';
+    if(meters>=1000){
+      return (meters/1000).toFixed(3)+' km ('+meters.toFixed(1)+' m)';
+    }
+    return meters.toFixed(1)+' m';
+  }
+
+  function updateProjectDistanceSummary(){
+    const straightEl=qs('projectStraightDistance');
+    const alignEl=qs('projectAlignmentDistance');
+    const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
+    const input=readCoordinateInputsSilently();
+
+    let straight=NaN;
+    if(input) straight=distanceMetersBetween(input.start,input.end);
+
+    if(straightEl)straightEl.textContent=Number.isFinite(straight)?formatDistance(straight):'—';
+
+    let alignment=straight;
+    if(mode==='CUSTOM_CURVE'){
+      let points=[];
+      try{
+        points=readControlPointsFromInputs();
+      }catch(_){}
+      if(input&&points.length){
+        alignment=calculatePathDistance([input.start,...points,input.end]);
+      }else if(projectAlignmentState?.controlPoints?.length&&input){
+        alignment=calculatePathDistance([input.start,...projectAlignmentState.controlPoints,input.end]);
+      }else{
+        alignment=NaN;
+      }
+    }else if(Number.isFinite(Number(projectData.alignment?.length_m))&&!input){
+      alignment=Number(projectData.alignment.length_m);
+    }
+
+    if(alignEl)alignEl.textContent=Number.isFinite(alignment)?formatDistance(alignment):'—';
   }
 
   function buildProjectPath(start,end,controlPoints=[]){
@@ -521,6 +596,7 @@
     const bounds=allGeometryBounds();
     if(bounds.length)map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
     setDrawMessage('Project alignment saved successfully.','ok');
+    updateProjectDistanceSummary();
     await loadData();
   }
 
@@ -781,6 +857,7 @@
         projectAlignmentState.controlPoints=readControlPointsFromInputs();
         renderProjectPreview();
       }
+      updateProjectDistanceSummary();
     });
     qs('projectClearControlPoints')?.addEventListener('click',()=>{
       renderControlPointRows([]);
@@ -788,6 +865,7 @@
         projectAlignmentState.controlPoints=[];
         renderProjectPreview();
       }
+      updateProjectDistanceSummary();
     });
     qs('projectAlignmentMode')?.addEventListener('change',()=>{
       clearProjectAlignmentState();
