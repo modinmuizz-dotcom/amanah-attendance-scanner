@@ -7,7 +7,7 @@
   <title>AMANAH Road Project Structure</title>
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="amanah-ui.css?v=4">
-  <link rel="stylesheet" href="road-project-structure.css?v=4">
+  <link rel="stylesheet" href="road-project-structure.css?v=2">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 </head>
@@ -71,6 +71,12 @@
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
       <div id="roadMap" class="road-map-canvas">
         <div id="roadMapLeaflet"></div>
+        <iframe id="roadMapFallback"
+          title="AMANAH project map"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik"
+          loading="eager"
+          referrerpolicy="no-referrer"
+          style="display:none;width:100%;height:100%;border:0;"></iframe>
       </div>
       <div class="road-map-footer">
         <div><strong>MAP DATA</strong><span id="roadMapSummary">Loading map data...</span></div>
@@ -159,7 +165,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=18"></script>
+  <script src="road-project-map.js?v=16"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
