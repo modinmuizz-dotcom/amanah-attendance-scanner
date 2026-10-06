@@ -622,6 +622,9 @@ async function openSupplyModal(itemId){
  document.getElementById("supplyUnitPrice").value=item.unit_price==null?"":item.unit_price;
  document.getElementById("supplyConfirmedQty").value=item.confirmed_quantity??0;
  document.getElementById("supplyReceivedQty").value=item.received_quantity??0;
+ document.getElementById("supplyReceivedDate").value=item.received_date||"";
+ document.getElementById("supplyDeliveryReference").value=item.delivery_reference||"";
+ document.getElementById("supplyReceivingRemarks").value=item.receiving_remarks||"";
  document.getElementById("supplyAvailabilityDate").value=item.expected_availability_date||"";
  document.getElementById("supplySubstituteStatus").value=item.substitute_status||"NONE";
  document.getElementById("supplySubstituteMaterial").value=item.substitute_material_name||"";
@@ -651,6 +654,9 @@ async function saveSupplyStatus(){
  const unitPrice=unitPriceRaw===""?null:Number(unitPriceRaw);
  const confirmed=Number(document.getElementById("supplyConfirmedQty").value||0);
  const received=Number(document.getElementById("supplyReceivedQty").value||0);
+ const receivedDate=document.getElementById("supplyReceivedDate").value||null;
+ const deliveryReference=document.getElementById("supplyDeliveryReference").value.trim()||null;
+ const receivingRemarks=document.getElementById("supplyReceivingRemarks").value.trim()||null;
  const availability=document.getElementById("supplyAvailabilityDate").value||null;
  const substituteStatus=document.getElementById("supplySubstituteStatus").value;
  const substituteMaterial=document.getElementById("supplySubstituteMaterial").value.trim()||null;
@@ -661,6 +667,8 @@ async function saveSupplyStatus(){
  if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
  if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
  if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
+ if(received>0 && !receivedDate)return showSupplyValidation("Received date is required when received quantity is greater than zero.");
+ if(received>0 && !deliveryReference)return showSupplyValidation("Delivery reference (DR / Invoice / Receipt No.) is required when recording a receipt.");
  if(status==="AVAILABLE" && confirmed<=0)return showSupplyValidation("Enter the quantity confirmed available by the supplier.");
  if(status==="RECEIVED" && received<=0)return showSupplyValidation("Enter the quantity actually received.");
  if((status==="UNAVAILABLE"||status==="BACKORDERED") && !supplierRemarks)return showSupplyValidation("Please record the supplier's reason or availability remarks.");
@@ -677,6 +685,11 @@ async function saveSupplyStatus(){
      unit_price:unitPrice,
      confirmed_quantity:confirmed,
      received_quantity:received,
+     received_date:receivedDate,
+     delivery_reference:deliveryReference,
+     receiving_remarks:receivingRemarks,
+     received_by_name:received>0 ? (state.access?.role||"PURCHASING OFFICER") : (item.received_by_name||null),
+     received_at:received>0 ? new Date().toISOString() : null,
      expected_availability_date:availability,
      supplier_remarks:supplierRemarks,
      substitute_material_name:substituteMaterial,
@@ -726,7 +739,7 @@ async function saveSupplyStatus(){
 
    renderAll();
    await openPODetails(item.purchase_order_id);
-   msg("Material supply status updated successfully.","ok");
+   msg(received>0 ? "Supply and receiving details updated successfully." : "Material supply status updated successfully.","ok");
  }catch(error){
    console.error(error);
    showSupplyValidation(error.message||"Unable to save material supply status.");
