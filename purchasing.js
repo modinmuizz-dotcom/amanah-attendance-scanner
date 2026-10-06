@@ -672,7 +672,7 @@ async function saveSupplyStatus(){
  btn.textContent="SAVING...";
 
  try{
-   const {error}=await supabaseClient.from("purchase_order_items").update({
+   const {data:savedItem,error}=await supabaseClient.from("purchase_order_items").update({
      supply_status:status,
      unit_price:unitPrice,
      confirmed_quantity:confirmed,
@@ -682,8 +682,14 @@ async function saveSupplyStatus(){
      substitute_material_name:substituteMaterial,
      substitute_specifications:substituteSpecifications,
      substitute_status:substituteStatus
-   }).eq("purchase_order_item_id",item.purchase_order_item_id);
+   }).eq("purchase_order_item_id",item.purchase_order_item_id)
+     .select("*")
+     .single();
    if(error)throw error;
+
+   // Immediately update the in-memory row so the open PO screen cannot show stale data.
+   const savedIndex=state.orderItems.findIndex(x=>x.purchase_order_item_id===item.purchase_order_item_id);
+   if(savedIndex>=0) state.orderItems[savedIndex]={...state.orderItems[savedIndex],...savedItem};
 
    const {data:poItems,error:itemsError}=await supabaseClient.from("purchase_order_items").select("quantity,unit_price").eq("purchase_order_id",item.purchase_order_id);
    if(itemsError)throw itemsError;
@@ -701,7 +707,23 @@ async function saveSupplyStatus(){
    }
 
    closeSupplyModal();
+
+   // Fresh read after the write, then redraw the open PO details.
    await Promise.all([loadRequests(),loadOrders()]);
+   const freshItem=state.orderItems.find(x=>x.purchase_order_item_id===item.purchase_order_item_id);
+   if(freshItem && freshItem.supply_status!==status){
+     // Last-resort authoritative refresh of this single row.
+     const {data:authoritativeItem,error:authoritativeError}=await supabaseClient
+       .from("purchase_order_items")
+       .select("*")
+       .eq("purchase_order_item_id",item.purchase_order_item_id)
+       .single();
+     if(!authoritativeError && authoritativeItem){
+       const idx=state.orderItems.findIndex(x=>x.purchase_order_item_id===item.purchase_order_item_id);
+       if(idx>=0)state.orderItems[idx]=authoritativeItem;
+     }
+   }
+
    renderAll();
    await openPODetails(item.purchase_order_id);
    msg("Material supply status updated successfully.","ok");
