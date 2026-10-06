@@ -75,7 +75,6 @@
     if(projectData.project?.project_details){
       const d=projectData.project.project_details||{};
       if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-        centerMarker=L.marker([Number(d.map_lat),Number(d.map_lng)]).addTo(statusLayer).bindPopup('<strong>PROJECT MAP CENTER</strong><br>'+esc(projectData.project.project_name||''));
         if(!map.getBounds().isValid()) map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
       }
     }
