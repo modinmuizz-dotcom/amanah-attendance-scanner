@@ -108,7 +108,7 @@ function bind(){
  document.getElementById("detailPrimaryAction").addEventListener("click",primaryDetailAction);
  document.getElementById("closePo").addEventListener("click",closePoModal);
  document.getElementById("cancelPo").addEventListener("click",closePoModal);
- document.getElementById("savePo").addEventListener("click",savePurchaseOrder);
+ document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);
  ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
  ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
  document.getElementById("clearPrFilters").addEventListener("click",()=>{document.getElementById("prSearch").value="";document.getElementById("prStatus").value="";document.getElementById("prProject").value="";renderRequests();});
@@ -153,10 +153,32 @@ async function loadSuppliers(){
 function applySelectedSupplier(){
  const id=document.getElementById("poSupplier").value;
  const s=state.suppliers.find(x=>x.supplier_id===id);
- document.getElementById("poSupplierContact").value=s?.contact_no||"";
- document.getElementById("poSupplierAddress").value=s?.address||"";
- document.getElementById("poPaymentTerms").value=s?.payment_terms||"";
- document.getElementById("poDeliveryTerms").value=s?.delivery_terms||"";
+
+ document.getElementById("poSupplierContact").value =
+   s ? [s.contact_person,s.phone,s.email].filter(Boolean).join(" • ") : "";
+
+ document.getElementById("poSupplierAddress").value =
+   s?.address || "";
+
+ document.getElementById("poPaymentTerms").value =
+   s?.payment_terms || "";
+
+ document.getElementById("poDeliveryTerms").value =
+   s?.delivery_terms || "Delivered to project site";
+}
+
+function showPOValidation(message){
+ const box=document.getElementById("poValidationMessage");
+ if(!box)return msg(message,"err");
+ box.textContent=message;
+ box.style.display="block";
+}
+
+function clearPOValidation(){
+ const box=document.getElementById("poValidationMessage");
+ if(!box)return;
+ box.textContent="";
+ box.style.display="none";
 }
 async function loadRequests(){
  const {data,error}=await supabaseClient.from("purchase_requests").select("*").order("request_date",{ascending:false}).order("created_at",{ascending:false}); if(error)throw error;
