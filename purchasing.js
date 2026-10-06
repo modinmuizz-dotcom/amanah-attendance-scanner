@@ -386,7 +386,8 @@ function closeDetail(){document.getElementById("detailModal").style.display="non
 function primaryDetailAction(){if(state.activeRequestId && state.access.canManage)openPOModal(state.activeRequestId);}
 function openPOModal(requestId){
  const r=state.requests.find(x=>x.purchase_request_id===requestId);if(!r)return;
- if(!["APPROVED","PARTIALLY ORDERED"].includes(r.status))return msg("Purchase Request must be approved before creating a PO.","err");
+ if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can create Purchase Orders.","err");
+ if(!["APPROVED","PARTIALLY ORDERED"].includes(r.status))return msg("Purchase Request must be approved by the General Manager before creating a PO.","err");
  state.editingOrderId=null;
  const items=state.requestItems.filter(x=>x.purchase_request_id===requestId).map(x=>({...x,unit_price:0}));state.poDraftRequest={r,items};
  document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";document.getElementById("poFromRequest").textContent=r.request_no+" • "+r.project_name+" • Requested by "+r.requester_name;
