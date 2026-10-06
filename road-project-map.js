@@ -42,6 +42,37 @@
     if(pointLayer){pointLayer.clearLayers();}
   }
 
+  function continuousLineCoordinates(coords){
+    if(!Array.isArray(coords))return [];
+    const out=[];
+    for(const c of coords){
+      const lng=Number(c?.[0]),lat=Number(c?.[1]);
+      if(!Number.isFinite(lng)||!Number.isFinite(lat))continue;
+      const last=out[out.length-1];
+      if(!last || Math.abs(last[0]-lng)>0.000000001 || Math.abs(last[1]-lat)>0.000000001){
+        out.push([lng,lat]);
+      }
+    }
+    return out;
+  }
+
+  function renderContinuousAlignment(coords,options={}){
+    const clean=continuousLineCoordinates(coords);
+    if(clean.length<2)return null;
+    return L.polyline(
+      clean.map(c=>[c[1],c[0]]),
+      {
+        color:options.color||'#7c3aed',
+        weight:options.weight||6,
+        opacity:options.opacity??.98,
+        lineCap:'round',
+        lineJoin:'round',
+        smoothFactor:0,
+        interactive:true
+      }
+    );
+  }
+
   function featureLine(coords,style,props){
     if(!coords||coords.length<2)return null;
     const line=L.polyline(coords.map(c=>[c[1],c[0]]),style);
@@ -293,11 +324,14 @@
     if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
 
     if(projectData.alignment?.geometry?.coordinates){
-      const line=featureLine(projectData.alignment.geometry.coordinates,{color:'#7c3aed',weight:6,opacity:.95},{
-        title:'PRIMARY ROAD ALIGNMENT',
-        subtitle:'PROJECT ALIGNMENT • '+String(projectData.alignment.source||'FREE_DRAW').toUpperCase(),
-        station:'PROJECT LENGTH '+Number(projectData.alignment.length_m||0).toFixed(1)+' m'
+      const line=renderContinuousAlignment(projectData.alignment.geometry.coordinates,{
+        color:'#7c3aed',weight:7,opacity:.98
       });
+      if(line)line.bindPopup(
+        '<strong>PRIMARY ROAD ALIGNMENT</strong><br>'+
+        esc('PROJECT ALIGNMENT • '+String(projectData.alignment.source||'FREE_DRAW').toUpperCase())+
+        '<br>'+esc('PROJECT LENGTH '+Number(projectData.alignment.length_m||0).toFixed(1)+' m')
+      );
       if(line)line.addTo(statusLayer);
       renderRoadCorridorReferences();
     }
@@ -1163,10 +1197,11 @@
       projectAlignmentState.built=built;
       updateCurveElementResults(curves.map(c=>c.__result));
       if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
-      projectAlignmentState.previewLine=L.polyline(
-        built.geometry.coordinates.map(c=>[c[1],c[0]]),
-        {color:'#7c3aed',weight:6,opacity:.95,dashArray:showMessage?'10 7':null,interactive:false}
-      ).addTo(map);
+      projectAlignmentState.previewLine=renderContinuousAlignment(
+        built.geometry.coordinates,
+        {color:'#7c3aed',weight:7,opacity:.98}
+      );
+      if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.addTo(map);
       if(showMessage){
         focusAlignmentMap(built.geometry.coordinates.map(c=>[c[1],c[0]]));
         setDrawMessage('Engineering alignment preview generated from tangent and circular curve elements.','ok');
@@ -1346,10 +1381,11 @@
         projectAlignmentState.built=built;
 
         if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
-        projectAlignmentState.previewLine=L.polyline(
-          built.geometry.coordinates.map(c=>[c[1],c[0]]),
-          {color:'#7c3aed',weight:6,opacity:.95,dashArray:'10 7',interactive:false}
-        ).addTo(map);
+        projectAlignmentState.previewLine=renderContinuousAlignment(
+          built.geometry.coordinates,
+          {color:'#7c3aed',weight:7,opacity:.98}
+        );
+        if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.addTo(map);
 
         focusAlignmentMap(built.geometry.coordinates.map(c=>[c[1],c[0]]),17);
         const button=qs('projectGenerateAlignment');
