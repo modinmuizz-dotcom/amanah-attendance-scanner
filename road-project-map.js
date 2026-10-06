@@ -304,10 +304,8 @@
 
   function clearProjectAlignmentState(){
     if(projectAlignmentState?.previewLine) projectAlignmentState.previewLine.remove();
-    if(projectAlignmentState?.pointMarkers){
-      projectAlignmentState.pointMarkers.forEach(m=>m.remove());
-    }
     projectAlignmentState=null;
+    updateCurveElementResults([]);
   }
 
   function parseCoordinate(id,label,min,max){
@@ -335,83 +333,120 @@
     return {start,end};
   }
 
-  function setProjectCoordinateInputs(coords){
-    if(!coords)return;
-    qs('projectStartLat').value=Number(coords.start.lat).toFixed(6);
-    qs('projectStartLng').value=Number(coords.start.lng).toFixed(6);
-    qs('projectEndLat').value=Number(coords.end.lat).toFixed(6);
-    qs('projectEndLng').value=Number(coords.end.lng).toFixed(6);
+  function distanceMetersBetween(a,b){
+    if(!a||!b||!window.L)return 0;
+    return L.latLng(a.lat,a.lng).distanceTo(L.latLng(b.lat,b.lng));
   }
 
-  function getControlPointRows(){
-    return Array.from(document.querySelectorAll('.project-control-point-row'));
+  function formatDistance(meters){
+    if(!Number.isFinite(meters))return '—';
+    if(meters>=1000)return (meters/1000).toFixed(3)+' km ('+meters.toFixed(1)+' m)';
+    return meters.toFixed(1)+' m';
   }
 
-  function addControlPointRow(lat='',lng=''){
-    const rows=qs('projectControlPointRows');
-    if(!rows)return;
+  function getCurveRows(){
+    return Array.from(document.querySelectorAll('.project-curve-row'));
+  }
+
+  function addCurveRow(data={}){
+    const rows=qs('projectCurveRows');
+    if(!rows)return null;
+
     const row=document.createElement('div');
-    row.className='project-control-point-row';
+    row.className='project-curve-row';
     row.innerHTML=
-      '<span class="project-point-index"></span>'+
-      '<input class="project-control-lat" type="number" step="0.000001" inputmode="decimal" placeholder="Latitude">'+
-      '<input class="project-control-lng" type="number" step="0.000001" inputmode="decimal" placeholder="Longitude">'+
-      '<button class="secondary-btn project-remove-point" type="button" aria-label="Remove coordinate">×</button>';
-    row.querySelector('.project-control-lat').value=lat===''?'':Number(lat).toFixed(6);
-    row.querySelector('.project-control-lng').value=lng===''?'':Number(lng).toFixed(6);
-    row.querySelector('.project-remove-point').addEventListener('click',()=>{
+      '<div class="project-curve-row-head">'+
+        '<div><strong class="curve-index">CURVE 1</strong><span>PC → P1 → PT</span></div>'+
+        '<button type="button" class="secondary-btn project-remove-curve">REMOVE</button>'+
+      '</div>'+
+      '<div class="curve-coordinate-grid">'+
+        '<div class="curve-point-label">PC — START OF CURVE</div>'+
+        '<div class="map-field"><label>LATITUDE</label><input class="curve-pc-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.208600"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input class="curve-pc-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.265885"></div>'+
+        '<div class="curve-point-label">P1 — POINT ON CURVE</div>'+
+        '<div class="map-field"><label>LATITUDE</label><input class="curve-p1-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.210000"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input class="curve-p1-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.268000"></div>'+
+        '<div class="curve-point-label">PT — END OF CURVE</div>'+
+        '<div class="map-field"><label>LATITUDE</label><input class="curve-pt-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.212000"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input class="curve-pt-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.271000"></div>'+
+      '</div>'+
+      '<div class="curve-result-grid">'+
+        '<div><span>DIRECTION</span><strong class="curve-direction">—</strong></div>'+
+        '<div><span>RADIUS</span><strong class="curve-radius">—</strong></div>'+
+        '<div><span>Δ / DEFLECTION</span><strong class="curve-delta">—</strong></div>'+
+        '<div><span>ARC LENGTH</span><strong class="curve-arc-length">—</strong></div>'+
+        '<div><span>TANGENT LENGTH</span><strong class="curve-tangent-length">—</strong></div>'+
+        '<div><span>PC STATION</span><strong class="curve-pc-station">—</strong></div>'+
+        '<div><span>PT STATION</span><strong class="curve-pt-station">—</strong></div>'+
+      '</div>';
+
+    const set=(cls,v)=>{
+      const el=row.querySelector(cls);
+      if(el&&v!==undefined&&v!==null)el.value=Number(v).toFixed(6);
+    };
+    set('.curve-pc-lat',data.pc_lat); set('.curve-pc-lng',data.pc_lng);
+    set('.curve-p1-lat',data.p1_lat); set('.curve-p1-lng',data.p1_lng);
+    set('.curve-pt-lat',data.pt_lat); set('.curve-pt-lng',data.pt_lng);
+
+    row.querySelector('.project-remove-curve').addEventListener('click',()=>{
       row.remove();
-      renumberControlPointRows();
-      syncControlPointsFromInputs();
+      renumberCurveRows();
+      updateProjectDistanceSummary();
+      if(projectAlignmentState?.mode==='CUSTOM_CURVE') updateEngineeringPreview(false);
     });
-    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',syncControlPointsFromInputs));
+    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{
+      updateProjectDistanceSummary();
+      if(projectAlignmentState?.mode==='CUSTOM_CURVE') updateEngineeringPreview(false);
+    }));
+
     rows.appendChild(row);
-    renumberControlPointRows();
+    renumberCurveRows();
     return row;
   }
 
-  function renumberControlPointRows(){
-    getControlPointRows().forEach((row,index)=>{
-      const n=row.querySelector('.project-point-index');
-      if(n)n.textContent='P'+(index+1);
+  function renumberCurveRows(){
+    getCurveRows().forEach((row,index)=>{
+      const n=row.querySelector('.curve-index');
+      if(n)n.textContent='CURVE '+(index+1);
     });
   }
 
-  function readControlPointsFromInputs(){
-    const points=[];
-    for(const row of getControlPointRows()){
-      const latRaw=String(row.querySelector('.project-control-lat')?.value||'').trim();
-      const lngRaw=String(row.querySelector('.project-control-lng')?.value||'').trim();
-      if(!latRaw&&!lngRaw)continue;
-      const lat=Number(latRaw),lng=Number(lngRaw);
-      if(!Number.isFinite(lat)||lat<-90||lat>90)throw new Error('Control point latitude must be between -90 and 90.');
-      if(!Number.isFinite(lng)||lng<-180||lng>180)throw new Error('Control point longitude must be between -180 and 180.');
-      points.push({lat,lng});
+  function readCurveElementsFromInputs(){
+    const curves=[];
+    for(const row of getCurveRows()){
+      const read=(cls,label,min,max)=>{
+        const raw=String(row.querySelector(cls)?.value||'').trim();
+        if(raw==='')throw new Error(label+' is required.');
+        const v=Number(raw);
+        if(!Number.isFinite(v)||v<min||v>max)throw new Error(label+' is invalid.');
+        return v;
+      };
+      curves.push({
+        pc:{lat:read('.curve-pc-lat','PC latitude',-90,90),lng:read('.curve-pc-lng','PC longitude',-180,180)},
+        p1:{lat:read('.curve-p1-lat','P1 latitude',-90,90),lng:read('.curve-p1-lng','P1 longitude',-180,180)},
+        pt:{lat:read('.curve-pt-lat','PT latitude',-90,90),lng:read('.curve-pt-lng','PT longitude',-180,180)}
+      });
     }
-    return points;
+    return curves;
   }
 
-  function renderControlPointRows(points=[]){
-    const rows=qs('projectControlPointRows');
+  function renderSavedCurveRows(){
+    const rows=qs('projectCurveRows');
     if(!rows)return;
     rows.innerHTML='';
-    (points||[]).forEach(p=>addControlPointRow(p.lat,p.lng));
-    if(!points?.length)renumberControlPointRows();
+    const curves=(projectData.alignment?.elements||[])
+      .filter(e=>String(e.element_type||'').toUpperCase()==='CIRCULAR_CURVE')
+      .sort((a,b)=>Number(a.sequence_no||0)-Number(b.sequence_no||0));
+    curves.forEach(e=>addCurveRow({
+      pc_lat:e.pc_lat,pc_lng:e.pc_lng,
+      p1_lat:e.p1_lat,p1_lng:e.p1_lng,
+      pt_lat:e.pt_lat,pt_lng:e.pt_lng
+    }));
+    renumberCurveRows();
   }
 
-  function syncControlPointsFromInputs(){
-    if(!projectAlignmentState)return;
-    try{
-      projectAlignmentState.controlPoints=readControlPointsFromInputs();
-      renderProjectPreview();
-      updateProjectDistanceSummary();
-    }catch(error){
-      setDrawMessage(error.message||'Invalid control point.','err');
-    }
-  }
-
-  function showControlPointEditor(show){
-    const editor=qs('projectControlPointEditor');
+  function showCurveEditor(show){
+    const editor=qs('projectCurveEditor');
     if(editor)editor.style.display=show?'block':'none';
   }
 
@@ -427,20 +462,28 @@
 
     const draw=qs('mapDrawLine');
     if(draw){
-      draw.textContent=active?'USE COORDINATES':'DRAW / REPLACE LINE';
       draw.style.display=active?'none':'';
+      if(!active)draw.textContent='DRAW / REPLACE LINE';
     }
 
     const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
-    showControlPointEditor(active&&mode==='CUSTOM_CURVE');
+    showCurveEditor(active&&mode==='CUSTOM_CURVE');
 
     ['projectStartLat','projectStartLng','projectEndLat','projectEndLng'].forEach(id=>{
       const el=qs(id);
       if(el&&!el.dataset.distanceBound){
         el.dataset.distanceBound='1';
-        el.addEventListener('input',updateProjectDistanceSummary);
+        el.addEventListener('input',()=>{
+          updateProjectDistanceSummary();
+          if(projectAlignmentState?.mode==='CUSTOM_CURVE')updateEngineeringPreview(false);
+        });
       }
     });
+
+    if(active&&mode==='CUSTOM_CURVE'&&!getCurveRows().length){
+      renderSavedCurveRows();
+      if(!getCurveRows().length)addCurveRow();
+    }
 
     updateProjectDistanceSummary();
 
@@ -462,30 +505,215 @@
     if(values.some(v=>!Number.isFinite(v)))return null;
     const [startLat,startLng,endLat,endLng]=values;
     if(startLat<-90||startLat>90||endLat<-90||endLat>90||startLng<-180||startLng>180||endLng<-180||endLng>180)return null;
+    return {start:{lat:startLat,lng:startLng},end:{lat:endLat,lng:endLng}};
+  }
+
+  const EARTH_RADIUS_M=6371008.8;
+  const DEG_TO_RAD=Math.PI/180;
+  const RAD_TO_DEG=180/Math.PI;
+
+  function toLocalXY(p,origin){
+    const lat0=origin.lat*DEG_TO_RAD;
     return {
-      start:{lat:startLat,lng:startLng},
-      end:{lat:endLat,lng:endLng}
+      x:(p.lng-origin.lng)*DEG_TO_RAD*EARTH_RADIUS_M*Math.cos(lat0),
+      y:(p.lat-origin.lat)*DEG_TO_RAD*EARTH_RADIUS_M
     };
   }
 
-  function distanceMetersBetween(a,b){
-    if(!a||!b||!window.L)return 0;
-    return L.latLng(a.lat,a.lng).distanceTo(L.latLng(b.lat,b.lng));
+  function fromLocalXY(x,y,origin){
+    const lat0=origin.lat*DEG_TO_RAD;
+    return {
+      lat:origin.lat+(y/EARTH_RADIUS_M)*RAD_TO_DEG,
+      lng:origin.lng+(x/(EARTH_RADIUS_M*Math.cos(lat0)))*RAD_TO_DEG
+    };
   }
 
-  function calculatePathDistance(points){
-    if(!points||points.length<2)return 0;
-    let total=0;
-    for(let i=1;i<points.length;i++) total+=distanceMetersBetween(points[i-1],points[i]);
-    return total;
+  function positiveAngle(rad){
+    const two=Math.PI*2;
+    return (rad%two+two)%two;
   }
 
-  function formatDistance(meters){
-    if(!Number.isFinite(meters))return '—';
-    if(meters>=1000){
-      return (meters/1000).toFixed(3)+' km ('+meters.toFixed(1)+' m)';
+  function fitCircularCurve(pc,p1,pt){
+    const origin=pc;
+    const a=toLocalXY(pc,origin);
+    const b=toLocalXY(p1,origin);
+    const c=toLocalXY(pt,origin);
+    const denominator=2*(a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y));
+    if(Math.abs(denominator)<0.000001)throw new Error('Curve PC, P1 and PT are too close to a straight line to define a circular curve.');
+
+    const a2=a.x*a.x+a.y*a.y;
+    const b2=b.x*b.x+b.y*b.y;
+    const c2=c.x*c.x+c.y*c.y;
+    const ux=((a2*(b.y-c.y))+(b2*(c.y-a.y))+(c2*(a.y-b.y)))/denominator;
+    const uy=((a2*(c.x-b.x))+(b2*(a.x-c.x))+(c2*(b.x-a.x)))/denominator;
+
+    const radius=Math.hypot(a.x-ux,a.y-uy);
+    if(!Number.isFinite(radius)||radius<0.01||radius>100000000)throw new Error('Calculated curve radius is invalid.');
+
+    const a0=Math.atan2(a.y-uy,a.x-ux);
+    const a1=Math.atan2(b.y-uy,b.x-ux);
+    const a2ang=Math.atan2(c.y-uy,c.x-ux);
+
+    const ccw01=positiveAngle(a1-a0);
+    const ccw12=positiveAngle(a2ang-a1);
+    const ccw02=positiveAngle(a2ang-a0);
+    const cw01=positiveAngle(a0-a1);
+    const cw12=positiveAngle(a1-a2ang);
+    const cw02=positiveAngle(a0-a2ang);
+
+    const ccwError=Math.abs((ccw01+ccw12)-ccw02);
+    const cwError=Math.abs((cw01+cw12)-cw02);
+    const dir=ccwError<=cwError?1:-1;
+    const delta=dir===1?ccw02:cw02;
+    const firstDelta=dir===1?ccw01:cw01;
+    const secondDelta=delta-firstDelta;
+
+    if(delta<0.000001||delta>=Math.PI*2-0.000001)throw new Error('Curve deflection angle is invalid.');
+    if(firstDelta<0||secondDelta<0)throw new Error('P1 must lie on the circular arc between PC and PT.');
+
+    const arcLength=radius*delta;
+    const chordLength=distanceMetersBetween(pc,pt);
+    const tangentLength=Math.abs(delta-Math.PI)<0.000001||delta>Math.PI-0.000001
+      ? null
+      : radius*Math.tan(delta/2);
+
+    const stepMeters=10;
+    const steps1=Math.max(2,Math.min(300,Math.ceil((radius*firstDelta)/stepMeters)));
+    const steps2=Math.max(2,Math.min(300,Math.ceil((radius*secondDelta)/stepMeters)));
+    const arcPoints=[pc];
+
+    for(let i=1;i<steps1;i++){
+      const ang=a0+dir*(firstDelta*i/steps1);
+      arcPoints.push(fromLocalXY(ux+radius*Math.cos(ang),uy+radius*Math.sin(ang),origin));
     }
-    return meters.toFixed(1)+' m';
+    arcPoints.push(p1);
+    for(let i=1;i<steps2;i++){
+      const ang=a1+dir*(secondDelta*i/steps2);
+      arcPoints.push(fromLocalXY(ux+radius*Math.cos(ang),uy+radius*Math.sin(ang),origin));
+    }
+    arcPoints.push(pt);
+
+    return {
+      direction:dir===1?'LEFT':'RIGHT',
+      radius,
+      deltaDeg:delta*RAD_TO_DEG,
+      arcLength,
+      chordLength,
+      tangentLength,
+      geometry:arcPoints
+    };
+  }
+
+  function buildEngineeringAlignment(start,end,curves){
+    const allPoints=[{lat:start.lat,lng:start.lng}];
+    const elements=[];
+    let current={lat:start.lat,lng:start.lng};
+    let station=0;
+
+    const pushTangent=(from,to)=>{
+      const length=distanceMetersBetween(from,to);
+      if(length<0.01)return;
+      const geometry=[from,to];
+      const startStation=station;
+      station+=length;
+      elements.push({
+        element_type:'TANGENT',
+        sequence_no:elements.length+1,
+        station_start_m:startStation,
+        station_end_m:station,
+        length_m:length,
+        start_lat:from.lat,start_lng:from.lng,
+        end_lat:to.lat,end_lng:to.lng,
+        geometry:{type:'LineString',coordinates:geometry.map(p=>[p.lng,p.lat])},
+        metadata:{}
+      });
+      allPoints.push(to);
+    };
+
+    curves.forEach((curve,index)=>{
+      const curveData=fitCircularCurve(curve.pc,curve.p1,curve.pt);
+      pushTangent(current,curve.pc);
+
+      const curveStartStation=station;
+      station+=curveData.arcLength;
+      const curveElement={
+        element_type:'CIRCULAR_CURVE',
+        sequence_no:elements.length+1,
+        station_start_m:curveStartStation,
+        station_end_m:station,
+        length_m:curveData.arcLength,
+        start_lat:curve.pc.lat,start_lng:curve.pc.lng,
+        end_lat:curve.pt.lat,end_lng:curve.pt.lng,
+        pc_lat:curve.pc.lat,pc_lng:curve.pc.lng,
+        p1_lat:curve.p1.lat,p1_lng:curve.p1.lng,
+        pt_lat:curve.pt.lat,pt_lng:curve.pt.lng,
+        direction:curveData.direction,
+        radius_m:curveData.radius,
+        delta_deg:curveData.deltaDeg,
+        chord_length_m:curveData.chordLength,
+        tangent_length_m:curveData.tangentLength,
+        geometry:{type:'LineString',coordinates:curveData.geometry.map(p=>[p.lng,p.lat])},
+        metadata:{}
+      };
+      elements.push(curveElement);
+      curve.__result={
+        direction:curveData.direction,
+        radius_m:curveData.radius,
+        delta_deg:curveData.deltaDeg,
+        arc_length_m:curveData.arcLength,
+        tangent_length_m:curveData.tangentLength,
+        chord_length_m:curveData.chordLength,
+        station_start_m:curveStartStation,
+        station_end_m:station
+      };
+      allPoints.push(...curveData.geometry.slice(1));
+      current=curve.pt;
+    });
+
+    pushTangent(current,end);
+
+    return {geometry:{type:'LineString',coordinates:allPoints.map(p=>[p.lng,p.lat])},elements,length_m:station};
+  }
+
+  function updateCurveElementResults(results=[]){
+    getCurveRows().forEach((row,index)=>{
+      const r=results[index];
+      const set=(cls,value)=>{const el=row.querySelector(cls);if(el)el.textContent=value;};
+      if(!r){
+        ['.curve-direction','.curve-radius','.curve-delta','.curve-arc-length','.curve-tangent-length','.curve-pc-station','.curve-pt-station']
+          .forEach(cls=>set(cls,'—'));
+        return;
+      }
+      set('.curve-direction',r.direction);
+      set('.curve-radius',formatDistance(r.radius_m));
+      set('.curve-delta',Number(r.delta_deg).toFixed(3)+'°');
+      set('.curve-arc-length',formatDistance(r.arc_length_m));
+      set('.curve-tangent-length',r.tangent_length_m==null?'—':formatDistance(r.tangent_length_m));
+      set('.curve-pc-station',stationLabel(r.station_start_m));
+      set('.curve-pt-station',stationLabel(r.station_end_m));
+    });
+  }
+
+  function updateEngineeringPreview(showMessage=true){
+    if(!projectAlignmentState?.start||!projectAlignmentState?.end)return;
+    try{
+      const curves=readCurveElementsFromInputs();
+      const built=buildEngineeringAlignment(projectAlignmentState.start,projectAlignmentState.end,curves);
+      projectAlignmentState.curves=curves;
+      projectAlignmentState.built=built;
+      updateCurveElementResults(curves.map(c=>c.__result));
+      if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
+      projectAlignmentState.previewLine=L.polyline(
+        built.geometry.coordinates.map(c=>[c[1],c[0]]),
+        {color:'#7c3aed',weight:6,opacity:.95,dashArray:showMessage?'10 7':null,interactive:false}
+      ).addTo(map);
+      if(showMessage)setDrawMessage('Engineering alignment preview generated from tangent and circular curve elements.','ok');
+      return built;
+    }catch(error){
+      updateCurveElementResults([]);
+      if(showMessage)setDrawMessage(error.message||'Invalid curve element.','err');
+      return null;
+    }
   }
 
   function updateProjectDistanceSummary(){
@@ -494,87 +722,55 @@
     const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
     const input=readCoordinateInputsSilently();
 
-    let straight=NaN;
-    if(input) straight=distanceMetersBetween(input.start,input.end);
-
+    const straight=input?distanceMetersBetween(input.start,input.end):NaN;
     if(straightEl)straightEl.textContent=Number.isFinite(straight)?formatDistance(straight):'—';
 
     let alignment=straight;
-    if(mode==='CUSTOM_CURVE'){
-      let points=[];
+    if(mode==='CUSTOM_CURVE'&&input){
       try{
-        points=readControlPointsFromInputs();
-      }catch(_){}
-      if(input&&points.length){
-        alignment=calculatePathDistance([input.start,...points,input.end]);
-      }else if(projectAlignmentState?.controlPoints?.length&&input){
-        alignment=calculatePathDistance([input.start,...projectAlignmentState.controlPoints,input.end]);
-      }else{
+        const curves=readCurveElementsFromInputs();
+        if(curves.length){
+          alignment=buildEngineeringAlignment(input.start,input.end,curves).length_m;
+        }else{
+          alignment=NaN;
+        }
+      }catch(_){
         alignment=NaN;
       }
-    }else if(Number.isFinite(Number(projectData.alignment?.length_m))&&!input){
-      alignment=Number(projectData.alignment.length_m);
     }
-
     if(alignEl)alignEl.textContent=Number.isFinite(alignment)?formatDistance(alignment):'—';
   }
 
-  function buildProjectPath(start,end,controlPoints=[]){
-    return [
-      {lat:start.lat,lng:start.lng},
-      ...(controlPoints||[]).map(p=>({lat:Number(p.lat),lng:Number(p.lng)})),
-      {lat:end.lat,lng:end.lng}
-    ];
-  }
-
-  function renderProjectPreview(){
-    const s=projectAlignmentState;
-    if(!s||!map)return;
-    if(s.previewLine)s.previewLine.remove();
-    s.pointMarkers?.forEach(m=>m.remove());
-    const path=buildProjectPath(s.start,s.end,s.controlPoints);
-    s.previewLine=L.polyline(path,{
-      color:'#7c3aed',
-      weight:6,
-      opacity:.95,
-      dashArray:s.mode==='CUSTOM_CURVE'?'10 7':null,
-      interactive:false
-    }).addTo(map);
-    s.pointMarkers=(s.controlPoints||[]).map((p,i)=>
-      L.circleMarker([p.lat,p.lng],{
-        radius:5,weight:2,color:'#7c3aed',fillColor:'#fff',fillOpacity:1,interactive:false
-      }).addTo(map)
-    );
+  function showCurveEditor(show){
+    const editor=qs('projectCurveEditor');
+    if(editor)editor.style.display=show?'block':'none';
   }
 
   function finishCoordinateAlignmentSave(){
     const s=projectAlignmentState;
     if(!s)return;
-    const coordinates=buildProjectPath(s.start,s.end,s.controlPoints)
-      .map(p=>[Number(p.lng),Number(p.lat)]);
-
-    if(s.mode==='CUSTOM_CURVE'&&s.controlPoints.length<1){
-      setDrawMessage('CUSTOM CURVE needs at least one intermediate coordinate between START and END.','err');
+    let built;
+    try{
+      const curves=s.mode==='CUSTOM_CURVE'?readCurveElementsFromInputs():[];
+      built=buildEngineeringAlignment(s.start,s.end,curves);
+      if(s.mode==='CUSTOM_CURVE'&&curves.length<1)throw new Error('CUSTOM CURVE requires at least one curve element.');
+    }catch(error){
+      setDrawMessage(error.message||'Invalid project alignment.','err');
       return;
     }
-
-    if(coordinates.length<2){
-      setDrawMessage('A project alignment needs a start and end coordinate.','err');
-      return;
-    }
-
-    return saveProjectCoordinateAlignment({
-      mode:s.mode,
-      coordinates
-    });
+    s.curves=curves;
+    s.built=built;
+    updateCurveElementResults(curves.map(c=>c.__result));
+    return saveProjectCoordinateAlignment({mode:s.mode,built});
   }
 
-  async function saveProjectCoordinateAlignment({mode,coordinates}){
+  async function saveProjectCoordinateAlignment({mode,built}){
     setDrawMessage('Saving project alignment...','info');
     const {data,error}=await client.rpc('save_road_project_alignment',{
       p_project_id:new URLSearchParams(location.search).get('project_id'),
-      p_geojson:{type:'LineString',coordinates},
-      p_source:'FREE_DRAW'
+      p_geojson:built.geometry,
+      p_source:'SURVEY',
+      p_elements:built.elements
     });
 
     if(error){
@@ -584,20 +780,104 @@
 
     projectData.alignment=data||null;
     clearProjectAlignmentState();
-    renderControlPointRows([]);
-    showControlPointEditor(false);
     const button=qs('projectGenerateAlignment');
     if(button)button.textContent='GENERATE ALIGNMENT';
     const help=qs('projectAlignmentHelp');
-    if(help)help.textContent=mode==='CUSTOM_CURVE'
-      ? 'Custom curve saved. Enter new coordinates to replace it.'
+    help.textContent=mode==='CUSTOM_CURVE'
+      ? 'Curve elements saved. You can edit the coordinates and generate a new alignment to replace them.'
       : 'Straight alignment saved. Enter new coordinates to replace it.';
+    showCurveEditor(false);
 
     const bounds=allGeometryBounds();
     if(bounds.length)map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
-    setDrawMessage('Project alignment saved successfully.','ok');
+    setDrawMessage('Project alignment saved with '+built.elements.length+' alignment element(s).','ok');
     updateProjectDistanceSummary();
     await loadData();
+  }
+
+  function startLineDrawing(){
+    const targetType=qs('mapTargetType').value;
+    const targetId=qs('mapTarget').value;
+
+    if(targetType==='PROJECT'){
+      setDrawMessage('Project alignment now uses START/END coordinates plus curve elements.','info');
+      qs('projectStartLat')?.focus();
+      return;
+    }
+
+    if(!targetId){
+      setDrawMessage('Select a road section or work component first.','err');
+      return;
+    }
+
+    if(!window.L?.Draw){
+      setDrawMessage('Map drawing tools are not available.','err');
+      return;
+    }
+
+    drawMode={targetType,targetId};
+    const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
+    drawer.enable();
+    setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
+  }
+
+  async function handleProjectGenerateAlignment(){
+    try{
+      const coords=readProjectCoordinates();
+      const mode=qs('projectAlignmentMode').value||'STRAIGHT';
+
+      clearProjectAlignmentState();
+      projectAlignmentState={
+        mode,
+        start:coords.start,
+        end:coords.end,
+        curves:[],
+        built:null,
+        previewLine:null
+      };
+
+      map.fitBounds(L.latLngBounds([
+        [coords.start.lat,coords.start.lng],
+        [coords.end.lat,coords.end.lng]
+      ]),{padding:[70,70],animate:false});
+
+      if(mode==='STRAIGHT'){
+        await finishCoordinateAlignmentSave();
+        return;
+      }
+
+      if(mode==='CUSTOM_CURVE'){
+        showCurveEditor(true);
+        if(!getCurveRows().length){
+          renderSavedCurveRows();
+          if(!getCurveRows().length)addCurveRow();
+        }
+        updateEngineeringPreview(true);
+        const button=qs('projectGenerateAlignment');
+        if(button)button.textContent='SAVE ALIGNMENT';
+        setDrawMessage('Define each circular curve with PC, P1 and PT. Add more curve elements as needed, then click SAVE ALIGNMENT.','info');
+      }
+    }catch(error){
+      setDrawMessage(error.message||'Enter valid start and end coordinates.','err');
+    }
+  }
+
+  function useProjectMapCenter(){
+    const d=projectData.project?.project_details||{};
+    const lat=Number(d.map_lat), lng=Number(d.map_lng);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng)){
+      setDrawMessage('No project map center has been saved yet.','err');
+      return;
+    }
+    qs('projectStartLat').value=lat.toFixed(6);
+    qs('projectStartLng').value=lng.toFixed(6);
+    qs('projectEndLat').value='';
+    qs('projectEndLng').value='';
+    qs('projectCurveRows').innerHTML='';
+    addCurveRow();
+    map.setView([lat,lng],Math.max(map.getZoom(),16));
+    qs('projectEndLat')?.focus();
+    setDrawMessage('Project map center loaded as the START coordinate. Enter the END coordinate next.','info');
   }
 
   function startLineDrawing(){
