@@ -99,7 +99,19 @@
             <button class="secondary-btn" id="projectUseMapCenter" type="button">USE MAP CENTER</button>
           </div>
         </div>
-        <div id="projectControlPointEditor" class="project-control-point-editor" style="display:none">
+        <div class="project-distance-summary" id="projectDistanceSummary">
+        <div class="project-distance-card">
+          <span>START → END DISTANCE</span>
+          <strong id="projectStraightDistance">—</strong>
+          <small>Geodesic distance between the two coordinates.</small>
+        </div>
+        <div class="project-distance-card">
+          <span>ALIGNMENT LENGTH</span>
+          <strong id="projectAlignmentDistance">—</strong>
+          <small>Straight line or full control-point path, depending on method.</small>
+        </div>
+      </div>
+      <div id="projectControlPointEditor" class="project-control-point-editor" style="display:none">
           <div class="project-control-head">
             <div>
               <strong>CURVE CONTROL POINTS</strong>
@@ -211,7 +223,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=26"></script>
+  <script src="road-project-map.js?v=27"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
