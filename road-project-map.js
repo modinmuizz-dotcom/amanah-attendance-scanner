@@ -298,7 +298,14 @@
             station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
             progress:progress?('PROGRESS '+progress.percent.toFixed(1)+'% • APPROVED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
           },
-          {color:component?statusColor(component.status):'#16a34a',weight:4,opacity:.9,dashArray:'6 6'}
+          {
+            // Shoulder is geometric reference data, not a progress status.
+            // Keep it neutral even when no shoulder work component exists.
+            color:'#64748b',
+            weight:4,
+            opacity:.9,
+            dashArray:'8 8'
+          }
         );
         if(line)line.addTo(statusLayer);
 
