@@ -319,16 +319,18 @@
   }
 
   function readProjectCoordinates(){
-    return {
-      start:{
-        lat:parseCoordinate('projectStartLat','Start latitude',-90,90),
-        lng:parseCoordinate('projectStartLng','Start longitude',-180,180)
-      },
-      end:{
-        lat:parseCoordinate('projectEndLat','End latitude',-90,90),
-        lng:parseCoordinate('projectEndLng','End longitude',-180,180)
-      }
+    const start={
+      lat:parseCoordinate('projectStartLat','Start latitude',-90,90),
+      lng:parseCoordinate('projectStartLng','Start longitude',-180,180)
     };
+    const end={
+      lat:parseCoordinate('projectEndLat','End latitude',-90,90),
+      lng:parseCoordinate('projectEndLng','End longitude',-180,180)
+    };
+    if(Math.abs(start.lat-end.lat)<0.000000001 && Math.abs(start.lng-end.lng)<0.000000001){
+      throw new Error('Start and end coordinates cannot be identical. Enter a different end coordinate.');
+    }
+    return {start,end};
   }
 
   function setProjectCoordinateInputs(coords){
@@ -361,8 +363,8 @@
       if(panel && !qs('projectStartLat').value && Number.isFinite(lat)&&Number.isFinite(lng)){
         qs('projectStartLat').value=lat.toFixed(6);
         qs('projectStartLng').value=lng.toFixed(6);
-        qs('projectEndLat').value=lat.toFixed(6);
-        qs('projectEndLng').value=lng.toFixed(6);
+        qs('projectEndLat').value='';
+        qs('projectEndLng').value='';
       }
     }
   }
@@ -513,10 +515,11 @@
     }
     qs('projectStartLat').value=lat.toFixed(6);
     qs('projectStartLng').value=lng.toFixed(6);
-    if(!qs('projectEndLat').value)qs('projectEndLat').value=lat.toFixed(6);
-    if(!qs('projectEndLng').value)qs('projectEndLng').value=lng.toFixed(6);
+    qs('projectEndLat').value='';
+    qs('projectEndLng').value='';
     map.setView([lat,lng],Math.max(map.getZoom(),16));
-    setDrawMessage('Project map center loaded into the start coordinates. Adjust the end coordinates before generating the alignment.','info');
+    qs('projectEndLat')?.focus();
+    setDrawMessage('Project map center loaded as the START coordinate. Enter the END coordinate next.','info');
   }
 
   async function saveDrawnGeometry(layer){
