@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null};
+const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -13,9 +13,45 @@ function msg(text,type="ok"){const el=document.getElementById("message"),shade=d
 function clearMsg(){const el=document.getElementById("message");el.className="message";el.textContent="";document.getElementById("messageShade").style.display="none";}
 function fmtDate(v){if(!v)return "—";return new Date(v+"T00:00:00").toLocaleDateString();}
 
-async function init(){
+async function loadAccess(){
  const {data:{session}}=await supabaseClient.auth.getSession();
- if(!session){location.href="admin.html";return;}
+ if(!session){location.href="admin.html";return false;}
+
+ await supabaseClient.rpc("amanah_register_current_user");
+
+ const [{data:role,error:roleError},{data:permissionRows,error:permissionError}]=await Promise.all([
+   supabaseClient.rpc("amanah_get_current_role"),
+   supabaseClient.rpc("amanah_get_current_permissions")
+ ]);
+
+ if(roleError)throw roleError;
+ if(permissionError)throw permissionError;
+
+ const permissions=new Set((permissionRows||[]).map(x=>x.permission_key));
+ state.access={
+   role:role||"UNASSIGNED",
+   permissions,
+   canManage:permissions.has("purchasing.manage"),
+   canApprove:permissions.has("purchasing.approve")
+ };
+
+ if(!state.access.canManage){
+   document.querySelector(".page").innerHTML=
+     '<section class="panel" style="padding:50px;text-align:center;margin-top:40px">'+
+     '<div style="font-size:10px;letter-spacing:.12em;color:#64748b;font-weight:900">ACCESS CONTROL</div>'+
+     '<h2 style="margin:8px 0">PURCHASING CONTROL</h2>'+
+     '<p style="color:#64748b">Only the Purchasing Officer / Procurement role and authorized administrators can manage Purchase Requests and Purchase Orders.</p>'+
+     '<button class="btn blue" type="button" onclick="location.href=\'dashboard.html\'">RETURN TO DASHBOARD</button>'+
+     '</section>';
+   return false;
+ }
+
+ return true;
+}
+
+async function init(){
+ const allowed=await loadAccess();
+ if(!allowed)return;
  document.getElementById("requestDate").value=today();
  document.getElementById("poDate").value=today();
  bind();
@@ -102,11 +138,14 @@ async function loadOrders(){
 }
 function renderAll(){renderRequests();renderOrders();renderMetrics();}
 function renderMetrics(){
- const open=state.requests.filter(r=>["DRAFT","SUBMITTED","UNDER REVIEW","APPROVED","PARTIALLY ORDERED","ORDERED"].includes(r.status)).length;
- const review=state.requests.filter(r=>r.status==="SUBMITTED"||r.status==="UNDER REVIEW").length;
+ const open=state.requests.filter(r=>["DRAFT","SUBMITTED","UNDER REVIEW","PENDING APPROVAL"].includes(r.status)).length;
+ const review=state.requests.filter(r=>r.status==="PENDING APPROVAL").length;
  const approved=state.requests.filter(r=>["APPROVED","PARTIALLY ORDERED","ORDERED"].includes(r.status)).length;
  const po=state.orders.filter(o=>!["CLOSED","CANCELLED"].includes(o.status)).length;
- document.getElementById("mOpen").textContent=open;document.getElementById("mReview").textContent=review;document.getElementById("mApproved").textContent=approved;document.getElementById("mPO").textContent=po;
+ document.getElementById("mOpen").textContent=open;
+ document.getElementById("mReview").textContent=review;
+ document.getElementById("mApproved").textContent=approved;
+ document.getElementById("mPO").textContent=po;
 }
 
 function showCancelRequestDialog(title,requestNo,projectName,approved=false){
@@ -194,11 +233,13 @@ function renderRequests(){
  const rows=state.requests.filter(r=>(!q||[r.request_no,r.project_name,r.requester_name,r.purpose].join(" ").toLowerCase().includes(q))&&(!status||r.status===status)&&(!pid||r.project_id===pid));
  document.getElementById("prBody").innerHTML=rows.length?rows.map(r=>{
   const items=state.requestItems.filter(i=>i.purchase_request_id===r.purchase_request_id);
-  let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini edit" data-pr-edit="'+esc(r.purchase_request_id)+'">EDIT</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button><button class="mini delete" data-pr-delete="'+esc(r.purchase_request_id)+'">DELETE</button>';
-  if(r.status==="PENDING APPROVAL")actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">CANCEL REQUEST</button>';
-  if(r.status==="APPROVED")actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">REQUEST CANCELLATION</button>';
-  if(r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW")actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
-  if(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
+  let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button>';
+  if(state.access.canManage && !["APPROVED","ORDERED","CLOSED","CANCELLED","REJECTED"].includes(r.status))actions+='<button class="mini edit" data-pr-edit="'+esc(r.purchase_request_id)+'">EDIT</button>';
+  if(state.access.canManage && ["DRAFT","REJECTED","CANCELLED"].includes(r.status))actions+='<button class="mini delete" data-pr-delete="'+esc(r.purchase_request_id)+'">DELETE</button>';
+  if(r.status==="PENDING APPROVAL" && state.access.canManage)actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">CANCEL REQUEST</button>';
+  if(r.status==="APPROVED" && state.access.canManage)actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">REQUEST CANCELLATION</button>';
+  if(state.access.canApprove && (r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW"))actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
+  if(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
   return '<tr><td><strong>'+esc(r.request_no)+'</strong></td><td>'+esc(fmtDate(r.request_date))+'</td><td><strong>'+esc(r.project_name)+'</strong><br><small style="color:#64748b">'+esc(r.project_location||"")+'</small></td><td>'+esc(r.requester_name)+'<br><small style="color:#64748b">'+esc(r.requester_position||r.requester_role||"SITE ENGINEER")+'</small></td><td>'+esc(fmtDate(r.needed_by_date))+'</td><td>'+esc(r.priority)+'</td><td>'+items.length+'</td><td>'+statusBadge(r.status)+'</td><td><div class="row-actions">'+actions+'</div></td></tr>';
  }).join(""):'<tr><td colspan="9" class="empty">No purchase requests found.</td></tr>';
  document.querySelectorAll("[data-pr-view]").forEach(b=>b.addEventListener("click",()=>openRequestDetails(b.dataset.prView)));
@@ -220,13 +261,14 @@ function renderOrders(){
  document.querySelectorAll("[data-po-delete]").forEach(b=>b.addEventListener("click",()=>deletePurchaseOrder(b.dataset.poDelete)));
 }
 function openRequestModal(){
+ if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can encode a Purchase Request.","err");
  clearMsg();state.editingRequestId=null;
  document.getElementById("requestModal").style.display="flex";
  document.getElementById("requestDate").value=today();document.getElementById("neededBy").value="";
  document.getElementById("requestProject").value="";document.getElementById("requester").value="";
  document.getElementById("requestPriority").value="NORMAL";document.getElementById("requestPurpose").value="";document.getElementById("requestRemarks").value="";
  document.getElementById("requestModal").querySelector(".modal-head h3").textContent="PURCHASE REQUEST";
- document.getElementById("requestModal").querySelector(".modal-head div div").textContent="Raised by the site engineer for a specific project.";
+ document.getElementById("requestModal").querySelector(".modal-head div div").textContent="Encoded by the Purchasing Officer on behalf of the requesting Site Engineer.";
  document.getElementById("saveRequest").textContent="SUBMIT REQUEST";
  state.prDraftItems=[{material_name:"",specifications:"",quantity:1,unit:"PCS"}];renderPrItems();
 }
@@ -309,13 +351,14 @@ function openRequestDetails(id){
  document.getElementById("detailBody").innerHTML='<div class="detail-grid"><div class="detail-card"><label>Request No.</label><strong>'+esc(r.request_no)+'</strong></div><div class="detail-card"><label>Status</label><strong>'+statusBadge(r.status)+'</strong></div><div class="detail-card"><label>Project</label><div>'+esc(r.project_name)+'<br><small>'+esc(r.project_location||"")+'</small></div></div><div class="detail-card"><label>Requester</label><div>'+esc(r.requester_name)+'<br><small>'+esc(r.requester_position||r.requester_role)+'</small></div></div><div class="detail-card"><label>Request Date</label><div>'+esc(fmtDate(r.request_date))+'</div></div><div class="detail-card"><label>Needed By</label><div>'+esc(fmtDate(r.needed_by_date))+'</div></div><div class="detail-card"><label>Priority</label><div>'+esc(r.priority)+'</div></div><div class="detail-card full"><label>Purpose</label><div>'+esc(r.purpose||"—")+'</div></div><div class="detail-card full"><label>Remarks</label><div>'+esc(r.remarks||"—")+'</div></div></div><div class="section-label">REQUEST ITEMS</div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+items.map(i=>'<tr><td><strong>'+esc(i.material_name)+'</strong></td><td>'+esc(i.specifications||"—")+'</td><td>'+esc(i.quantity)+'</td><td>'+esc(i.unit)+'</td></tr>').join("")+'</tbody></table></div>';
  const editBtn=document.getElementById("detailEditButton");editBtn.style.display=["CANCELLED","CLOSED","ORDERED"].includes(r.status)?"none":"inline-block";editBtn.textContent="EDIT PURCHASE REQUEST";
  const printBtn=document.getElementById("detailPrintButton");printBtn.style.display="inline-block";printBtn.textContent="PRINT / SAVE PDF";
- document.getElementById("detailPrimaryAction").style.display=(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")?"inline-block":"none";
- if(r.status==="APPROVED"||r.status==="PARTIALLY ORDERED")document.getElementById("detailPrimaryAction").textContent="CREATE PURCHASE ORDER";
+ document.getElementById("detailPrimaryAction").style.display=(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))?"inline-block":"none";
+ if(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))document.getElementById("detailPrimaryAction").textContent="CREATE PURCHASE ORDER";
  document.getElementById("detailModal").style.display="flex";
 }
 async function openRequestEdit(id){
  const r=state.requests.find(x=>x.purchase_request_id===id);if(!r)return;
- if(["CANCELLED","CLOSED","ORDERED"].includes(r.status))return msg("This Purchase Request cannot be edited in its current status.","err");
+ if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can edit Purchase Requests.","err");
+ if(["CANCELLED","CLOSED","ORDERED","APPROVED"].includes(r.status))return msg("This Purchase Request cannot be edited in its current status.","err");
  state.editingRequestId=id;
  document.getElementById("requestProject").value=r.project_id||"";document.getElementById("requester").value=r.requester_employee_id||"";document.getElementById("requestDate").value=r.request_date||today();document.getElementById("neededBy").value=r.needed_by_date||"";document.getElementById("requestPriority").value=r.priority||"NORMAL";document.getElementById("requestPurpose").value=r.purpose||"";document.getElementById("requestRemarks").value=r.remarks||"";
  document.getElementById("requestModal").querySelector(".modal-head h3").textContent="EDIT PURCHASE REQUEST";
@@ -340,7 +383,7 @@ function printPurchaseRequest(id){
  openPrintWindow("PURCHASE REQUEST",r.request_no,r.project_name,r.project_location,r.requester_name,r.requester_position||r.requester_role,r.request_date,r.needed_by_date,rows,"PROJECT MATERIAL REQUEST",null,null,null,null,null,r.remarks);
 }
 function closeDetail(){document.getElementById("detailModal").style.display="none";state.activeRequestId=null;state.activeOrderId=null;document.getElementById("detailEditButton").style.display="none";document.getElementById("detailPrintButton").style.display="none";}
-function primaryDetailAction(){if(state.activeRequestId)openPOModal(state.activeRequestId);}
+function primaryDetailAction(){if(state.activeRequestId && state.access.canManage)openPOModal(state.activeRequestId);}
 function openPOModal(requestId){
  const r=state.requests.find(x=>x.purchase_request_id===requestId);if(!r)return;
  if(!["APPROVED","PARTIALLY ORDERED"].includes(r.status))return msg("Purchase Request must be approved before creating a PO.","err");
@@ -368,7 +411,8 @@ function renderPoItems(){
 function updatePoTotal(){const items=state.poDraftRequest?.items||[];const total=items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);items.forEach((x,i)=>{const el=document.querySelector('[data-po-total="'+i+'"]');if(el)el.textContent=money(Number(x.quantity||0)*Number(x.unit_price||0));});document.getElementById("poSubtotal").textContent=money(total);}
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;state.editingOrderId=null;document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";}
 async function savePurchaseOrder(){
- const d=state.poDraftRequest;if(!d)return;const editing=!!state.editingOrderId;
+ const d=state.poDraftRequest;if(!d)return;
+ if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can create or edit Purchase Orders.","err");const editing=!!state.editingOrderId;
  const supplierId=document.getElementById("poSupplier").value,supplier=state.suppliers.find(s=>s.supplier_id===supplierId),contact=document.getElementById("poSupplierContact").value.trim(),address=document.getElementById("poSupplierAddress").value.trim(),poDate=document.getElementById("poDate").value,delivery=document.getElementById("poDelivery").value,payment=document.getElementById("poPaymentTerms").value.trim(),deliveryTerms=document.getElementById("poDeliveryTerms").value.trim(),remarks=document.getElementById("poRemarks").value.trim();
  if(!supplierId||!supplier)return msg("Please select a registered supplier.","err");if(!poDate)return msg("PO date is required.","err");if(delivery&&delivery<poDate)return msg("Expected delivery cannot be earlier than PO date.","err");
  for(const it of d.items){if(!it.material_name.trim())return msg("Every PO line needs a material name.","err");if(!(Number(it.quantity)>0))return msg("Every PO line needs a quantity greater than zero.","err");if(!(Number(it.unit_price)>=0))return msg("Unit price cannot be negative.","err");}
