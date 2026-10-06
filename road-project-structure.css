@@ -44,7 +44,7 @@ button{cursor:pointer}
 .road-map-notice.ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534}
 .road-map-notice.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
 .road-map-canvas{height:520px;min-height:360px;background:#e5e7eb;position:relative;overflow:hidden}
-#roadMapLeaflet{position:absolute;inset:0;z-index:2;pointer-events:auto;background:#e5e7eb}
+#roadMapLeaflet{position:absolute;inset:0;z-index:2}
 #roadMapFallback{position:absolute;inset:0;z-index:1;background:#eef2f7;pointer-events:none}
 #roadMapLeaflet.map-interaction-overlay{display:block!important;background:transparent!important}
 #roadMapLeaflet.map-interaction-overlay .leaflet-tile-pane{display:none!important}
@@ -102,12 +102,3 @@ button{cursor:pointer}
 .danger-btn:hover{background:#b91c1c}
 @media(max-width:1050px){.road-map-toolbar{grid-template-columns:1fr 1fr}.map-toolbar-actions{grid-column:1/-1;justify-content:flex-start}.summary-stats{min-width:0;grid-template-columns:repeat(3,1fr)}.architecture-grid{grid-template-columns:1fr}.stage-panel.wide{grid-column:auto}.rule-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.road-map-toolbar{grid-template-columns:1fr}.map-toolbar-actions{grid-column:auto}.road-map-canvas{height:420px}.road-map-footer{flex-direction:column;align-items:flex-start}.road-map-legend{justify-content:flex-start}.road-structure-wrap{width:min(100% - 18px,1440px);padding-top:18px}.road-structure-header{flex-direction:column;align-items:stretch}.summary-stats{grid-template-columns:repeat(2,1fr)}.project-summary{flex-direction:column}.form-grid{grid-template-columns:1fr}.full-field{grid-column:auto}.component-card{grid-template-columns:1fr 1fr}.component-card .component-name{grid-column:1/-1}.rule-grid{grid-template-columns:1fr}.panel-head{flex-direction:column}.button-cluster{justify-content:flex-start}}
-
-.google-map-required{
-  position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;padding:28px;text-align:center;background:linear-gradient(135deg,#f8fafc,#eef4ff);color:#0f172a
-}
-.google-map-required h3{margin:0;font-size:20px}
-.google-map-required p{margin:0;max-width:620px;color:#64748b;font-size:12px;line-height:1.55}
-.google-map-icon{font-size:10px;font-weight:900;letter-spacing:.14em;color:#2563eb}
-#roadMapLeaflet .gm-style{font-family:Arial,Helvetica,sans-serif}
