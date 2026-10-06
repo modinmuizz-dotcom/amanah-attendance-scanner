@@ -108,7 +108,17 @@ function bind(){
  document.getElementById("detailPrimaryAction").addEventListener("click",primaryDetailAction);
  document.getElementById("closePo").addEventListener("click",closePoModal);
  document.getElementById("cancelPo").addEventListener("click",closePoModal);
- document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
+ document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);
+ document.getElementById("supplyStatus").addEventListener("change",()=>{
+   const status=document.getElementById("supplyStatus").value;
+   if(status==="READY FOR PICKUP"){
+     const ordered=Number(document.getElementById("supplyOrderedQty").textContent||0);
+     const received=Number(document.getElementById("supplyReceivedQty").value||0);
+     document.getElementById("supplyReadyForPickupQty").value=Math.max(ordered-received,0);
+   }else{
+     document.getElementById("supplyReadyForPickupQty").value=0;
+   }
+ });document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
  ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
  ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
  document.getElementById("clearPrFilters").addEventListener("click",()=>{document.getElementById("prSearch").value="";document.getElementById("prStatus").value="";document.getElementById("prProject").value="";renderRequests();});
@@ -646,6 +656,13 @@ async function openSupplyModal(itemId){
  document.getElementById("supplySubstituteSpecifications").value=item.substitute_specifications||"";
  document.getElementById("supplySupplierRemarks").value=item.supplier_remarks||"";
 
+ const unreceivedQty=Math.max(Number(item.quantity||0)-Number(item.received_quantity||0),0);
+ const readyOption=document.querySelector('#supplyStatus option[value="READY FOR PICKUP"]');
+ if(readyOption){
+   readyOption.disabled=unreceivedQty<=0;
+   readyOption.title=unreceivedQty<=0 ? "This material is already fully received." : "";
+ }
+
  const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
  const showAlternative=["UNAVAILABLE","BACKORDERED","PARTIALLY AVAILABLE","SUBSTITUTE PROPOSED"].includes(String(item.supply_status||"").toUpperCase()) && remaining>0;
  const alt=document.getElementById("sourceAlternative");
@@ -788,6 +805,7 @@ async function saveSupplyStatus(){
  const unreceived=Math.max(ordered-received,0);
  if(readyForPickup<0 || readyForPickup>unreceived)return showSupplyValidation("READY FOR PICKUP quantity cannot exceed the unreceived quantity of "+unreceived+" "+(item.unit||"")+".");
  if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
+ if(status==="READY FOR PICKUP" && unreceived<=0)return showSupplyValidation("This material is already fully received. There is no quantity left to mark READY FOR PICKUP.");
  if(status==="READY FOR PICKUP" && readyForPickup<=0)return showSupplyValidation("Enter the quantity that is physically READY FOR PICKUP.");
  if(received>0 && !receivedDate)return showSupplyValidation("Received date is required when received quantity is greater than zero.");
  if(received>0 && !deliveryReference)return showSupplyValidation("Delivery reference (DR / Invoice / Receipt No.) is required when recording a receipt.");
