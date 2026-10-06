@@ -636,6 +636,7 @@ async function openSupplyModal(itemId){
  document.getElementById("supplyUnitPrice").value=item.unit_price==null?"":item.unit_price;
  document.getElementById("supplyConfirmedQty").value=item.confirmed_quantity??0;
  document.getElementById("supplyReceivedQty").value=item.received_quantity??0;
+ document.getElementById("supplyReadyForPickupQty").value=item.ready_for_pickup_quantity??0;
  document.getElementById("supplyReceivedDate").value=item.received_date||"";
  document.getElementById("supplyDeliveryReference").value=item.delivery_reference||"";
  document.getElementById("supplyReceivingRemarks").value=item.receiving_remarks||"";
@@ -653,7 +654,7 @@ async function openSupplyModal(itemId){
 
  const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
  const pickupBtn=document.getElementById("requestPickup");
- const canPickup=String(item.supply_status||"").toUpperCase()==="READY FOR PICKUP" && remaining>0;
+ const canPickup=String(item.supply_status||"").toUpperCase()==="READY FOR PICKUP" && Number(item.ready_for_pickup_quantity||0)>0;
  pickupBtn.style.display=canPickup?"inline-block":"none";
  pickupBtn.disabled=!!activePickup;
  pickupBtn.textContent=activePickup ? "PICKUP REQUEST SENT" : "REQUEST MATERIAL PICKUP ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
@@ -667,15 +668,15 @@ async function openPickupRequestModal(){
  if(!item)return;
  const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
  if(!order)return;
- const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
- if(remaining<=0)return showSupplyValidation("There is no confirmed quantity remaining for pickup.");
+ const remaining=Number(item.ready_for_pickup_quantity||0);
+ if(remaining<=0)return showSupplyValidation("No quantity is marked READY FOR PICKUP.");
  const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
  if(activePickup)return showSupplyValidation("A pickup request is already pending or approved for this material line.");
 
  state.pickupItemId=item.purchase_order_item_id;
  document.getElementById("pickupFromPO").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(order.supplier_name||"")+" • "+(order.project_name||"");
  document.getElementById("pickupMaterial").textContent=item.material_name||"—";
- document.getElementById("pickupQuantity").value=remaining;
+ document.getElementById("pickupQuantity").value=Number(item.ready_for_pickup_quantity||0);
  document.getElementById("pickupUnitLabel").textContent=item.unit||"—";
  document.getElementById("pickupDate").value=today();
  document.getElementById("pickupStart").value="08:00";
@@ -771,6 +772,7 @@ async function saveSupplyStatus(){
  const unitPrice=unitPriceRaw===""?null:Number(unitPriceRaw);
  const confirmed=Number(document.getElementById("supplyConfirmedQty").value||0);
  const received=Number(document.getElementById("supplyReceivedQty").value||0);
+ const readyForPickup=Number(document.getElementById("supplyReadyForPickupQty").value||0);
  const receivedDate=document.getElementById("supplyReceivedDate").value||null;
  const deliveryReference=document.getElementById("supplyDeliveryReference").value.trim()||null;
  const receivingRemarks=document.getElementById("supplyReceivingRemarks").value.trim()||null;
@@ -783,8 +785,10 @@ async function saveSupplyStatus(){
 
  if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
  if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
+ const unreceived=Math.max(ordered-received,0);
+ if(readyForPickup<0 || readyForPickup>unreceived)return showSupplyValidation("READY FOR PICKUP quantity cannot exceed the unreceived quantity of "+unreceived+" "+(item.unit||"")+".");
  if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
- if(status==="READY FOR PICKUP" && confirmed<=received)return showSupplyValidation("READY FOR PICKUP requires a confirmed quantity greater than the quantity already received.");
+ if(status==="READY FOR PICKUP" && readyForPickup<=0)return showSupplyValidation("Enter the quantity that is physically READY FOR PICKUP.");
  if(received>0 && !receivedDate)return showSupplyValidation("Received date is required when received quantity is greater than zero.");
  if(received>0 && !deliveryReference)return showSupplyValidation("Delivery reference (DR / Invoice / Receipt No.) is required when recording a receipt.");
  if(status==="AVAILABLE" && confirmed<=0)return showSupplyValidation("Enter the quantity confirmed available by the supplier.");
@@ -809,6 +813,7 @@ async function saveSupplyStatus(){
      unit_price:unitPrice,
      confirmed_quantity:confirmed,
      received_quantity:received,
+     ready_for_pickup_quantity:status==="READY FOR PICKUP" ? readyForPickup : 0,
      received_date:receivedDate,
      delivery_reference:deliveryReference,
      receiving_remarks:receivingRemarks,
