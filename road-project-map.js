@@ -7,8 +7,7 @@
   let drawnItems=null;
   let projectData={project:null,phases:[],sections:[],components:[],alignment:null};
   let drawMode=null;
-  let projectDrawStart=null;
-  let projectPreviewLine=null;
+  let projectAlignmentState=null;
   let mapCenterMode=false;
   let pointMode=null;
   let pointLayer=null;
@@ -301,55 +300,223 @@
     await loadData();
   }
 
-  function clearProjectPreview(){
-    if(projectPreviewLine){projectPreviewLine.remove();projectPreviewLine=null;}
-    projectDrawStart=null;
+  function clearProjectAlignmentState(){
+    if(projectAlignmentState?.previewLine) projectAlignmentState.previewLine.remove();
+    if(projectAlignmentState?.pointMarkers){
+      projectAlignmentState.pointMarkers.forEach(m=>m.remove());
+    }
+    projectAlignmentState=null;
+  }
+
+  function parseCoordinate(id,label,min,max){
+    const raw=String(qs(id)?.value??'').trim();
+    if(raw==='') throw new Error(label+' is required.');
+    const value=Number(raw);
+    if(!Number.isFinite(value)||value<min||value>max){
+      throw new Error(label+' must be between '+min+' and '+max+'.');
+    }
+    return value;
+  }
+
+  function readProjectCoordinates(){
+    return {
+      start:{
+        lat:parseCoordinate('projectStartLat','Start latitude',-90,90),
+        lng:parseCoordinate('projectStartLng','Start longitude',-180,180)
+      },
+      end:{
+        lat:parseCoordinate('projectEndLat','End latitude',-90,90),
+        lng:parseCoordinate('projectEndLng','End longitude',-180,180)
+      }
+    };
+  }
+
+  function setProjectCoordinateInputs(coords){
+    if(!coords)return;
+    qs('projectStartLat').value=Number(coords.start.lat).toFixed(6);
+    qs('projectStartLng').value=Number(coords.start.lng).toFixed(6);
+    qs('projectEndLat').value=Number(coords.end.lat).toFixed(6);
+    qs('projectEndLng').value=Number(coords.end.lng).toFixed(6);
+  }
+
+  function updateProjectAlignmentControls(){
+    const active=qs('mapTargetType')?.value==='PROJECT';
+    const panel=qs('projectAlignmentControls');
+    if(panel)panel.style.display=active?'block':'none';
+
+    ['mapStartPoint','mapEndPoint'].forEach(id=>{
+      const el=qs(id);
+      if(el)el.disabled=active;
+    });
+
+    const draw=qs('mapDrawLine');
+    if(draw){
+      draw.textContent=active?'USE COORDINATES':'DRAW / REPLACE LINE';
+      draw.style.display=active?'none':'';
+    }
+
+    if(active){
+      const d=projectData.project?.project_details||{};
+      const lat=Number(d.map_lat), lng=Number(d.map_lng);
+      if(panel && !qs('projectStartLat').value && Number.isFinite(lat)&&Number.isFinite(lng)){
+        qs('projectStartLat').value=lat.toFixed(6);
+        qs('projectStartLng').value=lng.toFixed(6);
+        qs('projectEndLat').value=lat.toFixed(6);
+        qs('projectEndLng').value=lng.toFixed(6);
+      }
+    }
+  }
+
+  function buildProjectPath(start,end,controlPoints=[]){
+    return [
+      {lat:start.lat,lng:start.lng},
+      ...(controlPoints||[]).map(p=>({lat:Number(p.lat),lng:Number(p.lng)})),
+      {lat:end.lat,lng:end.lng}
+    ];
+  }
+
+  function renderProjectPreview(){
+    const s=projectAlignmentState;
+    if(!s||!map)return;
+    if(s.previewLine)s.previewLine.remove();
+    s.pointMarkers?.forEach(m=>m.remove());
+    const path=buildProjectPath(s.start,s.end,s.controlPoints);
+    s.previewLine=L.polyline(path,{
+      color:'#7c3aed',
+      weight:6,
+      opacity:.95,
+      dashArray:s.mode==='CUSTOM_CURVE'?'10 7':null,
+      interactive:false
+    }).addTo(map);
+    s.pointMarkers=(s.controlPoints||[]).map((p,i)=>
+      L.circleMarker([p.lat,p.lng],{
+        radius:5,weight:2,color:'#7c3aed',fillColor:'#fff',fillOpacity:1,interactive:false
+      }).addTo(map)
+    );
+  }
+
+  function finishCoordinateAlignmentSave(){
+    const s=projectAlignmentState;
+    if(!s)return;
+    const coordinates=buildProjectPath(s.start,s.end,s.controlPoints)
+      .map(p=>[Number(p.lng),Number(p.lat)]);
+
+    if(coordinates.length<2){
+      setDrawMessage('A project alignment needs a start and end coordinate.','err');
+      return;
+    }
+
+    return saveProjectCoordinateAlignment({
+      mode:s.mode,
+      coordinates
+    });
+  }
+
+  async function saveProjectCoordinateAlignment({mode,coordinates}){
+    setDrawMessage('Saving project alignment...','info');
+    const {data,error}=await client.rpc('save_road_project_alignment',{
+      p_project_id:new URLSearchParams(location.search).get('project_id'),
+      p_geojson:{type:'LineString',coordinates},
+      p_source:'FREE_DRAW'
+    });
+
+    if(error){
+      setDrawMessage(error.message||'Unable to save project alignment.','err');
+      return;
+    }
+
+    projectData.alignment=data||null;
+    clearProjectAlignmentState();
+    const button=qs('projectGenerateAlignment');
+    if(button)button.textContent='GENERATE ALIGNMENT';
+    const help=qs('projectAlignmentHelp');
+    if(help)help.textContent=mode==='CUSTOM_CURVE'
+      ? 'Custom curve saved. Enter new coordinates to replace it.'
+      : 'Straight alignment saved. Enter new coordinates to replace it.';
+
+    const bounds=allGeometryBounds();
+    if(bounds.length)map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
+    setDrawMessage('Project alignment saved successfully.','ok');
+    await loadData();
   }
 
   function startLineDrawing(){
     const targetType=qs('mapTargetType').value;
     const targetId=qs('mapTarget').value;
-    if(targetType!=='PROJECT'&&!targetId){setDrawMessage('Select a road section or work component first.','err');return;}
-    clearProjectPreview();
-    drawMode={targetType,targetId};
 
     if(targetType==='PROJECT'){
-      map.doubleClickZoom.disable();
-      setDrawMessage('PROJECT ALIGNMENT: click once for START, move along the road, then DOUBLE-CLICK for END.','info');
+      setDrawMessage('Project alignment now uses START/END coordinates. Enter the coordinates below.','info');
+      qs('projectStartLat')?.focus();
       return;
     }
 
-    if(!window.L?.Draw){setDrawMessage('Map drawing tools are not available.','err');return;}
+    if(!targetId){
+      setDrawMessage('Select a road section or work component first.','err');
+      return;
+    }
+
+    if(!window.L?.Draw){
+      setDrawMessage('Map drawing tools are not available.','err');
+      return;
+    }
+
+    drawMode={targetType,targetId};
     const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
     drawer.enable();
     setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
   }
 
-  async function saveProjectTwoPointLine(startLatLng,endLatLng){
-    if(!drawMode||drawMode.targetType!=='PROJECT')return;
-    const geojson={
-      type:'LineString',
-      coordinates:[
-        [Number(startLatLng.lng),Number(startLatLng.lat)],
-        [Number(endLatLng.lng),Number(endLatLng.lat)]
-      ]
-    };
-    setDrawMessage('Saving project alignment...','info');
-    const {data,error}=await client.rpc('save_road_project_alignment',{
-      p_project_id:new URLSearchParams(location.search).get('project_id'),
-      p_geojson:geojson,
-      p_source:'FREE_DRAW'
-    });
-    if(error){
-      setDrawMessage(error.message||'Unable to save project alignment.','err');
+  async function handleProjectGenerateAlignment(){
+    try{
+      const coords=readProjectCoordinates();
+      const mode=qs('projectAlignmentMode').value||'STRAIGHT';
+
+      clearProjectAlignmentState();
+      projectAlignmentState={
+        mode,
+        start:coords.start,
+        end:coords.end,
+        controlPoints:[],
+        previewLine:null,
+        pointMarkers:[]
+      };
+
+      map.fitBounds(L.latLngBounds([
+        [coords.start.lat,coords.start.lng],
+        [coords.end.lat,coords.end.lng]
+      ]),{padding:[70,70],animate:false});
+
+      if(mode==='STRAIGHT'){
+        await finishCoordinateAlignmentSave();
+        return;
+      }
+
+      if(mode==='CUSTOM_CURVE'){
+        renderProjectPreview();
+        const button=qs('projectGenerateAlignment');
+        if(button)button.textContent='SAVE ALIGNMENT';
+        const help=qs('projectAlignmentHelp');
+        if(help)help.textContent='CUSTOM CURVE ACTIVE: click the map at each bend/intermediate point. Then click SAVE ALIGNMENT.';
+        setDrawMessage('Custom curve active. Click intermediate points along the actual road, then click SAVE ALIGNMENT.','info');
+      }
+    }catch(error){
+      setDrawMessage(error.message||'Enter valid start and end coordinates.','err');
+    }
+  }
+
+  function useProjectMapCenter(){
+    const d=projectData.project?.project_details||{};
+    const lat=Number(d.map_lat), lng=Number(d.map_lng);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng)){
+      setDrawMessage('No project map center has been saved yet.','err');
       return;
     }
-    projectData.alignment=data||null;
-    drawMode=null;
-    map.doubleClickZoom.enable();
-    clearProjectPreview();
-    setDrawMessage('Project alignment saved successfully.','ok');
-    await loadData();
+    qs('projectStartLat').value=lat.toFixed(6);
+    qs('projectStartLng').value=lng.toFixed(6);
+    if(!qs('projectEndLat').value)qs('projectEndLat').value=lat.toFixed(6);
+    if(!qs('projectEndLng').value)qs('projectEndLng').value=lng.toFixed(6);
+    map.setView([lat,lng],Math.max(map.getZoom(),16));
+    setDrawMessage('Project map center loaded into the start coordinates. Adjust the end coordinates before generating the alignment.','info');
   }
 
   async function saveDrawnGeometry(layer){
@@ -407,10 +574,21 @@
     const targetId=qs('mapTarget').value;
     const targetType=qs('mapTargetType').value;
     if(!targetId){setDrawMessage('Select a target first.','err');return;}
+
+    if(targetType==='PROJECT' && projectAlignmentState){
+      clearProjectAlignmentState();
+      const button=qs('projectGenerateAlignment');
+      if(button)button.textContent='GENERATE ALIGNMENT';
+      setDrawMessage('Project alignment draft cleared. Nothing was changed in Supabase.','info');
+      return;
+    }
+
     const target=targetType==='SECTION'
       ? projectData.sections.find(x=>x.section_id===targetId)
       : projectData.components.find(x=>x.work_component_id===targetId);
-    const targetLabel=target
+    const targetLabel=targetType==='PROJECT'
+      ? 'PRIMARY ROAD ALIGNMENT'
+      : target
       ? (targetType==='SECTION'
         ? (target.section_code+' — '+target.section_name)
         : (target.component_name+' • '+(target.component_side||'NONE')))
@@ -495,12 +673,20 @@
     window.addEventListener('resize',refreshMapSize,{passive:true});
 
     qs('mapTargetType')?.addEventListener('change',()=>{
-      clearProjectPreview();
-      if(drawMode?.targetType==='PROJECT'){
-        drawMode=null;
-        map.doubleClickZoom.enable();
-      }
+      clearProjectAlignmentState();
+      if(drawMode)drawMode=null;
       populateTargets();
+      updateProjectAlignmentControls();
+    });
+    qs('projectGenerateAlignment')?.addEventListener('click',async()=>{
+      if(projectAlignmentState?.mode==='CUSTOM_CURVE') await finishCoordinateAlignmentSave();
+      else await handleProjectGenerateAlignment();
+    });
+    qs('projectUseMapCenter')?.addEventListener('click',useProjectMapCenter);
+    qs('projectAlignmentMode')?.addEventListener('change',()=>{
+      clearProjectAlignmentState();
+      const b=qs('projectGenerateAlignment');
+      if(b)b.textContent='GENERATE ALIGNMENT';
     });
     qs('mapDrawLine')?.addEventListener('click',startLineDrawing);
     qs('mapClearLine')?.addEventListener('click',clearSelectedGeometry);
@@ -519,15 +705,10 @@
     });
 
     map.on('click',async e=>{
-      if(drawMode?.targetType==='PROJECT'){
-        if(!projectDrawStart){
-          projectDrawStart=e.latlng;
-          if(projectPreviewLine)projectPreviewLine.remove();
-          projectPreviewLine=L.polyline([projectDrawStart,projectDrawStart],{
-            color:'#7c3aed',weight:6,opacity:.9,dashArray:'8 6',interactive:false
-          }).addTo(map);
-          setDrawMessage('START POINT set. Move along the road and DOUBLE-CLICK where the project alignment ends.','info');
-        }
+      if(projectAlignmentState?.mode==='CUSTOM_CURVE'){
+        projectAlignmentState.controlPoints.push({lat:e.latlng.lat,lng:e.latlng.lng});
+        renderProjectPreview();
+        setDrawMessage('Control point '+projectAlignmentState.controlPoints.length+' added. Continue clicking bends or click SAVE ALIGNMENT.','info');
         return;
       }
       if(pointMode){
@@ -544,25 +725,6 @@
       }
     });
 
-    map.on('mousemove',e=>{
-      if(drawMode?.targetType==='PROJECT'&&projectDrawStart){
-        if(!projectPreviewLine){
-          projectPreviewLine=L.polyline([projectDrawStart,e.latlng],{
-            color:'#7c3aed',weight:6,opacity:.9,dashArray:'8 6',interactive:false
-          }).addTo(map);
-        }else{
-          projectPreviewLine.setLatLngs([projectDrawStart,e.latlng]);
-        }
-      }
-    });
-
-    map.on('dblclick',async e=>{
-      if(drawMode?.targetType==='PROJECT'&&projectDrawStart){
-        e.originalEvent?.preventDefault?.();
-        await saveProjectTwoPointLine(projectDrawStart,e.latlng);
-      }
-    });
-
     map.on(L.Draw.Event.CREATED,async e=>{
       drawnItems.clearLayers();
       drawnItems.addLayer(e.layer);
@@ -572,6 +734,7 @@
 
     refreshMapSize();
     await loadData();
+    updateProjectAlignmentControls();
     refreshMapSize();
   }
 
