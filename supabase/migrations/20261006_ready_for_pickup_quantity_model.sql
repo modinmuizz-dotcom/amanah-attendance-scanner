@@ -1,5 +1,23 @@
 begin;
 
+alter table public.purchase_orders
+  drop constraint if exists purchase_orders_status_check;
+
+alter table public.purchase_orders
+  add constraint purchase_orders_status_check
+  check (status = any (array[
+    'DRAFT',
+    'APPROVED',
+    'SENT TO SUPPLIER',
+    'WAITING FOR SUPPLIER',
+    'READY FOR PICKUP',
+    'PARTIALLY FULFILLED',
+    'PARTIALLY RECEIVED',
+    'RECEIVED',
+    'CANCELLED',
+    'CLOSED'
+  ]::text[]));
+
 alter table public.purchase_order_items
   add column if not exists ready_for_pickup_quantity numeric not null default 0;
 
