@@ -1,1373 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <meta
-    name="theme-color"
-    content="#111827"
-  >
-
-  <title>AMANAH Attendance Reports</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>AMANAH Reports</title>
   <style>
-
-    * {
-      box-sizing: border-box;
+    *{box-sizing:border-box}
+    :root{
+      --navy:#0f172a;
+      --blue:#2563eb;
+      --blue2:#1d4ed8;
+      --green:#16a34a;
+      --orange:#ea580c;
+      --red:#dc2626;
+      --gray:#64748b;
+      --border:#e2e8f0;
+      --bg:#f1f5f9;
+      --white:#fff;
+      --shadow:0 10px 30px rgba(15,23,42,.08)
     }
-
-    :root {
-
-      --navy: #111827;
-      --green: #16a34a;
-      --red: #dc2626;
-      --blue: #2563eb;
-      --orange: #ea580c;
-
-      --gray-bg: #f1f5f9;
-      --gray-text: #64748b;
-
-      --white: #ffffff;
-      --border: #e2e8f0;
-
-      --shadow:
-        0 10px 30px
-        rgba(15, 23, 42, 0.08);
-
+    body{margin:0;background:var(--bg);color:var(--navy);font-family:Arial,Helvetica,sans-serif}
+    .reports-container{width:min(1400px,calc(100% - 32px));margin:0 auto 60px}
+    .report-toolbar,.summary-grid,.report-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+    .report-toolbar{padding:20px;margin-bottom:18px}
+    .toolbar-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr;gap:14px}
+    .field{display:flex;flex-direction:column;gap:7px;min-width:0}
+    .field label{font-size:12px;font-weight:800;letter-spacing:.04em}
+    .field input,.field select{width:100%;height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:14px;background:#fff;color:var(--navy)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    button{border:0;cursor:pointer;font-weight:800;border-radius:10px;padding:11px 16px}
+    .btn-primary{background:var(--navy);color:#fff}
+    .btn-blue{background:var(--blue);color:#fff}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-gray{background:#e2e8f0;color:var(--navy)}
+    .report-description{margin-top:12px;padding:12px 14px;border:1px solid #dbeafe;background:#eff6ff;color:#1e40af;border-radius:10px;font-size:12px;line-height:1.5}
+    .summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;background:transparent;border:0;box-shadow:none;margin-bottom:18px}
+    .summary-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow);min-height:105px}
+    .summary-label{color:var(--gray);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .summary-value{margin-top:9px;font-size:24px;font-weight:900}
+    .summary-value.money{font-size:22px}
+    .report-card{overflow:hidden}
+    .report-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+    .report-head h2{margin:0;font-size:18px}
+    .report-head p{margin:5px 0 0;color:var(--gray);font-size:11px}
+    .report-meta{text-align:right;color:var(--gray);font-size:11px;line-height:1.55}
+    .table-wrap{width:100%;overflow-x:auto}
+    table{width:100%;border-collapse:collapse;min-width:980px;background:#fff}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;font-size:12px}
+    th{background:#f8fafc;font-size:10px;font-weight:900;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+    td strong{display:block;margin-bottom:2px}
+    td small{color:var(--gray)}
+    .amount{font-weight:900;white-space:nowrap}
+    .badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;background:#eef2ff;color:#3730a3}
+    .badge.fuel{background:#ffedd5;color:#9a3412}
+    .badge.labor{background:#dcfce7;color:#166534}
+    .badge.equipment{background:#dbeafe;color:#1d4ed8}
+    .badge.material{background:#fef3c7;color:#92400e}
+    .badge.other{background:#e2e8f0;color:#475569}
+    .empty{padding:38px 18px;text-align:center;color:var(--gray);font-weight:700}
+    .print-only{display:none}
+    .message{display:none;margin-bottom:18px;padding:13px 15px;border-radius:10px;font-weight:700}
+    .message.error{display:block;background:#fee2e2;color:#991b1b}
+    .message.success{display:block;background:#dcfce7;color:#166534}
+    @media(max-width:1100px){
+      .toolbar-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
     }
-
-    body {
-
-      margin: 0;
-
-      background:
-        var(--gray-bg);
-
-      color:
-        var(--navy);
-
-      font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
+    @media(max-width:700px){
+      .reports-container{width:min(100% - 20px,1400px)}
+      .toolbar-grid,.summary-grid{grid-template-columns:1fr}
     }
-
-    header {
-
-      background:
-        var(--navy);
-
-      color:
-        white;
-
-      padding:
-        14px 22px;
-
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      justify-content:
-        space-between;
-
-      gap:
-        20px;
-
+    @media print{
+      @page{size:landscape;margin:8mm}
+      html,body{width:100%;min-width:0;overflow:visible!important;background:#fff!important}
+      .reports-container{width:100%;margin:0}
+      .report-toolbar,.summary-grid,.actions,.message{display:none!important}
+      .report-card{border:0;box-shadow:none;border-radius:0;overflow:visible}
+      .report-head{display:block;padding:0 0 10px;border-bottom:1px solid #000}
+      .report-head h2{font-size:16px}
+      .report-head p{font-size:10px;color:#222}
+      .report-meta{margin-top:5px;text-align:left;color:#222;font-size:9px}
+      .table-wrap{overflow:visible!important;width:100%!important;max-width:100%!important}
+      table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed}
+      th,td{padding:5px 5px;font-size:8.5px;line-height:1.2;overflow-wrap:anywhere;word-break:break-word}
+      th{white-space:normal}
+      .print-only{display:block!important}
+      .report-card .table-wrap{border:0}
+      body:after{content:"AMANAH CONSTRUCTION SERVICES • REPORTS";display:block;margin-top:7mm;font-size:8px;text-align:center;color:#475569}
     }
-
-    .brand {
-
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      gap:
-        12px;
-
-    }
-
-    .brand-logo {
-
-      width:
-        46px;
-
-      height:
-        46px;
-
-      border-radius:
-        12px;
-
-      background:
-        white;
-
-      color:
-        var(--navy);
-
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      justify-content:
-        center;
-
-      font-size:
-        28px;
-
-      font-weight:
-        800;
-
-    }
-
-    .brand-title {
-
-      font-size:
-        18px;
-
-      font-weight:
-        800;
-
-    }
-
-    .brand-subtitle {
-
-      font-size:
-        11px;
-
-      opacity:
-        0.75;
-
-      margin-top:
-        2px;
-
-    }
-
-    .top-actions {
-
-      display:
-        flex;
-
-      gap:
-        8px;
-
-      flex-wrap:
-        wrap;
-
-    }
-
-    button {
-
-      border:
-        none;
-
-      cursor:
-        pointer;
-
-      font-weight:
-        700;
-
-    }
-
-    .btn-light {
-
-      background:
-        white;
-
-      color:
-        var(--navy);
-
-      border-radius:
-        10px;
-
-      padding:
-        11px 16px;
-
-    }
-
-    .btn-dark {
-
-      background:
-        var(--navy);
-
-      color:
-        white;
-
-      border-radius:
-        10px;
-
-      padding:
-        12px 18px;
-
-    }
-
-    .btn-blue {
-
-      background:
-        var(--blue);
-
-      color:
-        white;
-
-      border-radius:
-        10px;
-
-      padding:
-        12px 18px;
-
-    }
-
-    .btn-green {
-
-      background:
-        var(--green);
-
-      color:
-        white;
-
-      border-radius:
-        10px;
-
-      padding:
-        12px 18px;
-
-    }
-
-    .btn-gray {
-
-      background:
-        #e2e8f0;
-
-      color:
-        var(--navy);
-
-      border-radius:
-        10px;
-
-      padding:
-        12px 18px;
-
-    }
-
-    .container {
-
-      width:
-        min(1400px, calc(100% - 32px));
-
-      margin:
-        32px auto 60px;
-
-    }
-
-    h1 {
-
-      margin:
-        0 0 6px;
-
-      font-size:
-        30px;
-
-    }
-
-    .subtitle {
-
-      color:
-        var(--gray-text);
-
-      margin-bottom:
-        24px;
-
-    }
-
-    .message {
-
-      display:
-        none;
-
-      padding:
-        14px 16px;
-
-      border-radius:
-        10px;
-
-      margin-bottom:
-        18px;
-
-      font-weight:
-        700;
-
-    }
-
-    .message.error {
-
-      display:
-        block;
-
-      background:
-        #fee2e2;
-
-      color:
-        #991b1b;
-
-    }
-
-    .message.success {
-
-      display:
-        block;
-
-      background:
-        #dcfce7;
-
-      color:
-        #166534;
-
-    }
-
-    .filter-panel {
-
-      background:
-        white;
-
-      border:
-        1px solid var(--border);
-
-      border-radius:
-        16px;
-
-      box-shadow:
-        var(--shadow);
-
-      padding:
-        20px;
-
-      margin-bottom:
-        22px;
-
-    }
-
-    .filter-grid {
-
-      display:
-        grid;
-
-      grid-template-columns:
-        repeat(4, minmax(0, 1fr));
-
-      gap:
-        14px;
-
-    }
-
-    .field {
-
-      display:
-        flex;
-
-      flex-direction:
-        column;
-
-      gap:
-        7px;
-
-    }
-
-    .field label {
-
-      font-weight:
-        700;
-
-      font-size:
-        13px;
-
-    }
-
-    .field input,
-    .field select {
-
-      width:
-        100%;
-
-      height:
-        44px;
-
-      border:
-        1px solid #cbd5e1;
-
-      border-radius:
-        10px;
-
-      padding:
-        0 12px;
-
-      font-size:
-        14px;
-
-      background:
-        white;
-
-    }
-
-    .filter-actions {
-
-      margin-top:
-        16px;
-
-      display:
-        flex;
-
-      gap:
-        10px;
-
-      flex-wrap:
-        wrap;
-
-    }
-
-    .summary-grid {
-
-      display:
-        grid;
-
-      grid-template-columns:
-        repeat(6, minmax(0, 1fr));
-
-      gap:
-        14px;
-
-      margin-bottom:
-        22px;
-
-    }
-
-    .summary-card {
-
-      background:
-        white;
-
-      border:
-        1px solid var(--border);
-
-      border-radius:
-        14px;
-
-      box-shadow:
-        var(--shadow);
-
-      padding:
-        18px;
-
-      min-height:
-        110px;
-
-    }
-
-    .summary-label {
-
-      color:
-        var(--gray-text);
-
-      font-size:
-        12px;
-
-      font-weight:
-        800;
-
-      text-transform:
-        uppercase;
-
-    }
-
-    .summary-value {
-
-      font-size:
-        28px;
-
-      font-weight:
-        800;
-
-      margin-top:
-        12px;
-
-    }
-
-    .report-panel {
-
-      background:
-        white;
-
-      border:
-        1px solid var(--border);
-
-      border-radius:
-        16px;
-
-      box-shadow:
-        var(--shadow);
-
-      overflow:
-        hidden;
-
-    }
-
-    .report-header {
-
-      padding:
-        18px 20px;
-
-      display:
-        flex;
-
-      justify-content:
-        space-between;
-
-      align-items:
-        center;
-
-      gap:
-        12px;
-
-      flex-wrap:
-        wrap;
-
-      border-bottom:
-        1px solid var(--border);
-
-    }
-
-    .report-header h2 {
-
-      margin:
-        0;
-
-      font-size:
-        18px;
-
-    }
-
-    .table-wrap {
-
-      width:
-        100%;
-
-      overflow-x:
-        auto;
-
-    }
-
-    table {
-
-      width:
-        100%;
-
-      border-collapse:
-        collapse;
-
-      min-width:
-        1200px;
-
-    }
-
-    th,
-    td {
-
-      padding:
-        13px 14px;
-
-      border-bottom:
-        1px solid var(--border);
-
-      text-align:
-        left;
-
-      vertical-align:
-        top;
-
-      font-size:
-        13px;
-
-    }
-
-    th {
-
-      background:
-        #f8fafc;
-
-      font-size:
-        12px;
-
-      font-weight:
-        800;
-
-      white-space:
-        nowrap;
-
-    }
-
-    td strong {
-
-      display:
-        block;
-
-      margin-bottom:
-        3px;
-
-    }
-
-    td small {
-
-      color:
-        var(--gray-text);
-
-    }
-
-    .status {
-
-      display:
-        inline-block;
-
-      padding:
-        6px 10px;
-
-      border-radius:
-        999px;
-
-      font-size:
-        11px;
-
-      font-weight:
-        800;
-
-    }
-
-    .status-in {
-
-      background:
-        #dcfce7;
-
-      color:
-        #166534;
-
-    }
-
-    .status-completed {
-
-      background:
-        #dbeafe;
-
-      color:
-        #1d4ed8;
-
-    }
-
-    .status-other {
-
-      background:
-        #e2e8f0;
-
-      color:
-        #475569;
-
-    }
-
-    .fuel-yes {
-
-      color:
-        #ea580c;
-
-      font-weight:
-        800;
-
-    }
-
-    .fuel-no {
-
-      color:
-        #64748b;
-
-    }
-
-    .empty {
-
-      padding:
-        30px;
-
-      text-align:
-        center;
-
-      color:
-        var(--gray-text);
-
-    }
-
-    @media print {
-
-      @page {
-        size: landscape;
-        margin: 8mm;
-      }
-
-      html,
-      body {
-        width: 100%;
-        min-width: 0;
-        overflow: visible !important;
-      }
-
-      .table-wrap {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow: visible !important;
-      }
-
-      header,
-      .filter-panel,
-      .summary-grid,
-      .report-actions {
-
-        display:
-          none !important;
-
-      }
-
-      body {
-
-        background:
-          white;
-
-      }
-
-      .container {
-
-        width:
-          100%;
-
-        margin:
-          0;
-
-      }
-
-      .report-panel {
-
-        box-shadow:
-          none;
-
-        border:
-          none;
-
-      }
-
-      table {
-
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        table-layout: fixed;
-
-      }
-
-      th,
-      td {
-        padding: 6px 5px;
-        font-size: 9px;
-        line-height: 1.2;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-      }
-
-      th {
-        white-space: normal;
-      }
-
-      td strong {
-        margin-bottom: 1px;
-      }
-
-      td small {
-        font-size: 8px;
-      }
-
-    }
-
-    @media (max-width: 1100px) {
-
-      .summary-grid {
-
-        grid-template-columns:
-          repeat(3, minmax(0, 1fr));
-
-      }
-
-      .filter-grid {
-
-        grid-template-columns:
-          repeat(2, minmax(0, 1fr));
-
-      }
-
-    }
-
-    @media (max-width: 700px) {
-
-      header {
-
-        align-items:
-          flex-start;
-
-        flex-direction:
-          column;
-
-      }
-
-      .top-actions {
-
-        width:
-          100%;
-
-      }
-
-      .top-actions button {
-
-        flex:
-          1;
-
-      }
-
-      .filter-grid,
-      .summary-grid {
-
-        grid-template-columns:
-          1fr;
-
-      }
-
-      .container {
-
-        width:
-          min(100% - 20px, 1400px);
-
-        margin-top:
-          18px;
-
-      }
-
-    }
-
   </style>
-
-  <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=6">
 </head>
-
 <body>
+<main class="reports-container">
+  <div id="message" class="message"></div>
 
-<header>
+  <section class="report-toolbar">
+    <div class="toolbar-grid">
+      <div class="field">
+        <label>REPORT TYPE</label>
+        <select id="reportType">
+          <option value="PROJECT_SUMMARY">PROJECT COST SUMMARY</option>
+          <option value="COST_LEDGER">PROJECT COST LEDGER</option>
+          <option value="ATTENDANCE">ATTENDANCE REPORT</option>
+          <option value="FUEL">FUEL COST REPORT</option>
+          <option value="MAINTENANCE">MAINTENANCE COST REPORT</option>
+          <option value="REPAIR">REPAIR COST REPORT</option>
+          <option value="MATERIAL">MATERIALS / PURCHASING COST REPORT</option>
+          <option value="LABOR">LABOR / PAYROLL COST REPORT</option>
+        </select>
+      </div>
 
-  <div class="brand">
+      <div class="field">
+        <label>PROJECT</label>
+        <select id="projectFilter">
+          <option value="">ALL PROJECTS</option>
+        </select>
+      </div>
 
-    <div class="brand-logo">
-      A
+      <div class="field">
+        <label>DATE FROM</label>
+        <input id="dateFrom" type="date">
+      </div>
+
+      <div class="field">
+        <label>DATE TO</label>
+        <input id="dateTo" type="date">
+      </div>
     </div>
 
-    <div>
-
-      <div class="brand-title">
-        AMANAH CONSTRUCTION
-      </div>
-
-      <div class="brand-subtitle">
-        CONSTRUCTION MANAGEMENT SYSTEM
-      </div>
-
+    <div class="report-description" id="reportDescription">
+      Project-level financial summary showing actual cost by labor, fuel, equipment, materials and other costs.
     </div>
 
-  </div>
-
-  <div class="top-actions">
-
-    <button
-      class="btn-light"
-      onclick="location.href='dashboard.html'"
-    >
-      DASHBOARD
-    </button>
-
-    <button
-      class="btn-light"
-      onclick="location.href='admin.html'"
-    >
-      MASTER DATA
-    </button>
-
-    <button
-      class="btn-light"
-      onclick="location.href='attendance.html'"
-    >
-      ATTENDANCE
-    </button>
-
-    <button
-  class="btn-light"
-  onclick="location.href='project-cost.html'"
->
-  PROJECT COST
-</button>
-
-    <button class="btn-light" onclick="location.href='equipment-maintenance.html'">EQUIP MAINT.</button>
-
-    <button class="btn-light" onclick="location.href='repair-requests.html'">REPAIR REQUESTS</button>
-
-    <button
-      class="btn-light"
-      id="logoutButton"
-    >
-      LOG OUT
-    </button>
-
-  </div>
-
-</header>
-
-
-<main class="container">
-
-  <h1>
-    ATTENDANCE REPORTS
-  </h1>
-
-  <div class="subtitle">
-    Analyze AMANAH attendance, working hours and fuel usage.
-  </div>
-
-
-  <div
-    id="message"
-    class="message"
-  ></div>
-
-
-  <section class="filter-panel">
-
-    <div class="filter-grid">
-
-      <div class="field">
-
-        <label>
-          DATE FROM
-        </label>
-
-        <input
-          id="dateFrom"
-          type="date"
-        >
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          DATE TO
-        </label>
-
-        <input
-          id="dateTo"
-          type="date"
-        >
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          EMPLOYEE
-        </label>
-
-        <select
-          id="employeeFilter"
-        >
-
-          <option value="">
-            ALL EMPLOYEES
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          EQUIPMENT
-        </label>
-
-        <select
-          id="equipmentFilter"
-        >
-
-          <option value="">
-            ALL EQUIPMENT
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          PROJECT
-        </label>
-
-        <select
-          id="projectFilter"
-        >
-
-          <option value="">
-            ALL PROJECTS
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          STATUS
-        </label>
-
-        <select
-          id="statusFilter"
-        >
-
-          <option value="">
-            ALL
-          </option>
-
-          <option value="IN">
-            IN
-          </option>
-
-          <option value="COMPLETED">
-            COMPLETED
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          FUEL
-        </label>
-
-        <select
-          id="fuelFilter"
-        >
-
-          <option value="">
-            ALL
-          </option>
-
-          <option value="YES">
-            FUELED
-          </option>
-
-          <option value="NO">
-            NO FUEL
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          SEARCH
-        </label>
-
-        <input
-          id="searchInput"
-          type="text"
-          placeholder="Employee, equipment, project..."
-        >
-
-      </div>
-
+    <div class="actions">
+      <button id="filterButton" class="btn-primary">GENERATE REPORT</button>
+      <button id="clearButton" class="btn-gray">CLEAR</button>
+      <button id="exportButton" class="btn-green">EXPORT CSV</button>
+      <button id="printButton" class="btn-blue">PRINT REPORT</button>
+      <button id="refreshButton" class="btn-primary">REFRESH DATA</button>
     </div>
-
-
-    <div class="filter-actions">
-
-      <button
-        id="filterButton"
-        class="btn-dark"
-      >
-        FILTER REPORT
-      </button>
-
-      <button
-        id="clearButton"
-        class="btn-gray"
-      >
-        CLEAR
-      </button>
-
-    </div>
-
   </section>
-
 
   <section class="summary-grid">
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        TOTAL RECORDS
-      </div>
-
-      <div
-        id="recordsCount"
-        class="summary-value"
-      >
-        0
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        TOTAL HOURS
-      </div>
-
-      <div
-        id="hoursCount"
-        class="summary-value"
-      >
-        0.00
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        CURRENTLY IN
-      </div>
-
-      <div
-        id="inCount"
-        class="summary-value"
-      >
-        0
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        COMPLETED
-      </div>
-
-      <div
-        id="completedCount"
-        class="summary-value"
-      >
-        0
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        FUEL RECORDS
-      </div>
-
-      <div
-        id="fuelCount"
-        class="summary-value"
-      >
-        0
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        FUEL COST
-      </div>
-
-      <div
-        id="fuelAmount"
-        class="summary-value"
-      >
-        ₱0.00
-      </div>
-
-    </div>
-
+    <div class="summary-card"><div class="summary-label" id="summary1Label">TOTAL RECORDS</div><div class="summary-value" id="summary1">0</div></div>
+    <div class="summary-card"><div class="summary-label" id="summary2Label">ACTUAL COST</div><div class="summary-value money" id="summary2">₱0.00</div></div>
+    <div class="summary-card"><div class="summary-label" id="summary3Label">LABOR</div><div class="summary-value money" id="summary3">₱0.00</div></div>
+    <div class="summary-card"><div class="summary-label" id="summary4Label">FUEL</div><div class="summary-value money" id="summary4">₱0.00</div></div>
+    <div class="summary-card"><div class="summary-label" id="summary5Label">EQUIPMENT</div><div class="summary-value money" id="summary5">₱0.00</div></div>
+    <div class="summary-card"><div class="summary-label" id="summary6Label">MATERIALS</div><div class="summary-value money" id="summary6">₱0.00</div></div>
   </section>
 
-
-  <section class="report-panel">
-
-    <div class="report-header">
-
-      <h2>
-        ATTENDANCE REPORT
-      </h2>
-
-      <div
-        class="report-actions"
-        style="
-          display:flex;
-          gap:8px;
-          flex-wrap:wrap;
-        "
-      >
-
-        <button
-          id="exportButton"
-          class="btn-green"
-        >
-          EXPORT CSV
-        </button>
-
-        <button
-          id="printButton"
-          class="btn-blue"
-        >
-          PRINT REPORT
-        </button>
-
-        <button
-          id="refreshButton"
-          class="btn-dark"
-        >
-          REFRESH
-        </button>
-
+  <section class="report-card">
+    <div class="report-head">
+      <div>
+        <div style="font-size:9px;letter-spacing:.1em;color:#64748b;font-weight:900">AMANAH CONSTRUCTION SERVICES</div>
+        <h2 id="reportTitle">PROJECT COST SUMMARY</h2>
+        <p id="reportSubtitle">Consolidated project cost report.</p>
       </div>
-
+      <div class="report-meta">
+        <div id="reportProjectMeta">Project: ALL PROJECTS</div>
+        <div id="reportDateMeta">Period: ALL DATES</div>
+        <div id="generatedMeta">Generated: —</div>
+      </div>
     </div>
-
-
     <div class="table-wrap">
-
       <table>
-
-        <thead>
-
-          <tr>
-
-            <th>
-              ATTENDANCE ID
-            </th>
-
-            <th>
-              EMPLOYEE
-            </th>
-
-            <th>
-              EQUIPMENT
-            </th>
-
-            <th>
-              PROJECT
-            </th>
-
-            <th>
-              DATE
-            </th>
-
-            <th>
-              TIME IN
-            </th>
-
-            <th>
-              TIME OUT
-            </th>
-
-            <th>
-              TOTAL HOURS
-            </th>
-
-            <th>
-              FUEL
-            </th>
-
-            <th>
-              STATUS
-            </th>
-
-          </tr>
-
-        </thead>
-
-        <tbody
-          id="reportBody"
-        >
-
-          <tr>
-
-            <td
-              colspan="10"
-              class="empty"
-            >
-              Loading...
-            </td>
-
-          </tr>
-
+        <thead id="reportHead"></thead>
+        <tbody id="reportBody">
+          <tr><td colspan="8" class="empty">Loading report data...</td></tr>
         </tbody>
-
       </table>
-
     </div>
-
   </section>
-
 </main>
 
-
-<script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-></script>
-
-<script
-  src="reports.js?v=1"
-></script>
-
-<script src="amanah-ui.js?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="reports.js?v=2"></script>
+<script src="amanah-ui.js?v=7"></script>
 </body>
-
 </html>
