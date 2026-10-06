@@ -822,7 +822,8 @@ async function saveSupplyStatus(){
  if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
  if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
  const unreceived=Math.max(ordered-received,0);
- if(readyForPickup<0 || readyForPickup>unreceived)return showSupplyValidation("READY FOR PICKUP quantity cannot exceed the unreceived quantity of "+unreceived+" "+(item.unit||"")+".");
+ const confirmedUnreceived=Math.max(confirmed-received,0);
+ if(readyForPickup<0 || readyForPickup>confirmedUnreceived)return showSupplyValidation("READY FOR PICKUP quantity cannot exceed the confirmed-but-not-yet-received quantity of "+confirmedUnreceived+" "+(item.unit||"")+".");
  if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
  if(status==="READY FOR PICKUP" && unreceived<=0)return showSupplyValidation("This material is already fully received. There is no quantity left to mark READY FOR PICKUP.");
  if(status==="READY FOR PICKUP" && readyForPickup<=0)return showSupplyValidation("Enter the quantity that is physically READY FOR PICKUP.");
@@ -1023,7 +1024,8 @@ async function openPODetails(id){
  title.textContent="PURCHASE ORDER DETAILS";
 
  const itemsHtml=items.map(i=>{
-   const remaining=Math.max(Number(i.quantity||0)-Number(i.confirmed_quantity||0),0);
+   const remaining=Math.max(Number(i.quantity||0)-Number(i.received_quantity||0),0);
+   const readyQty=Math.max(Number(i.ready_for_pickup_quantity||0),0);
    return '<tr>'+
      '<td><strong>'+esc(i.material_name)+'</strong></td>'+
      '<td>'+esc(i.specifications||"—")+'</td>'+
@@ -1032,6 +1034,7 @@ async function openPODetails(id){
      '<td>'+supplyBadge(i.supply_status)+'</td>'+
      '<td>'+esc(i.confirmed_quantity??0)+'</td>'+
      '<td>'+esc(i.received_quantity??0)+'</td>'+
+     '<td>'+esc(readyQty)+'</td>'+
      '<td>'+esc(remaining)+'</td>'+
      '<td>'+esc(i.received_date?fmtDate(i.received_date):"—")+'</td>'+
      '<td>'+esc(i.delivery_reference||"—")+'</td>'+
@@ -1057,7 +1060,7 @@ async function openPODetails(id){
      '<div class="detail-card full"><label>Remarks</label><div>'+esc(o.remarks||"—")+'</div></div>'+
    '</div>'+
    '<div class="section-label">MATERIAL SUPPLY TRACKING</div>'+
-   '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Remaining</th><th>Received Date</th><th>Delivery Ref.</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
+   '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Ready for Pickup</th><th>Remaining</th><th>Received Date</th><th>Delivery Ref.</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
    '<div class="total-box"><span>PO TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>';
 
  document.querySelectorAll("[data-supply-item]").forEach(b=>b.addEventListener("click",()=>openSupplyModal(b.dataset.supplyItem)));
