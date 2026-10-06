@@ -216,6 +216,7 @@
       if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
 
       populateTargets();
+      updateProjectAlignmentControls();
       renderLayers();
 
       const bounds=allGeometryBounds();
@@ -341,6 +342,77 @@
     qs('projectEndLng').value=Number(coords.end.lng).toFixed(6);
   }
 
+  function getControlPointRows(){
+    return Array.from(document.querySelectorAll('.project-control-point-row'));
+  }
+
+  function addControlPointRow(lat='',lng=''){
+    const rows=qs('projectControlPointRows');
+    if(!rows)return;
+    const row=document.createElement('div');
+    row.className='project-control-point-row';
+    row.innerHTML=
+      '<span class="project-point-index"></span>'+
+      '<input class="project-control-lat" type="number" step="0.000001" inputmode="decimal" placeholder="Latitude">'+
+      '<input class="project-control-lng" type="number" step="0.000001" inputmode="decimal" placeholder="Longitude">'+
+      '<button class="secondary-btn project-remove-point" type="button" aria-label="Remove coordinate">×</button>';
+    row.querySelector('.project-control-lat').value=lat===''?'':Number(lat).toFixed(6);
+    row.querySelector('.project-control-lng').value=lng===''?'':Number(lng).toFixed(6);
+    row.querySelector('.project-remove-point').addEventListener('click',()=>{
+      row.remove();
+      renumberControlPointRows();
+      syncControlPointsFromInputs();
+    });
+    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',syncControlPointsFromInputs));
+    rows.appendChild(row);
+    renumberControlPointRows();
+    return row;
+  }
+
+  function renumberControlPointRows(){
+    getControlPointRows().forEach((row,index)=>{
+      const n=row.querySelector('.project-point-index');
+      if(n)n.textContent='P'+(index+1);
+    });
+  }
+
+  function readControlPointsFromInputs(){
+    const points=[];
+    for(const row of getControlPointRows()){
+      const latRaw=String(row.querySelector('.project-control-lat')?.value||'').trim();
+      const lngRaw=String(row.querySelector('.project-control-lng')?.value||'').trim();
+      if(!latRaw&&!lngRaw)continue;
+      const lat=Number(latRaw),lng=Number(lngRaw);
+      if(!Number.isFinite(lat)||lat<-90||lat>90)throw new Error('Control point latitude must be between -90 and 90.');
+      if(!Number.isFinite(lng)||lng<-180||lng>180)throw new Error('Control point longitude must be between -180 and 180.');
+      points.push({lat,lng});
+    }
+    return points;
+  }
+
+  function renderControlPointRows(points=[]){
+    const rows=qs('projectControlPointRows');
+    if(!rows)return;
+    rows.innerHTML='';
+    (points||[]).forEach(p=>addControlPointRow(p.lat,p.lng));
+    if(!points?.length)renumberControlPointRows();
+  }
+
+  function syncControlPointsFromInputs(){
+    if(!projectAlignmentState)return;
+    try{
+      projectAlignmentState.controlPoints=readControlPointsFromInputs();
+      renderProjectPreview();
+    }catch(error){
+      setDrawMessage(error.message||'Invalid control point.','err');
+    }
+  }
+
+  function showControlPointEditor(show){
+    const editor=qs('projectControlPointEditor');
+    if(editor)editor.style.display=show?'block':'none';
+  }
+
   function updateProjectAlignmentControls(){
     const active=qs('mapTargetType')?.value==='PROJECT';
     const panel=qs('projectAlignmentControls');
@@ -357,9 +429,12 @@
       draw.style.display=active?'none':'';
     }
 
+    const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
+    showControlPointEditor(active&&mode==='CUSTOM_CURVE');
+
     if(active){
       const d=projectData.project?.project_details||{};
-      const lat=Number(d.map_lat), lng=Number(d.map_lng);
+      const lat=Number(d.map_lat),lng=Number(d.map_lng);
       if(panel && !qs('projectStartLat').value && Number.isFinite(lat)&&Number.isFinite(lng)){
         qs('projectStartLat').value=lat.toFixed(6);
         qs('projectStartLng').value=lng.toFixed(6);
@@ -403,6 +478,11 @@
     const coordinates=buildProjectPath(s.start,s.end,s.controlPoints)
       .map(p=>[Number(p.lng),Number(p.lat)]);
 
+    if(s.mode==='CUSTOM_CURVE'&&s.controlPoints.length<1){
+      setDrawMessage('CUSTOM CURVE needs at least one intermediate coordinate between START and END.','err');
+      return;
+    }
+
     if(coordinates.length<2){
       setDrawMessage('A project alignment needs a start and end coordinate.','err');
       return;
@@ -429,6 +509,8 @@
 
     projectData.alignment=data||null;
     clearProjectAlignmentState();
+    renderControlPointRows([]);
+    showControlPointEditor(false);
     const button=qs('projectGenerateAlignment');
     if(button)button.textContent='GENERATE ALIGNMENT';
     const help=qs('projectAlignmentHelp');
@@ -474,11 +556,12 @@
       const mode=qs('projectAlignmentMode').value||'STRAIGHT';
 
       clearProjectAlignmentState();
+      const manualPoints=mode==='CUSTOM_CURVE'?readControlPointsFromInputs():[];
       projectAlignmentState={
         mode,
         start:coords.start,
         end:coords.end,
-        controlPoints:[],
+        controlPoints:manualPoints,
         previewLine:null,
         pointMarkers:[]
       };
@@ -494,12 +577,16 @@
       }
 
       if(mode==='CUSTOM_CURVE'){
+        showControlPointEditor(true);
+        renderControlPointRows(manualPoints);
         renderProjectPreview();
         const button=qs('projectGenerateAlignment');
         if(button)button.textContent='SAVE ALIGNMENT';
         const help=qs('projectAlignmentHelp');
-        if(help)help.textContent='CUSTOM CURVE ACTIVE: click the map at each bend/intermediate point. Then click SAVE ALIGNMENT.';
-        setDrawMessage('Custom curve active. Click intermediate points along the actual road, then click SAVE ALIGNMENT.','info');
+        help.textContent='CUSTOM CURVE ACTIVE: add coordinates below or click each bend on the road. Use at least one control point for a visible curve, then click SAVE ALIGNMENT.';
+        setDrawMessage(manualPoints.length
+          ? 'Custom curve preview ready. Add more points or click SAVE ALIGNMENT.'
+          : 'Custom curve active. Add at least one intermediate coordinate, or click the road to create one.','info');
       }
     }catch(error){
       setDrawMessage(error.message||'Enter valid start and end coordinates.','err');
@@ -517,6 +604,7 @@
     qs('projectStartLng').value=lng.toFixed(6);
     qs('projectEndLat').value='';
     qs('projectEndLng').value='';
+    renderControlPointRows([]);
     map.setView([lat,lng],Math.max(map.getZoom(),16));
     qs('projectEndLat')?.focus();
     setDrawMessage('Project map center loaded as the START coordinate. Enter the END coordinate next.','info');
@@ -686,10 +774,26 @@
       else await handleProjectGenerateAlignment();
     });
     qs('projectUseMapCenter')?.addEventListener('click',useProjectMapCenter);
+    qs('projectAddControlPoint')?.addEventListener('click',()=>{
+      const row=addControlPointRow();
+      row?.querySelector('.project-control-lat')?.focus();
+      if(projectAlignmentState){
+        projectAlignmentState.controlPoints=readControlPointsFromInputs();
+        renderProjectPreview();
+      }
+    });
+    qs('projectClearControlPoints')?.addEventListener('click',()=>{
+      renderControlPointRows([]);
+      if(projectAlignmentState){
+        projectAlignmentState.controlPoints=[];
+        renderProjectPreview();
+      }
+    });
     qs('projectAlignmentMode')?.addEventListener('change',()=>{
       clearProjectAlignmentState();
       const b=qs('projectGenerateAlignment');
       if(b)b.textContent='GENERATE ALIGNMENT';
+      updateProjectAlignmentControls();
     });
     qs('mapDrawLine')?.addEventListener('click',startLineDrawing);
     qs('mapClearLine')?.addEventListener('click',clearSelectedGeometry);
@@ -710,6 +814,7 @@
     map.on('click',async e=>{
       if(projectAlignmentState?.mode==='CUSTOM_CURVE'){
         projectAlignmentState.controlPoints.push({lat:e.latlng.lat,lng:e.latlng.lng});
+        addControlPointRow(e.latlng.lat,e.latlng.lng);
         renderProjectPreview();
         setDrawMessage('Control point '+projectAlignmentState.controlPoints.length+' added. Continue clicking bends or click SAVE ALIGNMENT.','info');
         return;
