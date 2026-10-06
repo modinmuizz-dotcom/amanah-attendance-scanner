@@ -4,6 +4,24 @@ alter table public.purchase_order_items
   add column if not exists ready_for_pickup_quantity numeric not null default 0;
 
 alter table public.purchase_order_items
+  drop constraint if exists purchase_order_items_supply_status_check;
+
+alter table public.purchase_order_items
+  add constraint purchase_order_items_supply_status_check
+  check (supply_status in (
+    'PENDING SUPPLIER CONFIRMATION',
+    'AVAILABLE',
+    'READY FOR PICKUP',
+    'BACKORDERED',
+    'PARTIALLY AVAILABLE',
+    'UNAVAILABLE',
+    'SUBSTITUTE PROPOSED',
+    'SUBSTITUTE APPROVED',
+    'CANCELLED',
+    'RECEIVED'
+  ));
+
+alter table public.purchase_order_items
   drop constraint if exists purchase_order_items_ready_for_pickup_quantity_check;
 
 alter table public.purchase_order_items
