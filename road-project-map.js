@@ -13,8 +13,6 @@
   let pointLayer=null;
   let statusLayer=null;
   let basemapLayer=null;
-  let basemapFallbackUsed=false;
-  let embeddedMapActive=false;
 
   const qs=id=>document.getElementById(id);
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -243,49 +241,6 @@
     }catch(_error){}
   }
 
-  function syncEmbeddedViewport(){
-    if(!embeddedMapActive||!map)return;
-    const iframe=qs('roadMapFallback');
-    if(!iframe)return;
-    const b=map.getBounds();
-    if(!b.isValid())return;
-    const padLat=Math.max((b.getNorth()-b.getSouth())*0.04,0.001);
-    const padLng=Math.max((b.getEast()-b.getWest())*0.04,0.001);
-    const west=b.getWest()-padLng;
-    const south=b.getSouth()-padLat;
-    const east=b.getEast()+padLng;
-    const north=b.getNorth()+padLat;
-    iframe.src='https://www.openstreetmap.org/export/embed.html?bbox='
-      +encodeURIComponent(west)+','+encodeURIComponent(south)+','+encodeURIComponent(east)+','+encodeURIComponent(north)
-      +'&layer=mapnik';
-  }
-
-  function showEmbeddedMapFallback(){
-    const iframe=qs('roadMapFallback');
-    const leafletEl=qs('roadMapLeaflet');
-    const mapEl=qs('roadMap');
-    embeddedMapActive=true;
-    if(iframe){
-      iframe.style.display='block';
-      iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
-    }
-    if(leafletEl){
-      // In embedded mode the iframe is the real visible/pannable map.
-      // Hide the Leaflet panes/markers so they cannot drift independently
-      // of the embedded map and appear to jump to random locations.
-      leafletEl.style.display='none';
-      leafletEl.classList.remove('map-interaction-overlay');
-    }
-    if(mapEl)mapEl.classList.add('embedded-map-mode');
-    if(map){
-      map.invalidateSize();
-      map.getContainer().style.pointerEvents='none';
-      if(statusLayer)statusLayer.clearLayers();
-      if(centerMarker){centerMarker.remove();centerMarker=null;}
-    }
-    setDrawMessage('Embedded map view active. The map can be panned and zoomed normally.','info');
-  }
-
   function setDrawMessage(text,type='info'){
     const el=qs('roadMapNotice');
     if(!el)return;
@@ -420,89 +375,67 @@
   async function init(){
     const mapEl=qs('roadMap');
     const leafletEl=qs('roadMapLeaflet')||mapEl;
-    if(!mapEl||!window.L)return;
-    map=L.map(leafletEl,{zoomControl:true});
+    if(!mapEl||!leafletEl)return;
 
-    // Try several public street-map tile providers. Some networks block
-    // individual tile hosts, so AMANAH automatically rotates to the next one.
-    const basemapProviders=[
-      {
-        name:'OpenStreetMap',
-        url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
-      },
-      {
-        name:'OpenStreetMap DE',
-        url:'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
-        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
-      },
-      {
-        name:'OSM France',
-        url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
-      },
-      {
-        name:'CARTO',
-        url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        options:{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}
-      }
-    ];
-
-    let providerIndex=0;
-    let tileErrorCount=0;
-    let tileLoaded=false;
-
-    function useBasemap(index){
-      providerIndex=index;
-      tileErrorCount=0;
-      tileLoaded=false;
-      const provider=basemapProviders[providerIndex];
-      if(basemapLayer){
-        map.removeLayer(basemapLayer);
-        basemapLayer=null;
-      }
-      basemapLayer=L.tileLayer(provider.url,provider.options).addTo(map);
-      setDrawMessage('Loading '+provider.name+' map tiles...','info');
-
-      basemapLayer.on('tileload',()=>{
-        tileLoaded=true;
-        setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
-      });
-
-      basemapLayer.on('tileerror',()=>{
-        tileErrorCount++;
-        if(tileErrorCount>=3){
-          if(providerIndex<basemapProviders.length-1){
-            useBasemap(providerIndex+1);
-          }else{
-            showEmbeddedMapFallback();
-          }
-        }
-      });
+    if(!window.L){
+      setDrawMessage('Leaflet failed to load. Refresh the page and try again.','err');
+      return;
     }
 
-    useBasemap(0);
-    setTimeout(()=>{
-      if(!tileLoaded) showEmbeddedMapFallback();
-    },4500);
+    // Keep map initialization deliberately close to the official Leaflet
+    // pattern: create one map, add one public OSM tile layer, then wire
+    // AMANAH features on top. No iframe fallback or map replacement.
+    map=L.map(leafletEl,{
+      center:[7.1907,124.383],
+      zoom:13,
+      zoomControl:true,
+      attributionControl:true,
+      dragging:true,
+      scrollWheelZoom:true,
+      doubleClickZoom:true,
+      touchZoom:true,
+      boxZoom:true,
+      keyboard:true,
+      inertia:true,
+      preferCanvas:true,
+      fadeAnimation:false,
+      zoomAnimation:false,
+      markerZoomAnimation:false
+    });
+
+    basemapLayer=L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom:19,
+        maxNativeZoom:19,
+        attribution:'© OpenStreetMap contributors',
+        updateWhenIdle:true,
+        updateWhenZooming:true,
+        keepBuffer:2
+      }
+    ).addTo(map);
+
+    basemapLayer.on('tileload',()=>setDrawMessage('Map ready. Drag and zoom normally, then select a target to draw project geometry.','ok'));
+    basemapLayer.on('tileerror',()=>setDrawMessage('Map tiles could not be loaded. Check your internet connection and refresh the page.','err'));
 
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
 
-    map.on('moveend',syncEmbeddedViewport);
-    setTimeout(()=>map.invalidateSize(),150);
+    const refreshMapSize=()=>window.requestAnimationFrame(()=>map&&map.invalidateSize({animate:false}));
+    map.whenReady(refreshMapSize);
+    window.addEventListener('resize',refreshMapSize,{passive:true});
 
-    qs('mapTargetType').addEventListener('change',populateTargets);
-    qs('mapDrawLine').addEventListener('click',startLineDrawing);
-    qs('mapClearLine').addEventListener('click',clearSelectedGeometry);
-    qs('mapStartPoint').addEventListener('click',()=>setPointMode('START'));
-    qs('mapEndPoint').addEventListener('click',()=>setPointMode('END'));
-    qs('mapFit').addEventListener('click',()=>{
+    qs('mapTargetType')?.addEventListener('change',populateTargets);
+    qs('mapDrawLine')?.addEventListener('click',startLineDrawing);
+    qs('mapClearLine')?.addEventListener('click',clearSelectedGeometry);
+    qs('mapStartPoint')?.addEventListener('click',()=>setPointMode('START'));
+    qs('mapEndPoint')?.addEventListener('click',()=>setPointMode('END'));
+    qs('mapFit')?.addEventListener('click',()=>{
       const bounds=allGeometryBounds();
-      if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+      if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
       else setDrawMessage('No saved geometry yet. Draw the first road alignment line.','info');
     });
-    qs('mapSetCenter').addEventListener('click',()=>{
+    qs('mapSetCenter')?.addEventListener('click',()=>{
       mapCenterMode=!mapCenterMode;
       qs('mapSetCenter').textContent=mapCenterMode?'CLICK MAP TO SAVE CENTER':'SET MAP CENTER';
       qs('mapSetCenter').classList.toggle('active',mapCenterMode);
@@ -531,7 +464,9 @@
       drawnItems.clearLayers();
     });
 
+    refreshMapSize();
     await loadData();
+    refreshMapSize();
   }
 
   window.AMANAHRoadMap={init,refresh:loadData};
