@@ -49,6 +49,38 @@ async function loadAccess(){
  return true;
 }
 
+function startPurchasingRealtime(){
+  try{
+    supabaseClient
+      .channel("amanah-purchasing-request-status")
+      .on(
+        "postgres_changes",
+        {
+          event:"UPDATE",
+          schema:"public",
+          table:"purchase_requests"
+        },
+        async payload=>{
+          const next=payload.new||{};
+          const previous=payload.old||{};
+          if(String(next.status||"")!==String(previous.status||"")){
+            await Promise.allSettled([loadRequests(),loadOrders()]);
+            renderAll();
+
+            if(next.status==="APPROVED"){
+              msg((next.request_no||"Purchase Request")+" was approved by the General Manager and is now ready for Purchase Order.","ok");
+            }else if(next.status==="REJECTED"){
+              msg((next.request_no||"Purchase Request")+" was rejected by the General Manager. Review the request remarks and revise it before resubmission.","err");
+            }
+          }
+        }
+      )
+      .subscribe();
+  }catch(error){
+    console.warn("Purchasing realtime status subscription could not be started:",error);
+  }
+}
+
 async function init(){
  const allowed=await loadAccess();
  if(!allowed)return;
