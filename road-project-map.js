@@ -187,38 +187,62 @@
     });
   }
 
-  function getComponentApprovedQuantity(componentId){
-    return getFilteredActivities(componentId).reduce((sum,a)=>{
-      const q=Number(a.accomplishment);
-      return sum+(Number.isFinite(q)&&q>0?q:0);
-    },0);
+  function getActivityActualQuantity(activityId){
+    return Number(projectData.executionByActivity?.[String(activityId)]?.actualQuantity||0);
   }
 
-  function getComponentPlannedQuantity(component){
-    if(mapProgressProcess==='ALL'){
-      return Math.max(0,Number(component.planned_quantity)||Math.max(0,Number(component.station_end_m)-Number(component.station_start_m)));
-    }
-    return getFilteredActivities(component.work_component_id).reduce((sum,a)=>{
-      const q=Number(a.activity_quantity);
-      return sum+(Number.isFinite(q)&&q>0?q:0);
-    },0);
+  function getActivityProgress(activity){
+    const planned=Math.max(0,Number(activity.activity_quantity)||0);
+    const actual=Math.max(0,getActivityActualQuantity(activity.activity_id));
+    const percent=planned>0?Math.min(100,(actual/planned)*100):0;
+    return {planned,actual,percent};
   }
 
   function getComponentProgress(component){
     const start=Number(component.station_start_m);
     const end=Number(component.station_end_m);
     const length=Math.max(0,end-start);
-    const planned=Math.max(0,getComponentPlannedQuantity(component));
-    const approved=getComponentApprovedQuantity(component.work_component_id);
-    const completed=Math.min(length,approved);
+    const activities=getFilteredActivities(component.work_component_id);
+    const planned=activities.reduce((sum,a)=>sum+getActivityProgress(a).planned,0);
+    const actual=activities.reduce((sum,a)=>sum+getActivityProgress(a).actual,0);
+    const percent=planned>0?Math.min(100,(actual/planned)*100):0;
     return {
       length,
       planned,
-      approved,
-      completed,
-      percent:planned>0?Math.min(100,(approved/planned)*100):0,
-      hasProcessActivities:getFilteredActivities(component.work_component_id).length>0
+      approved:actual,
+      completed:length*(percent/100),
+      percent,
+      hasProcessActivities:activities.length>0
     };
+  }
+
+  function renderActivityCompletionSegments(lineCoords,activities,label){
+    const rendered=[];
+    for(const activity of activities){
+      const startRaw=Number(activity.station_start_m);
+      const endRaw=Number(activity.station_end_m);
+      if(!Number.isFinite(startRaw)||!Number.isFinite(endRaw)||endRaw<=startRaw)continue;
+
+      const p=getActivityProgress(activity);
+      if(p.actual<=0||p.percent<=0)continue;
+
+      const endCompleted=startRaw+(endRaw-startRaw)*(p.percent/100);
+      const completed=sliceLineByMeters(lineCoords,startRaw,endCompleted);
+      if(completed.length<2)continue;
+
+      const done=renderLaneLine(
+        completed,
+        {
+          title:label+' — ACTUAL PROGRESS',
+          subtitle:String(activity.activity||'ROAD WORK').toUpperCase()+' • APPROVED SCHEDULE',
+          station:stationLabel(startRaw)+' → '+stationLabel(endCompleted),
+          progress:'ACTUAL '+p.actual.toFixed(2)+' / PLAN '+p.planned.toFixed(2)+' • '+p.percent.toFixed(1)+'%'
+        },
+        {color:'#16a34a',weight:8,opacity:.98}
+      );
+      if(done)rendered.push(done);
+    }
+    return rendered;
   }
 
   function renderLaneLine(coords,meta,options={}){
@@ -271,28 +295,16 @@
           title:label,
           subtitle:'Derived from PRIMARY ROAD ALIGNMENT • road width '+roadWidth.toFixed(2)+' m',
           station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
-          progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACCOMPLISHED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+          progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACTUAL '+progress.approved.toFixed(2)+' / PLAN '+progress.planned.toFixed(2)):'NO APPROVED SCHEDULE'
         },
         {color:baseColor,weight:5,opacity:.92}
       );
       if(line)line.addTo(statusLayer);
 
-      // Accomplishment is visualized from the component start station.
-      if(component&&progress&&progress.completed>0){
-        const componentStart=Math.max(0,Number(component.station_start_m)||0);
-        const completedEnd=Math.min(
-          Number(component.station_end_m),
-          componentStart+progress.completed
-        );
-        const completedLine=sliceLineByMeters(laneLines[side],componentStart,completedEnd);
-        if(completedLine.length>=2){
-          const done=renderLaneLine(
-            completedLine,
-            {title:label+' — COMPLETED',subtitle:'Approved accomplishment',station:stationLabel(componentStart)+' → '+stationLabel(completedEnd),progress:'PROGRESS '+progress.percent.toFixed(1)+'%'},
-            {color:'#16a34a',weight:8,opacity:.98}
-          );
-          if(done)done.addTo(statusLayer);
-        }
+      if(component&&progress&&progress.hasProcessActivities){
+        const activities=getFilteredActivities(component.work_component_id);
+        renderActivityCompletionSegments(laneLines[side],activities,label)
+          .forEach(done=>done.addTo(statusLayer));
       }
     });
 
@@ -315,11 +327,9 @@
             title:label,
             subtitle:'Derived from PRIMARY ROAD ALIGNMENT • shoulder width '+shoulderWidth.toFixed(2)+' m',
             station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
-            progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACCOMPLISHED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+            progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACTUAL '+progress.approved.toFixed(2)+' / PLAN '+progress.planned.toFixed(2)):'NO APPROVED SCHEDULE'
           },
           {
-            // Shoulder is geometric reference data, not a progress status.
-            // Keep it neutral even when no shoulder work component exists.
             color:'#64748b',
             weight:4,
             opacity:.9,
@@ -328,18 +338,15 @@
         );
         if(line)line.addTo(statusLayer);
 
-        if(component&&progress&&progress.completed>0){
-          const startM=Math.max(0,Number(component.station_start_m)||0);
-          const endM=Math.min(Number(component.station_end_m),startM+progress.completed);
-          const completedLine=sliceLineByMeters(shoulderLines[side],startM,endM);
-          if(completedLine.length>=2){
-            const done=renderLaneLine(
-              completedLine,
-              {title:label+' — COMPLETED',subtitle:'Approved accomplishment',station:stationLabel(startM)+' → '+stationLabel(endM),progress:'PROGRESS '+progress.percent.toFixed(1)+'%'},
-              {color:'#16a34a',weight:7,opacity:.98}
-            );
-            if(done)done.addTo(statusLayer);
-          }
+        if(component&&progress&&progress.hasProcessActivities){
+          const activities=getFilteredActivities(component.work_component_id);
+          renderActivityCompletionSegments(shoulderLines[side],activities,label)
+            .forEach(done=>{
+              // Keep the gray dashed shoulder reference underneath;
+              // actual shoulder progress remains green.
+              done.setStyle({weight:7});
+              done.addTo(statusLayer);
+            });
         }
       });
     }
@@ -574,15 +581,36 @@
       }
 
       let activities=[];
+      let executionByActivity={};
       try{
         const activityResult=await withTimeout(
           client.from('project_activities')
-            .select('activity_id,work_component_id,activity,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
+            .select('activity_id,work_component_id,activity,activity_quantity,station_start_m,station_end_m,approval_status,activity_status')
             .eq('project_id',projectId)
             .eq('approval_status','APPROVED'),
-          4000,'Activity progress'
+          4000,'Activity schedule'
         );
-        if(!activityResult.error)activities=activityResult.data||[];
+        if(!activityResult.error){
+          activities=activityResult.data||[];
+          const activityIds=activities.map(a=>a.activity_id).filter(Boolean);
+          if(activityIds.length){
+            const executionResult=await withTimeout(
+              client.from('attendance_activities')
+                .select('project_activity_id,quantity,created_at')
+                .in('project_activity_id',activityIds)
+                .order('created_at',{ascending:false}),
+              4000,'Actual activity accomplishment'
+            );
+            if(!executionResult.error){
+              (executionResult.data||[]).forEach(row=>{
+                const id=String(row.project_activity_id);
+                if(!executionByActivity[id])executionByActivity[id]={actualQuantity:0};
+                const q=Number(row.quantity||0);
+                if(Number.isFinite(q)&&q>0)executionByActivity[id].actualQuantity+=q;
+              });
+            }
+          }
+        }
       }catch(_activityError){}
 
       projectData={
@@ -591,6 +619,7 @@
         sections,
         components,
         activities,
+        executionByActivity,
         alignment:null
       };
 
