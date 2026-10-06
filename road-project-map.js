@@ -49,6 +49,94 @@
     return line;
   }
 
+  function offsetAlignmentCoordinates(coords,offsetMeters){
+    if(!coords||coords.length<2||!Number.isFinite(offsetMeters))return [];
+    const refLat=Number(coords[0][1]);
+    const refLng=Number(coords[0][0]);
+    const mPerDegLat=111320;
+    const mPerDegLng=111320*Math.cos(refLat*Math.PI/180);
+    const pts=coords.map(c=>({
+      x:(Number(c[0])-refLng)*mPerDegLng,
+      y:(Number(c[1])-refLat)*mPerDegLat
+    }));
+    const out=[];
+    for(let i=0;i<pts.length;i++){
+      const prev=pts[Math.max(0,i-1)];
+      const next=pts[Math.min(pts.length-1,i+1)];
+      let dx=next.x-prev.x;
+      let dy=next.y-prev.y;
+      const len=Math.hypot(dx,dy);
+      if(len<0.000001){
+        out.push(coords[i]);
+        continue;
+      }
+      dx/=len; dy/=len;
+      const nx=-dy, ny=dx;
+      let scale=offsetMeters;
+      if(i>0&&i<pts.length-1){
+        const p0=pts[i-1], p1=pts[i], p2=pts[i+1];
+        const dx1=p1.x-p0.x,dy1=p1.y-p0.y,l1=Math.hypot(dx1,dy1)||1;
+        const dx2=p2.x-p1.x,dy2=p2.y-p1.y,l2=Math.hypot(dx2,dy2)||1;
+        const n1x=-dy1/l1,n1y=dx1/l1;
+        const n2x=-dy2/l2,n2y=dx2/l2;
+        const mx=n1x+n2x,my=n1y+n2y;
+        const ml=Math.hypot(mx,my);
+        if(ml>0.000001){
+          const dot=Math.max(-1,Math.min(1,nx*(mx/ml)+ny*(my/ml)));
+          if(Math.abs(dot)>0.25) scale=offsetMeters/dot;
+          const maxM=Math.max(50,Math.abs(offsetMeters)*4);
+          scale=Math.max(-maxM,Math.min(maxM,scale));
+        }
+      }
+      out.push([
+        refLng+(pts[i].x+nx*scale)/mPerDegLng,
+        refLat+(pts[i].y+ny*scale)/mPerDegLat
+      ]);
+    }
+    return out;
+  }
+
+  function renderRoadCorridorReferences(){
+    const coords=projectData.alignment?.geometry?.coordinates;
+    if(!coords||coords.length<2)return;
+    const d=projectData.project?.project_details||{};
+    const roadWidth=Number(d.road_width);
+    if(!Number.isFinite(roadWidth)||roadWidth<=0)return;
+
+    const laneOffset=roadWidth/4;
+    const laneLeft=offsetAlignmentCoordinates(coords,laneOffset);
+    const laneRight=offsetAlignmentCoordinates(coords,-laneOffset);
+
+    const laneProps={
+      title:'LANE REFERENCE',
+      subtitle:'Derived from PRIMARY ROAD ALIGNMENT • road width '+roadWidth.toFixed(2)+' m'
+    };
+
+    const left=L.polyline(laneLeft.map(c=>[c[1],c[0]]),{
+      color:'#2563eb',weight:3,opacity:.9,dashArray:'9 6'
+    }).bindPopup('<strong>LEFT LANE</strong><br>'+esc(laneProps.subtitle));
+    const right=L.polyline(laneRight.map(c=>[c[1],c[0]]),{
+      color:'#2563eb',weight:3,opacity:.9,dashArray:'9 6'
+    }).bindPopup('<strong>RIGHT LANE</strong><br>'+esc(laneProps.subtitle));
+    left.addTo(statusLayer);
+    right.addTo(statusLayer);
+
+    const shouldering=String(d.road_shouldering||'').toUpperCase()==='YES';
+    const shoulderWidth=Number(d.road_shouldering_width);
+    if(shouldering&&Number.isFinite(shoulderWidth)&&shoulderWidth>0){
+      const shoulderOffset=roadWidth/2+shoulderWidth/2;
+      const shoulderLeft=offsetAlignmentCoordinates(coords,shoulderOffset);
+      const shoulderRight=offsetAlignmentCoordinates(coords,-shoulderOffset);
+      const sub='Derived from alignment • shoulder width '+shoulderWidth.toFixed(2)+' m';
+      L.polyline(shoulderLeft.map(c=>[c[1],c[0]]),{
+        color:'#16a34a',weight:2.5,opacity:.85,dashArray:'5 7'
+      }).bindPopup('<strong>LEFT SHOULDER</strong><br>'+esc(sub)).addTo(statusLayer);
+      L.polyline(shoulderRight.map(c=>[c[1],c[0]]),{
+        color:'#16a34a',weight:2.5,opacity:.85,dashArray:'5 7'
+      }).bindPopup('<strong>RIGHT SHOULDER</strong><br>'+esc(sub)).addTo(statusLayer);
+    }
+  }
+
   function renderLayers(){
     clearMapLayers();
     if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
@@ -60,6 +148,7 @@
         station:'PROJECT LENGTH '+Number(projectData.alignment.length_m||0).toFixed(1)+' m'
       });
       if(line)line.addTo(statusLayer);
+      renderRoadCorridorReferences();
     }
 
     projectData.sections.forEach(s=>{
