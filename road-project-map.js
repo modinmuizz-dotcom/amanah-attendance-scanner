@@ -524,14 +524,14 @@
       '</div>'+
       '<div class="curve-coordinate-grid">'+
         '<div class="curve-point-label">PC — START OF CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input class="curve-pc-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.208600"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input class="curve-pc-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.265885"></div>'+
+        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-pc-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.208600"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-pc-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.265885"></div>'+
         '<div class="curve-point-label">P1 — POINT ON CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input class="curve-p1-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.210000"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input class="curve-p1-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.268000"></div>'+
+        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-p1-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.210000"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-p1-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.268000"></div>'+
         '<div class="curve-point-label">PT — END OF CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input class="curve-pt-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.212000"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input class="curve-pt-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.271000"></div>'+
+        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-pt-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.212000"></div>'+
+        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-pt-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.271000"></div>'+
       '</div>'+
       '<div class="curve-result-grid">'+
         '<div><span>DIRECTION</span><strong class="curve-direction">—</strong></div>'+
@@ -932,15 +932,27 @@
     return saveProjectCoordinateAlignment({mode:s.mode,built});
   }
 
-  function focusAlignmentMap(bounds){
+  function focusAlignmentMap(bounds, maxZoom=17){
     const mapEl=qs('roadMap');
-    if(bounds?.length&&map){
-      map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
-    }
     if(mapEl){
       mapEl.scrollIntoView({behavior:'smooth',block:'center'});
     }
-    setTimeout(()=>map?.invalidateSize({animate:false}),250);
+    const apply=()=>{
+      if(!map||!bounds?.length)return;
+      map.invalidateSize({pan:false,animate:false});
+      const safeBounds=L.latLngBounds(bounds);
+      if(!safeBounds.isValid())return;
+      map.fitBounds(safeBounds,{
+        padding:[70,70],
+        paddingTopLeft:[70,90],
+        paddingBottomRight:[70,70],
+        maxZoom,
+        animate:false
+      });
+    };
+    apply();
+    setTimeout(apply,120);
+    setTimeout(apply,350);
   }
 
   async function saveProjectCoordinateAlignment({mode,built}){
@@ -1053,15 +1065,23 @@
         showCurveEditor(true);
         if(!getCurveRows().length){
           renderSavedCurveRows();
-          if(!getCurveRows().length)addCurveRow();
+          if(!getCurveRows().length)addCurveRow({});
         }
-        updateEngineeringPreview(true);
-        const bounds=[
+
+        // Always take the engineer to the entered project coordinates first.
+        // The curve preview may be invalid while the PC/P1/PT values are being edited,
+        // but the map must still jump to the correct project area.
+        focusAlignmentMap([
           [coords.start.lat,coords.start.lng],
           [coords.end.lat,coords.end.lng],
           ...curvesForMapBounds()
-        ];
-        focusAlignmentMap(bounds);
+        ]);
+
+        const preview=updateEngineeringPreview(true);
+        if(preview?.geometry?.coordinates?.length){
+          focusAlignmentMap(preview.geometry.coordinates.map(c=>[c[1],c[0]]),17);
+        }
+
         const button=qs('projectGenerateAlignment');
         if(button)button.textContent='SAVE ALIGNMENT';
         setDrawMessage('Define each circular curve with PC, P1 and PT. Add more curve elements as needed, then click SAVE ALIGNMENT.','info');
