@@ -325,7 +325,7 @@
 
     if(projectData.alignment?.geometry?.coordinates){
       const line=renderContinuousAlignment(projectData.alignment.geometry.coordinates,{
-        color:'#7c3aed',weight:7,opacity:.98
+        color:'#334155',weight:7,opacity:.98
       });
       if(line)line.bindPopup(
         '<strong>PRIMARY ROAD ALIGNMENT</strong><br>'+
@@ -1199,7 +1199,7 @@
       if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
       projectAlignmentState.previewLine=renderContinuousAlignment(
         built.geometry.coordinates,
-        {color:'#7c3aed',weight:7,opacity:.98}
+        {color:'#334155',weight:7,opacity:.98}
       );
       if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.addTo(map);
       if(showMessage){
@@ -1383,7 +1383,7 @@
         if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
         projectAlignmentState.previewLine=renderContinuousAlignment(
           built.geometry.coordinates,
-          {color:'#7c3aed',weight:7,opacity:.98}
+          {color:'#334155',weight:7,opacity:.98}
         );
         if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.addTo(map);
 
