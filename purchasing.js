@@ -118,7 +118,7 @@ function bind(){
    }
    if(status==="READY FOR PICKUP"){
      const ordered=Number(document.getElementById("supplyOrderedQty").textContent||0);
-     const received=Number(document.getElementById("supplyReceivedQty").value||0);
+     const received=Number(item.received_quantity||0);
      document.getElementById("supplyReadyForPickupQty").value=Math.max(ordered-received,0);
    }else{
      document.getElementById("supplyReadyForPickupQty").value=0;
@@ -809,9 +809,9 @@ async function saveSupplyStatus(){
  const confirmed=Number(document.getElementById("supplyConfirmedQty").value||0);
  const received=Number(document.getElementById("supplyReceivedQty").value||0);
  const readyForPickup=Number(document.getElementById("supplyReadyForPickupQty").value||0);
- const receivedDate=document.getElementById("supplyReceivedDate").value||null;
- const deliveryReference=document.getElementById("supplyDeliveryReference").value.trim()||null;
- const receivingRemarks=document.getElementById("supplyReceivingRemarks").value.trim()||null;
+ const receivedDate=item.received_date||null;
+ const deliveryReference=item.delivery_reference||null;
+ const receivingRemarks=item.receiving_remarks||null;
  const availability=document.getElementById("supplyAvailabilityDate").value||null;
  const substituteStatus=document.getElementById("supplySubstituteStatus").value;
  const substituteMaterial=document.getElementById("supplySubstituteMaterial").value.trim()||null;
@@ -838,12 +838,6 @@ async function saveSupplyStatus(){
  btn.disabled=true;
  btn.textContent="SAVING...";
 
- let receiverName=item.received_by_name||state.access?.role||"PURCHASING OFFICER";
- if(received>0){
-   const {data:userData}=await supabaseClient.auth.getUser();
-   receiverName=userData?.user?.user_metadata?.full_name || userData?.user?.email || receiverName;
- }
-
  try{
    const {data:savedItem,error}=await supabaseClient.from("purchase_order_items").update({
      supply_status:status,
@@ -851,7 +845,6 @@ async function saveSupplyStatus(){
      confirmed_quantity:confirmed,
      ready_for_pickup_quantity:status==="READY FOR PICKUP" ? readyForPickup : 0,
      expected_availability_date:availability,
-     supplier_remarks:supplierRemarks,
      supplier_remarks:supplierRemarks,
      substitute_material_name:substituteMaterial,
      substitute_specifications:substituteSpecifications,
