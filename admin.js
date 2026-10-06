@@ -1522,7 +1522,7 @@ async function saveSupplier(
       null,
 
     email:
-      employeeEmail ||
+      values.email.trim() ||
       null,
 
     address:
