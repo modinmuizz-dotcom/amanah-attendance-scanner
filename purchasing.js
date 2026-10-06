@@ -111,15 +111,24 @@ function bind(){
  document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);
  document.getElementById("supplyStatus").addEventListener("change",()=>{
    const status=document.getElementById("supplyStatus").value;
+   const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
+   if(!item)return;
    if(status==="RECEIVED"){
-     const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
-     document.getElementById("supplyStatus").value=item?.supply_status==="RECEIVED"?"RECEIVED":"PENDING SUPPLIER CONFIRMATION";
-     return showSupplyValidation("RECEIVED is not a manual status. Complete the approved pickup activity first.");
+     const fullyReceived=Number(item.received_quantity||0)>=Number(item.quantity||0) && Number(item.quantity||0)>0;
+     document.getElementById("supplyStatus").value=fullyReceived?"RECEIVED":String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+     return showSupplyValidation("RECEIVED is not a manual status. It is created automatically after the approved pickup activity is completed.");
    }
    if(status==="READY FOR PICKUP"){
-     const ordered=Number(document.getElementById("supplyOrderedQty").textContent||0);
+     const ordered=Number(item.quantity||0);
      const received=Number(item.received_quantity||0);
-     document.getElementById("supplyReadyForPickupQty").value=Math.max(ordered-received,0);
+     const confirmed=Number(item.confirmed_quantity||0);
+     const availableForPickup=Math.max(confirmed-received,0);
+     if(availableForPickup<=0){
+       document.getElementById("supplyStatus").value=(received>=ordered && ordered>0)?"RECEIVED":String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+       document.getElementById("supplyReadyForPickupQty").value=0;
+       return showSupplyValidation("This material cannot be marked READY FOR PICKUP because there is no confirmed quantity remaining after received quantity.");
+     }
+     document.getElementById("supplyReadyForPickupQty").value=availableForPickup;
    }else{
      document.getElementById("supplyReadyForPickupQty").value=0;
    }
@@ -647,13 +656,10 @@ async function openSupplyModal(itemId){
  document.getElementById("supplySpecifications").textContent=item.specifications||"—";
  document.getElementById("supplyOrderedQty").textContent=Number(item.quantity||0).toLocaleString("en-PH",{maximumFractionDigits:3});
  document.getElementById("supplyUnit").textContent=item.unit||"—";
- const savedStatus=String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+ const isFullyReceived=Number(item.received_quantity||0)>=Number(item.quantity||0) && Number(item.quantity||0)>0;
+ const savedStatus=isFullyReceived ? "RECEIVED" : String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
  const statusSelect=document.getElementById("supplyStatus");
- if(savedStatus==="RECEIVED"){
-   statusSelect.value="RECEIVED";
- }else{
-   statusSelect.value=savedStatus;
- }
+ statusSelect.value=savedStatus;
  document.getElementById("supplyUnitPrice").value=item.unit_price==null?"":item.unit_price;
  document.getElementById("supplyConfirmedQty").value=item.confirmed_quantity??0;
  document.getElementById("supplyReceivedQty").value=item.received_quantity??0;
@@ -678,6 +684,11 @@ async function openSupplyModal(itemId){
  if(readyOption){
    readyOption.disabled=unreceivedQty<=0;
    readyOption.title=unreceivedQty<=0 ? "This material is already fully received." : "";
+ }
+ const receivedOption=document.querySelector('#supplyStatus option[value="RECEIVED"]');
+ if(receivedOption){
+   receivedOption.disabled=!isFullyReceived && savedStatus!=="RECEIVED";
+   receivedOption.title=receivedOption.disabled ? "RECEIVED is created automatically after completed pickup." : "";
  }
 
  const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
