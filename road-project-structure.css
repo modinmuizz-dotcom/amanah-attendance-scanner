@@ -65,6 +65,9 @@ button{cursor:pointer}
 .curve-result-grid span{display:block;font-size:8px;font-weight:900;letter-spacing:.06em;color:var(--gray500)}
 .curve-result-grid strong{display:block;margin-top:3px;font-size:11px;color:var(--navy)}
 .project-curve-note{margin-top:9px;padding:8px 10px;border-radius:8px;background:#f8fafc;color:var(--gray500);font-size:10px;line-height:1.45}
+.curve-calculated-coordinates{margin-top:9px;padding:8px 10px;border-radius:8px;background:#f8fafc;border:1px dashed var(--gray200)}
+.curve-calculated-coordinates span{display:block;font-size:8px;font-weight:900;letter-spacing:.06em;color:var(--gray500)}
+.curve-calculated-coordinates small{display:block;margin-top:3px;font-size:9px;font-weight:700;color:var(--navy)}
 @media(max-width:1100px){.curve-result-grid{grid-template-columns:repeat(4,minmax(120px,1fr))}}
 @media(max-width:700px){.curve-coordinate-grid{grid-template-columns:1fr}.curve-result-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.project-curve-head{flex-direction:column}}
 
