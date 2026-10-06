@@ -319,10 +319,10 @@ select jsonb_build_object(
               'geometry',ST_AsGeoJSON(e.geometry)::jsonb,
               'metadata',e.metadata
             ) order by e.sequence_no
-          ),'[]'::jsonb)
+          )
           from public.road_project_alignment_elements e
           where e.project_id=a.project_id
-        )
+        ),'[]'::jsonb)
       )
       from road_project_alignments a
       where a.project_id=p_project_id and a.is_active=true
