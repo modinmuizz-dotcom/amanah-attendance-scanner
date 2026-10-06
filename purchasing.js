@@ -688,7 +688,7 @@ async function saveSupplyStatus(){
      received_date:receivedDate,
      delivery_reference:deliveryReference,
      receiving_remarks:receivingRemarks,
-     received_by_name:received>0 ? (state.access?.role||"PURCHASING OFFICER") : (item.received_by_name||null),
+     received_by_name:received>0 ? (await supabaseClient.auth.getUser()).data?.user?.user_metadata?.full_name || (await supabaseClient.auth.getUser()).data?.user?.email || state.access?.role || "PURCHASING OFFICER" : (item.received_by_name||null),
      received_at:received>0 ? new Date().toISOString() : null,
      expected_availability_date:availability,
      supplier_remarks:supplierRemarks,
@@ -879,6 +879,8 @@ async function openPODetails(id){
      '<td>'+esc(i.confirmed_quantity??0)+'</td>'+
      '<td>'+esc(i.received_quantity??0)+'</td>'+
      '<td>'+esc(remaining)+'</td>'+
+     '<td>'+esc(i.received_date?fmtDate(i.received_date):"—")+'</td>'+
+     '<td>'+esc(i.delivery_reference||"—")+'</td>'+
      '<td>'+money(i.unit_price)+'</td>'+
      '<td>'+money(i.line_total)+'</td>'+
      '<td><button type="button" class="mini blue" data-supply-item="'+esc(i.purchase_order_item_id)+'">MANAGE SUPPLY</button></td>'+
@@ -901,7 +903,7 @@ async function openPODetails(id){
      '<div class="detail-card full"><label>Remarks</label><div>'+esc(o.remarks||"—")+'</div></div>'+
    '</div>'+
    '<div class="section-label">MATERIAL SUPPLY TRACKING</div>'+
-   '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Remaining</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
+   '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Remaining</th><th>Received Date</th><th>Delivery Ref.</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
    '<div class="total-box"><span>PO TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>';
 
  document.querySelectorAll("[data-supply-item]").forEach(b=>b.addEventListener("click",()=>openSupplyModal(b.dataset.supplyItem)));
