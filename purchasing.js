@@ -679,6 +679,12 @@ async function saveSupplyStatus(){
  btn.disabled=true;
  btn.textContent="SAVING...";
 
+ let receiverName=item.received_by_name||state.access?.role||"PURCHASING OFFICER";
+ if(received>0){
+   const {data:userData}=await supabaseClient.auth.getUser();
+   receiverName=userData?.user?.user_metadata?.full_name || userData?.user?.email || receiverName;
+ }
+
  try{
    const {data:savedItem,error}=await supabaseClient.from("purchase_order_items").update({
      supply_status:status,
@@ -688,7 +694,7 @@ async function saveSupplyStatus(){
      received_date:receivedDate,
      delivery_reference:deliveryReference,
      receiving_remarks:receivingRemarks,
-     received_by_name:received>0 ? (await supabaseClient.auth.getUser()).data?.user?.user_metadata?.full_name || (await supabaseClient.auth.getUser()).data?.user?.email || state.access?.role || "PURCHASING OFFICER" : (item.received_by_name||null),
+     received_by_name:received>0 ? receiverName : (item.received_by_name||null),
      received_at:received>0 ? new Date().toISOString() : null,
      expected_availability_date:availability,
      supplier_remarks:supplierRemarks,
