@@ -2,12 +2,12 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
+const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function today(){return new Date().toISOString().slice(0,10);}
 function money(v){return "₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});}
-function statusClass(s){return {"DRAFT":"b-draft","SUBMITTED":"b-sub","UNDER REVIEW":"b-review","APPROVED":"b-approved","PARTIALLY ORDERED":"b-ordered","ORDERED":"b-ordered","REJECTED":"b-rejected","CANCELLED":"b-cancel","RECEIVED":"b-received","CLOSED":"b-received","SENT TO SUPPLIER":"b-ordered"}[s]||"b-draft";}
+function statusClass(s){return {"DRAFT":"b-draft","SUBMITTED":"b-sub","UNDER REVIEW":"b-review","APPROVED":"b-approved","PARTIALLY ORDERED":"b-ordered","ORDERED":"b-ordered","REJECTED":"b-rejected","CANCELLED":"b-cancel","RECEIVED":"b-received","CLOSED":"b-received","SENT TO SUPPLIER":"b-ordered","WAITING FOR SUPPLIER":"b-review","PARTIALLY FULFILLED":"b-ordered","PARTIALLY RECEIVED":"b-ordered"}[s]||"b-draft";}
 function statusBadge(s){return '<span class="badge '+statusClass(s)+'">'+esc(s)+'</span>';}
 function msg(text,type="ok"){const el=document.getElementById("message"),shade=document.getElementById("messageShade");el.textContent=text;el.className="message "+type;shade.style.display="block";clearTimeout(window.__amanahPurchasingMessageTimer);window.__amanahPurchasingMessageTimer=setTimeout(()=>{el.className="message";el.textContent="";shade.style.display="none";},2800);}
 function clearMsg(){const el=document.getElementById("message");el.className="message";el.textContent="";document.getElementById("messageShade").style.display="none";}
@@ -108,7 +108,7 @@ function bind(){
  document.getElementById("detailPrimaryAction").addEventListener("click",primaryDetailAction);
  document.getElementById("closePo").addEventListener("click",closePoModal);
  document.getElementById("cancelPo").addEventListener("click",closePoModal);
- document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);
+ document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);
  ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
  ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
  document.getElementById("clearPrFilters").addEventListener("click",()=>{document.getElementById("prSearch").value="";document.getElementById("prStatus").value="";document.getElementById("prProject").value="";renderRequests();});
@@ -322,7 +322,13 @@ document.addEventListener("click",function(event){
 function renderOrders(){
  const q=(document.getElementById("poSearch").value||"").toLowerCase().trim(),status=document.getElementById("poStatus").value,pid=document.getElementById("poProject").value;
  const rows=state.orders.filter(o=>(!q||[o.po_no,o.supplier_name,o.project_name,o.purchase_request_no].join(" ").toLowerCase().includes(q))&&(!status||o.status===status)&&(!pid||o.project_id===pid));
- document.getElementById("poBody").innerHTML=rows.length?rows.map(o=>'<tr><td><strong>'+esc(o.po_no)+'</strong></td><td>'+esc(fmtDate(o.po_date))+'</td><td>'+esc(o.purchase_request_no||"—")+'</td><td><strong>'+esc(o.project_name)+'</strong><br><small style="color:#64748b">'+esc(o.project_location||"")+'</small></td><td>'+esc(o.requester_name||"—")+'</td><td>'+esc(o.supplier_name)+'</td><td>'+esc(fmtDate(o.expected_delivery_date))+'</td><td>'+money(o.grand_total)+'</td><td>'+statusBadge(o.status)+'</td><td><div class="row-actions"><button class="mini blue" data-po-view="'+esc(o.purchase_order_id)+'">VIEW</button><button class="mini edit" data-po-edit="'+esc(o.purchase_order_id)+'">EDIT</button><button class="mini print" data-po-print="'+esc(o.purchase_order_id)+'">PRINT</button><button class="mini delete" data-po-delete="'+esc(o.purchase_order_id)+'">DELETE</button></div></td></tr>').join(""):'<tr><td colspan="10" class="empty">No purchase orders found.</td></tr>';
+ document.getElementById("poBody").innerHTML=rows.length?rows.map(o=>{
+   const items=state.orderItems.filter(x=>x.purchase_order_id===o.purchase_order_id);
+   const unavailable=items.filter(x=>["UNAVAILABLE","BACKORDERED"].includes(String(x.supply_status||"").toUpperCase())).length;
+   const pending=items.filter(x=>String(x.supply_status||"").toUpperCase()==="PENDING SUPPLIER CONFIRMATION").length;
+   const supplySummary=unavailable?unavailable+" ITEM(S) NEED SUPPLIER ACTION":pending?pending+" ITEM(S) PENDING":"SUPPLY TRACKED";
+   return '<tr><td><strong>'+esc(o.po_no)+'</strong></td><td>'+esc(fmtDate(o.po_date))+'</td><td>'+esc(o.purchase_request_no||"—")+'</td><td><strong>'+esc(o.project_name)+'</strong><br><small style="color:#64748b">'+esc(o.project_location||"")+'</small></td><td>'+esc(o.requester_name||"—")+'</td><td>'+esc(o.supplier_name)+'</td><td>'+esc(fmtDate(o.expected_delivery_date))+'</td><td>'+money(o.grand_total)+'</td><td>'+statusBadge(o.status)+'<br><small style="color:#64748b">'+esc(supplySummary)+'</small></td><td><div class="row-actions"><button class="mini blue" data-po-view="'+esc(o.purchase_order_id)+'">VIEW</button><button class="mini edit" data-po-edit="'+esc(o.purchase_order_id)+'">EDIT</button><button class="mini print" data-po-print="'+esc(o.purchase_order_id)+'">PRINT</button><button class="mini delete" data-po-delete="'+esc(o.purchase_order_id)+'">DELETE</button></div></td></tr>';
+ }).join(""):'<tr><td colspan="10" class="empty">No purchase orders found.</td></tr>';
  document.querySelectorAll("[data-po-view]").forEach(b=>b.addEventListener("click",()=>openPODetails(b.dataset.poView)));
  document.querySelectorAll("[data-po-edit]").forEach(b=>b.addEventListener("click",()=>openPOEdit(b.dataset.poEdit)));
  document.querySelectorAll("[data-po-print]").forEach(b=>b.addEventListener("click",()=>printPurchaseOrder(b.dataset.poPrint)));
@@ -466,6 +472,7 @@ function openPOModal(requestId){
  const poDate=today();
  const requestedDelivery=r.needed_by_date||"";
  const deliveryDate=requestedDelivery && requestedDelivery>=poDate ? requestedDelivery : poDate;
+ refreshPoSupplierOptions(state.alternativeSourceSupplierId);
  document.getElementById("poSupplier").value="";
  document.getElementById("poSupplierContact").value="";
  document.getElementById("poSupplierAddress").value="";
@@ -538,6 +545,217 @@ function updatePoTotal(){
  });
  document.getElementById("poSubtotal").textContent=pending ? money(total)+" + PENDING PRICE" : money(total);
 }
+
+function supplyStatusClass(status){
+ const s=String(status||"").toUpperCase();
+ if(s==="AVAILABLE"||s==="SUBSTITUTE APPROVED"||s==="RECEIVED")return "b-received";
+ if(s==="UNAVAILABLE"||s==="CANCELLED")return "b-rejected";
+ if(s==="BACKORDERED"||s==="PENDING SUPPLIER CONFIRMATION"||s==="SUBSTITUTE PROPOSED")return "b-review";
+ if(s==="PARTIALLY AVAILABLE")return "b-ordered";
+ return "b-draft";
+}
+
+function supplyBadge(status){
+ const s=String(status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+ return '<span class="badge '+supplyStatusClass(s)+'">'+esc(s)+'</span>';
+}
+
+function currentRequestedQuantity(requestItemId){
+ const item=state.requestItems.find(x=>x.purchase_request_item_id===requestItemId);
+ return Number(item?.quantity||0);
+}
+
+function confirmedQuantityForRequestItem(requestItemId){
+ return state.orderItems
+   .filter(x=>x.purchase_request_item_id===requestItemId && String(x.supply_status||"PENDING SUPPLIER CONFIRMATION")!=="CANCELLED")
+   .reduce((sum,x)=>sum+Number(x.confirmed_quantity||0),0);
+}
+
+function sourceRemainingQuantity(requestItemId){
+ return Math.max(currentRequestedQuantity(requestItemId)-confirmedQuantityForRequestItem(requestItemId),0);
+}
+
+function refreshPoSupplierOptions(excludeSupplierId=null){
+ const select=document.getElementById("poSupplier");
+ if(!select)return;
+ const rows=state.suppliers.filter(s=>!excludeSupplierId || s.supplier_id!==excludeSupplierId);
+ select.innerHTML='<option value="">SELECT REGISTERED SUPPLIER</option>'+
+   rows.map(s=>'<option value="'+esc(s.supplier_id)+'">'+esc(s.supplier_name)+' • '+esc(s.supplier_code)+'</option>').join("");
+}
+
+function clearSupplyValidation(){
+ const box=document.getElementById("supplyValidation");
+ if(!box)return;
+ box.textContent="";
+ box.style.display="none";
+}
+
+function showSupplyValidation(message){
+ const box=document.getElementById("supplyValidation");
+ if(!box)return msg(message,"err");
+ box.textContent=message;
+ box.style.display="block";
+}
+
+async function openSupplyModal(itemId){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===itemId);
+ if(!item)return;
+ const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
+ if(!order)return;
+
+ state.supplyItemId=itemId;
+ clearSupplyValidation();
+
+ document.getElementById("supplyFromPO").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(order.supplier_name||"")+" • "+(order.project_name||"");
+ document.getElementById("supplyMaterial").textContent=item.material_name||"—";
+ document.getElementById("supplySpecifications").textContent=item.specifications||"—";
+ document.getElementById("supplyOrderedQty").textContent=Number(item.quantity||0).toLocaleString("en-PH",{maximumFractionDigits:3});
+ document.getElementById("supplyUnit").textContent=item.unit||"—";
+ document.getElementById("supplyStatus").value=item.supply_status||"PENDING SUPPLIER CONFIRMATION";
+ document.getElementById("supplyUnitPrice").value=item.unit_price==null?"":item.unit_price;
+ document.getElementById("supplyConfirmedQty").value=item.confirmed_quantity??0;
+ document.getElementById("supplyReceivedQty").value=item.received_quantity??0;
+ document.getElementById("supplyAvailabilityDate").value=item.expected_availability_date||"";
+ document.getElementById("supplySubstituteStatus").value=item.substitute_status||"NONE";
+ document.getElementById("supplySubstituteMaterial").value=item.substitute_material_name||"";
+ document.getElementById("supplySubstituteSpecifications").value=item.substitute_specifications||"";
+ document.getElementById("supplySupplierRemarks").value=item.supplier_remarks||"";
+
+ const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
+ const showAlternative=["UNAVAILABLE","BACKORDERED","PARTIALLY AVAILABLE","SUBSTITUTE PROPOSED"].includes(String(item.supply_status||"").toUpperCase()) && remaining>0;
+ const alt=document.getElementById("sourceAlternative");
+ alt.style.display=showAlternative?"inline-block":"none";
+ alt.textContent="SOURCE ALTERNATIVE ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
+
+ document.getElementById("supplyModal").style.display="flex";
+}
+
+function closeSupplyModal(){
+ document.getElementById("supplyModal").style.display="none";
+ state.supplyItemId=null;
+ clearSupplyValidation();
+}
+
+async function saveSupplyStatus(){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
+ if(!item)return;
+ const status=document.getElementById("supplyStatus").value;
+ const unitPriceRaw=document.getElementById("supplyUnitPrice").value;
+ const unitPrice=unitPriceRaw===""?null:Number(unitPriceRaw);
+ const confirmed=Number(document.getElementById("supplyConfirmedQty").value||0);
+ const received=Number(document.getElementById("supplyReceivedQty").value||0);
+ const availability=document.getElementById("supplyAvailabilityDate").value||null;
+ const substituteStatus=document.getElementById("supplySubstituteStatus").value;
+ const substituteMaterial=document.getElementById("supplySubstituteMaterial").value.trim()||null;
+ const substituteSpecifications=document.getElementById("supplySubstituteSpecifications").value.trim()||null;
+ const supplierRemarks=document.getElementById("supplySupplierRemarks").value.trim()||null;
+ const ordered=Number(item.quantity||0);
+
+ if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
+ if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
+ if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
+ if(status==="AVAILABLE" && confirmed<=0)return showSupplyValidation("Enter the quantity confirmed available by the supplier.");
+ if(status==="RECEIVED" && received<=0)return showSupplyValidation("Enter the quantity actually received.");
+ if((status==="UNAVAILABLE"||status==="BACKORDERED") && !supplierRemarks)return showSupplyValidation("Please record the supplier's reason or availability remarks.");
+ if(status==="SUBSTITUTE PROPOSED" && !substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
+ if(substituteStatus==="PROPOSED" && !substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
+
+ const btn=document.getElementById("saveSupply");
+ btn.disabled=true;
+ btn.textContent="SAVING...";
+
+ try{
+   const {error}=await supabaseClient.from("purchase_order_items").update({
+     supply_status:status,
+     unit_price:unitPrice,
+     confirmed_quantity:confirmed,
+     received_quantity:received,
+     expected_availability_date:availability,
+     supplier_remarks:supplierRemarks,
+     substitute_material_name:substituteMaterial,
+     substitute_specifications:substituteSpecifications,
+     substitute_status:substituteStatus
+   }).eq("purchase_order_item_id",item.purchase_order_item_id);
+   if(error)throw error;
+
+   const {data:poItems,error:itemsError}=await supabaseClient.from("purchase_order_items").select("quantity,unit_price").eq("purchase_order_id",item.purchase_order_id);
+   if(itemsError)throw itemsError;
+   const subtotal=(poItems||[]).reduce((sum,x)=>sum+(x.unit_price==null?0:Number(x.quantity||0)*Number(x.unit_price||0)),0);
+   const {error:poUpdateError}=await supabaseClient.from("purchase_orders").update({subtotal,grand_total:subtotal}).eq("purchase_order_id",item.purchase_order_id);
+   if(poUpdateError)throw poUpdateError;
+
+   const {error:poStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_order_status",{p_purchase_order_id:item.purchase_order_id});
+   if(poStatusError)throw poStatusError;
+   const requestItem=state.requestItems.find(ri=>ri.purchase_request_item_id===item.purchase_request_item_id);
+   const request=state.requests.find(pr=>pr.purchase_request_id===requestItem?.purchase_request_id);
+   if(request){
+     const {error:requestStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_request_status",{p_purchase_request_id:request.purchase_request_id});
+     if(requestStatusError)throw requestStatusError;
+   }
+
+   closeSupplyModal();
+   await Promise.all([loadRequests(),loadOrders()]);
+   renderAll();
+   msg("Material supply status updated successfully.","ok");
+ }catch(error){
+   console.error(error);
+   showSupplyValidation(error.message||"Unable to save material supply status.");
+ }finally{
+   btn.disabled=false;
+   btn.textContent="SAVE SUPPLY STATUS";
+ }
+}
+
+async function sourceAlternativeSupplier(){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
+ if(!item)return;
+ const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
+ if(!order)return;
+ const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
+ if(remaining<=0)return showSupplyValidation("There is no remaining quantity that needs an alternative supplier.");
+
+ const availableSuppliers=state.suppliers.filter(s=>s.supplier_id!==order.supplier_id);
+ if(!availableSuppliers.length)return showSupplyValidation("No alternative active supplier is registered. Add another supplier in Master Data first.");
+
+ const req=state.requests.find(x=>x.purchase_request_id===order.purchase_request_id)||{
+   purchase_request_id:order.purchase_request_id,
+   request_no:order.purchase_request_no,
+   project_id:order.project_id,
+   project_name:order.project_name,
+   project_location:order.project_location,
+   requester_employee_id:order.requester_employee_id,
+   requester_name:order.requester_name,
+   needed_by_date:order.expected_delivery_date
+ };
+ state.poDraftRequest={r:req,items:[{
+   purchase_request_item_id:item.purchase_request_item_id,
+   material_name:item.material_name,
+   specifications:item.specifications||"",
+   quantity:remaining,
+   unit:item.unit||"",
+   unit_price:""
+ }]};
+ state.editingOrderId=null;
+ state.alternativeSourceItemId=item.purchase_request_item_id;
+ state.alternativeSourceSupplierId=order.supplier_id;
+
+ closeSupplyModal();
+ document.getElementById("poModalTitle").textContent="SOURCE ALTERNATIVE SUPPLIER";
+ document.getElementById("poFromRequest").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(req.request_no||"PURCHASE REQUEST")+" • Remaining "+remaining+" "+(item.unit||"");
+ refreshPoSupplierOptions(order.supplier_id);
+ document.getElementById("poSupplier").value="";
+ document.getElementById("poSupplierContact").value="";
+ document.getElementById("poSupplierAddress").value="";
+ document.getElementById("poDate").value=today();
+ document.getElementById("poDelivery").value=req.needed_by_date && req.needed_by_date>=today()?req.needed_by_date:today();
+ document.getElementById("poPaymentTerms").value="";
+ document.getElementById("poDeliveryTerms").value="Delivered to project site";
+ document.getElementById("poRemarks").value="Alternative supplier for unavailable material from "+(order.supplier_name||"original supplier")+".";
+
+ renderPoItems();
+ document.getElementById("poModal").style.display="flex";
+}
+
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;state.editingOrderId=null;document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";}
 async function savePurchaseOrder(){
  const d=state.poDraftRequest;
@@ -574,27 +792,84 @@ async function savePurchaseOrder(){
   const payload={project_id:d.r.project_id,project_name:d.r.project_name,project_location:d.r.project_location||null,requester_employee_id:d.r.requester_employee_id||null,requester_name:d.r.requester_name||null,supplier_id:supplierId,supplier_name:supplier.supplier_name,supplier_contact:contact||null,supplier_address:address||null,po_date:poDate,expected_delivery_date:delivery||null,subtotal:total,tax_amount:0,other_charges:0,grand_total:total,payment_terms:payment||null,delivery_terms:deliveryTerms||null,remarks:remarks||null};
   if(editing){const {error}=await supabaseClient.from("purchase_orders").update(payload).eq("purchase_order_id",poId);if(error)throw error;const {error:delErr}=await supabaseClient.from("purchase_order_items").delete().eq("purchase_order_id",poId);if(delErr)throw delErr;}
   else{payload.purchase_request_id=d.r.purchase_request_id;payload.purchase_request_no=d.r.request_no;payload.status="DRAFT";const {data,error}=await supabaseClient.from("purchase_orders").insert(payload).select("purchase_order_id,po_no").single();if(error)throw error;poId=data.purchase_order_id;poNo=data.po_no;}
-  const items=d.items.map((it,i)=>({purchase_order_id:poId,line_no:i+1,purchase_request_item_id:it.purchase_request_item_id||null,material_name:it.material_name.trim(),specifications:it.specifications?.trim()||null,quantity:Number(it.quantity),unit:it.unit.trim(),unit_price:(it.unit_price===""||it.unit_price===null||it.unit_price===undefined)?null:Number(it.unit_price)}));
+  const items=d.items.map((it,i)=>({
+    purchase_order_id:poId,
+    line_no:i+1,
+    purchase_request_item_id:it.purchase_request_item_id||null,
+    material_name:it.material_name.trim(),
+    specifications:it.specifications?.trim()||null,
+    quantity:Number(it.quantity),
+    unit:it.unit.trim(),
+    unit_price:(it.unit_price===""||it.unit_price===null||it.unit_price===undefined)?null:Number(it.unit_price),
+    supply_status:"PENDING SUPPLIER CONFIRMATION",
+    confirmed_quantity:0,
+    received_quantity:0,
+    substitute_status:"NONE"
+  }));
   const {error:ierr}=await supabaseClient.from("purchase_order_items").insert(items);if(ierr)throw ierr;
-  if(!editing){
-    const {error:requestStatusError}=await supabaseClient
-      .from("purchase_requests")
-      .update({status:"ORDERED"})
-      .eq("purchase_request_id",d.r.purchase_request_id);
+  const {error:poStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_order_status",{p_purchase_order_id:poId});
+  if(poStatusError)throw poStatusError;
 
-    if(requestStatusError)throw requestStatusError;
-  }
+  const {error:requestStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_request_status",{p_purchase_request_id:d.r.purchase_request_id});
+  if(requestStatusError)throw requestStatusError;
   const existing=state.orders.find(x=>x.purchase_order_id===poId);const savedNo=editing?(existing?.po_no||"Purchase Order"):poNo;
   closePoModal();msg(savedNo+" "+(editing?"updated successfully.":"created successfully."));await Promise.all([loadRequests(),loadOrders()]);renderAll();if(!editing)switchTab("orders");
  }catch(err){console.error(err);msg((editing?"Could not update purchase order: ":"Could not create purchase order: ")+err.message,"err");}
  finally{btn.disabled=false;btn.textContent="SAVE PURCHASE ORDER";}
 }
 async function openPODetails(id){
- const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;const items=state.orderItems.filter(i=>i.purchase_order_id===id);
- state.activeOrderId=id;state.activeRequestId=null;const title=document.getElementById("detailTitle");title.dataset.type="PO";title.textContent="PURCHASE ORDER DETAILS";
- document.getElementById("detailBody").innerHTML='<div class="detail-grid"><div class="detail-card"><label>PO No.</label><strong>'+esc(o.po_no)+'</strong></div><div class="detail-card"><label>Status</label><strong>'+statusBadge(o.status)+'</strong></div><div class="detail-card"><label>Purchase Request</label><div>'+esc(o.purchase_request_no||"—")+'</div></div><div class="detail-card"><label>Project</label><div>'+esc(o.project_name)+'<br><small>'+esc(o.project_location||"")+'</small></div></div><div class="detail-card"><label>Requester</label><div>'+esc(o.requester_name||"—")+'</div></div><div class="detail-card"><label>Supplier</label><div>'+esc(o.supplier_name)+'<br><small>'+esc(o.supplier_contact||"")+(o.supplier_id?" • Registered Supplier":"")+'</small></div></div><div class="detail-card"><label>PO Date</label><div>'+esc(fmtDate(o.po_date))+'</div></div><div class="detail-card"><label>Expected Delivery</label><div>'+esc(fmtDate(o.expected_delivery_date))+'</div></div><div class="detail-card full"><label>Payment / Delivery Terms</label><div>'+esc(o.payment_terms||"—")+' • '+esc(o.delivery_terms||"—")+'</div></div><div class="detail-card full"><label>Remarks</label><div>'+esc(o.remarks||"—")+'</div></div></div><div class="section-label">ORDER ITEMS</div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>'+items.map(i=>'<tr><td><strong>'+esc(i.material_name)+'</strong></td><td>'+esc(i.specifications||"—")+'</td><td>'+esc(i.quantity)+'</td><td>'+esc(i.unit)+'</td><td>'+money(i.unit_price)+'</td><td>'+money(i.line_total)+'</td></tr>').join("")+'</tbody></table></div><div class="total-box"><span>GRAND TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>';
- const editBtn=document.getElementById("detailEditButton");editBtn.style.display=["RECEIVED","CLOSED","CANCELLED"].includes(o.status)?"none":"inline-block";editBtn.textContent="EDIT PURCHASE ORDER";
- document.getElementById("detailPrintButton").style.display="inline-block";document.getElementById("detailPrintButton").textContent="PRINT / SAVE PDF";document.getElementById("detailPrimaryAction").style.display="none";document.getElementById("detailModal").style.display="flex";
+ const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
+ const items=state.orderItems.filter(i=>i.purchase_order_id===id);
+ state.activeOrderId=id;state.activeRequestId=null;
+ const title=document.getElementById("detailTitle");
+ title.dataset.type="PO";
+ title.textContent="PURCHASE ORDER DETAILS";
+
+ const itemsHtml=items.map(i=>{
+   const remaining=Math.max(Number(i.quantity||0)-Number(i.confirmed_quantity||0),0);
+   return '<tr>'+
+     '<td><strong>'+esc(i.material_name)+'</strong></td>'+
+     '<td>'+esc(i.specifications||"—")+'</td>'+
+     '<td>'+esc(i.quantity)+'</td>'+
+     '<td>'+esc(i.unit)+'</td>'+
+     '<td>'+supplyBadge(i.supply_status)+'</td>'+
+     '<td>'+esc(i.confirmed_quantity??0)+'</td>'+
+     '<td>'+esc(i.received_quantity??0)+'</td>'+
+     '<td>'+esc(remaining)+'</td>'+
+     '<td>'+money(i.unit_price)+'</td>'+
+     '<td>'+money(i.line_total)+'</td>'+
+     '<td><button type="button" class="mini blue" data-supply-item="'+esc(i.purchase_order_item_id)+'">MANAGE SUPPLY</button></td>'+
+   '</tr>';
+ }).join("");
+
+ const supplyRows=items.length?itemsHtml:'<tr><td colspan="11" class="empty">No order items found.</td></tr>';
+
+ document.getElementById("detailBody").innerHTML=
+   '<div class="detail-grid">'+
+     '<div class="detail-card"><label>PO No.</label><strong>'+esc(o.po_no)+'</strong></div>'+
+     '<div class="detail-card"><label>Status</label><strong>'+statusBadge(o.status)+'</strong></div>'+
+     '<div class="detail-card"><label>Purchase Request</label><div>'+esc(o.purchase_request_no||"—")+'</div></div>'+
+     '<div class="detail-card"><label>Project</label><div>'+esc(o.project_name)+'<br><small>'+esc(o.project_location||"")+'</small></div></div>'+
+     '<div class="detail-card"><label>Requester</label><div>'+esc(o.requester_name||"—")+'</div></div>'+
+     '<div class="detail-card"><label>Supplier</label><div>'+esc(o.supplier_name)+'<br><small>'+esc(o.supplier_contact||"")+(o.supplier_id?" • Registered Supplier":"")+'</small></div></div>'+
+     '<div class="detail-card"><label>PO Date</label><div>'+esc(fmtDate(o.po_date))+'</div></div>'+
+     '<div class="detail-card"><label>Expected Delivery</label><div>'+esc(fmtDate(o.expected_delivery_date))+'</div></div>'+
+     '<div class="detail-card full"><label>Payment / Delivery Terms</label><div>'+esc(o.payment_terms||"—")+' • '+esc(o.delivery_terms||"—")+'</div></div>'+
+     '<div class="detail-card full"><label>Remarks</label><div>'+esc(o.remarks||"—")+'</div></div>'+
+   '</div>'+
+   '<div class="section-label">MATERIAL SUPPLY TRACKING</div>'+
+   '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Remaining</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
+   '<div class="total-box"><span>PO TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>';
+
+ document.querySelectorAll("[data-supply-item]").forEach(b=>b.addEventListener("click",()=>openSupplyModal(b.dataset.supplyItem)));
+
+ const editBtn=document.getElementById("detailEditButton");
+ editBtn.style.display=["RECEIVED","CLOSED","CANCELLED"].includes(o.status)?"none":"inline-block";
+ editBtn.textContent="EDIT PURCHASE ORDER";
+ document.getElementById("detailPrintButton").style.display="inline-block";
+ document.getElementById("detailPrintButton").textContent="PRINT / SAVE PDF";
+ document.getElementById("detailPrimaryAction").style.display="none";
+ document.getElementById("detailModal").style.display="flex";
 }
 async function deletePurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
