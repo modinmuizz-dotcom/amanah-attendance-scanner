@@ -524,14 +524,17 @@
       '</div>'+
       '<div class="curve-coordinate-grid">'+
         '<div class="curve-point-label">PC — START OF CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-pc-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.208600"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-pc-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.265885"></div>'+
+        '<div class="map-field"><label>PC STATION (m)</label><input autocomplete="off" class="curve-pc-station-input" type="number" min="0" step="0.001" inputmode="decimal" placeholder="e.g. 500"></div>'+
         '<div class="curve-point-label">P1 — POINT ON CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-p1-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.210000"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-p1-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.268000"></div>'+
+        '<div class="map-field"><label>P1 STATION (m)</label><input autocomplete="off" class="curve-p1-station-input" type="number" min="0" step="0.001" inputmode="decimal" placeholder="e.g. 550"></div>'+
         '<div class="curve-point-label">PT — END OF CURVE</div>'+
-        '<div class="map-field"><label>LATITUDE</label><input autocomplete="off" class="curve-pt-lat" type="number" step="0.000001" inputmode="decimal" placeholder="7.212000"></div>'+
-        '<div class="map-field"><label>LONGITUDE</label><input autocomplete="off" class="curve-pt-lng" type="number" step="0.000001" inputmode="decimal" placeholder="124.271000"></div>'+
+        '<div class="map-field"><label>PT STATION (m)</label><input autocomplete="off" class="curve-pt-station-input" type="number" min="0" step="0.001" inputmode="decimal" placeholder="e.g. 600"></div>'+
+        '<div class="map-field"><label>RADIUS (m)</label><input autocomplete="off" class="curve-radius-input" type="number" min="0.01" step="0.001" inputmode="decimal" placeholder="e.g. 150"></div>'+
+        '<div class="map-field"><label>DIRECTION</label><select class="curve-direction-input"><option value="LEFT">LEFT</option><option value="RIGHT">RIGHT</option></select></div>'+
+      '</div>'+
+      '<div class="curve-calculated-coordinates">'+
+        '<span>CALCULATED GEOMETRY</span>'+
+        '<small class="curve-calculated-coords">PC — • P1 — • PT —</small>'+
       '</div>'+
       '<div class="curve-result-grid">'+
         '<div><span>DIRECTION</span><strong class="curve-direction">—</strong></div>'+
@@ -543,13 +546,17 @@
         '<div><span>PT STATION</span><strong class="curve-pt-station">—</strong></div>'+
       '</div>';
 
-    const set=(cls,v)=>{
+    const setVal=(cls,v)=>{
       const el=row.querySelector(cls);
-      if(el&&v!==undefined&&v!==null)el.value=Number(v).toFixed(6);
+      if(el&&v!==undefined&&v!==null)el.value=String(v);
     };
-    set('.curve-pc-lat',data.pc_lat); set('.curve-pc-lng',data.pc_lng);
-    set('.curve-p1-lat',data.p1_lat); set('.curve-p1-lng',data.p1_lng);
-    set('.curve-pt-lat',data.pt_lat); set('.curve-pt-lng',data.pt_lng);
+    const meta=data.metadata||{};
+    setVal('.curve-pc-station',data.station_start_m??meta.pc_station_m??data.pc_station_m);
+    setVal('.curve-p1-station',data.p1_station_m??meta.p1_station_m);
+    setVal('.curve-pt-station',data.station_end_m??meta.pt_station_m);
+    setVal('.curve-radius-input',data.radius_m);
+    const dir=row.querySelector('.curve-direction-input');
+    if(dir&&data.direction)dir.value=String(data.direction).toUpperCase()==='RIGHT'?'RIGHT':'LEFT';
 
     row.querySelector('.project-remove-curve').addEventListener('click',()=>{
       row.remove();
@@ -557,7 +564,11 @@
       updateProjectDistanceSummary();
       if(projectAlignmentState?.mode==='CUSTOM_CURVE') updateEngineeringPreview(false);
     });
-    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{
+    row.querySelectorAll('input,select').forEach(input=>input.addEventListener('input',()=>{
+      updateProjectDistanceSummary();
+      if(projectAlignmentState?.mode==='CUSTOM_CURVE') updateEngineeringPreview(false);
+    }));
+    row.querySelectorAll('select').forEach(input=>input.addEventListener('change',()=>{
       updateProjectDistanceSummary();
       if(projectAlignmentState?.mode==='CUSTOM_CURVE') updateEngineeringPreview(false);
     }));
@@ -577,17 +588,30 @@
   function readCurveElementsFromInputs(){
     const curves=[];
     for(const row of getCurveRows()){
-      const read=(cls,label,min,max)=>{
+      const read=(cls,label,min)=>{
         const raw=String(row.querySelector(cls)?.value||'').trim();
         if(raw==='')throw new Error(label+' is required.');
         const v=Number(raw);
-        if(!Number.isFinite(v)||v<min||v>max)throw new Error(label+' is invalid.');
+        if(!Number.isFinite(v)||v<min)throw new Error(label+' is invalid.');
         return v;
       };
+      const pcStation=read('.curve-pc-station-input','PC station',0);
+      const p1Station=read('.curve-p1-station-input','P1 station',0);
+      const ptStation=read('.curve-pt-station-input','PT station',0);
+      const radius=read('.curve-radius-input','Curve radius',0.01);
+      const direction=String(row.querySelector('.curve-direction-input')?.value||'LEFT').toUpperCase();
+      if(p1Station<=pcStation||ptStation<=p1Station){
+        throw new Error('Curve stations must be PC < P1 < PT.');
+      }
+      const arcLength=ptStation-pcStation;
+      const deltaDeg=(arcLength/radius)*RAD_TO_DEG;
+      if(deltaDeg>=179.9)throw new Error('Curve deflection is too large. Increase the radius or reduce the PC → PT station range.');
       curves.push({
-        pc:{lat:read('.curve-pc-lat','PC latitude',-90,90),lng:read('.curve-pc-lng','PC longitude',-180,180)},
-        p1:{lat:read('.curve-p1-lat','P1 latitude',-90,90),lng:read('.curve-p1-lng','P1 longitude',-180,180)},
-        pt:{lat:read('.curve-pt-lat','PT latitude',-90,90),lng:read('.curve-pt-lng','PT longitude',-180,180)}
+        pc_station_m:pcStation,
+        p1_station_m:p1Station,
+        pt_station_m:ptStation,
+        radius_m:radius,
+        direction:direction==='RIGHT'?'RIGHT':'LEFT'
       });
     }
     return curves;
@@ -601,9 +625,12 @@
       .filter(e=>String(e.element_type||'').toUpperCase()==='CIRCULAR_CURVE')
       .sort((a,b)=>Number(a.sequence_no||0)-Number(b.sequence_no||0));
     curves.forEach(e=>addCurveRow({
-      pc_lat:e.pc_lat,pc_lng:e.pc_lng,
-      p1_lat:e.p1_lat,p1_lng:e.p1_lng,
-      pt_lat:e.pt_lat,pt_lng:e.pt_lng
+      station_start_m:e.station_start_m,
+      p1_station_m:e.p1_station_m??e.metadata?.p1_station_m,
+      station_end_m:e.station_end_m,
+      radius_m:e.radius_m,
+      direction:e.direction,
+      metadata:e.metadata||{}
     }));
     renumberCurveRows();
   }
