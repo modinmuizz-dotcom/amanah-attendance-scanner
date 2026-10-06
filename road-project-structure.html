@@ -43,7 +43,7 @@
       <div class="panel-head">
         <div>
           <h2>PROJECT MAP</h2>
-          <p>Define the project alignment from start/end coordinates, add curve control points when needed, then save the exact geometry to AMANAH.</p>
+          <p>Define the primary road alignment from start/end coordinates and station-based curve elements, then save the alignment as the source of truth for the project.</p>
         </div>
         <span class="map-project-chip" id="roadMapProjectName">ROAD PROJECT</span>
       </div>
@@ -97,7 +97,6 @@
           <div class="map-toolbar-actions project-alignment-actions">
             <button class="soft-btn" id="projectGenerateAlignment" type="button">GENERATE ALIGNMENT</button>
             <button class="soft-btn" id="projectSaveAlignment" type="button">SAVE ALIGNMENT COORDINATES</button>
-            <button class="secondary-btn" id="projectUseMapCenter" type="button">USE MAP CENTER</button>
           </div>
         </div>
         <div class="project-distance-summary" id="projectDistanceSummary">
@@ -224,7 +223,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=38"></script>
+  <script src="road-project-map.js?v=39"></script>
   <script src="road-project-structure.js?v=3"></script>
 </body>
 </html>
