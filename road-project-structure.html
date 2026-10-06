@@ -99,8 +99,24 @@
             <button class="secondary-btn" id="projectUseMapCenter" type="button">USE MAP CENTER</button>
           </div>
         </div>
+        <div id="projectControlPointEditor" class="project-control-point-editor" style="display:none">
+          <div class="project-control-head">
+            <div>
+              <strong>CURVE CONTROL POINTS</strong>
+              <span>Add the intermediate coordinates that the road follows.</span>
+            </div>
+            <div class="button-cluster">
+              <button class="secondary-btn" id="projectAddControlPoint" type="button">+ ADD COORDINATE</button>
+              <button class="secondary-btn" id="projectClearControlPoints" type="button">CLEAR POINTS</button>
+            </div>
+          </div>
+          <div id="projectControlPointRows" class="project-control-point-rows"></div>
+          <div class="project-control-point-note">
+            You can type the coordinates manually <strong>or click the road on the map</strong>. Each intermediate coordinate becomes part of the project alignment.
+          </div>
+        </div>
         <div class="project-alignment-help" id="projectAlignmentHelp">
-          Enter start/end coordinates. Choose CUSTOM CURVE to add intermediate points by clicking the road on the map.
+          Enter start/end coordinates. Choose CUSTOM CURVE to add intermediate points by coordinates or by clicking the road.
         </div>
       </div>
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
@@ -195,7 +211,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=24"></script>
+  <script src="road-project-map.js?v=25"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
