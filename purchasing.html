@@ -79,7 +79,7 @@
       <div class="toolbar">
         <div class="filters">
           <div class="field"><label>Search</label><input id="poSearch" placeholder="PO no. / supplier / project"></div>
-          <div class="field"><label>Status</label><select id="poStatus"><option value="">ALL STATUS</option><option>DRAFT</option><option>APPROVED</option><option>SENT TO SUPPLIER</option><option>PARTIALLY RECEIVED</option><option>RECEIVED</option><option>CANCELLED</option><option>CLOSED</option></select></div>
+          <div class="field"><label>Status</label><select id="poStatus"><option value="">ALL STATUS</option><option>DRAFT</option><option>APPROVED</option><option>SENT TO SUPPLIER</option><option>WAITING FOR SUPPLIER</option><option>PARTIALLY FULFILLED</option><option>PARTIALLY RECEIVED</option><option>RECEIVED</option><option>CANCELLED</option><option>CLOSED</option></select></div>
           <div class="field"><label>Project</label><select id="poProject"></select></div>
           <div class="field"><button class="btn gray" id="clearPoFilters" type="button">CLEAR</button></div>
         </div>
@@ -128,6 +128,86 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="supplyModal">
+  <div class="modal" style="width:min(760px,100%)">
+    <div class="modal-head">
+      <div>
+        <h3>MANAGE MATERIAL SUPPLY</h3>
+        <div id="supplyFromPO" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div>
+      </div>
+      <button class="modal-x" id="closeSupply" type="button">×</button>
+    </div>
+    <div class="form-section">
+      <div id="supplyValidation" style="display:none;margin-bottom:14px;padding:11px 13px;border:1px solid #fecaca;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:900"></div>
+      <div class="detail-grid">
+        <div class="detail-card"><label>MATERIAL</label><strong id="supplyMaterial">—</strong></div>
+        <div class="detail-card"><label>SPECIFICATIONS</label><strong id="supplySpecifications">—</strong></div>
+        <div class="detail-card"><label>ORDERED QTY</label><strong id="supplyOrderedQty">—</strong></div>
+        <div class="detail-card"><label>UNIT</label><strong id="supplyUnit">—</strong></div>
+      </div>
+
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field">
+          <label>SUPPLY STATUS</label>
+          <select id="supplyStatus">
+            <option>PENDING SUPPLIER CONFIRMATION</option>
+            <option>AVAILABLE</option>
+            <option>BACKORDERED</option>
+            <option>PARTIALLY AVAILABLE</option>
+            <option>UNAVAILABLE</option>
+            <option>SUBSTITUTE PROPOSED</option>
+            <option>SUBSTITUTE APPROVED</option>
+            <option>CANCELLED</option>
+            <option>RECEIVED</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>UNIT PRICE <span style="color:#64748b;font-size:8px">(OPTIONAL)</span></label>
+          <input id="supplyUnitPrice" type="number" min="0" step="0.01" placeholder="Enter once supplier confirms price">
+        </div>
+        <div class="field">
+          <label>CONFIRMED QTY</label>
+          <input id="supplyConfirmedQty" type="number" min="0" step="0.001" placeholder="0">
+        </div>
+        <div class="field">
+          <label>RECEIVED QTY</label>
+          <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0">
+        </div>
+        <div class="field">
+          <label>EXPECTED AVAILABILITY</label>
+          <input id="supplyAvailabilityDate" type="date">
+        </div>
+        <div class="field">
+          <label>SUBSTITUTE STATUS</label>
+          <select id="supplySubstituteStatus">
+            <option value="NONE">NONE</option>
+            <option value="PROPOSED">PROPOSED</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>PROPOSED SUBSTITUTE MATERIAL</label>
+          <input id="supplySubstituteMaterial" placeholder="Example: REBAR 12MM">
+        </div>
+        <div class="field full">
+          <label>PROPOSED SUBSTITUTE SPECIFICATIONS</label>
+          <input id="supplySubstituteSpecifications" placeholder="Alternative brand / grade / size">
+        </div>
+        <div class="field full">
+          <label>SUPPLIER REMARKS</label>
+          <textarea id="supplySupplierRemarks" placeholder="Example: 10mm rebar unavailable; 12mm available next week."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn gray" id="cancelSupply" type="button">CANCEL</button>
+      <button class="btn blue" id="sourceAlternative" type="button" style="display:none">SOURCE ALTERNATIVE SUPPLIER</button>
+      <button class="btn green" id="saveSupply" type="button">SAVE SUPPLY STATUS</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="poModal">
   <div class="modal">
     <div class="modal-head"><div><h3 id="poModalTitle">CREATE PURCHASE ORDER</h3><div id="poFromRequest" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div></div><button class="modal-x" id="closePo" type="button">×</button></div>
@@ -151,7 +231,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=15"></script>
+<script src="purchasing.js?v=16"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
