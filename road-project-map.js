@@ -893,6 +893,7 @@
       if(projectAlignmentState?.mode==='CUSTOM_CURVE'){
         projectAlignmentState.controlPoints.push({lat:e.latlng.lat,lng:e.latlng.lng});
         addControlPointRow(e.latlng.lat,e.latlng.lng);
+        updateProjectDistanceSummary();
         renderProjectPreview();
         setDrawMessage('Control point '+projectAlignmentState.controlPoints.length+' added. Continue clicking bends or click SAVE ALIGNMENT.','info');
         return;
