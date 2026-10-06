@@ -9,7 +9,6 @@
   let drawMode=null;
   let mapCenterMode=false;
   let pointMode=null;
-  let centerMarker=null;
   let pointLayer=null;
   let statusLayer=null;
   let basemapLayer=null;
@@ -39,7 +38,6 @@
   function clearMapLayers(){
     if(drawnItems) drawnItems.clearLayers();
     if(statusLayer){statusLayer.clearLayers();} 
-    if(centerMarker){centerMarker.remove();centerMarker=null;}
     if(pointLayer){pointLayer.clearLayers();}
   }
 
@@ -53,17 +51,6 @@
   function renderLayers(){
     clearMapLayers();
     if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
-
-    projectData.sections.forEach(s=>{
-      if(s.start_lat!=null && s.start_lng!=null){
-        const m=L.marker([Number(s.start_lat),Number(s.start_lng)],{title:'Start Point'}).addTo(statusLayer);
-        m.bindPopup('<strong>START POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.start_lat).toFixed(6))+' • Lng '+esc(Number(s.start_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_start_m)));
-      }
-      if(s.end_lat!=null && s.end_lng!=null){
-        const m=L.marker([Number(s.end_lat),Number(s.end_lng)],{title:'End Point'}).addTo(statusLayer);
-        m.bindPopup('<strong>END POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.end_lat).toFixed(6))+' • Lng '+esc(Number(s.end_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_end_m)));
-      }
-    });
 
     projectData.sections.forEach(s=>{
       if(!s.geometry?.coordinates)return;
@@ -367,8 +354,6 @@
     const {error}=await client.rpc('save_road_project_map_center',{p_project_id:projectId,p_map_lat:lat,p_map_lng:lng,p_map_zoom:zoom,p_project_details:merged});
     if(error){setDrawMessage(error.message||'Unable to save project map center.','err');return;}
     projectData.project.project_details=merged;
-    if(centerMarker)centerMarker.remove();
-    centerMarker=L.marker([lat,lng]).addTo(statusLayer).bindPopup('<strong>PROJECT MAP CENTER</strong>');
     setDrawMessage('Project map center saved.','ok');
   }
 
