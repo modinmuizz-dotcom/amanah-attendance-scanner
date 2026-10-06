@@ -803,7 +803,10 @@
 
       pushTangent(pcStation);
 
-      const sign=curve.direction==='RIGHT'?-1:1;
+      // In a local ENU frame, positive heading is clockwise from north.
+      // Left-hand road curves turn clockwise around a center located to the left;
+      // right-hand curves turn counter-clockwise around a center located to the right.
+      const sign=curve.direction==='LEFT'?-1:1;
       const leftNormal={x:-Math.cos(heading),y:Math.sin(heading)};
       const center={
         x:current.x+leftNormal.x*sign*radius,
