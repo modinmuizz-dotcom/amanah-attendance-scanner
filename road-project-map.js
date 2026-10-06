@@ -487,16 +487,8 @@
 
     updateProjectDistanceSummary();
 
-    if(active){
-      const d=projectData.project?.project_details||{};
-      const lat=Number(d.map_lat),lng=Number(d.map_lng);
-      if(panel && !qs('projectStartLat').value && Number.isFinite(lat)&&Number.isFinite(lng)){
-        qs('projectStartLat').value=lat.toFixed(6);
-        qs('projectStartLng').value=lng.toFixed(6);
-        qs('projectEndLat').value='';
-        qs('projectEndLng').value='';
-      }
-    }
+    // Keep coordinate inputs blank until the engineer explicitly enters them
+    // or clicks USE MAP CENTER.
   }
 
   function readCoordinateInputsSilently(){
@@ -707,7 +699,10 @@
         built.geometry.coordinates.map(c=>[c[1],c[0]]),
         {color:'#7c3aed',weight:6,opacity:.95,dashArray:showMessage?'10 7':null,interactive:false}
       ).addTo(map);
-      if(showMessage)setDrawMessage('Engineering alignment preview generated from tangent and circular curve elements.','ok');
+      if(showMessage){
+        focusAlignmentMap(built.geometry.coordinates.map(c=>[c[1],c[0]]));
+        setDrawMessage('Engineering alignment preview generated from tangent and circular curve elements.','ok');
+      }
       return built;
     }catch(error){
       updateCurveElementResults([]);
@@ -764,6 +759,17 @@
     return saveProjectCoordinateAlignment({mode:s.mode,built});
   }
 
+  function focusAlignmentMap(bounds){
+    const mapEl=qs('roadMap');
+    if(bounds?.length&&map){
+      map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
+    }
+    if(mapEl){
+      mapEl.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    setTimeout(()=>map?.invalidateSize({animate:false}),250);
+  }
+
   async function saveProjectCoordinateAlignment({mode,built}){
     setDrawMessage('Saving project alignment...','info');
     const {data,error}=await client.rpc('save_road_project_alignment',{
@@ -789,7 +795,7 @@
     showCurveEditor(false);
 
     const bounds=allGeometryBounds();
-    if(bounds.length)map.fitBounds(L.latLngBounds(bounds),{padding:[35,35],animate:false});
+    focusAlignmentMap(bounds);
     setDrawMessage('Project alignment saved with '+built.elements.length+' alignment element(s).','ok');
     updateProjectDistanceSummary();
     await loadData();
@@ -819,6 +825,21 @@
     const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
     drawer.enable();
     setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
+  }
+
+  function curvesForMapBounds(){
+    const points=[];
+    getCurveRows().forEach(row=>{
+      [
+        ['.curve-pc-lat','.curve-pc-lng'],
+        ['.curve-p1-lat','.curve-p1-lng'],
+        ['.curve-pt-lat','.curve-pt-lng']
+      ].forEach(([la,ln])=>{
+        const lat=Number(row.querySelector(la)?.value),lng=Number(row.querySelector(ln)?.value);
+        if(Number.isFinite(lat)&&Number.isFinite(lng))points.push([lat,lng]);
+      });
+    });
+    return points;
   }
 
   async function handleProjectGenerateAlignment(){
@@ -853,6 +874,12 @@
           if(!getCurveRows().length)addCurveRow();
         }
         updateEngineeringPreview(true);
+        const bounds=[
+          [coords.start.lat,coords.start.lng],
+          [coords.end.lat,coords.end.lng],
+          ...curvesForMapBounds()
+        ];
+        focusAlignmentMap(bounds);
         const button=qs('projectGenerateAlignment');
         if(button)button.textContent='SAVE ALIGNMENT';
         setDrawMessage('Define each circular curve with PC, P1 and PT. Add more curve elements as needed, then click SAVE ALIGNMENT.','info');
