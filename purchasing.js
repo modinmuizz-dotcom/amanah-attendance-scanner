@@ -565,14 +565,21 @@ function currentRequestedQuantity(requestItemId){
  return Number(item?.quantity||0);
 }
 
-function confirmedQuantityForRequestItem(requestItemId){
+function effectiveProcurementQuantityForRequestItem(requestItemId){
  return state.orderItems
-   .filter(x=>x.purchase_request_item_id===requestItemId && String(x.supply_status||"PENDING SUPPLIER CONFIRMATION")!=="CANCELLED")
-   .reduce((sum,x)=>sum+Number(x.confirmed_quantity||0),0);
+   .filter(x=>x.purchase_request_item_id===requestItemId)
+   .reduce((sum,x)=>{
+     const status=String(x.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+     if(["UNAVAILABLE","CANCELLED"].includes(status))return sum;
+     if(status==="PARTIALLY AVAILABLE")return sum+Number(x.confirmed_quantity||0);
+     if(status==="RECEIVED")return sum+Number(x.received_quantity||0);
+     if(status==="AVAILABLE" || status==="SUBSTITUTE APPROVED")return sum+Number(x.confirmed_quantity||0);
+     return sum+Number(x.quantity||0);
+   },0);
 }
 
 function sourceRemainingQuantity(requestItemId){
- return Math.max(currentRequestedQuantity(requestItemId)-confirmedQuantityForRequestItem(requestItemId),0);
+ return Math.max(currentRequestedQuantity(requestItemId)-effectiveProcurementQuantityForRequestItem(requestItemId),0);
 }
 
 function refreshPoSupplierOptions(excludeSupplierId=null){
