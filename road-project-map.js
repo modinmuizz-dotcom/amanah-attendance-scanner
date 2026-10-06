@@ -13,6 +13,7 @@
   let pointLayer=null;
   let statusLayer=null;
   let basemapLayer=null;
+  let mapProgressProcess='ALL';
 
   const qs=id=>document.getElementById(id);
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -177,20 +178,37 @@
     return out.length>=2?out:[];
   }
 
+  function getFilteredActivities(componentId){
+    return (projectData.activities||[]).filter(a=>{
+      if(a.work_component_id!==componentId)return false;
+      if(String(a.approval_status||'').toUpperCase()!=='APPROVED')return false;
+      if(mapProgressProcess==='ALL')return true;
+      return String(a.activity_type||'').trim().toUpperCase()===mapProgressProcess;
+    });
+  }
+
   function getComponentApprovedQuantity(componentId){
-    return (projectData.activities||[])
-      .filter(a=>a.work_component_id===componentId && String(a.approval_status||'').toUpperCase()==='APPROVED')
-      .reduce((sum,a)=>{
-        const q=Number(a.accomplishment);
-        return sum+(Number.isFinite(q)?q:0);
-      },0);
+    return getFilteredActivities(componentId).reduce((sum,a)=>{
+      const q=Number(a.accomplishment);
+      return sum+(Number.isFinite(q)&&q>0?q:0);
+    },0);
+  }
+
+  function getComponentPlannedQuantity(component){
+    if(mapProgressProcess==='ALL'){
+      return Math.max(0,Number(component.planned_quantity)||Math.max(0,Number(component.station_end_m)-Number(component.station_start_m)));
+    }
+    return getFilteredActivities(component.work_component_id).reduce((sum,a)=>{
+      const q=Number(a.activity_quantity);
+      return sum+(Number.isFinite(q)&&q>0?q:0);
+    },0);
   }
 
   function getComponentProgress(component){
     const start=Number(component.station_start_m);
     const end=Number(component.station_end_m);
     const length=Math.max(0,end-start);
-    const planned=Math.max(0,Number(component.planned_quantity)||length);
+    const planned=Math.max(0,getComponentPlannedQuantity(component));
     const approved=getComponentApprovedQuantity(component.work_component_id);
     const completed=Math.min(length,approved);
     return {
@@ -198,7 +216,8 @@
       planned,
       approved,
       completed,
-      percent:planned>0?Math.min(100,(approved/planned)*100):0
+      percent:planned>0?Math.min(100,(approved/planned)*100):0,
+      hasProcessActivities:getFilteredActivities(component.work_component_id).length>0
     };
   }
 
@@ -252,7 +271,7 @@
           title:label,
           subtitle:'Derived from PRIMARY ROAD ALIGNMENT • road width '+roadWidth.toFixed(2)+' m',
           station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
-          progress:progress?('PROGRESS '+progress.percent.toFixed(1)+'% • APPROVED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+          progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACCOMPLISHED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
         },
         {color:baseColor,weight:5,opacity:.92}
       );
@@ -296,7 +315,7 @@
             title:label,
             subtitle:'Derived from PRIMARY ROAD ALIGNMENT • shoulder width '+shoulderWidth.toFixed(2)+' m',
             station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
-            progress:progress?('PROGRESS '+progress.percent.toFixed(1)+'% • APPROVED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+            progress:progress?(('PROCESS: '+(mapProgressProcess==='ALL'?'ALL PROCESSES':mapProgressProcess))+' • PROGRESS '+progress.percent.toFixed(1)+'% • ACCOMPLISHED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
           },
           {
             // Shoulder is geometric reference data, not a progress status.
@@ -375,8 +394,14 @@
   function updateMapSummary(){
     const nSections=projectData.sections.filter(s=>s.geometry).length;
     const nComponents=projectData.components.filter(c=>c.geometry).length;
+    const processLabel={
+      ALL:'ALL PROCESSES',
+      'ROAD EMBANKMENT':'ROAD EMBANKMENT',
+      'BASE PREPARATION':'BASE PREPARATION',
+      'CONCRETE POURING':'CONCRETE POURING'
+    }[mapProgressProcess]||'ALL PROCESSES';
     const el=qs('roadMapSummary');
-    if(el)el.textContent=(projectData.alignment?'1 project alignment • ':'0 project alignments • ')+nSections+' section alignment'+(nSections===1?'':'s')+' • '+nComponents+' component line'+(nComponents===1?'':'s');
+    if(el)el.textContent=(projectData.alignment?'1 project alignment • ':'0 project alignments • ')+nSections+' section alignment'+(nSections===1?'':'s')+' • '+nComponents+' component line'+(nComponents===1?'':'s')+' • PROCESS: '+processLabel;
   }
 
   function populateTargets(){
@@ -552,7 +577,7 @@
       try{
         const activityResult=await withTimeout(
           client.from('project_activities')
-            .select('activity_id,work_component_id,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
+            .select('activity_id,work_component_id,activity_type,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
             .eq('project_id',projectId)
             .eq('approval_status','APPROVED'),
           4000,'Activity progress'
@@ -1623,6 +1648,12 @@
       populateTargets();
       updateProjectAlignmentControls();
     });
+    qs('mapProgressProcess')?.addEventListener('change',()=>{
+      mapProgressProcess=String(qs('mapProgressProcess')?.value||'ALL').toUpperCase();
+      renderLayers();
+      updateMapSummary();
+    });
+
     qs('projectSaveAlignment')?.addEventListener('click',saveCurrentAlignmentCoordinates);
     qs('projectGenerateAlignment')?.addEventListener('click',handleProjectGenerateAlignment);
     qs('projectAddCurve')?.addEventListener('click',()=>{
