@@ -69,6 +69,40 @@
           <button class="secondary-btn" id="mapSetCenter" type="button">SET MAP CENTER</button>
         </div>
       </div>
+      <div id="projectAlignmentControls" class="project-alignment-controls" style="display:none">
+        <div class="project-alignment-grid">
+          <div class="map-field">
+            <label>START LATITUDE</label>
+            <input id="projectStartLat" type="number" step="0.000001" inputmode="decimal" placeholder="7.208600">
+          </div>
+          <div class="map-field">
+            <label>START LONGITUDE</label>
+            <input id="projectStartLng" type="number" step="0.000001" inputmode="decimal" placeholder="124.265885">
+          </div>
+          <div class="map-field">
+            <label>END LATITUDE</label>
+            <input id="projectEndLat" type="number" step="0.000001" inputmode="decimal" placeholder="7.220150">
+          </div>
+          <div class="map-field">
+            <label>END LONGITUDE</label>
+            <input id="projectEndLng" type="number" step="0.000001" inputmode="decimal" placeholder="124.281420">
+          </div>
+          <div class="map-field">
+            <label>ALIGNMENT METHOD</label>
+            <select id="projectAlignmentMode">
+              <option value="STRAIGHT">STRAIGHT LINE</option>
+              <option value="CUSTOM_CURVE">CUSTOM CURVE</option>
+            </select>
+          </div>
+          <div class="map-toolbar-actions project-alignment-actions">
+            <button class="soft-btn" id="projectGenerateAlignment" type="button">GENERATE ALIGNMENT</button>
+            <button class="secondary-btn" id="projectUseMapCenter" type="button">USE MAP CENTER</button>
+          </div>
+        </div>
+        <div class="project-alignment-help" id="projectAlignmentHelp">
+          Enter start/end coordinates. Choose CUSTOM CURVE to add intermediate points by clicking the road on the map.
+        </div>
+      </div>
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
       <div id="roadMap" class="road-map-canvas">
         <div id="roadMapLeaflet"></div>
@@ -166,7 +200,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=22"></script>
+  <script src="road-project-map.js?v=23"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
