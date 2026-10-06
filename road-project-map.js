@@ -1213,8 +1213,9 @@
     const s=projectAlignmentState;
     if(!s)return;
     let built;
+    let curves=[];
     try{
-      const curves=s.mode==='CUSTOM_CURVE'?readCurveElementsFromInputs():[];
+      curves=s.mode==='CUSTOM_CURVE'?readCurveElementsFromInputs():[];
       built=buildEngineeringAlignment(s.start,s.end,curves);
       if(s.mode==='CUSTOM_CURVE'&&curves.length<1)throw new Error('CUSTOM CURVE requires at least one curve element.');
     }catch(error){
