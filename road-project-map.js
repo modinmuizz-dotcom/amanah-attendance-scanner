@@ -7,6 +7,8 @@
   let drawnItems=null;
   let projectData={project:null,phases:[],sections:[],components:[],alignment:null};
   let drawMode=null;
+  let projectDrawStart=null;
+  let projectPreviewLine=null;
   let mapCenterMode=false;
   let pointMode=null;
   let pointLayer=null;
@@ -292,20 +294,55 @@
     await loadData();
   }
 
+  function clearProjectPreview(){
+    if(projectPreviewLine){projectPreviewLine.remove();projectPreviewLine=null;}
+    projectDrawStart=null;
+  }
+
   function startLineDrawing(){
     const targetType=qs('mapTargetType').value;
     const targetId=qs('mapTarget').value;
     if(targetType!=='PROJECT'&&!targetId){setDrawMessage('Select a road section or work component first.','err');return;}
-    if(!window.L?.Draw){setDrawMessage('Map drawing tools are not available.','err');return;}
+    clearProjectPreview();
     drawMode={targetType,targetId};
-    const drawer=new L.Draw.Polyline(map,{shapeOptions:{
-      color:targetType==='PROJECT'?'#7c3aed':'#2563eb',
-      weight:targetType==='PROJECT'?6:5
-    }});
+
+    if(targetType==='PROJECT'){
+      map.doubleClickZoom.disable();
+      setDrawMessage('PROJECT ALIGNMENT: click once for START, move along the road, then DOUBLE-CLICK for END.','info');
+      return;
+    }
+
+    if(!window.L?.Draw){setDrawMessage('Map drawing tools are not available.','err');return;}
+    const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
     drawer.enable();
-    setDrawMessage(targetType==='PROJECT'
-      ? 'PROJECT ALIGNMENT: click along the actual road, then double-click to finish.'
-      : 'Click points along the actual project alignment, then double-click to finish the line.','info');
+    setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
+  }
+
+  async function saveProjectTwoPointLine(startLatLng,endLatLng){
+    if(!drawMode||drawMode.targetType!=='PROJECT')return;
+    const geojson={
+      type:'LineString',
+      coordinates:[
+        [Number(startLatLng.lng),Number(startLatLng.lat)],
+        [Number(endLatLng.lng),Number(endLatLng.lat)]
+      ]
+    };
+    setDrawMessage('Saving project alignment...','info');
+    const {data,error}=await client.rpc('save_road_project_alignment',{
+      p_project_id:new URLSearchParams(location.search).get('project_id'),
+      p_geojson:geojson,
+      p_source:'FREE_DRAW'
+    });
+    if(error){
+      setDrawMessage(error.message||'Unable to save project alignment.','err');
+      return;
+    }
+    projectData.alignment=data||null;
+    drawMode=null;
+    map.doubleClickZoom.enable();
+    clearProjectPreview();
+    setDrawMessage('Project alignment saved successfully.','ok');
+    await loadData();
   }
 
   async function saveDrawnGeometry(layer){
@@ -450,7 +487,14 @@
     map.whenReady(refreshMapSize);
     window.addEventListener('resize',refreshMapSize,{passive:true});
 
-    qs('mapTargetType')?.addEventListener('change',populateTargets);
+    qs('mapTargetType')?.addEventListener('change',()=>{
+      clearProjectPreview();
+      if(drawMode?.targetType==='PROJECT'){
+        drawMode=null;
+        map.doubleClickZoom.enable();
+      }
+      populateTargets();
+    });
     qs('mapDrawLine')?.addEventListener('click',startLineDrawing);
     qs('mapClearLine')?.addEventListener('click',clearSelectedGeometry);
     qs('mapStartPoint')?.addEventListener('click',()=>setPointMode('START'));
@@ -468,6 +512,17 @@
     });
 
     map.on('click',async e=>{
+      if(drawMode?.targetType==='PROJECT'){
+        if(!projectDrawStart){
+          projectDrawStart=e.latlng;
+          if(projectPreviewLine)projectPreviewLine.remove();
+          projectPreviewLine=L.polyline([projectDrawStart,projectDrawStart],{
+            color:'#7c3aed',weight:6,opacity:.9,dashArray:'8 6',interactive:false
+          }).addTo(map);
+          setDrawMessage('START POINT set. Move along the road and DOUBLE-CLICK where the project alignment ends.','info');
+        }
+        return;
+      }
       if(pointMode){
         const section=selectedSection();
         const kind=pointMode;
@@ -479,6 +534,25 @@
         qs('mapSetCenter').textContent='SET MAP CENTER';
         qs('mapSetCenter').classList.remove('active');
         await saveMapCenter(e.latlng.lat,e.latlng.lng);
+      }
+    });
+
+    map.on('mousemove',e=>{
+      if(drawMode?.targetType==='PROJECT'&&projectDrawStart){
+        if(!projectPreviewLine){
+          projectPreviewLine=L.polyline([projectDrawStart,e.latlng],{
+            color:'#7c3aed',weight:6,opacity:.9,dashArray:'8 6',interactive:false
+          }).addTo(map);
+        }else{
+          projectPreviewLine.setLatLngs([projectDrawStart,e.latlng]);
+        }
+      }
+    });
+
+    map.on('dblclick',async e=>{
+      if(drawMode?.targetType==='PROJECT'&&projectDrawStart){
+        e.originalEvent?.preventDefault?.();
+        await saveProjectTwoPointLine(projectDrawStart,e.latlng);
       }
     });
 
