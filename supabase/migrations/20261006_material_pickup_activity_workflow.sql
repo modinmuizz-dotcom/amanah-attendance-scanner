@@ -108,8 +108,7 @@ begin
       received_date=current_date,
       delivery_reference='ACTIVITY:'||new.activity_id::text,
       receiving_remarks=coalesce(receiving_remarks,'Material pickup completed through AMANAH Activity Calendar.'),
-      received_at=now(),
-      updated_at=now()
+      received_at=now()
   where purchase_order_item_id=v_pickup.purchase_order_item_id;
 
   update public.material_pickup_requests
