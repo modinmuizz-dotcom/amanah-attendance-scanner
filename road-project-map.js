@@ -558,7 +558,7 @@
 
   function bindButtons(){
     const q=(id,fn)=>qs(id)?.addEventListener('click',fn);
-    q('mapTargetType',populateTargets);
+    qs('mapTargetType')?.addEventListener('change',populateTargets);
     q('mapDrawLine',()=>{
       if(drawState)finishDrawing();
       else startLineDrawing();
