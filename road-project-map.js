@@ -640,8 +640,14 @@
     if(editor)editor.style.display=show?'block':'none';
   }
 
+  function updateProjectAlignmentPanelClass(active){
+    const panel=document.querySelector('.road-map-panel');
+    if(panel)panel.classList.toggle('project-alignment-active',!!active);
+  }
+
   function updateProjectAlignmentControls(){
     const active=qs('mapTargetType')?.value==='PROJECT';
+    updateProjectAlignmentPanelClass(active);
     const panel=qs('projectAlignmentControls');
     if(panel)panel.style.display=active?'block':'none';
 
@@ -1410,7 +1416,6 @@
       if(projectAlignmentState?.mode==='CUSTOM_CURVE') await finishCoordinateAlignmentSave();
       else await handleProjectGenerateAlignment();
     });
-    qs('projectUseMapCenter')?.addEventListener('click',useProjectMapCenter);
     qs('projectAddCurve')?.addEventListener('click',()=>{
       addCurveRow();
       if(qs('projectAlignmentMode').value==='CUSTOM_CURVE'){
