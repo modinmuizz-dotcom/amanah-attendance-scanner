@@ -421,25 +421,7 @@
     const mapEl=qs('roadMap');
     const leafletEl=qs('roadMapLeaflet')||mapEl;
     if(!mapEl||!window.L)return;
-    map=L.map(leafletEl,{
-      zoomControl:true,
-      dragging:true,
-      scrollWheelZoom:true,
-      doubleClickZoom:true,
-      touchZoom:true,
-      boxZoom:true,
-      keyboard:true,
-      tap:true
-    });
-    // Force normal Leaflet navigation on. Tool modes only change what a click means;
-    // they must never disable panning/zooming.
-    map.dragging.enable();
-    map.scrollWheelZoom.enable();
-    map.doubleClickZoom.enable();
-    map.touchZoom.enable();
-    map.boxZoom.enable();
-    map.keyboard.enable();
-    if(map.tap) map.tap.enable();
+    map=L.map(leafletEl,{zoomControl:true});
 
     // Try several public street-map tile providers. Some networks block
     // individual tile hosts, so AMANAH automatically rotates to the next one.
@@ -493,15 +475,16 @@
           if(providerIndex<basemapProviders.length-1){
             useBasemap(providerIndex+1);
           }else{
-            // Keep the real Leaflet map interactive; do not replace it with an iframe.
+            showEmbeddedMapFallback();
           }
         }
       });
     }
 
     useBasemap(0);
-    // Do not switch away from the real Leaflet map on a timer. The original
-    // AMANAH map remains the primary interactive map even when tile loading is slow.
+    setTimeout(()=>{
+      if(!tileLoaded) showEmbeddedMapFallback();
+    },4500);
 
     drawnItems=new L.FeatureGroup().addTo(map);
     statusLayer=L.layerGroup().addTo(map);
