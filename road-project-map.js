@@ -389,6 +389,49 @@
     location.reload();
   }
 
+  async function loadProjectDataForToolbar(){
+    const projectId=new URLSearchParams(location.search).get('project_id');
+    if(!projectId)return;
+    try{
+      const {data:projectRows,error:projectError}=await client.from('projects')
+        .select('project_id,project_name,location,project_type,project_details')
+        .eq('project_id',projectId).limit(1);
+      if(projectError||!projectRows?.length)return;
+      const {data:phases,error:phaseError}=await client.from('project_phases')
+        .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
+        .eq('project_id',projectId).order('sequence_no',{ascending:true});
+      if(phaseError)return;
+      const phaseRows=phases||[];
+      const phaseIds=phaseRows.map(x=>x.phase_id);
+      let sections=[];
+      if(phaseIds.length){
+        const {data,error}=await client.from('project_sections')
+          .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
+          .in('phase_id',phaseIds).order('station_start_m',{ascending:true});
+        if(error)return;
+        sections=data||[];
+      }
+      const sectionIds=sections.map(x=>x.section_id);
+      let components=[];
+      if(sectionIds.length){
+        const {data,error}=await client.from('project_work_components')
+          .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
+          .in('section_id',sectionIds).eq('is_active',true).order('sort_order',{ascending:true});
+        if(error)return;
+        components=data||[];
+      }
+      projectData={project:projectRows[0],phases:phaseRows,sections:sections.map(s=>({...s,geometry:null})),components:components.map(c=>({...c,geometry:null}))};
+      const name=qs('roadMapProjectName'); if(name)name.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
+      populateTargets();
+      const notice=qs('roadMapNotice');
+      if(notice&&!window.AMANAH_GOOGLE_MAPS_KEY){
+        notice.textContent='Google Maps API key required. Click GOOGLE MAP SETTINGS to connect the map.';
+        notice.className='road-map-notice info';
+        notice.style.display='block';
+      }
+    }catch(_){}
+  }
+
   function showKeyRequired(){
     const el=qs('roadMapLeaflet');
     if(!el)return;
@@ -416,7 +459,11 @@
     const el=qs('roadMapLeaflet');
     if(!el)return;
     const key=window.AMANAH_GOOGLE_MAPS_KEY||'';
-    if(!key){showKeyRequired();return;}
+    if(!key){
+      await loadProjectDataForToolbar();
+      showKeyRequired();
+      return;
+    }
 
     try{
       await loadGoogleScript(key);
