@@ -122,9 +122,16 @@
       target.innerHTML='<option value="PROJECT_ALIGNMENT">PRIMARY ROAD ALIGNMENT</option>';
       target.value='PROJECT_ALIGNMENT';
       target.disabled=true;
+      if(qs('mapStartPoint'))qs('mapStartPoint').disabled=true;
+      if(qs('mapEndPoint'))qs('mapEndPoint').disabled=true;
+      if(qs('mapDrawLine'))qs('mapDrawLine').textContent='DRAW PROJECT ALIGNMENT';
+      setDrawMessage('Project alignment selected: one click START, double-click END.','info');
       return;
     }
     target.disabled=false;
+    if(qs('mapStartPoint'))qs('mapStartPoint').disabled=false;
+    if(qs('mapEndPoint'))qs('mapEndPoint').disabled=false;
+    if(qs('mapDrawLine'))qs('mapDrawLine').textContent='DRAW / REPLACE LINE';
     if(targetType==='SECTION'){
       if(label)label.textContent='SELECT ROAD SECTION';
       target.innerHTML='<option value="">SELECT ROAD SECTION</option>'+projectData.sections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc(s.section_code+' — '+s.section_name)+' • '+esc(stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m))+'</option>').join('');
