@@ -131,6 +131,18 @@
           For CUSTOM CURVE, add one or more circular curve elements. Enter PC, P1 and PT for each curve, then generate the alignment.
         </div>
       </div>
+      <div class="map-process-filter">
+        <div class="map-field">
+          <label for="mapProgressProcess">MAP PROGRESS PROCESS</label>
+          <select id="mapProgressProcess">
+            <option value="ALL">ALL PROCESSES</option>
+            <option value="ROAD EMBANKMENT">ROAD EMBANKMENT</option>
+            <option value="BASE PREPARATION">BASE PREPARATION</option>
+            <option value="CONCRETE POURING">CONCRETE POURING</option>
+          </select>
+        </div>
+        <div class="map-process-help">Filter the map progress report by the three road-concreting processes.</div>
+      </div>
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
       <div id="roadMap" class="road-map-canvas">
         <div id="roadMapLeaflet"></div>
@@ -223,7 +235,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=46"></script>
+  <script src="road-project-map.js?v=48"></script>
   <script src="road-project-structure.js?v=3"></script>
 </body>
 </html>
