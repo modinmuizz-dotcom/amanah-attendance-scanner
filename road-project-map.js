@@ -958,6 +958,15 @@
     }
 
     projectData.alignment=data||null;
+
+    // The primary alignment is the source of truth. Rebuild all station-based
+    // road section and work-component geometries from it immediately.
+    const projectId=new URLSearchParams(location.search).get('project_id');
+    const {error:stationGeometryError}=await client.rpc('refresh_road_project_station_geometries',{p_project_id:projectId});
+    if(stationGeometryError){
+      setDrawMessage('Alignment saved, but derived section/component geometry could not be refreshed: '+stationGeometryError.message,'err');
+    }
+
     clearProjectAlignmentState();
     const button=qs('projectGenerateAlignment');
     if(button)button.textContent='GENERATE ALIGNMENT';
