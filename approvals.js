@@ -51,7 +51,7 @@ async function deleteHistoryRecord(){
     btn.textContent='DELETE RECORD';
   }
 }
-function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
+function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MATERIAL_PICKUP'?'MATERIAL PICKUP':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
 function detailCard(label,value,opts={}){
   const full=opts.full?' detail-card-full':'';
   const accent=opts.accent?' detail-card-accent-'+opts.accent:'';
@@ -125,6 +125,29 @@ function payloadCards(a, historical=false){
       </div>
       <div class="review-status ${historical ? 'review-status-'+String(a.status||'').toLowerCase() : ''}"><span></span><strong>${esc(historical ? (a.status||'DECISION RECORDED') : 'PENDING APPROVAL')}</strong><small>${esc(historical ? 'Decision recorded' : 'Awaiting decision')}</small></div>
     </div>`;
+
+  if(a.request_type==='MATERIAL_PICKUP'){
+    return commonHeader+`
+      <div class="review-section">
+        <div class="review-section-title"><span>01</span><div><strong>MATERIAL PICKUP REQUEST</strong><small>Purchasing pickup request for GM approval</small></div></div>
+        <div class="detail-grid detail-grid-3">
+          ${detailCard('PICKUP REQUEST NO.',p.pickup_request_no||a.title)}
+          ${detailCard('PURCHASE ORDER',p.purchase_order_no||'—')}
+          ${detailCard('PURCHASE REQUEST',p.purchase_request_no||'—')}
+          ${detailCard('PROJECT',p.project_name||'—')}
+          ${detailCard('MATERIAL',p.material_name||'—')}
+          ${detailCard('SPECIFICATIONS',p.specifications||'—')}
+          ${detailCard('QUANTITY',String(p.quantity??'—')+' '+String(p.unit||''))}
+          ${detailCard('SUPPLIER',p.supplier_name||'—')}
+          ${detailCard('PICKUP LOCATION',p.pickup_location||'—',{full:true})}
+          ${detailCard('PICKUP UNIT',p.equipment_name||p.equipment_id||'—')}
+          ${detailCard('PICKUP DATE',p.pickup_date||'—')}
+          ${detailCard('SCHEDULED TIME',(p.scheduled_start||p.scheduled_end)?formatDateTime(p.scheduled_start)+' — '+formatDateTime(p.scheduled_end):'—')}
+          ${detailCard('REMARKS',p.remarks||'—',{full:true})}
+        </div>
+      </div>
+    `;
+  }
 
   if(a.request_type==='PURCHASE_REQUEST'){
     return commonHeader+`
