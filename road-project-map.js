@@ -438,7 +438,6 @@
       const provider=basemapProviders[index];
       basemapLayer=L.tileLayer(provider.url,{
         ...provider.options,
-        crossOrigin:true,
         keepBuffer:2,
         updateWhenZooming:true,
         updateWhenIdle:true
