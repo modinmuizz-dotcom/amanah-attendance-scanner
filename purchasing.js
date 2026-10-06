@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],employees:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],pickupRequests:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,pickupItemId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
+const state={projects:[],employees:[],equipment:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],pickupRequests:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,pickupItemId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -87,7 +87,7 @@ async function init(){
  document.getElementById("requestDate").value=today();
  document.getElementById("poDate").value=today();
  bind();
- const results=await Promise.allSettled([loadProjects(),loadEmployees(),loadSuppliers(),loadRequests(),loadOrders()]);
+ const results=await Promise.allSettled([loadProjects(),loadEmployees(),loadEquipment(),loadSuppliers(),loadRequests(),loadOrders()]);
  const failed=results.filter(r=>r.status==="rejected");
  renderAll();
  if(failed.length){
@@ -141,6 +141,12 @@ async function loadEmployees(){
  state.employees=data||[];
  document.getElementById("requester").innerHTML='<option value="">SELECT SITE ENGINEER</option>'+state.employees.map(e=>'<option value="'+esc(e.employee_id)+'">'+esc(e.employee_name)+(e.position?" — "+esc(e.position):"")+'</option>').join("");
 }
+async function loadEquipment(){
+ const {data,error}=await supabaseClient.from("equipment").select("equipment_id,equipment_name,equipment_type,plate_number,status").eq("status","ACTIVE").order("equipment_name");
+ if(error)throw error;
+ state.equipment=data||[];
+}
+
 async function loadSuppliers(){
  const {data,error}=await supabaseClient.from("suppliers").select("*").eq("status","ACTIVE").order("supplier_name");
  if(error)throw error;
