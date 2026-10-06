@@ -5,7 +5,7 @@
 
   let map=null;
   let drawnItems=null;
-  let projectData={project:null,phases:[],sections:[],components:[],alignment:null};
+  let projectData={project:null,phases:[],sections:[],components:[],alignment:null,activities:[]};
   let drawMode=null;
   let projectAlignmentState=null;
   let mapCenterMode=false;
@@ -96,44 +96,195 @@
     return out;
   }
 
+  function lineLengthMeters(coords){
+    if(!coords||coords.length<2)return 0;
+    let total=0;
+    for(let i=1;i<coords.length;i++) total+=distanceMetersBetween(
+      {lat:Number(coords[i-1][1]),lng:Number(coords[i-1][0])},
+      {lat:Number(coords[i][1]),lng:Number(coords[i][0])}
+    );
+    return total;
+  }
+
+  function interpolateCoordinate(a,b,t){
+    return [
+      Number(a[0])+(Number(b[0])-Number(a[0]))*t,
+      Number(a[1])+(Number(b[1])-Number(a[1]))*t
+    ];
+  }
+
+  function sliceLineByMeters(coords,startM,endM){
+    if(!coords||coords.length<2)return [];
+    const total=lineLengthMeters(coords);
+    if(total<=0)return [];
+    const s=Math.max(0,Math.min(total,Number(startM)||0));
+    const e=Math.max(s,Math.min(total,Number(endM)||0));
+    const out=[];
+    let cumulative=0;
+
+    for(let i=1;i<coords.length;i++){
+      const a=coords[i-1],b=coords[i];
+      const seg=distanceMetersBetween(
+        {lat:Number(a[1]),lng:Number(a[0])},
+        {lat:Number(b[1]),lng:Number(b[0])}
+      );
+      if(seg<=0)continue;
+
+      const segStart=cumulative;
+      const segEnd=cumulative+seg;
+      if(e<segStart-0.001)break;
+      if(s>segEnd+0.001){cumulative=segEnd;continue;}
+
+      const localStart=Math.max(0,(s-segStart)/seg);
+      const localEnd=Math.min(1,(e-segStart)/seg);
+
+      if(out.length===0)out.push(interpolateCoordinate(a,b,localStart));
+      if(localEnd>localStart+0.000001)out.push(interpolateCoordinate(a,b,localEnd));
+
+      cumulative=segEnd;
+    }
+    return out.length>=2?out:[];
+  }
+
+  function getComponentApprovedQuantity(componentId){
+    return (projectData.activities||[])
+      .filter(a=>a.work_component_id===componentId && String(a.approval_status||'').toUpperCase()==='APPROVED')
+      .reduce((sum,a)=>{
+        const q=Number(a.activity_quantity);
+        return sum+(Number.isFinite(q)?q:0);
+      },0);
+  }
+
+  function getComponentProgress(component){
+    const start=Number(component.station_start_m);
+    const end=Number(component.station_end_m);
+    const length=Math.max(0,end-start);
+    const planned=Math.max(0,Number(component.planned_quantity)||length);
+    const approved=getComponentApprovedQuantity(component.work_component_id);
+    const completed=Math.min(length,approved);
+    return {
+      length,
+      planned,
+      approved,
+      completed,
+      percent:planned>0?Math.min(100,(approved/planned)*100):0
+    };
+  }
+
+  function renderLaneLine(coords,meta,options={}){
+    if(!coords||coords.length<2)return null;
+    const line=L.polyline(coords.map(c=>[c[1],c[0]]),{
+      color:options.color||'#2563eb',
+      weight:options.weight||4,
+      opacity:options.opacity??.95,
+      dashArray:options.dashArray||null,
+      interactive:true
+    });
+    line.bindPopup(
+      '<strong>'+esc(meta.title)+'</strong><br>'+
+      esc(meta.subtitle||'')+
+      (meta.station?'<br>'+esc(meta.station):'')+
+      (meta.progress?'<br>'+esc(meta.progress):'')
+    );
+    return line;
+  }
+
   function renderRoadCorridorReferences(){
     const coords=projectData.alignment?.geometry?.coordinates;
     if(!coords||coords.length<2)return;
+
     const d=projectData.project?.project_details||{};
     const roadWidth=Number(d.road_width);
     if(!Number.isFinite(roadWidth)||roadWidth<=0)return;
 
-    const laneOffset=roadWidth/4;
-    const laneLeft=offsetAlignmentCoordinates(coords,laneOffset);
-    const laneRight=offsetAlignmentCoordinates(coords,-laneOffset);
-
-    const laneProps={
-      title:'LANE REFERENCE',
-      subtitle:'Derived from PRIMARY ROAD ALIGNMENT • road width '+roadWidth.toFixed(2)+' m'
+    const leftOffset=roadWidth/4;
+    const rightOffset=-roadWidth/4;
+    const laneLines={
+      LEFT:offsetAlignmentCoordinates(coords,leftOffset),
+      RIGHT:offsetAlignmentCoordinates(coords,rightOffset)
     };
 
-    const left=L.polyline(laneLeft.map(c=>[c[1],c[0]]),{
-      color:'#2563eb',weight:3,opacity:.9,dashArray:'9 6'
-    }).bindPopup('<strong>LEFT LANE</strong><br>'+esc(laneProps.subtitle));
-    const right=L.polyline(laneRight.map(c=>[c[1],c[0]]),{
-      color:'#2563eb',weight:3,opacity:.9,dashArray:'9 6'
-    }).bindPopup('<strong>RIGHT LANE</strong><br>'+esc(laneProps.subtitle));
-    left.addTo(statusLayer);
-    right.addTo(statusLayer);
+    const bySide={};
+    projectData.components.forEach(c=>{
+      const side=String(c.component_side||'').toUpperCase();
+      if(side==='LEFT'&&!bySide.LEFT)bySide.LEFT=c;
+      if(side==='RIGHT'&&!bySide.RIGHT)bySide.RIGHT=c;
+    });
+
+    [['LEFT','LEFT LANE'],['RIGHT','RIGHT LANE']].forEach(([side,label])=>{
+      const component=bySide[side];
+      const progress=component?getComponentProgress(component):null;
+      const baseColor=component?statusColor(component.status):'#2563eb';
+      const line=renderLaneLine(
+        laneLines[side],
+        {
+          title:label,
+          subtitle:'Derived from PRIMARY ROAD ALIGNMENT • road width '+roadWidth.toFixed(2)+' m',
+          station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
+          progress:progress?('PROGRESS '+progress.percent.toFixed(1)+'% • APPROVED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+        },
+        {color:baseColor,weight:5,opacity:.92}
+      );
+      if(line)line.addTo(statusLayer);
+
+      // Accomplishment is visualized from the component start station.
+      if(component&&progress&&progress.completed>0){
+        const componentStart=Math.max(0,Number(component.station_start_m)||0);
+        const completedEnd=Math.min(
+          Number(component.station_end_m),
+          componentStart+progress.completed
+        );
+        const completedLine=sliceLineByMeters(laneLines[side],componentStart,completedEnd);
+        if(completedLine.length>=2){
+          const done=renderLaneLine(
+            completedLine,
+            {title:label+' — COMPLETED',subtitle:'Approved accomplishment',station:stationLabel(componentStart)+' → '+stationLabel(completedEnd),progress:'PROGRESS '+progress.percent.toFixed(1)+'%'},
+            {color:'#16a34a',weight:8,opacity:.98}
+          );
+          if(done)done.addTo(statusLayer);
+        }
+      }
+    });
 
     const shouldering=String(d.road_shouldering||'').toUpperCase()==='YES';
     const shoulderWidth=Number(d.road_shouldering_width);
     if(shouldering&&Number.isFinite(shoulderWidth)&&shoulderWidth>0){
       const shoulderOffset=roadWidth/2+shoulderWidth/2;
-      const shoulderLeft=offsetAlignmentCoordinates(coords,shoulderOffset);
-      const shoulderRight=offsetAlignmentCoordinates(coords,-shoulderOffset);
-      const sub='Derived from alignment • shoulder width '+shoulderWidth.toFixed(2)+' m';
-      L.polyline(shoulderLeft.map(c=>[c[1],c[0]]),{
-        color:'#16a34a',weight:2.5,opacity:.85,dashArray:'5 7'
-      }).bindPopup('<strong>LEFT SHOULDER</strong><br>'+esc(sub)).addTo(statusLayer);
-      L.polyline(shoulderRight.map(c=>[c[1],c[0]]),{
-        color:'#16a34a',weight:2.5,opacity:.85,dashArray:'5 7'
-      }).bindPopup('<strong>RIGHT SHOULDER</strong><br>'+esc(sub)).addTo(statusLayer);
+      const shoulderLines={
+        LEFT:offsetAlignmentCoordinates(coords,shoulderOffset),
+        RIGHT:offsetAlignmentCoordinates(coords,-shoulderOffset)
+      };
+
+      const shoulderComponents=projectData.components.filter(c=>/SHOULDER/i.test(String(c.component_name||'')));
+      [['LEFT','LEFT SHOULDER'],['RIGHT','RIGHT SHOULDER']].forEach(([side,label])=>{
+        const component=shoulderComponents.find(c=>String(c.component_side||'').toUpperCase()===side);
+        const progress=component?getComponentProgress(component):null;
+        const line=renderLaneLine(
+          shoulderLines[side],
+          {
+            title:label,
+            subtitle:'Derived from PRIMARY ROAD ALIGNMENT • shoulder width '+shoulderWidth.toFixed(2)+' m',
+            station:component?stationLabel(component.station_start_m)+' → '+stationLabel(component.station_end_m):'FULL PROJECT ALIGNMENT',
+            progress:progress?('PROGRESS '+progress.percent.toFixed(1)+'% • APPROVED '+progress.approved.toFixed(2)+' m / '+progress.planned.toFixed(2)+' m'):'NO WORK COMPONENT ASSIGNED'
+          },
+          {color:component?statusColor(component.status):'#16a34a',weight:4,opacity:.9,dashArray:'6 6'}
+        );
+        if(line)line.addTo(statusLayer);
+
+        if(component&&progress&&progress.completed>0){
+          const startM=Math.max(0,Number(component.station_start_m)||0);
+          const endM=Math.min(Number(component.station_end_m),startM+progress.completed);
+          const completedLine=sliceLineByMeters(shoulderLines[side],startM,endM);
+          if(completedLine.length>=2){
+            const done=renderLaneLine(
+              completedLine,
+              {title:label+' — COMPLETED',subtitle:'Approved accomplishment',station:stationLabel(startM)+' → '+stationLabel(endM),progress:'PROGRESS '+progress.percent.toFixed(1)+'%'},
+              {color:'#16a34a',weight:7,opacity:.98}
+            );
+            if(done)done.addTo(statusLayer);
+          }
+        }
+      });
     }
   }
 
@@ -370,11 +521,24 @@
         components=(result.data||[]).map(c=>({...c,geometry:null}));
       }
 
+      let activities=[];
+      try{
+        const activityResult=await withTimeout(
+          client.from('project_activities')
+            .select('activity_id,work_component_id,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
+            .eq('project_id',projectId)
+            .eq('approval_status','APPROVED'),
+          4000,'Activity progress'
+        );
+        if(!activityResult.error)activities=activityResult.data||[];
+      }catch(_activityError){}
+
       projectData={
         project:projectResult.data[0],
         phases,
         sections,
         components,
+        activities,
         alignment:null
       };
 
