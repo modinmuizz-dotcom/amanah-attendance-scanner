@@ -725,146 +725,233 @@
     return (rad%two+two)%two;
   }
 
-  function fitCircularCurve(pc,p1,pt){
-    const origin=pc;
-    const a=toLocalXY(pc,origin);
-    const b=toLocalXY(p1,origin);
-    const c=toLocalXY(pt,origin);
-    const denominator=2*(a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y));
-    if(Math.abs(denominator)<0.000001)throw new Error('Curve PC, P1 and PT are too close to a straight line to define a circular curve.');
+  function normalizeRadians(rad){
+    const two=Math.PI*2;
+    let v=(rad+Math.PI)%two;
+    if(v<0)v+=two;
+    return v-Math.PI;
+  }
 
-    const a2=a.x*a.x+a.y*a.y;
-    const b2=b.x*b.x+b.y*b.y;
-    const c2=c.x*c.x+c.y*c.y;
-    const ux=((a2*(b.y-c.y))+(b2*(c.y-a.y))+(c2*(a.y-b.y)))/denominator;
-    const uy=((a2*(c.x-b.x))+(b2*(a.x-c.x))+(c2*(b.x-a.x)))/denominator;
+  function bearingRadians(from,to){
+    const lat1=from.lat*DEG_TO_RAD;
+    const lat2=to.lat*DEG_TO_RAD;
+    const dLon=(to.lng-from.lng)*DEG_TO_RAD;
+    const y=Math.sin(dLon)*Math.cos(lat2);
+    const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+    return Math.atan2(y,x);
+  }
 
-    const radius=Math.hypot(a.x-ux,a.y-uy);
-    if(!Number.isFinite(radius)||radius<0.01||radius>100000000)throw new Error('Calculated curve radius is invalid.');
+  function localPointFromHeading(point,heading,distance){
+    return {
+      x:point.x+Math.sin(heading)*distance,
+      y:point.y+Math.cos(heading)*distance
+    };
+  }
 
-    const a0=Math.atan2(a.y-uy,a.x-ux);
-    const a1=Math.atan2(b.y-uy,b.x-ux);
-    const a2ang=Math.atan2(c.y-uy,c.x-ux);
+  function rotateVector(x,y,angle){
+    const c=Math.cos(angle),s=Math.sin(angle);
+    return {x:x*c-y*s,y:x*s+y*c};
+  }
 
-    const ccw01=positiveAngle(a1-a0);
-    const ccw12=positiveAngle(a2ang-a1);
-    const ccw02=positiveAngle(a2ang-a0);
-    const cw01=positiveAngle(a0-a1);
-    const cw12=positiveAngle(a1-a2ang);
-    const cw02=positiveAngle(a0-a2ang);
+  function localToLatLng(local,origin){
+    return fromLocalXY(local.x,local.y,origin);
+  }
 
-    const ccwError=Math.abs((ccw01+ccw12)-ccw02);
-    const cwError=Math.abs((cw01+cw12)-cw02);
-    const dir=ccwError<=cwError?1:-1;
-    const delta=dir===1?ccw02:cw02;
-    const firstDelta=dir===1?ccw01:cw01;
-    const secondDelta=delta-firstDelta;
+  function buildStationCurvePath(start,end,curves,initialHeading){
+    const origin=start;
+    const target=toLocalXY(end,origin);
+    let current={x:0,y:0};
+    let heading=initialHeading;
+    let station=0;
+    const allPoints=[localToLatLng(current,origin)];
+    const elements=[];
 
-    if(delta<0.000001||delta>=Math.PI*2-0.000001)throw new Error('Curve deflection angle is invalid.');
-    if(firstDelta<0||secondDelta<0)throw new Error('P1 must lie on the circular arc between PC and PT.');
+    const pushTangent=(toStation)=>{
+      const tangentLength=toStation-station;
+      if(tangentLength<-0.001)throw new Error('Curve stations must increase in order.');
+      if(tangentLength<0.001){station=toStation;return;}
+      const to=localPointFromHeading(current,heading,tangentLength);
+      const fromLL=localToLatLng(current,origin);
+      const toLL=localToLatLng(to,origin);
+      elements.push({
+        element_type:'TANGENT',
+        sequence_no:elements.length+1,
+        station_start_m:station,
+        station_end_m:toStation,
+        length_m:tangentLength,
+        start_lat:fromLL.lat,start_lng:fromLL.lng,
+        end_lat:toLL.lat,end_lng:toLL.lng,
+        geometry:{type:'LineString',coordinates:[[fromLL.lng,fromLL.lat],[toLL.lng,toLL.lat]]},
+        metadata:{source:'STATION_MODEL'}
+      });
+      allPoints.push(toLL);
+      current=to;
+      station=toStation;
+    };
 
-    const arcLength=radius*delta;
-    const chordLength=distanceMetersBetween(pc,pt);
-    const tangentLength=Math.abs(delta-Math.PI)<0.000001||delta>Math.PI-0.000001
-      ? null
-      : radius*Math.tan(delta/2);
+    curves.forEach((curve,index)=>{
+      const pcStation=curve.pc_station_m;
+      const p1Station=curve.p1_station_m;
+      const ptStation=curve.pt_station_m;
+      if(pcStation<station-0.001)throw new Error('CURVE '+(index+1)+' PC station overlaps the previous element.');
+      if(!(pcStation<p1Station&&p1Station<ptStation))throw new Error('CURVE '+(index+1)+' requires PC < P1 < PT.');
+      const arcLength=ptStation-pcStation;
+      const radius=curve.radius_m;
+      if(radius<=0)throw new Error('CURVE '+(index+1)+' radius must be greater than zero.');
+      const delta=arcLength/radius;
+      if(delta<=0||delta>=179.9*DEG_TO_RAD)throw new Error('CURVE '+(index+1)+' deflection must be between 0 and 179.9 degrees.');
 
-    const stepMeters=10;
-    const steps1=Math.max(2,Math.min(300,Math.ceil((radius*firstDelta)/stepMeters)));
-    const steps2=Math.max(2,Math.min(300,Math.ceil((radius*secondDelta)/stepMeters)));
-    const arcPoints=[pc];
+      pushTangent(pcStation);
 
-    for(let i=1;i<steps1;i++){
-      const ang=a0+dir*(firstDelta*i/steps1);
-      arcPoints.push(fromLocalXY(ux+radius*Math.cos(ang),uy+radius*Math.sin(ang),origin));
+      const sign=curve.direction==='RIGHT'?-1:1;
+      const leftNormal={x:-Math.cos(heading),y:Math.sin(heading)};
+      const center={
+        x:current.x+leftNormal.x*sign*radius,
+        y:current.y+leftNormal.y*sign*radius
+      };
+      const radial={x:current.x-center.x,y:current.y-center.y};
+      const p1Fraction=(p1Station-pcStation)/arcLength;
+      const arcPoints=[];
+      const steps=Math.max(8,Math.min(720,Math.ceil(arcLength/5)));
+      for(let i=0;i<=steps;i++){
+        const t=i/steps;
+        const angle=sign*delta*t;
+        const rotated=rotateVector(radial.x,radial.y,angle);
+        arcPoints.push({x:center.x+rotated.x,y:center.y+rotated.y});
+      }
+      const p1Angle=sign*delta*p1Fraction;
+      const p1Vec=rotateVector(radial.x,radial.y,p1Angle);
+      const p1Local={x:center.x+p1Vec.x,y:center.y+p1Vec.y};
+      const endAngle=sign*delta;
+      const endVec=rotateVector(radial.x,radial.y,endAngle);
+      const ptLocal={x:center.x+endVec.x,y:center.y+endVec.y};
+
+      const curveStart=localToLatLng(current,origin);
+      const p1LL=localToLatLng(p1Local,origin);
+      const ptLL=localToLatLng(ptLocal,origin);
+
+      // Add the sampled arc, forcing the exact P1 location into the polyline.
+      let insertedP1=false;
+      for(let i=1;i<arcPoints.length;i++){
+        const t=i/(arcPoints.length-1);
+        if(!insertedP1 && t>=p1Fraction){
+          allPoints.push(p1LL);
+          insertedP1=true;
+        }
+        allPoints.push(localToLatLng(arcPoints[i],origin));
+      }
+      if(!insertedP1)allPoints.push(p1LL);
+      if(!allPoints.length||allPoints[allPoints.length-1].lat!==ptLL.lat||allPoints[allPoints.length-1].lng!==ptLL.lng){
+        allPoints.push(ptLL);
+      }
+
+      const curveStartStation=pcStation;
+      const curveEndStation=ptStation;
+      const deltaDeg=delta*RAD_TO_DEG;
+      const chordLength=distanceMetersBetween(curveStart,ptLL);
+      const tangentLength=radius*Math.tan(delta/2);
+
+      elements.push({
+        element_type:'CIRCULAR_CURVE',
+        sequence_no:elements.length+1,
+        station_start_m:curveStartStation,
+        station_end_m:curveEndStation,
+        length_m:arcLength,
+        start_lat:curveStart.lat,start_lng:curveStart.lng,
+        end_lat:ptLL.lat,end_lng:ptLL.lng,
+        pc_lat:curveStart.lat,pc_lng:curveStart.lng,
+        p1_lat:p1LL.lat,p1_lng:p1LL.lng,
+        pt_lat:ptLL.lat,pt_lng:ptLL.lng,
+        direction:curve.direction,
+        radius_m:radius,
+        delta_deg:deltaDeg,
+        chord_length_m:chordLength,
+        tangent_length_m:tangentLength,
+        geometry:{type:'LineString',coordinates:allPoints.slice(-((steps+2))).map(p=>[p.lng,p.lat])},
+        metadata:{
+          source:'STATION_MODEL',
+          pc_station_m:pcStation,
+          p1_station_m:p1Station,
+          pt_station_m:ptStation
+        }
+      });
+
+      curve.__result={
+        direction:curve.direction,
+        radius_m:radius,
+        delta_deg:deltaDeg,
+        arc_length_m:arcLength,
+        tangent_length_m:tangentLength,
+        chord_length_m:chordLength,
+        station_start_m:pcStation,
+        station_end_m:ptStation,
+        pc:curveStart,
+        p1:p1LL,
+        pt:ptLL
+      };
+
+      current=ptLocal;
+      heading=heading+sign*delta;
+      station=ptStation;
+    });
+
+    const finalToTarget={
+      x:target.x-current.x,
+      y:target.y-current.y
+    };
+    const finalDistance=Math.hypot(finalToTarget.x,finalToTarget.y);
+    if(finalDistance>0.001){
+      const finalLL=localToLatLng(target,origin);
+      const fromLL=localToLatLng(current,origin);
+      elements.push({
+        element_type:'TANGENT',
+        sequence_no:elements.length+1,
+        station_start_m:station,
+        station_end_m:station+finalDistance,
+        length_m:finalDistance,
+        start_lat:fromLL.lat,start_lng:fromLL.lng,
+        end_lat:finalLL.lat,end_lng:finalLL.lng,
+        geometry:{type:'LineString',coordinates:[[fromLL.lng,fromLL.lat],[finalLL.lng,finalLL.lat]]},
+        metadata:{source:'STATION_MODEL',final_connector:true}
+      });
+      allPoints.push(finalLL);
+      station+=finalDistance;
     }
-    arcPoints.push(p1);
-    for(let i=1;i<steps2;i++){
-      const ang=a1+dir*(secondDelta*i/steps2);
-      arcPoints.push(fromLocalXY(ux+radius*Math.cos(ang),uy+radius*Math.sin(ang),origin));
-    }
-    arcPoints.push(pt);
 
     return {
-      direction:dir===1?'LEFT':'RIGHT',
-      radius,
-      deltaDeg:delta*RAD_TO_DEG,
-      arcLength,
-      chordLength,
-      tangentLength,
-      geometry:arcPoints
+      geometry:{type:'LineString',coordinates:allPoints.map(p=>[p.lng,p.lat])},
+      elements,
+      length_m:station
     };
   }
 
   function buildEngineeringAlignment(start,end,curves){
-    const allPoints=[{lat:start.lat,lng:start.lng}];
-    const elements=[];
-    let current={lat:start.lat,lng:start.lng};
-    let station=0;
-
-    const pushTangent=(from,to)=>{
-      const length=distanceMetersBetween(from,to);
-      if(length<0.01)return;
-      const geometry=[from,to];
-      const startStation=station;
-      station+=length;
-      elements.push({
-        element_type:'TANGENT',
-        sequence_no:elements.length+1,
-        station_start_m:startStation,
-        station_end_m:station,
-        length_m:length,
-        start_lat:from.lat,start_lng:from.lng,
-        end_lat:to.lat,end_lng:to.lng,
-        geometry:{type:'LineString',coordinates:geometry.map(p=>[p.lng,p.lat])},
-        metadata:{}
-      });
-      allPoints.push(to);
-    };
-
-    curves.forEach((curve,index)=>{
-      const curveData=fitCircularCurve(curve.pc,curve.p1,curve.pt);
-      pushTangent(current,curve.pc);
-
-      const curveStartStation=station;
-      station+=curveData.arcLength;
-      const curveElement={
-        element_type:'CIRCULAR_CURVE',
-        sequence_no:elements.length+1,
-        station_start_m:curveStartStation,
-        station_end_m:station,
-        length_m:curveData.arcLength,
-        start_lat:curve.pc.lat,start_lng:curve.pc.lng,
-        end_lat:curve.pt.lat,end_lng:curve.pt.lng,
-        pc_lat:curve.pc.lat,pc_lng:curve.pc.lng,
-        p1_lat:curve.p1.lat,p1_lng:curve.p1.lng,
-        pt_lat:curve.pt.lat,pt_lng:curve.pt.lng,
-        direction:curveData.direction,
-        radius_m:curveData.radius,
-        delta_deg:curveData.deltaDeg,
-        chord_length_m:curveData.chordLength,
-        tangent_length_m:curveData.tangentLength,
-        geometry:{type:'LineString',coordinates:curveData.geometry.map(p=>[p.lng,p.lat])},
-        metadata:{}
+    if(!curves.length){
+      const bearing=bearingRadians(start,end);
+      const length=distanceMetersBetween(start,end);
+      return {
+        geometry:{type:'LineString',coordinates:[[start.lng,start.lat],[end.lng,end.lat]]},
+        elements:[{
+          element_type:'TANGENT',
+          sequence_no:1,
+          station_start_m:0,
+          station_end_m:length,
+          length_m:length,
+          start_lat:start.lat,start_lng:start.lng,
+          end_lat:end.lat,end_lng:end.lng,
+          geometry:{type:'LineString',coordinates:[[start.lng,start.lat],[end.lng,end.lat]]},
+          metadata:{source:'STATION_MODEL',bearing_deg:(bearing*RAD_TO_DEG+360)%360}
+        }],
+        length_m:length
       };
-      elements.push(curveElement);
-      curve.__result={
-        direction:curveData.direction,
-        radius_m:curveData.radius,
-        delta_deg:curveData.deltaDeg,
-        arc_length_m:curveData.arcLength,
-        tangent_length_m:curveData.tangentLength,
-        chord_length_m:curveData.chordLength,
-        station_start_m:curveStartStation,
-        station_end_m:station
-      };
-      allPoints.push(...curveData.geometry.slice(1));
-      current=curve.pt;
-    });
+    }
 
-    pushTangent(current,end);
+    // Initial direction follows the straight Start → End bearing. The station-defined
+    // curves are then inserted into that alignment and the final tangent closes to END.
+    const initialHeading=bearingRadians(start,end);
+    const built=buildStationCurvePath(start,end,curves,initialHeading);
 
-    return {geometry:{type:'LineString',coordinates:allPoints.map(p=>[p.lng,p.lat])},elements,length_m:station};
+    return built;
   }
 
   function updateCurveElementResults(results=[]){
@@ -883,6 +970,11 @@
       set('.curve-tangent-length',r.tangent_length_m==null?'—':formatDistance(r.tangent_length_m));
       set('.curve-pc-station',stationLabel(r.station_start_m));
       set('.curve-pt-station',stationLabel(r.station_end_m));
+      const coords=row.querySelector('.curve-calculated-coords');
+      if(coords){
+        const f=p=>p?Number(p.lat).toFixed(6)+', '+Number(p.lng).toFixed(6):'—';
+        coords.textContent='PC '+f(r.pc)+' • P1 '+f(r.p1)+' • PT '+f(r.pt);
+      }
     });
   }
 
