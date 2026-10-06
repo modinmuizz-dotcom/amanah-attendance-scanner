@@ -176,7 +176,7 @@
           <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0" readonly>
           <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">Updated automatically after the approved pickup activity is completed.</div>
         </div>
-        <div class="field full">
+        <div class="field full" id="readyForPickupField">
           <label>READY FOR PICKUP QTY</label>
           <input id="supplyReadyForPickupQty" type="number" min="0" step="0.001" placeholder="0">
           <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">
@@ -184,30 +184,31 @@
           </div>
         </div>
 
-        <div class="field full">
+        <div class="field full" id="receivingDetailsSection" style="display:none">
           <div style="margin-top:4px;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:10px;font-weight:900;letter-spacing:.08em;color:#475569">
             RECEIVING DETAILS
           </div>
         </div>
 
-        <div class="field">
+        <div class="field" id="receivedDateField" style="display:none">
           <label>RECEIVED DATE</label>
           <input id="supplyReceivedDate" type="date" readonly>
         </div>
-        <div class="field">
+        <div class="field" id="deliveryReferenceField" style="display:none">
           <label>DELIVERY REFERENCE</label>
           <input id="supplyDeliveryReference" placeholder="Created automatically from pickup activity" readonly>
         </div>
-        <div class="field full">
+        <div class="field full" id="receivingRemarksField" style="display:none">
           <label>RECEIVING REMARKS</label>
-          <textarea id="supplyReceivingRemarks" placeholder="Record delivery condition, shortages, damaged items, or other receiving notes."></textarea>
+          <textarea id="supplyReceivingRemarks" placeholder="Receiving remarks from completed pickup/activity."></textarea>
         </div>
 
-        <div class="field">
+        <div class="field" id="expectedAvailabilityField" style="display:none">
           <label>EXPECTED AVAILABILITY</label>
           <input id="supplyAvailabilityDate" type="date">
         </div>
-        <div class="field">
+
+        <div class="field" id="substituteStatusField" style="display:none">
           <label>SUBSTITUTE STATUS</label>
           <select id="supplySubstituteStatus">
             <option value="NONE">NONE</option>
@@ -216,11 +217,13 @@
             <option value="REJECTED">REJECTED</option>
           </select>
         </div>
-        <div class="field full">
+
+        <div class="field full" id="substituteMaterialField" style="display:none">
           <label>PROPOSED SUBSTITUTE MATERIAL</label>
           <input id="supplySubstituteMaterial" placeholder="Example: REBAR 12MM">
         </div>
-        <div class="field full">
+
+        <div class="field full" id="substituteSpecificationsField" style="display:none">
           <label>PROPOSED SUBSTITUTE SPECIFICATIONS</label>
           <input id="supplySubstituteSpecifications" placeholder="Alternative brand / grade / size">
         </div>
@@ -318,7 +321,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=30"></script>
+<script src="purchasing.js?v=31"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
