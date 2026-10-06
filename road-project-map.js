@@ -5,7 +5,7 @@
 
   let map=null;
   let drawnItems=null;
-  let projectData={project:null,phases:[],sections:[],components:[]};
+  let projectData={project:null,phases:[],sections:[],components:[],alignment:null};
   let drawMode=null;
   let mapCenterMode=false;
   let pointMode=null;
@@ -52,6 +52,18 @@
     clearMapLayers();
     if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
 
+    if(projectData.alignment?.geometry?.coordinates){
+      const line=featureLine(projectData.alignment.geometry.coordinates,{color:'#7c3aed',weight:6,opacity:.95},{
+        title:'PRIMARY ROAD ALIGNMENT',
+        subtitle:'PROJECT ALIGNMENT • '+String(projectData.alignment.source||'FREE_DRAW').toUpperCase(),
+        station:'PROJECT LENGTH '+Number(projectData.alignment.length_m||0).toFixed(1)+' m'
+      });
+      if(line)line.addTo(statusLayer);
+    }
+
+    if(projectData.alignment?.geometry?.coordinates){
+      projectData.alignment.geometry.coordinates.forEach(c=>bounds.push([c[1],c[0]]));
+    }
     projectData.sections.forEach(s=>{
       if(!s.geometry?.coordinates)return;
       const line=featureLine(s.geometry.coordinates,{color:'#0f172a',weight:7,opacity:.45},{
@@ -96,13 +108,21 @@
     const nSections=projectData.sections.filter(s=>s.geometry).length;
     const nComponents=projectData.components.filter(c=>c.geometry).length;
     const el=qs('roadMapSummary');
-    if(el)el.textContent=nSections+' section alignment'+(nSections===1?'':'s')+' • '+nComponents+' component line'+(nComponents===1?'':'s');
+    if(el)el.textContent=(projectData.alignment?'1 project alignment • ':'0 project alignments • ')+nSections+' section alignment'+(nSections===1?'':'s')+' • '+nComponents+' component line'+(nComponents===1?'':'s');
   }
 
   function populateTargets(){
     const targetType=qs('mapTargetType').value;
     const target=qs('mapTarget');
     const label=qs('mapTargetLabel');
+    if(targetType==='PROJECT'){
+      if(label)label.textContent='PROJECT ALIGNMENT';
+      target.innerHTML='<option value="PROJECT_ALIGNMENT">PRIMARY ROAD ALIGNMENT</option>';
+      target.value='PROJECT_ALIGNMENT';
+      target.disabled=true;
+      return;
+    }
+    target.disabled=false;
     if(targetType==='SECTION'){
       if(label)label.textContent='SELECT ROAD SECTION';
       target.innerHTML='<option value="">SELECT ROAD SECTION</option>'+projectData.sections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc(s.section_code+' — '+s.section_name)+' • '+esc(stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m))+'</option>').join('');
@@ -180,7 +200,8 @@
         project:projectResult.data[0],
         phases,
         sections,
-        components
+        components,
+        alignment:null
       };
 
       const projectNameEl=qs('roadMapProjectName');
@@ -219,6 +240,7 @@
       if(!data)return;
       const sectionMap=new Map((data.sections||[]).map(s=>[s.section_id,s.geometry]));
       const componentMap=new Map((data.components||[]).map(c=>[c.work_component_id,c.geometry]));
+      projectData.alignment=data.alignment||null;
       projectData.sections=projectData.sections.map(s=>({...s,geometry:sectionMap.get(s.section_id)||null}));
       projectData.components=projectData.components.map(c=>({...c,geometry:componentMap.get(c.work_component_id)||null}));
       renderLayers();
@@ -271,27 +293,40 @@
   }
 
   function startLineDrawing(){
-    const targetId=qs('mapTarget').value;
     const targetType=qs('mapTargetType').value;
-    if(!targetId){setDrawMessage('Select a road section or work component first.','err');return;}
+    const targetId=qs('mapTarget').value;
+    if(targetType!=='PROJECT'&&!targetId){setDrawMessage('Select a road section or work component first.','err');return;}
     if(!window.L?.Draw){setDrawMessage('Map drawing tools are not available.','err');return;}
     drawMode={targetType,targetId};
-    const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
+    const drawer=new L.Draw.Polyline(map,{shapeOptions:{
+      color:targetType==='PROJECT'?'#7c3aed':'#2563eb',
+      weight:targetType==='PROJECT'?6:5
+    }});
     drawer.enable();
-    setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
+    setDrawMessage(targetType==='PROJECT'
+      ? 'PROJECT ALIGNMENT: click along the actual road, then double-click to finish.'
+      : 'Click points along the actual project alignment, then double-click to finish the line.','info');
   }
 
   async function saveDrawnGeometry(layer){
     if(!drawMode)return;
     const geojson=layer.toGeoJSON().geometry;
-    const rpc=drawMode.targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
-    const args=drawMode.targetType==='SECTION'
-      ?{p_section_id:drawMode.targetId,p_geojson:geojson}
-      :{p_work_component_id:drawMode.targetId,p_geojson:geojson};
-    const {error}=await client.rpc(rpc,args);
+    let rpc,args;
+    if(drawMode.targetType==='PROJECT'){
+      rpc='save_road_project_alignment';
+      args={p_project_id:new URLSearchParams(location.search).get('project_id'),p_geojson:geojson,p_source:'FREE_DRAW'};
+    }else{
+      rpc=drawMode.targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
+      args=drawMode.targetType==='SECTION'
+        ?{p_section_id:drawMode.targetId,p_geojson:geojson}
+        :{p_work_component_id:drawMode.targetId,p_geojson:geojson};
+    }
+    const {data,error}=await client.rpc(rpc,args);
     if(error){setDrawMessage(error.message||'Unable to save geometry.','err');return;}
+    const wasProject=drawMode.targetType==='PROJECT';
+    if(wasProject) projectData.alignment=data||null;
     drawMode=null;
-    setDrawMessage('Map line saved successfully.','ok');
+    setDrawMessage(wasProject?'Project alignment saved successfully.':'Map line saved successfully.','ok');
     await loadData();
   }
 
@@ -337,11 +372,17 @@
         : (target.component_name+' • '+(target.component_side||'NONE')))
       : 'this '+targetType.toLowerCase();
     if(!(await professionalConfirm(targetType,targetLabel)))return;
-    const rpc=targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
-    const args=targetType==='SECTION'?{p_section_id:targetId,p_geojson:null}:{p_work_component_id:targetId,p_geojson:null};
-    const {error}=await client.rpc(rpc,args);
-    if(error){setDrawMessage(error.message||'Unable to clear geometry.','err');return;}
-    setDrawMessage('Saved map line removed successfully.','ok');
+    if(targetType==='PROJECT'){
+      const {error}=await client.rpc('delete_road_project_alignment',{p_project_id:new URLSearchParams(location.search).get('project_id')});
+      if(error){setDrawMessage(error.message||'Unable to clear project alignment.','err');return;}
+      projectData.alignment=null;
+    }else{
+      const rpc=targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
+      const args=targetType==='SECTION'?{p_section_id:targetId,p_geojson:null}:{p_work_component_id:targetId,p_geojson:null};
+      const {error}=await client.rpc(rpc,args);
+      if(error){setDrawMessage(error.message||'Unable to clear geometry.','err');return;}
+    }
+    setDrawMessage(targetType==='PROJECT'?'Project alignment removed successfully.':'Saved map line removed successfully.','ok');
     await loadData();
   }
 
