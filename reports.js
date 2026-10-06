@@ -1,1452 +1,551 @@
 /* =========================================================
    AMANAH CONSTRUCTION MANAGEMENT SYSTEM
-   ATTENDANCE REPORTS
+   CENTRAL REPORTS MODULE
    ========================================================= */
 
+const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const SUPABASE_URL =
-  'https://bafmycjninxomufhkjvy.supabase.co';
+const state={
+  projects:[],
+  costEntries:[],
+  attendance:[],
+  maintenance:[],
+  repairs:[],
+  currentRows:[],
+  currentHeaders:[]
+};
 
+const descriptions={
+  PROJECT_SUMMARY:"Project-level financial summary showing actual cost by labor, fuel, equipment, materials and other costs.",
+  COST_LEDGER:"Complete actual project cost ledger. Every cost entry recorded against a project is shown here.",
+  ATTENDANCE:"Attendance, working hours, equipment, project and fuel activity report.",
+  FUEL:"Fuel cost report sourced from actual project fuel cost entries, including quantity and amount.",
+  MAINTENANCE:"Equipment maintenance cost report showing maintenance records assigned to projects.",
+  REPAIR:"Repair cost report showing repair request costs, including labor, materials and other repair expenses.",
+  MATERIAL:"Materials / purchasing cost report showing project material cost entries. Repair-material entries are separated into the Repair report.",
+  LABOR:"Labor / payroll cost report showing labor cost entries linked to projects. Repair labor is separated into the Repair report."
+};
 
-const SUPABASE_PUBLISHABLE_KEY =
-  'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
+function $(id){return document.getElementById(id);}
 
-
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
-
-
-let allAttendance = [];
-let filteredAttendance = [];
-
-
-/* =========================================================
-   MESSAGE
-   ========================================================= */
-
-function showMessage(
-  message,
-  type = 'error'
-) {
-
-  const element =
-    document.getElementById(
-      'message'
-    );
-
-  element.textContent =
-    message;
-
-  element.className =
-    `message ${type}`;
-
+function escapeHtml(v){
+  if(v===null||v===undefined)return "";
+  return String(v)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
 
-
-function clearMessage() {
-
-  const element =
-    document.getElementById(
-      'message'
-    );
-
-  element.textContent =
-    '';
-
-  element.className =
-    'message';
-
+function money(v){
+  return "₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
+function num(v){return Number(v||0);}
 
-/* =========================================================
-   AUTHENTICATION
-   ========================================================= */
+function formatDate(v){
+  if(!v)return "—";
+  const s=String(v).slice(0,10);
+  const p=s.split("-");
+  return p.length===3 ? p[1]+"/"+p[2]+"/"+p[0] : s;
+}
 
-async function requireSession() {
+function formatTime(v){
+  if(!v)return "—";
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return String(v);
+  return d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"});
+}
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .auth
-      .getSession();
+function showMessage(message,type="error"){
+  const box=$("message");
+  box.textContent=message;
+  box.className="message "+type;
+}
 
+function clearMessage(){
+  const box=$("message");
+  box.textContent="";
+  box.className="message";
+}
 
-  if (error) {
-    throw error;
-  }
-
-
-  if (
-    !data ||
-    !data.session
-  ) {
-
-    location.href =
-      'admin.html';
-
+async function requireSession(){
+  const r=await supabaseClient.auth.getSession();
+  if(r.error)throw r.error;
+  if(!r.data?.session){
+    location.href="admin.html";
     return false;
-
   }
-
-
   return true;
-
 }
 
-
-/* =========================================================
-   ESCAPE HTML
-   ========================================================= */
-
-function escapeHtml(
-  value
-) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return '';
-
-  }
-
-
-  return String(value)
-
-    .replaceAll(
-      '&',
-      '&amp;'
-    )
-
-    .replaceAll(
-      '<',
-      '&lt;'
-    )
-
-    .replaceAll(
-      '>',
-      '&gt;'
-    )
-
-    .replaceAll(
-      '"',
-      '&quot;'
-    )
-
-    .replaceAll(
-      "'",
-      '&#039;'
-    );
-
+function today(){
+  return new Date().toISOString().slice(0,10);
 }
 
-
-/* =========================================================
-   DATE
-   ========================================================= */
-
-function formatDate(
-  value
-) {
-
-  if (!value) {
-    return '-';
-  }
-
-
-  const text =
-    String(value)
-      .slice(
-        0,
-        10
-      );
-
-
-  const parts =
-    text.split('-');
-
-
-  if (
-    parts.length !== 3
-  ) {
-
-    return text;
-
-  }
-
-
-  return (
-    `${parts[1]}/${parts[2]}/${parts[0]}`
-  );
-
+function projectName(id){
+  const p=state.projects.find(x=>x.project_id===id);
+  return p?.project_name || id || "—";
 }
 
-
-/* =========================================================
-   TIME
-   ========================================================= */
-
-function formatTime(
-  value
-) {
-
-  if (!value) {
-    return '-';
-  }
-
-
-  const date =
-    new Date(value);
-
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-
-    return String(value);
-
-  }
-
-
-  return date.toLocaleTimeString(
-    [],
-    {
-      hour:
-        'numeric',
-
-      minute:
-        '2-digit',
-
-      second:
-        '2-digit'
-    }
-  );
-
+function projectLabel(id){
+  const p=state.projects.find(x=>x.project_id===id);
+  if(!p)return id||"ALL PROJECTS";
+  return p.project_name+" — "+p.project_id;
 }
 
-
-/* =========================================================
-   FUEL
-   ========================================================= */
-
-function formatFuel(
-  row
-) {
-
-  if (
-    row.fuel_used !== true
-  ) {
-
-    return `
-      <span class="fuel-no">
-        NO FUEL
-      </span>
-    `;
-
-  }
-
-
-  const quantity =
-    row.fuel_quantity ??
-    0;
-
-
-  const unit =
-    row.fuel_unit ||
-    '';
-
-
-  const amount =
-    Number(
-      row.fuel_amount ||
-      0
-    ).toFixed(2);
-
-
-  return `
-    <span class="fuel-yes">
-      ${escapeHtml(quantity)}
-      ${escapeHtml(unit)}
-      |
-      ₱${amount}
-    </span>
-  `;
-
+function inDateRange(value){
+  const from=$("dateFrom").value;
+  const to=$("dateTo").value;
+  const d=String(value||"").slice(0,10);
+  if(from && d<from)return false;
+  if(to && d>to)return false;
+  return true;
 }
 
+function projectMatches(projectId){
+  const selected=$("projectFilter").value;
+  return !selected || String(projectId||"")===selected;
+}
 
-/* =========================================================
-   LOAD ATTENDANCE
-   ========================================================= */
+function filteredCostEntries(){
+  return state.costEntries.filter(x=>projectMatches(x.project_id)&&inDateRange(x.cost_date));
+}
 
-async function loadAttendance() {
+function categoryTotal(rows,type){
+  return rows.filter(x=>String(x.cost_type||"").toUpperCase()===type).reduce((s,x)=>s+num(x.amount),0);
+}
 
+function isRepairRef(ref){
+  return String(ref||"").toUpperCase().startsWith("AUTO-REPAIR:");
+}
+
+function isMaintenanceRef(ref){
+  return String(ref||"").toUpperCase().startsWith("AUTO-MAINTENANCE:");
+}
+
+function categoryBadge(type){
+  const t=String(type||"OTHER").toUpperCase();
+  const cls=["fuel","labor","equipment","material"].includes(t.toLowerCase())?t.toLowerCase():"other";
+  return '<span class="badge '+cls+'">'+escapeHtml(t)+'</span>';
+}
+
+async function loadData(){
   clearMessage();
+  const ok=await requireSession();
+  if(!ok)return;
 
+  const results=await Promise.all([
+    supabaseClient.from("projects").select("project_id,project_name,location,status").order("project_name"),
+    supabaseClient.from("project_cost_entries").select("id,project_id,cost_date,cost_type,description,quantity,unit,unit_cost,amount,reference_id,notes,created_at").order("cost_date",{ascending:false}).order("created_at",{ascending:false}).limit(20000),
+    supabaseClient.from("attendance").select("attendance_id,employee_id,employee_name,attendance_date,time_in,time_out,total_hours,status,equipment_id,equipment_name,project_id,project_name,fuel_used,fuel_quantity,fuel_unit,fuel_amount,meter_used,meter_unit").order("attendance_date",{ascending:false}).order("time_in",{ascending:false}).limit(10000),
+    supabaseClient.from("equipment_maintenance").select("maintenance_id,equipment_id,project_id,maintenance_date,maintenance_type,description,supplier_shop,reference_no,quantity,unit,unit_cost,total_amount,remarks,approval_status").order("maintenance_date",{ascending:false}).order("created_at",{ascending:false}).limit(10000),
+    supabaseClient.from("repair_request_summary").select("repair_request_id,repair_form_no,request_date,created_at,equipment_id,equipment_name,equipment_type,plate_number,project_id,project_name,reported_by,status,repair_cost_total,repair_labor_cost,repair_material_cost,repair_other_cost").order("request_date",{ascending:false}).order("created_at",{ascending:false}).limit(10000)
+  ]);
 
-  try {
+  const errors=results.filter(r=>r.error).map(r=>r.error);
+  if(errors.length)throw errors[0];
 
-    const loggedIn =
-      await requireSession();
+  state.projects=results[0].data||[];
+  state.costEntries=results[1].data||[];
+  state.attendance=results[2].data||[];
+  state.maintenance=results[3].data||[];
+  state.repairs=results[4].data||[];
 
-
-    if (!loggedIn) {
-      return;
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from('attendance')
-        .select('*')
-        .order(
-          'attendance_date',
-          {
-            ascending:
-              false
-          }
-        )
-        .order(
-          'time_in',
-          {
-            ascending:
-              false
-          }
-        )
-        .limit(5000);
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    allAttendance =
-      data || [];
-
-
-    buildFilterOptions();
-
-
-    applyFilters();
-
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-
-    showMessage(
-      error.message ||
-      'Unable to load reports.'
-    );
-
-  }
-
+  buildProjectOptions();
+  generateReport();
 }
 
-
-/* =========================================================
-   FILTER OPTIONS
-   ========================================================= */
-
-function buildFilterOptions() {
-
-  const employeeMap =
-    new Map();
-
-  const equipmentMap =
-    new Map();
-
-  const projectMap =
-    new Map();
-
-
-  allAttendance.forEach(
-    row => {
-
-      if (
-        row.employee_id
-      ) {
-
-        employeeMap.set(
-          row.employee_id,
-          row.employee_name || ''
-        );
-
-      }
-
-
-      if (
-        row.equipment_id
-      ) {
-
-        equipmentMap.set(
-          row.equipment_id,
-          row.equipment_name || ''
-        );
-
-      }
-
-
-      if (
-        row.project_id
-      ) {
-
-        projectMap.set(
-          row.project_id,
-          row.project_name || ''
-        );
-
-      }
-
-    }
-  );
-
-
-  const employeeSelect =
-    document.getElementById(
-      'employeeFilter'
-    );
-
-
-  const equipmentSelect =
-    document.getElementById(
-      'equipmentFilter'
-    );
-
-
-  const projectSelect =
-    document.getElementById(
-      'projectFilter'
-    );
-
-
-  employeeSelect.innerHTML =
-    `
-      <option value="">
-        ALL EMPLOYEES
-      </option>
-    `;
-
-
-  equipmentSelect.innerHTML =
-    `
-      <option value="">
-        ALL EQUIPMENT
-      </option>
-    `;
-
-
-  projectSelect.innerHTML =
-    `
-      <option value="">
-        ALL PROJECTS
-      </option>
-    `;
-
-
-  [...employeeMap.entries()]
-    .sort(
-      (a, b) =>
-        String(a[1]).localeCompare(
-          String(b[1])
-        )
-    )
-    .forEach(
-      ([id, name]) => {
-
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value =
-          id;
-
-        option.textContent =
-          `${name} — ${id}`;
-
-        employeeSelect.appendChild(
-          option
-        );
-
-      }
-    );
-
-
-  [...equipmentMap.entries()]
-    .sort(
-      (a, b) =>
-        String(a[1]).localeCompare(
-          String(b[1])
-        )
-    )
-    .forEach(
-      ([id, name]) => {
-
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value =
-          id;
-
-        option.textContent =
-          `${name} — ${id}`;
-
-        equipmentSelect.appendChild(
-          option
-        );
-
-      }
-    );
-
-
-  [...projectMap.entries()]
-    .sort(
-      (a, b) =>
-        String(a[1]).localeCompare(
-          String(b[1])
-        )
-    )
-    .forEach(
-      ([id, name]) => {
-
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value =
-          id;
-
-        option.textContent =
-          `${name} — ${id}`;
-
-        projectSelect.appendChild(
-          option
-        );
-
-      }
-    );
-
+function buildProjectOptions(){
+  const select=$("projectFilter");
+  const current=select.value;
+  select.innerHTML='<option value="">ALL PROJECTS</option>';
+  state.projects.forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p.project_id;
+    o.textContent=p.project_name+" — "+p.project_id;
+    select.appendChild(o);
+  });
+  if([...select.options].some(o=>o.value===current))select.value=current;
 }
 
-
-/* =========================================================
-   APPLY FILTERS
-   ========================================================= */
-
-function applyFilters() {
-
-  const dateFrom =
-    document.getElementById(
-      'dateFrom'
-    ).value;
-
-
-  const dateTo =
-    document.getElementById(
-      'dateTo'
-    ).value;
-
-
-  const employee =
-    document.getElementById(
-      'employeeFilter'
-    ).value;
-
-
-  const equipment =
-    document.getElementById(
-      'equipmentFilter'
-    ).value;
-
-
-  const project =
-    document.getElementById(
-      'projectFilter'
-    ).value;
-
-
-  const status =
-    document.getElementById(
-      'statusFilter'
-    ).value
-      .toUpperCase();
-
-
-  const fuel =
-    document.getElementById(
-      'fuelFilter'
-    ).value;
-
-
-  const search =
-    document.getElementById(
-      'searchInput'
-    ).value
-      .trim()
-      .toLowerCase();
-
-
-  filteredAttendance =
-    allAttendance.filter(
-      row => {
-
-        const rowDate =
-          String(
-            row.attendance_date ||
-            ''
-          )
-          .slice(
-            0,
-            10
-          );
-
-
-        if (
-          dateFrom &&
-          rowDate < dateFrom
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          dateTo &&
-          rowDate > dateTo
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          employee &&
-          String(
-            row.employee_id ||
-            ''
-          ) !== employee
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          equipment &&
-          String(
-            row.equipment_id ||
-            ''
-          ) !== equipment
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          project &&
-          String(
-            row.project_id ||
-            ''
-          ) !== project
-        ) {
-
-          return false;
-
-        }
-
-
-        const rowStatus =
-          String(
-            row.status ||
-            ''
-          )
-          .toUpperCase();
-
-
-        if (
-          status &&
-          rowStatus !== status
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          fuel === 'YES' &&
-          row.fuel_used !== true
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          fuel === 'NO' &&
-          row.fuel_used === true
-        ) {
-
-          return false;
-
-        }
-
-
-        const searchText = [
-
-          row.employee_id,
-
-          row.employee_name,
-
-          row.equipment_id,
-
-          row.equipment_name,
-
-          row.project_id,
-
-          row.project_name,
-
-          row.attendance_id,
-
-          row.status
-
-        ]
-
-          .map(
-            value =>
-              String(
-                value ||
-                ''
-              )
-              .toLowerCase()
-          )
-
-          .join(' ');
-
-
-        if (
-          search &&
-          !searchText.includes(
-            search
-          )
-        ) {
-
-          return false;
-
-        }
-
-
-        return true;
-
-      }
-    );
-
-
-  renderSummary(
-    filteredAttendance
-  );
-
-
-  renderReport(
-    filteredAttendance
-  );
-
+function baseCostSummary(rows){
+  const total=rows.reduce((s,x)=>s+num(x.amount),0);
+  return {
+    total,
+    labor:categoryTotal(rows,"LABOR"),
+    fuel:categoryTotal(rows,"FUEL"),
+    equipment:categoryTotal(rows,"EQUIPMENT"),
+    material:categoryTotal(rows,"MATERIAL"),
+    other:rows.reduce((s,x)=>{
+      const t=String(x.cost_type||"").toUpperCase();
+      return ["LABOR","FUEL","EQUIPMENT","MATERIAL"].includes(t)?s:s+num(x.amount);
+    },0)
+  };
 }
 
-
-/* =========================================================
-   SUMMARY
-   ========================================================= */
-
-function renderSummary(
-  rows
-) {
-
-  const records =
-    rows.length;
-
-
-  const totalHours =
-    rows.reduce(
-      (
-        total,
-        row
-      ) => {
-
-        return (
-          total +
-          Number(
-            row.total_hours ||
-            0
-          )
-        );
-
-      },
-      0
-    );
-
-
-  const inCount =
-    rows.filter(
-      row =>
-        String(
-          row.status ||
-          ''
-        )
-          .toUpperCase() ===
-        'IN'
-    ).length;
-
-
-  const completedCount =
-    rows.filter(
-      row =>
-        String(
-          row.status ||
-          ''
-        )
-          .toUpperCase() ===
-        'COMPLETED'
-    ).length;
-
-
-  const fuelCount =
-    rows.filter(
-      row =>
-        row.fuel_used ===
-        true
-    ).length;
-
-
-  const fuelAmount =
-    rows.reduce(
-      (
-        total,
-        row
-      ) => {
-
-        return (
-          total +
-          Number(
-            row.fuel_amount ||
-            0
-          )
-        );
-
-      },
-      0
-    );
-
-
-  document.getElementById(
-    'recordsCount'
-  ).textContent =
-    records;
-
-
-  document.getElementById(
-    'hoursCount'
-  ).textContent =
-    totalHours.toFixed(2);
-
-
-  document.getElementById(
-    'inCount'
-  ).textContent =
-    inCount;
-
-
-  document.getElementById(
-    'completedCount'
-  ).textContent =
-    completedCount;
-
-
-  document.getElementById(
-    'fuelCount'
-  ).textContent =
-    fuelCount;
-
-
-  document.getElementById(
-    'fuelAmount'
-  ).textContent =
-    `₱${fuelAmount.toFixed(2)}`;
-
+function setSummary(items){
+  items.forEach((x,i)=>{
+    const n=i+1;
+    $("summary"+n+"Label").textContent=x.label;
+    $("summary"+n).textContent=x.value;
+  });
 }
 
+function setMeta(title,subtitle){
+  $("reportTitle").textContent=title;
+  $("reportSubtitle").textContent=subtitle;
+  const project=$("projectFilter").value;
+  $("reportProjectMeta").textContent="Project: "+(project?projectLabel(project):"ALL PROJECTS");
+  const from=$("dateFrom").value;
+  const to=$("dateTo").value;
+  const period=from&&to?formatDate(from)+" — "+formatDate(to):from?formatDate(from)+" — PRESENT":to?"UP TO "+formatDate(to):"ALL DATES";
+  $("reportDateMeta").textContent="Period: "+period;
+  $("generatedMeta").textContent="Generated: "+new Date().toLocaleString("en-PH");
+}
 
-/* =========================================================
-   RENDER REPORT
-   ========================================================= */
-
-function renderReport(
-  rows
-) {
-
-  const body =
-    document.getElementById(
-      'reportBody'
-    );
-
-
-  if (!rows.length) {
-
-    body.innerHTML = `
-      <tr>
-        <td
-          colspan="10"
-          class="empty"
-        >
-          No attendance records found.
-        </td>
-      </tr>
-    `;
-
+function renderTable(headers,rows){
+  state.currentHeaders=headers;
+  state.currentRows=rows;
+  $("reportHead").innerHTML="<tr>"+headers.map(h=>"<th>"+escapeHtml(h)+"</th>").join("")+"</tr>";
+  if(!rows.length){
+    $("reportBody").innerHTML='<tr><td colspan="'+headers.length+'" class="empty">No records found for the selected filters.</td></tr>';
     return;
-
   }
-
-
-  body.innerHTML =
-    rows
-      .map(
-        row => {
-
-          const status =
-            String(
-              row.status ||
-              ''
-            )
-            .toUpperCase();
-
-
-          let statusClass =
-            'status-other';
-
-
-          if (
-            status ===
-            'IN'
-          ) {
-
-            statusClass =
-              'status-in';
-
-          }
-
-
-          if (
-            status ===
-            'COMPLETED'
-          ) {
-
-            statusClass =
-              'status-completed';
-
-          }
-
-
-          const totalHours =
-            row.total_hours ===
-            null ||
-            row.total_hours ===
-            undefined
-              ? '-'
-              : Number(
-                  row.total_hours
-                )
-                .toFixed(2);
-
-
-          return `
-            <tr>
-
-              <td>
-                ${escapeHtml(
-                  row.attendance_id
-                )}
-              </td>
-
-              <td>
-
-                <strong>
-                  ${escapeHtml(
-                    row.employee_name
-                  )}
-                </strong>
-
-                <small>
-                  ${escapeHtml(
-                    row.employee_id
-                  )}
-                </small>
-
-              </td>
-
-              <td>
-
-                <strong>
-                  ${escapeHtml(
-                    row.equipment_name
-                  )}
-                </strong>
-
-                <small>
-                  ${escapeHtml(
-                    row.equipment_id
-                  )}
-                </small>
-
-              </td>
-
-              <td>
-
-                <strong>
-                  ${escapeHtml(
-                    row.project_name
-                  )}
-                </strong>
-
-                <small>
-                  ${escapeHtml(
-                    row.project_id
-                  )}
-                </small>
-
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  formatDate(
-                    row.attendance_date
-                  )
-                )}
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  formatTime(
-                    row.time_in
-                  )
-                )}
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  formatTime(
-                    row.time_out
-                  )
-                )}
-              </td>
-
-              <td>
-                ${escapeHtml(
-                  totalHours
-                )}
-              </td>
-
-              <td>
-                ${formatFuel(row)}
-              </td>
-
-              <td>
-
-                <span
-                  class="
-                    status
-                    ${statusClass}
-                  "
-                >
-                  ${escapeHtml(
-                    status
-                  )}
-                </span>
-
-              </td>
-
-            </tr>
-          `;
-
-        }
-      )
-      .join('');
-
+  $("reportBody").innerHTML=rows.map(row=>"<tr>"+row.map((cell,i)=>{
+    if(cell && typeof cell==="object" && cell.html)return "<td>"+cell.html+"</td>";
+    return "<td>"+escapeHtml(cell==null?"":cell)+"</td>";
+  }).join("")+"</tr>").join("");
 }
 
+function renderProjectSummary(){
+  const rows=filteredCostEntries();
+  const groups=new Map();
 
-/* =========================================================
-   CLEAR FILTERS
-   ========================================================= */
+  rows.forEach(x=>{
+    const id=x.project_id||"UNASSIGNED";
+    if(!groups.has(id))groups.set(id,{project_id:id,project_name:projectName(id),labor:0,fuel:0,equipment:0,material:0,other:0,total:0});
+    const g=groups.get(id);
+    const amount=num(x.amount);
+    const type=String(x.cost_type||"OTHER").toUpperCase();
+    if(type==="LABOR")g.labor+=amount;
+    else if(type==="FUEL")g.fuel+=amount;
+    else if(type==="EQUIPMENT")g.equipment+=amount;
+    else if(type==="MATERIAL")g.material+=amount;
+    else g.other+=amount;
+    g.total+=amount;
+  });
 
-function clearFilters() {
+  const groupsRows=[...groups.values()].sort((a,b)=>b.total-a.total);
+  const totals=groupsRows.reduce((a,g)=>({
+    total:a.total+g.total,labor:a.labor+g.labor,fuel:a.fuel+g.fuel,equipment:a.equipment+g.equipment,material:a.material+g.material,other:a.other+g.other
+  }),{total:0,labor:0,fuel:0,equipment:0,material:0,other:0});
 
-  document.getElementById(
-    'dateFrom'
-  ).value =
-    '';
+  setSummary([
+    {label:"PROJECTS",value:String(groupsRows.length)},
+    {label:"ACTUAL COST",value:money(totals.total)},
+    {label:"LABOR",value:money(totals.labor)},
+    {label:"FUEL",value:money(totals.fuel)},
+    {label:"EQUIPMENT",value:money(totals.equipment)},
+    {label:"MATERIALS",value:money(totals.material)}
+  ]);
+  setMeta("PROJECT COST SUMMARY","Consolidated actual cost by project and cost category.");
 
-
-  document.getElementById(
-    'dateTo'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'employeeFilter'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'equipmentFilter'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'projectFilter'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'statusFilter'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'fuelFilter'
-  ).value =
-    '';
-
-
-  document.getElementById(
-    'searchInput'
-  ).value =
-    '';
-
-
-  applyFilters();
-
+  renderTable(
+    ["PROJECT","LABOR","FUEL","EQUIPMENT","MATERIALS","OTHER","TOTAL ACTUAL COST"],
+    groupsRows.map(g=>[
+      {html:"<strong>"+escapeHtml(g.project_name)+"</strong><small>"+escapeHtml(g.project_id)+"</small>"},
+      money(g.labor),money(g.fuel),money(g.equipment),money(g.material),money(g.other),money(g.total)
+    ])
+  );
 }
 
+function renderCostLedger(){
+  const rows=filteredCostEntries();
+  const s=baseCostSummary(rows);
+  setSummary([
+    {label:"COST ENTRIES",value:String(rows.length)},
+    {label:"ACTUAL COST",value:money(s.total)},
+    {label:"LABOR",value:money(s.labor)},
+    {label:"FUEL",value:money(s.fuel)},
+    {label:"EQUIPMENT",value:money(s.equipment)},
+    {label:"MATERIALS",value:money(s.material)}
+  ]);
+  setMeta("PROJECT COST LEDGER","Complete actual cost entries recorded against projects.");
 
-/* =========================================================
-   EXPORT CSV
-   ========================================================= */
+  renderTable(
+    ["DATE","PROJECT","TYPE","DESCRIPTION","QTY","UNIT","UNIT COST","AMOUNT","REFERENCE"],
+    rows.map(x=>[
+      formatDate(x.cost_date),
+      {html:"<strong>"+escapeHtml(projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      {html:categoryBadge(x.cost_type)},
+      {html:"<strong>"+escapeHtml(x.description||"")+"</strong><small>"+escapeHtml(x.notes||"")+"</small>"},
+      num(x.quantity).toLocaleString("en-PH",{maximumFractionDigits:3}),
+      x.unit||"",
+      money(x.unit_cost),
+      {html:'<span class="amount">'+money(x.amount)+'</span>'},
+      x.reference_id||""
+    ])
+  );
+}
 
-function exportCSV() {
+function renderAttendance(){
+  const rows=state.attendance.filter(x=>projectMatches(x.project_id)&&inDateRange(x.attendance_date));
+  const hours=rows.reduce((s,x)=>s+num(x.total_hours),0);
+  const fuel=rows.filter(x=>x.fuel_used===true);
+  const fuelAmount=fuel.reduce((s,x)=>s+num(x.fuel_amount),0);
+  const completed=rows.filter(x=>String(x.status||"").toUpperCase()==="COMPLETED").length;
+  const active=rows.filter(x=>String(x.status||"").toUpperCase()==="IN").length;
+  const liters=fuel.reduce((s,x)=>s+num(x.fuel_quantity),0);
 
-  if (
-    !filteredAttendance.length
-  ) {
+  setSummary([
+    {label:"ATTENDANCE RECORDS",value:String(rows.length)},
+    {label:"TOTAL HOURS",value:hours.toFixed(2)},
+    {label:"FUEL COST",value:money(fuelAmount)},
+    {label:"COMPLETED",value:String(completed)},
+    {label:"CURRENTLY IN",value:String(active)},
+    {label:"FUEL QUANTITY",value:liters.toFixed(2)+" L"}
+  ]);
+  setMeta("ATTENDANCE REPORT","Attendance, working hours, equipment, project and fuel usage.");
 
-    showMessage(
-      'There are no records to export.'
-    );
+  renderTable(
+    ["ATTENDANCE ID","EMPLOYEE","EQUIPMENT","PROJECT","DATE","TIME IN","TIME OUT","TOTAL HOURS","FUEL","STATUS"],
+    rows.map(x=>[
+      x.attendance_id,
+      {html:"<strong>"+escapeHtml(x.employee_name)+"</strong><small>"+escapeHtml(x.employee_id)+"</small>"},
+      {html:"<strong>"+escapeHtml(x.equipment_name)+"</strong><small>"+escapeHtml(x.equipment_id)+"</small>"},
+      {html:"<strong>"+escapeHtml(x.project_name)+"</strong><small>"+escapeHtml(x.project_id)+"</small>"},
+      formatDate(x.attendance_date),
+      formatTime(x.time_in),
+      formatTime(x.time_out),
+      x.total_hours==null?"—":num(x.total_hours).toFixed(2),
+      {html:x.fuel_used===true?'<span class="badge fuel">'+escapeHtml(x.fuel_quantity||0)+' '+escapeHtml(x.fuel_unit||"Liter")+' | '+money(x.fuel_amount)+'</span>':'<span class="badge other">NO FUEL</span>'},
+      {html:'<span class="badge '+(String(x.status||"").toLowerCase()==="completed"?"labor":"other")+'">'+escapeHtml(x.status||"—")+'</span>'}
+    ])
+  );
+}
 
+function renderFuel(){
+  const rows=filteredCostEntries().filter(x=>String(x.cost_type||"").toUpperCase()==="FUEL");
+  const total=rows.reduce((s,x)=>s+num(x.amount),0);
+  const qty=rows.reduce((s,x)=>s+num(x.quantity),0);
+  const avg=qty?total/qty:0;
+  const projects=new Set(rows.map(x=>x.project_id).filter(Boolean)).size;
+
+  setSummary([
+    {label:"FUEL RECORDS",value:String(rows.length)},
+    {label:"FUEL COST",value:money(total)},
+    {label:"QUANTITY",value:qty.toFixed(2)+" L"},
+    {label:"AVERAGE / LITER",value:money(avg)},
+    {label:"PROJECTS",value:String(projects)},
+    {label:"COST TYPE",value:"FUEL"}
+  ]);
+  setMeta("FUEL COST REPORT","Actual fuel cost entries recorded against projects.");
+
+  renderTable(
+    ["DATE","PROJECT","FUEL DESCRIPTION","QUANTITY","UNIT","PRICE / UNIT","FUEL COST","REFERENCE"],
+    rows.map(x=>[
+      formatDate(x.cost_date),
+      {html:"<strong>"+escapeHtml(projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      x.description||"",
+      num(x.quantity).toLocaleString("en-PH",{maximumFractionDigits:3}),
+      x.unit||"LITER",
+      money(x.unit_cost),
+      {html:'<span class="amount">'+money(x.amount)+'</span>'},
+      x.reference_id||""
+    ])
+  );
+}
+
+function renderMaintenance(){
+  const rows=state.maintenance.filter(x=>projectMatches(x.project_id)&&inDateRange(x.maintenance_date));
+  const total=rows.reduce((s,x)=>s+num(x.total_amount),0);
+  const approved=rows.filter(x=>String(x.approval_status||"").toUpperCase()==="APPROVED").length;
+
+  setSummary([
+    {label:"MAINTENANCE RECORDS",value:String(rows.length)},
+    {label:"MAINTENANCE COST",value:money(total)},
+    {label:"APPROVED",value:String(approved)},
+    {label:"PROJECTS",value:String(new Set(rows.map(x=>x.project_id).filter(Boolean)).size)},
+    {label:"RECORD TYPE",value:"EQUIPMENT"},
+    {label:"ACTUAL COST",value:money(total)}
+  ]);
+  setMeta("MAINTENANCE COST REPORT","Equipment maintenance costs assigned to projects.");
+
+  renderTable(
+    ["DATE","EQUIPMENT","PROJECT","MAINTENANCE TYPE","DESCRIPTION","SUPPLIER / SHOP","QTY","UNIT","TOTAL COST","REFERENCE"],
+    rows.map(x=>[
+      formatDate(x.maintenance_date),
+      {html:"<strong>"+escapeHtml(x.equipment_id)+"</strong>"},
+      {html:"<strong>"+escapeHtml(projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      x.maintenance_type||"",
+      x.description||"",
+      x.supplier_shop||"—",
+      num(x.quantity).toLocaleString("en-PH",{maximumFractionDigits:3}),
+      x.unit||"",
+      {html:'<span class="amount">'+money(x.total_amount)+'</span>'},
+      x.reference_no||"—"
+    ])
+  );
+}
+
+function renderRepair(){
+  const rows=state.repairs.filter(x=>projectMatches(x.project_id)&&inDateRange(x.request_date)&&num(x.repair_cost_total)>0);
+  const total=rows.reduce((s,x)=>s+num(x.repair_cost_total),0);
+  const labor=rows.reduce((s,x)=>s+num(x.repair_labor_cost),0);
+  const material=rows.reduce((s,x)=>s+num(x.repair_material_cost),0);
+  const other=rows.reduce((s,x)=>s+num(x.repair_other_cost),0);
+
+  setSummary([
+    {label:"REPAIR REQUESTS",value:String(rows.length)},
+    {label:"REPAIR COST",value:money(total)},
+    {label:"REPAIR LABOR",value:money(labor)},
+    {label:"REPAIR MATERIAL",value:money(material)},
+    {label:"REPAIR OTHER",value:money(other)},
+    {label:"PROJECTS",value:String(new Set(rows.map(x=>x.project_id).filter(Boolean)).size)}
+  ]);
+  setMeta("REPAIR COST REPORT","Repair request costs separated into labor, materials and other expenses.");
+
+  renderTable(
+    ["REPAIR FORM","DATE","EQUIPMENT","PROJECT","STATUS","LABOR","MATERIAL","OTHER","TOTAL REPAIR COST"],
+    rows.map(x=>[
+      x.repair_form_no,
+      formatDate(x.request_date),
+      {html:"<strong>"+escapeHtml(x.equipment_name||x.equipment_id)+"</strong><small>"+escapeHtml(x.equipment_id||"")+"</small>"},
+      {html:"<strong>"+escapeHtml(x.project_name||projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      x.status||"—",
+      money(x.repair_labor_cost),
+      money(x.repair_material_cost),
+      money(x.repair_other_cost),
+      {html:'<span class="amount">'+money(x.repair_cost_total)+'</span>'}
+    ])
+  );
+}
+
+function renderMaterial(){
+  const rows=filteredCostEntries().filter(x=>String(x.cost_type||"").toUpperCase()==="MATERIAL"&&!isRepairRef(x.reference_id));
+  const total=rows.reduce((s,x)=>s+num(x.amount),0);
+
+  setSummary([
+    {label:"MATERIAL RECORDS",value:String(rows.length)},
+    {label:"MATERIAL COST",value:money(total)},
+    {label:"PROJECTS",value:String(new Set(rows.map(x=>x.project_id).filter(Boolean)).size)},
+    {label:"COST TYPE",value:"MATERIAL"},
+    {label:"SOURCE",value:"PROJECT COST"},
+    {label:"ACTUAL COST",value:money(total)}
+  ]);
+  setMeta("MATERIALS / PURCHASING COST REPORT","Project material cost entries. Repair materials are shown separately in the Repair report.");
+
+  renderTable(
+    ["DATE","PROJECT","MATERIAL DESCRIPTION","QTY","UNIT","UNIT COST","TOTAL COST","REFERENCE"],
+    rows.map(x=>[
+      formatDate(x.cost_date),
+      {html:"<strong>"+escapeHtml(projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      x.description||"",
+      num(x.quantity).toLocaleString("en-PH",{maximumFractionDigits:3}),
+      x.unit||"",
+      money(x.unit_cost),
+      {html:'<span class="amount">'+money(x.amount)+'</span>'},
+      x.reference_id||"—"
+    ])
+  );
+}
+
+function renderLabor(){
+  const rows=filteredCostEntries().filter(x=>String(x.cost_type||"").toUpperCase()==="LABOR"&&!isRepairRef(x.reference_id));
+  const total=rows.reduce((s,x)=>s+num(x.amount),0);
+  const hours=rows.reduce((s,x)=>s+num(x.quantity),0);
+
+  setSummary([
+    {label:"LABOR RECORDS",value:String(rows.length)},
+    {label:"LABOR COST",value:money(total)},
+    {label:"LABOR HOURS",value:hours.toFixed(2)},
+    {label:"PROJECTS",value:String(new Set(rows.map(x=>x.project_id).filter(Boolean)).size)},
+    {label:"COST TYPE",value:"LABOR"},
+    {label:"SOURCE",value:"PROJECT COST"}
+  ]);
+  setMeta("LABOR / PAYROLL COST REPORT","Labor cost entries linked to projects. Repair labor is separated into the Repair report.");
+
+  renderTable(
+    ["DATE","PROJECT","LABOR DESCRIPTION","HOURS","RATE / HOUR","LABOR COST","REFERENCE"],
+    rows.map(x=>[
+      formatDate(x.cost_date),
+      {html:"<strong>"+escapeHtml(projectName(x.project_id))+"</strong><small>"+escapeHtml(x.project_id||"")+"</small>"},
+      x.description||"",
+      num(x.quantity).toFixed(3),
+      money(x.unit_cost),
+      {html:'<span class="amount">'+money(x.amount)+'</span>'},
+      x.reference_id||"—"
+    ])
+  );
+}
+
+function generateReport(){
+  const type=$("reportType").value;
+  $("reportDescription").textContent=descriptions[type]||"";
+  if(type==="PROJECT_SUMMARY")return renderProjectSummary();
+  if(type==="COST_LEDGER")return renderCostLedger();
+  if(type==="ATTENDANCE")return renderAttendance();
+  if(type==="FUEL")return renderFuel();
+  if(type==="MAINTENANCE")return renderMaintenance();
+  if(type==="REPAIR")return renderRepair();
+  if(type==="MATERIAL")return renderMaterial();
+  if(type==="LABOR")return renderLabor();
+}
+
+function clearFilters(){
+  $("projectFilter").value="";
+  $("dateFrom").value="";
+  $("dateTo").value="";
+  generateReport();
+}
+
+function exportCSV(){
+  if(!state.currentRows.length){
+    showMessage("There are no records to export.");
     return;
-
   }
-
-
-  const headers = [
-
-    'Attendance ID',
-    'Employee ID',
-    'Employee Name',
-    'Equipment ID',
-    'Equipment Name',
-    'Project ID',
-    'Project Name',
-    'Date',
-    'Time In',
-    'Time Out',
-    'Total Hours',
-    'Fuel Used',
-    'Fuel Quantity',
-    'Fuel Unit',
-    'Fuel Amount',
-    'Status'
-
-  ];
-
-
-  const rows =
-    filteredAttendance.map(
-      row => [
-
-        row.attendance_id || '',
-
-        row.employee_id || '',
-
-        row.employee_name || '',
-
-        row.equipment_id || '',
-
-        row.equipment_name || '',
-
-        row.project_id || '',
-
-        row.project_name || '',
-
-        row.attendance_date || '',
-
-        row.time_in || '',
-
-        row.time_out || '',
-
-        row.total_hours ?? '',
-
-        row.fuel_used
-          ? 'YES'
-          : 'NO',
-
-        row.fuel_quantity ?? '',
-
-        row.fuel_unit || '',
-
-        row.fuel_amount ?? '',
-
-        row.status || ''
-
-      ]
-    );
-
-
-  const csv = [
-
-    headers,
-
-    ...rows
-
-  ]
-
-    .map(
-      row =>
-        row
-          .map(
-            value =>
-              `"${String(
-                value
-              )
-                .replaceAll(
-                  '"',
-                  '""'
-                )}"`
-          )
-          .join(',')
-    )
-
-    .join('\r\n');
-
-
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type:
-          'text/csv;charset=utf-8;'
-      }
-    );
-
-
-  const url =
-    URL.createObjectURL(
-      blob
-    );
-
-
-  const link =
-    document.createElement(
-      'a'
-    );
-
-
-  link.href =
-    url;
-
-
-  link.download =
-    `AMANAH_ATTENDANCE_REPORT_${new Date()
-      .toISOString()
-      .slice(
-        0,
-        10
-      )}.csv`;
-
-
-  document.body.appendChild(
-    link
-  );
-
-
-  link.click();
-
-
-  link.remove();
-
-
-  URL.revokeObjectURL(
-    url
-  );
-
+  const csvRows=[state.currentHeaders,...state.currentRows.map(row=>row.map(cell=>{
+    if(cell&&typeof cell==="object"&&cell.html){
+      const tmp=document.createElement("div");
+      tmp.innerHTML=cell.html;
+      return tmp.textContent||"";
+    }
+    return cell==null?"":cell;
+  }))];
+  const csv=csvRows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="AMANAH_"+$("reportType").value+"_REPORT_"+today()+".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
+$("reportType").addEventListener("change",generateReport);
+$("projectFilter").addEventListener("change",generateReport);
+$("dateFrom").addEventListener("change",generateReport);
+$("dateTo").addEventListener("change",generateReport);
+$("filterButton").addEventListener("click",generateReport);
+$("clearButton").addEventListener("click",clearFilters);
+$("exportButton").addEventListener("click",exportCSV);
+$("printButton").addEventListener("click",()=>window.print());
+$("refreshButton").addEventListener("click",loadData);
 
-/* =========================================================
-   LOGOUT
-   ========================================================= */
-
-async function logout() {
-
-  try {
-
-    await supabaseClient
-      .auth
-      .signOut();
-
-
-    location.href =
-      'admin.html';
-
-  } catch (error) {
-
-    showMessage(
-      error.message ||
-      'Logout failed.'
-    );
-
+(async function start(){
+  try{
+    const ok=await requireSession();
+    if(!ok)return;
+    await loadData();
+  }catch(error){
+    console.error(error);
+    showMessage(error.message||"Unable to load Reports.");
+    $("reportBody").innerHTML='<tr><td colspan="10" class="empty">Unable to load report data.</td></tr>';
   }
-
-}
-
-
-/* =========================================================
-   EVENTS
-   ========================================================= */
-
-document
-  .getElementById(
-    'filterButton'
-  )
-  .addEventListener(
-    'click',
-    applyFilters
-  );
-
-
-document
-  .getElementById(
-    'clearButton'
-  )
-  .addEventListener(
-    'click',
-    clearFilters
-  );
-
-
-document
-  .getElementById(
-    'refreshButton'
-  )
-  .addEventListener(
-    'click',
-    loadAttendance
-  );
-
-
-document
-  .getElementById(
-    'exportButton'
-  )
-  .addEventListener(
-    'click',
-    exportCSV
-  );
-
-
-document
-  .getElementById(
-    'printButton'
-  )
-  .addEventListener(
-    'click',
-    () => window.print()
-  );
-
-
-document
-  .getElementById(
-    'logoutButton'
-  )
-  .addEventListener(
-    'click',
-    logout
-  );
-
-
-document
-  .getElementById(
-    'searchInput'
-  )
-  .addEventListener(
-    'input',
-    applyFilters
-  );
-
-
-document
-  .getElementById(
-    'statusFilter'
-  )
-  .addEventListener(
-    'change',
-    applyFilters
-  );
-
-
-document
-  .getElementById(
-    'fuelFilter'
-  )
-  .addEventListener(
-    'change',
-    applyFilters
-  );
-
-
-/* =========================================================
-   START
-   ========================================================= */
-
-loadAttendance();
+})();
