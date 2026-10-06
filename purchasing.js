@@ -271,7 +271,7 @@ function renderRequests(){
   if(r.status==="PENDING APPROVAL" && state.access.canManage)actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">CANCEL REQUEST</button>';
   if(r.status==="APPROVED" && state.access.canManage)actions+='<button class="mini gray" data-pr-cancel="'+esc(r.purchase_request_id)+'">REQUEST CANCELLATION</button>';
   if(state.access.canApprove && (r.status==="PENDING APPROVAL"||r.status==="SUBMITTED"||r.status==="UNDER REVIEW"))actions+='<button class="mini green" data-pr-approve="'+esc(r.purchase_request_id)+'">APPROVE</button><button class="mini red" data-pr-reject="'+esc(r.purchase_request_id)+'">REJECT</button>';
-  if(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))actions+='<button class="mini green" data-pr-po="'+esc(r.purchase_request_id)+'">CREATE PO</button>';
+  if(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))actions+='<button class="mini green" type="button" data-pr-po="'+esc(r.purchase_request_id)+'" onclick="openPOModal(\''+esc(r.purchase_request_id)+'\'); return false;">CREATE PO</button>';
   return '<tr><td><strong>'+esc(r.request_no)+'</strong></td><td>'+esc(fmtDate(r.request_date))+'</td><td><strong>'+esc(r.project_name)+'</strong><br><small style="color:#64748b">'+esc(r.project_location||"")+'</small></td><td>'+esc(r.requester_name)+'<br><small style="color:#64748b">'+esc(r.requester_position||r.requester_role||"SITE ENGINEER")+'</small></td><td>'+esc(fmtDate(r.needed_by_date))+'</td><td>'+esc(r.priority)+'</td><td>'+items.length+'</td><td>'+statusBadge(r.status)+'</td><td><div class="row-actions">'+actions+'</div></td></tr>';
  }).join(""):'<tr><td colspan="9" class="empty">No purchase requests found.</td></tr>';
  document.querySelectorAll("[data-pr-view]").forEach(b=>b.addEventListener("click",()=>openRequestDetails(b.dataset.prView)));
@@ -283,6 +283,20 @@ function renderRequests(){
  document.querySelectorAll("[data-pr-reject]").forEach(b=>b.addEventListener("click",()=>setRequestStatus(b.dataset.prReject,"REJECTED")));
  document.querySelectorAll("[data-pr-po]").forEach(b=>b.addEventListener("click",()=>openPOModal(b.dataset.prPo)));
 }
+document.addEventListener("click",function(event){
+  const button=event.target.closest("[data-pr-po]");
+  if(!button)return;
+  event.preventDefault();
+  event.stopPropagation();
+  const id=button.getAttribute("data-pr-po");
+  try{
+    openPOModal(id);
+  }catch(error){
+    console.error("CREATE PO button error:",error);
+    msg(error.message||"Unable to open Purchase Order form.","err");
+  }
+});
+
 function renderOrders(){
  const q=(document.getElementById("poSearch").value||"").toLowerCase().trim(),status=document.getElementById("poStatus").value,pid=document.getElementById("poProject").value;
  const rows=state.orders.filter(o=>(!q||[o.po_no,o.supplier_name,o.project_name,o.purchase_request_no].join(" ").toLowerCase().includes(q))&&(!status||o.status===status)&&(!pid||o.project_id===pid));
