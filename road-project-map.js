@@ -409,7 +409,7 @@
   }
 
   function distanceMetersBetween(a,b){
-    if(!a||!b||!window.L)return 0;
+    if(!a||!b||!window.L)return NaN;
     return L.latLng(a.lat,a.lng).distanceTo(L.latLng(b.lat,b.lng));
   }
 
