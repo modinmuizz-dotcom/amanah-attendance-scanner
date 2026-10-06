@@ -145,6 +145,80 @@
     return Promise.race([promise,timeout]);
   }
 
+  function restoreSavedAlignmentInputs(){
+    const a=projectData.alignment;
+    if(!a)return;
+
+    const setValue=(id,value)=>{
+      const el=qs(id);
+      if(el&&value!==null&&value!==undefined)el.value=Number(value).toFixed(6);
+    };
+
+    setValue('projectStartLat',a.start_lat);
+    setValue('projectStartLng',a.start_lng);
+    setValue('projectEndLat',a.end_lat);
+    setValue('projectEndLng',a.end_lng);
+
+    const hasCurves=(a.elements||[]).some(e=>String(e.element_type||'').toUpperCase()==='CIRCULAR_CURVE');
+    const mode=hasCurves?'CUSTOM_CURVE':'STRAIGHT';
+    const select=qs('projectAlignmentMode');
+    if(select)select.value=mode;
+
+    if(mode==='CUSTOM_CURVE'){
+      qs('projectCurveRows').innerHTML='';
+      showCurveEditor(true);
+      renderSavedCurveRows();
+      if(!getCurveRows().length)addCurveRow();
+    }else{
+      showCurveEditor(false);
+      qs('projectCurveRows').innerHTML='';
+    }
+
+    updateProjectAlignmentControls();
+    updateProjectDistanceSummary();
+
+    const help=qs('projectAlignmentHelp');
+    if(help){
+      help.textContent=hasCurves
+        ? 'Saved project alignment loaded. Edit the curve elements and click SAVE ALIGNMENT COORDINATES to replace it.'
+        : 'Saved project alignment loaded. Edit the coordinates and click SAVE ALIGNMENT COORDINATES to replace it.';
+    }
+  }
+
+  async function saveCurrentAlignmentCoordinates(){
+    try{
+      const coords=readProjectCoordinates();
+      const mode=qs('projectAlignmentMode')?.value||'STRAIGHT';
+
+      if(mode==='CUSTOM_CURVE'){
+        if(!getCurveRows().length)addCurveRow();
+        const curves=readCurveElementsFromInputs();
+        if(curves.length<1)throw new Error('CUSTOM CURVE requires at least one curve element.');
+        projectAlignmentState={
+          mode,
+          start:coords.start,
+          end:coords.end,
+          curves:[],
+          built:null,
+          previewLine:null
+        };
+      }else{
+        projectAlignmentState={
+          mode:'STRAIGHT',
+          start:coords.start,
+          end:coords.end,
+          curves:[],
+          built:null,
+          previewLine:null
+        };
+      }
+
+      await finishCoordinateAlignmentSave();
+    }catch(error){
+      setDrawMessage(error.message||'Unable to save alignment coordinates.','err');
+    }
+  }
+
   async function loadData(){
     const projectId=new URLSearchParams(location.search).get('project_id');
     if(!projectId) throw new Error('Missing project_id.');
@@ -253,6 +327,7 @@
       projectData.alignment=data.alignment||null;
       projectData.sections=projectData.sections.map(s=>({...s,geometry:sectionMap.get(s.section_id)||null}));
       projectData.components=projectData.components.map(c=>({...c,geometry:componentMap.get(c.work_component_id)||null}));
+      restoreSavedAlignmentInputs();
       renderLayers();
       const bounds=allGeometryBounds();
       if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
@@ -1092,6 +1167,7 @@
       populateTargets();
       updateProjectAlignmentControls();
     });
+    qs('projectSaveAlignment')?.addEventListener('click',saveCurrentAlignmentCoordinates);
     qs('projectGenerateAlignment')?.addEventListener('click',async()=>{
       if(projectAlignmentState?.mode==='CUSTOM_CURVE') await finishCoordinateAlignmentSave();
       else await handleProjectGenerateAlignment();
