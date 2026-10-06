@@ -703,6 +703,7 @@ async function saveSupplyStatus(){
    closeSupplyModal();
    await Promise.all([loadRequests(),loadOrders()]);
    renderAll();
+   await openPODetails(item.purchase_order_id);
    msg("Material supply status updated successfully.","ok");
  }catch(error){
    console.error(error);
