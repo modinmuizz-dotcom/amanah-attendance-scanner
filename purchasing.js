@@ -420,6 +420,7 @@ function openPOModal(requestId){
  const r=state.requests.find(x=>x.purchase_request_id===requestId);if(!r)return;
  if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can create Purchase Orders.","err");
  if(!["APPROVED","PARTIALLY ORDERED"].includes(r.status))return msg("Purchase Request must be approved by the General Manager before creating a PO.","err");
+ clearPOValidation();
  state.editingOrderId=null;
  const items=state.requestItems.filter(x=>x.purchase_request_id===requestId).map(x=>({...x,unit_price:0}));state.poDraftRequest={r,items};
  document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";document.getElementById("poFromRequest").textContent=r.request_no+" • "+r.project_name+" • Requested by "+r.requester_name;
@@ -444,10 +445,28 @@ function renderPoItems(){
 function updatePoTotal(){const items=state.poDraftRequest?.items||[];const total=items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);items.forEach((x,i)=>{const el=document.querySelector('[data-po-total="'+i+'"]');if(el)el.textContent=money(Number(x.quantity||0)*Number(x.unit_price||0));});document.getElementById("poSubtotal").textContent=money(total);}
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;state.editingOrderId=null;document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";}
 async function savePurchaseOrder(){
- const d=state.poDraftRequest;if(!d)return;
- if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can create or edit Purchase Orders.","err");const editing=!!state.editingOrderId;
+ const d=state.poDraftRequest;
+ if(!d)return;
+ if(!state.access.canManage)return msg("Only the Purchasing Officer / Procurement role can create or edit Purchase Orders.","err");
+ clearPOValidation();
+
+ const editing=!!state.editingOrderId;
  const supplierId=document.getElementById("poSupplier").value,supplier=state.suppliers.find(s=>s.supplier_id===supplierId),contact=document.getElementById("poSupplierContact").value.trim(),address=document.getElementById("poSupplierAddress").value.trim(),poDate=document.getElementById("poDate").value,delivery=document.getElementById("poDelivery").value,payment=document.getElementById("poPaymentTerms").value.trim(),deliveryTerms=document.getElementById("poDeliveryTerms").value.trim(),remarks=document.getElementById("poRemarks").value.trim();
- if(!supplierId||!supplier)return msg("Please select a registered supplier.","err");if(!poDate)return msg("PO date is required.","err");if(delivery&&delivery<poDate)return msg("Expected delivery cannot be earlier than PO date.","err");
+ if(!supplierId||!supplier){
+   showPOValidation("SUPPLIER IS REQUIRED — please select a registered supplier before saving the Purchase Order.");
+   document.getElementById("poSupplier")?.focus();
+   return;
+ }
+ if(!poDate){
+   showPOValidation("PO date is required.");
+   document.getElementById("poDate")?.focus();
+   return;
+ }
+ if(delivery&&delivery<poDate){
+   showPOValidation("Expected delivery cannot be earlier than the PO date.");
+   document.getElementById("poDelivery")?.focus();
+   return;
+ }
  for(const it of d.items){if(!it.material_name.trim())return msg("Every PO line needs a material name.","err");if(!(Number(it.quantity)>0))return msg("Every PO line needs a quantity greater than zero.","err");if(!(Number(it.unit_price)>=0))return msg("Unit price cannot be negative.","err");}
  const total=d.items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);
  const btn=document.getElementById("savePo");btn.disabled=true;btn.textContent=editing?"SAVING CHANGES...":"SAVING...";
@@ -458,7 +477,14 @@ async function savePurchaseOrder(){
   else{payload.purchase_request_id=d.r.purchase_request_id;payload.purchase_request_no=d.r.request_no;payload.status="DRAFT";const {data,error}=await supabaseClient.from("purchase_orders").insert(payload).select("purchase_order_id,po_no").single();if(error)throw error;poId=data.purchase_order_id;poNo=data.po_no;}
   const items=d.items.map((it,i)=>({purchase_order_id:poId,line_no:i+1,purchase_request_item_id:it.purchase_request_item_id||null,material_name:it.material_name.trim(),specifications:it.specifications?.trim()||null,quantity:Number(it.quantity),unit:it.unit.trim(),unit_price:Number(it.unit_price||0)}));
   const {error:ierr}=await supabaseClient.from("purchase_order_items").insert(items);if(ierr)throw ierr;
-  if(!editing)await supabaseClient.from("purchase_requests").update({status:"ORDERED"}).eq("purchase_request_id",d.r.purchase_request_id);
+  if(!editing){
+    const {error:requestStatusError}=await supabaseClient
+      .from("purchase_requests")
+      .update({status:"ORDERED"})
+      .eq("purchase_request_id",d.r.purchase_request_id);
+
+    if(requestStatusError)throw requestStatusError;
+  }
   const existing=state.orders.find(x=>x.purchase_order_id===poId);const savedNo=editing?(existing?.po_no||"Purchase Order"):poNo;
   closePoModal();msg(savedNo+" "+(editing?"updated successfully.":"created successfully."));await Promise.all([loadRequests(),loadOrders()]);renderAll();if(!editing)switchTab("orders");
  }catch(err){console.error(err);msg((editing?"Could not update purchase order: ":"Could not create purchase order: ")+err.message,"err");}
