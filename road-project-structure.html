@@ -111,24 +111,24 @@
           <small>Straight line or full control-point path, depending on method.</small>
         </div>
       </div>
-      <div id="projectControlPointEditor" class="project-control-point-editor" style="display:none">
-          <div class="project-control-head">
-            <div>
-              <strong>CURVE CONTROL POINTS</strong>
-              <span>Add the intermediate coordinates that the road follows.</span>
-            </div>
-            <div class="button-cluster">
-              <button class="secondary-btn" id="projectAddControlPoint" type="button">+ ADD COORDINATE</button>
-              <button class="secondary-btn" id="projectClearControlPoints" type="button">CLEAR POINTS</button>
-            </div>
+      <div id="projectCurveEditor" class="project-curve-editor" style="display:none">
+        <div class="project-curve-head">
+          <div>
+            <strong>HORIZONTAL CURVE ELEMENTS</strong>
+            <span>Define each curve with PC, P1 on the arc, and PT. AMANAH calculates radius, direction, arc length, tangent length, and stationing.</span>
           </div>
-          <div id="projectControlPointRows" class="project-control-point-rows"></div>
-          <div class="project-control-point-note">
-            You can type the coordinates manually <strong>or click the road on the map</strong>. Each intermediate coordinate becomes part of the project alignment.
+          <div class="button-cluster">
+            <button class="secondary-btn" id="projectAddCurve" type="button">+ ADD CURVE</button>
+            <button class="secondary-btn" id="projectClearCurves" type="button">CLEAR CURVES</button>
           </div>
         </div>
+        <div id="projectCurveRows" class="project-curve-rows"></div>
+        <div class="project-curve-note">
+          PC = Point of Curvature, P1 = a point on the actual circular curve, PT = Point of Tangency. Multiple curves are connected by tangent elements automatically.
+        </div>
+      </div>
         <div class="project-alignment-help" id="projectAlignmentHelp">
-          Enter start/end coordinates. Choose CUSTOM CURVE to add intermediate points by coordinates or by clicking the road.
+          For CUSTOM CURVE, add one or more circular curve elements. Enter PC, P1 and PT for each curve, then generate the alignment.
         </div>
       </div>
       <div id="roadMapNotice" class="road-map-notice" style="display:none"></div>
@@ -223,7 +223,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="road-project-map.js?v=28"></script>
+  <script src="road-project-map.js?v=29"></script>
   <script src="road-project-structure.js?v=2"></script>
 </body>
 </html>
