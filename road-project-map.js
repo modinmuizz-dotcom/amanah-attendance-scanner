@@ -4,27 +4,20 @@
   const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
   let map=null;
+  let drawnItems=null;
   let projectData={project:null,phases:[],sections:[],components:[]};
-  let statusLines=[];
-  let projectMarker=null;
-  let pointMarkers=[];
-  let drawLine=null;
-  let drawVertices=[];
-  let drawState=null;
-  let pointMode=null;
+  let drawMode=null;
   let mapCenterMode=false;
-  let apiReady=false;
+  let pointMode=null;
+  let centerMarker=null;
+  let pointLayer=null;
+  let statusLayer=null;
+  let basemapLayer=null;
+  let basemapFallbackUsed=false;
+  let embeddedMapActive=false;
 
   const qs=id=>document.getElementById(id);
-  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;');
-
-  function setDrawMessage(text,type='info'){
-    const el=qs('roadMapNotice');
-    if(!el)return;
-    el.textContent=text;
-    el.className='road-map-notice '+type;
-    el.style.display='block';
-  }
+  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 
   function stationLabel(value){
     if(value===null||value===undefined||value==='') return '—';
@@ -45,51 +38,74 @@
     }
   }
 
-  function clearRenderedGeometry(){
-    statusLines.forEach(x=>x.setMap(null));
-    statusLines=[];
-    pointMarkers.forEach(x=>x.setMap(null));
-    pointMarkers=[];
-    if(projectMarker){projectMarker.map=null;projectMarker=null;}
+  function clearMapLayers(){
+    if(drawnItems) drawnItems.clearLayers();
+    if(statusLayer){statusLayer.clearLayers();} 
+    if(centerMarker){centerMarker.remove();centerMarker=null;}
+    if(pointLayer){pointLayer.clearLayers();}
   }
 
-  async function addProjectMarker(position,title){
-    try{
-      const {AdvancedMarkerElement}=await google.maps.importLibrary('marker');
-      const marker=new AdvancedMarkerElement({
-        map,
-        position,
-        title,
-        gmpDraggable:false
-      });
-      if(title){
-        const info=new google.maps.InfoWindow({content:'<strong>'+esc(title)+'</strong>'});
-        marker.addListener('click',()=>info.open({map,anchor:marker}));
+  function featureLine(coords,style,props){
+    if(!coords||coords.length<2)return null;
+    const line=L.polyline(coords.map(c=>[c[1],c[0]]),style);
+    line.bindPopup('<strong>'+esc(props.title)+'</strong><br>'+esc(props.subtitle||'')+(props.station?'<br>'+esc(props.station):''));
+    return line;
+  }
+
+  function renderLayers(){
+    clearMapLayers();
+    if(!statusLayer)statusLayer=L.layerGroup().addTo(map);
+
+    projectData.sections.forEach(s=>{
+      if(s.start_lat!=null && s.start_lng!=null){
+        const m=L.marker([Number(s.start_lat),Number(s.start_lng)],{title:'Start Point'}).addTo(statusLayer);
+        m.bindPopup('<strong>START POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.start_lat).toFixed(6))+' • Lng '+esc(Number(s.start_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_start_m)));
       }
-      return marker;
-    }catch(_){
-      return null;
-    }
-  }
+      if(s.end_lat!=null && s.end_lng!=null){
+        const m=L.marker([Number(s.end_lat),Number(s.end_lng)],{title:'End Point'}).addTo(statusLayer);
+        m.bindPopup('<strong>END POINT</strong><br>'+esc(s.section_code+' — '+s.section_name)+'<br>Lat '+esc(Number(s.end_lat).toFixed(6))+' • Lng '+esc(Number(s.end_lng).toFixed(6))+'<br>'+esc(stationLabel(s.station_end_m)));
+      }
+    });
 
-  function coordsToPath(coords){
-    return (coords||[]).map(c=>({lat:Number(c[1]),lng:Number(c[0])}));
+    projectData.sections.forEach(s=>{
+      if(!s.geometry?.coordinates)return;
+      const line=featureLine(s.geometry.coordinates,{color:'#0f172a',weight:7,opacity:.45},{
+        title:s.section_code+' — '+s.section_name,
+        subtitle:'ROAD SECTION • '+String(s.status||'PLANNED').toUpperCase(),
+        station:stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m)
+      });
+      if(line)line.addTo(statusLayer);
+    });
+
+    projectData.components.forEach(c=>{
+      if(!c.geometry?.coordinates)return;
+      const line=featureLine(c.geometry.coordinates,{color:statusColor(c.status),weight:8,opacity:.88},{
+        title:c.component_name,
+        subtitle:(c.component_type||'WORK COMPONENT')+' • '+(c.component_side||'NONE')+' • '+(c.status||'PLANNED'),
+        station:stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m)
+      });
+      if(line)line.addTo(statusLayer);
+    });
+
+    if(projectData.project?.project_details){
+      const d=projectData.project.project_details||{};
+      if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
+        centerMarker=L.marker([Number(d.map_lat),Number(d.map_lng)]).addTo(statusLayer).bindPopup('<strong>PROJECT MAP CENTER</strong><br>'+esc(projectData.project.project_name||''));
+        if(!map.getBounds().isValid()) map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
+      }
+    }
+    updateMapSummary();
   }
 
   function allGeometryBounds(){
-    const bounds=new google.maps.LatLngBounds();
-    let has=false;
-    const addCoords=coords=>{
-      (coords||[]).forEach(c=>{bounds.extend({lat:Number(c[1]),lng:Number(c[0])});has=true;});
-    };
-    projectData.sections.forEach(s=>addCoords(s.geometry?.coordinates));
-    projectData.components.forEach(c=>addCoords(c.geometry?.coordinates));
-    const d=projectData.project?.project_details||{};
-    if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-      bounds.extend({lat:Number(d.map_lat),lng:Number(d.map_lng)});
-      has=true;
-    }
-    return has?bounds:null;
+    const bounds=[];
+    projectData.sections.forEach(s=>{
+      s.geometry?.coordinates?.forEach(c=>bounds.push([c[1],c[0]]));
+      if(s.start_lat!=null&&s.start_lng!=null)bounds.push([Number(s.start_lat),Number(s.start_lng)]);
+      if(s.end_lat!=null&&s.end_lng!=null)bounds.push([Number(s.end_lat),Number(s.end_lng)]);
+    });
+    projectData.components.forEach(c=>c.geometry?.coordinates?.forEach(p=>bounds.push([p[1],p[0]])));
+    return bounds;
   }
 
   function updateMapSummary(){
@@ -99,199 +115,253 @@
     if(el)el.textContent=nSections+' section alignment'+(nSections===1?'':'s')+' • '+nComponents+' component line'+(nComponents===1?'':'s');
   }
 
-  function drawSavedLine(coords,options,props){
-    if(!coords||coords.length<2)return null;
-    const line=new google.maps.Polyline({
-      map,
-      path:coordsToPath(coords),
-      geodesic:true,
-      strokeColor:options.color,
-      strokeOpacity:options.opacity,
-      strokeWeight:options.weight,
-      clickable:true,
-      zIndex:options.zIndex||1
-    });
-    const info=new google.maps.InfoWindow();
-    line.addListener('click',e=>{
-      info.setContent('<div style="font-size:12px;line-height:1.5"><strong>'+esc(props.title)+'</strong><br>'+esc(props.subtitle||'')+(props.station?'<br>'+esc(props.station):'')+'</div>');
-      info.setPosition(e.latLng);
-      info.open({map});
-    });
-    statusLines.push(line);
-    return line;
-  }
-
-  function renderLayers(){
-    if(!map||!apiReady)return;
-    clearRenderedGeometry();
-
-    projectData.sections.forEach(s=>{
-      if(s.geometry?.coordinates){
-        drawSavedLine(s.geometry.coordinates,{color:'#0f172a',weight:6,opacity:.42,zIndex:2},{
-          title:(s.section_code||'SECTION')+' — '+(s.section_name||''),
-          subtitle:'ROAD SECTION • '+String(s.status||'PLANNED').toUpperCase(),
-          station:stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m)
-        });
-      }
-      if(s.start_lat!=null&&s.start_lng!=null){
-        const marker=new google.maps.Circle({
-          map,center:{lat:Number(s.start_lat),lng:Number(s.start_lng)},
-          radius:7,fillColor:'#16a34a',fillOpacity:.95,strokeColor:'#fff',strokeWeight:2,zIndex:8
-        });
-        pointMarkers.push(marker);
-      }
-      if(s.end_lat!=null&&s.end_lng!=null){
-        const marker=new google.maps.Circle({
-          map,center:{lat:Number(s.end_lat),lng:Number(s.end_lng)},
-          radius:7,fillColor:'#dc2626',fillOpacity:.95,strokeColor:'#fff',strokeWeight:2,zIndex:8
-        });
-        pointMarkers.push(marker);
-      }
-    });
-
-    projectData.components.forEach(c=>{
-      if(c.geometry?.coordinates){
-        drawSavedLine(c.geometry.coordinates,{color:statusColor(c.status),weight:8,opacity:.88,zIndex:3},{
-          title:c.component_name||'WORK COMPONENT',
-          subtitle:(c.component_type||'WORK COMPONENT')+' • '+(c.component_side||'NONE')+' • '+(c.status||'PLANNED'),
-          station:stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m)
-        });
-      }
-    });
-
-    const d=projectData.project?.project_details||{};
-    if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-      addProjectMarker({lat:Number(d.map_lat),lng:Number(d.map_lng)},'PROJECT LOCATION').then(m=>{projectMarker=m;});
-    }
-    updateMapSummary();
-  }
-
   function populateTargets(){
-    const type=qs('mapTargetType').value;
+    const targetType=qs('mapTargetType').value;
     const target=qs('mapTarget');
     const label=qs('mapTargetLabel');
-    if(type==='SECTION'){
+    if(targetType==='SECTION'){
       if(label)label.textContent='SELECT ROAD SECTION';
       target.innerHTML='<option value="">SELECT ROAD SECTION</option>'+projectData.sections.map(s=>'<option value="'+esc(s.section_id)+'">'+esc(s.section_code+' — '+s.section_name)+' • '+esc(stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m))+'</option>').join('');
-    }else{
-      if(label)label.textContent='SELECT WORK COMPONENT';
-      target.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+projectData.components.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+' • '+esc(c.component_side||'NONE')+' • '+esc(stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m))+'</option>').join('');
+      return;
     }
+    if(label)label.textContent='SELECT WORK COMPONENT';
+    target.innerHTML='<option value="">SELECT WORK COMPONENT</option>'+projectData.components.map(c=>'<option value="'+esc(c.work_component_id)+'">'+esc(c.component_name)+' • '+esc(c.component_side||'NONE')+' • '+esc(stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m))+'</option>').join('');
+  }
+
+  function withTimeout(promise,ms,label){
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timed out after '+ms+' ms.')),ms));
+    return Promise.race([promise,timeout]);
+  }
+
+  async function loadData(){
+    const projectId=new URLSearchParams(location.search).get('project_id');
+    if(!projectId) throw new Error('Missing project_id.');
+
+    setDrawMessage('Loading project map data...','info');
+
+    try{
+      const [projectResult,phaseResult]=await Promise.all([
+        withTimeout(
+          client.from('projects')
+            .select('project_id,project_name,location,project_type,project_details')
+            .eq('project_id',projectId)
+            .limit(1),
+          4000,'Project'
+        ),
+        withTimeout(
+          client.from('project_phases')
+            .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
+            .eq('project_id',projectId)
+            .order('sequence_no',{ascending:true}),
+          4000,'Phase'
+        )
+      ]);
+
+      if(projectResult.error) throw projectResult.error;
+      if(phaseResult.error) throw phaseResult.error;
+      if(!projectResult.data?.length) throw new Error('Road project not found.');
+
+      const phases=phaseResult.data||[];
+      const phaseIds=phases.map(p=>p.phase_id);
+
+      let sections=[];
+      if(phaseIds.length){
+        const result=await withTimeout(
+          client.from('project_sections')
+            .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
+            .in('phase_id',phaseIds)
+            .order('station_start_m',{ascending:true}),
+          4000,'Road section'
+        );
+        if(result.error) throw result.error;
+        sections=(result.data||[]).map(s=>({...s,geometry:null}));
+      }
+
+      const sectionIds=sections.map(s=>s.section_id);
+      let components=[];
+      if(sectionIds.length){
+        const result=await withTimeout(
+          client.from('project_work_components')
+            .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
+            .in('section_id',sectionIds)
+            .eq('is_active',true)
+            .order('sort_order',{ascending:true}),
+          4000,'Work component'
+        );
+        if(result.error) throw result.error;
+        components=(result.data||[]).map(c=>({...c,geometry:null}));
+      }
+
+      projectData={
+        project:projectResult.data[0],
+        phases,
+        sections,
+        components
+      };
+
+      const projectNameEl=qs('roadMapProjectName');
+      if(projectNameEl) projectNameEl.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
+
+      populateTargets();
+      renderLayers();
+
+      const bounds=allGeometryBounds();
+      if(bounds.length){
+        map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+      }else{
+        const d=projectData.project?.project_details||{};
+        if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
+          map.setView([Number(d.map_lat),Number(d.map_lng)],Number(d.map_zoom)||16);
+        }else{
+          map.setView([7.1907,124.383],13);
+        }
+      }
+
+      setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
+
+      // Geometry is optional for initial rendering and loads separately.
+      loadGeometryOverlay(projectId);
+    }catch(error){
+      console.error('AMANAH Road Map load error:',error);
+      setDrawMessage(error?.message||'Unable to load project map data.','err');
+      updateMapSummary();
+    }
+  }
+  async function loadGeometryOverlay(projectId){
+    try{
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('MAP_GEOMETRY_TIMEOUT')),2500));
+      const request=client.rpc('get_road_project_map_data',{p_project_id:projectId});
+      const {data}=await Promise.race([request,timeout]);
+      if(!data)return;
+      const sectionMap=new Map((data.sections||[]).map(s=>[s.section_id,s.geometry]));
+      const componentMap=new Map((data.components||[]).map(c=>[c.work_component_id,c.geometry]));
+      projectData.sections=projectData.sections.map(s=>({...s,geometry:sectionMap.get(s.section_id)||null}));
+      projectData.components=projectData.components.map(c=>({...c,geometry:componentMap.get(c.work_component_id)||null}));
+      renderLayers();
+      const bounds=allGeometryBounds();
+      if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+    }catch(_error){}
+  }
+
+  function syncEmbeddedViewport(){
+    if(!embeddedMapActive||!map)return;
+    const iframe=qs('roadMapFallback');
+    if(!iframe)return;
+    const b=map.getBounds();
+    if(!b.isValid())return;
+    const padLat=Math.max((b.getNorth()-b.getSouth())*0.04,0.001);
+    const padLng=Math.max((b.getEast()-b.getWest())*0.04,0.001);
+    const west=b.getWest()-padLng;
+    const south=b.getSouth()-padLat;
+    const east=b.getEast()+padLng;
+    const north=b.getNorth()+padLat;
+    iframe.src='https://www.openstreetmap.org/export/embed.html?bbox='
+      +encodeURIComponent(west)+','+encodeURIComponent(south)+','+encodeURIComponent(east)+','+encodeURIComponent(north)
+      +'&layer=mapnik';
+  }
+
+  function showEmbeddedMapFallback(){
+    const iframe=qs('roadMapFallback');
+    const leafletEl=qs('roadMapLeaflet');
+    const mapEl=qs('roadMap');
+    embeddedMapActive=true;
+    if(iframe){
+      iframe.style.display='block';
+      iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
+    }
+    if(leafletEl){
+      // In embedded mode the iframe is the real visible/pannable map.
+      // Hide the Leaflet panes/markers so they cannot drift independently
+      // of the embedded map and appear to jump to random locations.
+      leafletEl.style.display='none';
+      leafletEl.classList.remove('map-interaction-overlay');
+    }
+    if(mapEl)mapEl.classList.add('embedded-map-mode');
+    if(map){
+      map.invalidateSize();
+      map.getContainer().style.pointerEvents='none';
+      if(statusLayer)statusLayer.clearLayers();
+      if(centerMarker){centerMarker.remove();centerMarker=null;}
+    }
+    setDrawMessage('Embedded map view active. The map can be panned and zoomed normally.','info');
+  }
+
+  function setDrawMessage(text,type='info'){
+    const el=qs('roadMapNotice');
+    if(!el)return;
+    el.textContent=text;
+    el.className='road-map-notice '+type;
+    el.style.display='block';
   }
 
   function selectedSection(){
     const id=qs('mapTarget').value;
-    if(qs('mapTargetType').value!=='SECTION'||!id)return null;
+    if(qs('mapTargetType').value!=='SECTION' || !id)return null;
     return projectData.sections.find(s=>s.section_id===id)||null;
   }
 
   function setPointMode(kind){
-    if(!apiReady)return;
     const section=selectedSection();
-    if(!section){setDrawMessage('Select MAP TARGET = ROAD SECTION and choose a road section first.','err');return;}
-    cancelDraw(false);
+    if(!section){
+      setDrawMessage('Select MAP TARGET = ROAD SECTION and choose a road section first.','err');
+      return;
+    }
     pointMode=kind;
-    mapCenterMode=false;
-    const setCenter=qs('mapSetCenter');
-    if(setCenter){setCenter.textContent='SET MAP CENTER';setCenter.classList.remove('active');}
     qs('mapStartPoint').classList.toggle('active',kind==='START');
     qs('mapEndPoint').classList.toggle('active',kind==='END');
-    setDrawMessage('Click the actual '+kind.toLowerCase()+' point on the map.','info');
+    setDrawMessage('Click the actual '+kind.toLowerCase()+' point on the map. The coordinate will be saved to '+section.section_code+' — '+section.section_name+'.','info');
   }
 
   async function saveSectionPoint(section,kind,lat,lng){
     const args={
       p_section_id:section.section_id,
-      p_start_lat:kind==='START'?lat:(section.start_lat==null?null:Number(section.start_lat)),
-      p_start_lng:kind==='START'?lng:(section.start_lng==null?null:Number(section.start_lng)),
-      p_end_lat:kind==='END'?lat:(section.end_lat==null?null:Number(section.end_lat)),
-      p_end_lng:kind==='END'?lng:(section.end_lng==null?null:Number(section.end_lng))
+      p_start_lat:kind==='START' ? lat : (section.start_lat==null?null:Number(section.start_lat)),
+      p_start_lng:kind==='START' ? lng : (section.start_lng==null?null:Number(section.start_lng)),
+      p_end_lat:kind==='END' ? lat : (section.end_lat==null?null:Number(section.end_lat)),
+      p_end_lng:kind==='END' ? lng : (section.end_lng==null?null:Number(section.end_lng))
     };
     const {error}=await client.rpc('save_road_section_start_end',args);
     if(error){setDrawMessage(error.message||'Unable to save coordinate.','err');return;}
+    setDrawMessage(kind+' point saved at '+lat.toFixed(6)+', '+lng.toFixed(6)+'.','ok');
     pointMode=null;
     qs('mapStartPoint').classList.remove('active');
     qs('mapEndPoint').classList.remove('active');
-    setDrawMessage(kind+' point saved.','ok');
     await loadData();
   }
 
-  function drawButtonState(active){
-    const b=qs('mapDrawLine');
-    if(!b)return;
-    b.textContent=active?'FINISH DRAW':'DRAW / REPLACE LINE';
-    b.classList.toggle('active',active);
-  }
-
-  function clearDrawVisuals(){
-    if(drawLine){drawLine.setMap(null);drawLine=null;}
-    drawVertices.forEach(v=>v.setMap(null));
-    drawVertices=[];
-  }
-
-  function cancelDraw(silent=true){
-    clearDrawVisuals();
-    drawState=null;
-    drawButtonState(false);
-    if(map)map.setOptions({disableDoubleClickZoom:false});
-    if(!silent)setDrawMessage('Drawing cancelled.','info');
-  }
-
   function startLineDrawing(){
-    if(!apiReady){openGoogleSettings();return;}
     const targetId=qs('mapTarget').value;
     const targetType=qs('mapTargetType').value;
     if(!targetId){setDrawMessage('Select a road section or work component first.','err');return;}
-    cancelDraw(true);
-    pointMode=null;
-    mapCenterMode=false;
-    qs('mapStartPoint').classList.remove('active');
-    qs('mapEndPoint').classList.remove('active');
-    const setCenter=qs('mapSetCenter'); if(setCenter){setCenter.textContent='SET MAP CENTER';setCenter.classList.remove('active');}
-    drawState={targetType,targetId,points:[]};
-    map.setOptions({disableDoubleClickZoom:true});
-    drawButtonState(true);
-    setDrawMessage('DRAW MODE: click along the actual road. Double-click or press FINISH DRAW when complete.','info');
+    if(!window.L?.Draw){setDrawMessage('Map drawing tools are not available.','err');return;}
+    drawMode={targetType,targetId};
+    const drawer=new L.Draw.Polyline(map,{shapeOptions:{color:'#2563eb',weight:5}});
+    drawer.enable();
+    setDrawMessage('Click points along the actual project alignment, then double-click to finish the line.','info');
   }
 
-  function renderDrawPath(){
-    if(!drawState)return;
-    clearDrawVisuals();
-    drawLine=new google.maps.Polyline({
-      map,path:drawState.points,
-      geodesic:true,strokeColor:'#2563eb',strokeOpacity:1,strokeWeight:5,zIndex:20
-    });
-    drawState.points.forEach(p=>{
-      drawVertices.push(new google.maps.Circle({
-        map,center:p,radius:4.5,fillColor:'#fff',fillOpacity:1,strokeColor:'#2563eb',strokeWeight:2,zIndex:21
-      }));
-    });
-  }
-
-  async function finishDrawing(){
-    if(!drawState)return;
-    if(drawState.points.length<2){setDrawMessage('Add at least two points before finishing the line.','err');return;}
-    const path=drawState.points.map(p=>[Number(p.lng),Number(p.lat)]);
-    const rpc=drawState.targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
-    const args=drawState.targetType==='SECTION'
-      ?{p_section_id:drawState.targetId,p_geojson:{type:'LineString',coordinates:path}}
-      :{p_work_component_id:drawState.targetId,p_geojson:{type:'LineString',coordinates:path}};
-    setDrawMessage('Saving map line...','info');
+  async function saveDrawnGeometry(layer){
+    if(!drawMode)return;
+    const geojson=layer.toGeoJSON().geometry;
+    const rpc=drawMode.targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
+    const args=drawMode.targetType==='SECTION'
+      ?{p_section_id:drawMode.targetId,p_geojson:geojson}
+      :{p_work_component_id:drawMode.targetId,p_geojson:geojson};
     const {error}=await client.rpc(rpc,args);
     if(error){setDrawMessage(error.message||'Unable to save geometry.','err');return;}
-    clearDrawVisuals();
-    drawState=null;
-    drawButtonState(false);
-    map.setOptions({disableDoubleClickZoom:false});
+    drawMode=null;
     setDrawMessage('Map line saved successfully.','ok');
     await loadData();
   }
 
   function professionalConfirm(targetType,targetLabel){
     return new Promise(resolve=>{
-      const modal=qs('mapConfirmModal'), message=qs('mapConfirmMessage'), ok=qs('mapConfirmOk'), cancel=qs('mapConfirmCancel');
+      const modal=qs('mapConfirmModal');
+      const message=qs('mapConfirmMessage');
+      const ok=qs('mapConfirmOk');
+      const cancel=qs('mapConfirmCancel');
       if(!modal||!ok||!cancel){resolve(window.confirm('Remove the saved map line for this '+targetType.toLowerCase()+'?'));return;}
-      message.textContent='Remove the saved map line for '+targetLabel+'? This removes only the geographic line. The road structure, station range, quantities and activity data remain.';
+      message.textContent='Remove the saved map line for '+targetLabel+'? This will remove only the geographic line from the map. The road structure, station range, planned quantity and activity data will remain unchanged.';
       modal.classList.remove('hidden');
       const cleanup=value=>{
         modal.classList.add('hidden');
@@ -301,7 +371,8 @@
         document.removeEventListener('keydown',onKey);
         resolve(value);
       };
-      const onOk=()=>cleanup(true), onCancel=()=>cleanup(false);
+      const onOk=()=>cleanup(true);
+      const onCancel=()=>cleanup(false);
       const onBackdrop=e=>{if(e.target===modal)cleanup(false);};
       const onKey=e=>{if(e.key==='Escape')cleanup(false);};
       ok.addEventListener('click',onOk);
@@ -319,8 +390,12 @@
     const target=targetType==='SECTION'
       ? projectData.sections.find(x=>x.section_id===targetId)
       : projectData.components.find(x=>x.work_component_id===targetId);
-    const label=target?(targetType==='SECTION'?(target.section_code+' — '+target.section_name):(target.component_name+' • '+(target.component_side||'NONE'))):'this target';
-    if(!(await professionalConfirm(targetType,label)))return;
+    const targetLabel=target
+      ? (targetType==='SECTION'
+        ? (target.section_code+' — '+target.section_name)
+        : (target.component_name+' • '+(target.component_side||'NONE')))
+      : 'this '+targetType.toLowerCase();
+    if(!(await professionalConfirm(targetType,targetLabel)))return;
     const rpc=targetType==='SECTION'?'save_road_section_geometry':'save_road_work_component_geometry';
     const args=targetType==='SECTION'?{p_section_id:targetId,p_geojson:null}:{p_work_component_id:targetId,p_geojson:null};
     const {error}=await client.rpc(rpc,args);
@@ -334,299 +409,130 @@
     const zoom=map.getZoom();
     const d=projectData.project?.project_details||{};
     const merged={...d,map_lat:lat,map_lng:lng,map_zoom:zoom};
-    const {error}=await client.rpc('save_road_project_map_center',{
-      p_project_id:projectId,p_map_lat:lat,p_map_lng:lng,p_map_zoom:zoom,p_project_details:merged
-    });
+    const {error}=await client.rpc('save_road_project_map_center',{p_project_id:projectId,p_map_lat:lat,p_map_lng:lng,p_map_zoom:zoom,p_project_details:merged});
     if(error){setDrawMessage(error.message||'Unable to save project map center.','err');return;}
     projectData.project.project_details=merged;
-    clearRenderedGeometry();
-    renderLayers();
+    if(centerMarker)centerMarker.remove();
+    centerMarker=L.marker([lat,lng]).addTo(statusLayer).bindPopup('<strong>PROJECT MAP CENTER</strong>');
     setDrawMessage('Project map center saved.','ok');
   }
 
-  function setCenterModeToggle(){
-    if(!apiReady)return;
-    cancelDraw(true);
-    pointMode=null;
-    qs('mapStartPoint').classList.remove('active');
-    qs('mapEndPoint').classList.remove('active');
-    mapCenterMode=!mapCenterMode;
-    const b=qs('mapSetCenter');
-    b.textContent=mapCenterMode?'CLICK MAP TO SAVE CENTER':'SET MAP CENTER';
-    b.classList.toggle('active',mapCenterMode);
-    setDrawMessage(mapCenterMode?'Click the map at the actual project location.':'Map center mode cancelled.','info');
-  }
-
-  function toggleSatellite(){
-    if(!map)return;
-    const id=map.getMapTypeId();
-    const next=id==='satellite'?'roadmap':'satellite';
-    map.setMapTypeId(next);
-    const b=qs('mapSatellite');
-    if(b)b.textContent=next==='satellite'?'ROAD MAP':'SATELLITE';
-  }
-
-  function fitProject(){
-    if(!map)return;
-    const bounds=allGeometryBounds();
-    if(bounds){map.fitBounds(bounds,{top:40,right:40,bottom:40,left:40});return;}
-    const d=projectData.project?.project_details||{};
-    if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-      map.setCenter({lat:Number(d.map_lat),lng:Number(d.map_lng)});
-      map.setZoom(Number(d.map_zoom)||15);
-      return;
-    }
-    setDrawMessage('No saved geometry yet. Draw the first road alignment line.','info');
-  }
-
-  function openGoogleSettings(){
-    const current=window.AMANAH_GOOGLE_MAPS_KEY||'';
-    const value=window.prompt('Enter your Google Maps Platform API key. AMANAH stores it only in this browser.',current);
-    if(value===null)return;
-    const key=String(value).trim();
-    if(!key){setDrawMessage('A Google Maps API key is required.','err');return;}
-    window.AMANAH_SET_GOOGLE_MAPS_KEY(key);
-    location.reload();
-  }
-
-  async function loadProjectDataForToolbar(){
-    const projectId=new URLSearchParams(location.search).get('project_id');
-    if(!projectId)return;
-    try{
-      const {data:projectRows,error:projectError}=await client.from('projects')
-        .select('project_id,project_name,location,project_type,project_details')
-        .eq('project_id',projectId).limit(1);
-      if(projectError||!projectRows?.length)return;
-      const {data:phases,error:phaseError}=await client.from('project_phases')
-        .select('phase_id,project_id,phase_code,phase_name,status,sequence_no')
-        .eq('project_id',projectId).order('sequence_no',{ascending:true});
-      if(phaseError)return;
-      const phaseRows=phases||[];
-      const phaseIds=phaseRows.map(x=>x.phase_id);
-      let sections=[];
-      if(phaseIds.length){
-        const {data,error}=await client.from('project_sections')
-          .select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng')
-          .in('phase_id',phaseIds).order('station_start_m',{ascending:true});
-        if(error)return;
-        sections=data||[];
-      }
-      const sectionIds=sections.map(x=>x.section_id);
-      let components=[];
-      if(sectionIds.length){
-        const {data,error}=await client.from('project_work_components')
-          .select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order')
-          .in('section_id',sectionIds).eq('is_active',true).order('sort_order',{ascending:true});
-        if(error)return;
-        components=data||[];
-      }
-      projectData={project:projectRows[0],phases:phaseRows,sections:sections.map(s=>({...s,geometry:null})),components:components.map(c=>({...c,geometry:null}))};
-      const name=qs('roadMapProjectName'); if(name)name.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
-      populateTargets();
-      const notice=qs('roadMapNotice');
-      if(notice&&!window.AMANAH_GOOGLE_MAPS_KEY){
-        notice.textContent='Google Maps API key required. Click GOOGLE MAP SETTINGS to connect the map.';
-        notice.className='road-map-notice info';
-        notice.style.display='block';
-      }
-    }catch(_){}
-  }
-
-  function showKeyRequired(){
-    const el=qs('roadMapLeaflet');
-    if(!el)return;
-    el.innerHTML='<div class="google-map-required"><div class="google-map-icon">GOOGLE</div><h3>Google Maps is ready</h3><p>Enter your Google Maps Platform API key to load the live map.</p><button type="button" class="primary-btn" id="googleMapConfigure">CONFIGURE GOOGLE MAPS</button></div>';
-    qs('googleMapConfigure')?.addEventListener('click',openGoogleSettings);
-    setDrawMessage('Google Maps API key is required for this page.','info');
-  }
-
-  function loadGoogleScript(key){
-    return new Promise((resolve,reject)=>{
-      if(window.google?.maps){resolve();return;}
-      const callback='__AMANAH_GOOGLE_MAPS_READY';
-      const timeout=setTimeout(()=>reject(new Error('Google Maps failed to load within 15 seconds. Check your API key, billing, API restrictions, and network.')),15000);
-      window[callback]=()=>{clearTimeout(timeout);resolve();};
-      const script=document.createElement('script');
-      script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&loading=async&callback='+callback+'&v=weekly';
-      script.async=true;
-      script.defer=true;
-      script.onerror=()=>{clearTimeout(timeout);reject(new Error('Google Maps JavaScript API could not be loaded. Check the API key and allowed referrers.'));};
-      document.head.appendChild(script);
-    });
-  }
-
-  async function initGoogleMap(){
-    const el=qs('roadMapLeaflet');
-    if(!el)return;
-    const key=window.AMANAH_GOOGLE_MAPS_KEY||'';
-    if(!key){
-      await loadProjectDataForToolbar();
-      showKeyRequired();
-      return;
-    }
-
-    try{
-      await loadGoogleScript(key);
-      const {Map}=await google.maps.importLibrary('maps');
-      apiReady=true;
-      map=new Map(el,{
-        center:{lat:7.1907,lng:124.383},
-        zoom:13,
-        mapTypeId:'roadmap',
-        gestureHandling:'greedy',
-        streetViewControl:false,
-        fullscreenControl:true,
-        mapTypeControl:true,
-        zoomControl:true,
-        clickableIcons:true,
-        mapId:'DEMO_MAP_ID'
-      });
-
-      google.maps.event.addListener(map,'click',async e=>{
-        if(!e.latLng)return;
-        if(drawState){
-          drawState.points.push({lat:e.latLng.lat(),lng:e.latLng.lng()});
-          renderDrawPath();
-          return;
-        }
-        if(pointMode){
-          const section=selectedSection();
-          if(section){
-            const kind=pointMode;
-            pointMode=null;
-            qs('mapStartPoint').classList.remove('active');
-            qs('mapEndPoint').classList.remove('active');
-            await saveSectionPoint(section,kind,e.latLng.lat(),e.latLng.lng());
-          }
-          return;
-        }
-        if(mapCenterMode){
-          mapCenterMode=false;
-          const b=qs('mapSetCenter');
-          b.textContent='SET MAP CENTER';
-          b.classList.remove('active');
-          await saveMapCenter(e.latLng.lat(),e.latLng.lng());
-        }
-      });
-
-      google.maps.event.addListener(map,'dblclick',async e=>{
-        if(drawState){
-          if(drawState.points.length>=1){
-            const last=drawState.points[drawState.points.length-1];
-            if(Math.abs(last.lat-e.latLng.lat())<1e-8&&Math.abs(last.lng-e.latLng.lng())<1e-8){
-              // avoid duplicate endpoint from the double-click sequence
-            }else{
-              drawState.points.push({lat:e.latLng.lat(),lng:e.latLng.lng()});
-            }
-            renderDrawPath();
-            await finishDrawing();
-          }
-        }
-      });
-
-      bindButtons();
-      await loadData();
-      setDrawMessage('Google map ready. Drag, zoom, select a target, then draw the real project geometry.','ok');
-    }catch(error){
-      console.error('AMANAH Google Maps error:',error);
-      const message=String(error?.message||error);
-      el.innerHTML='<div class="google-map-required"><div class="google-map-icon">ERROR</div><h3>Google Maps could not start</h3><p>'+esc(message)+'</p><button type="button" class="primary-btn" id="googleMapRetry">MAP SETTINGS</button></div>';
-      qs('googleMapRetry')?.addEventListener('click',openGoogleSettings);
-      setDrawMessage(message,'err');
-    }
-  }
-
-  async function loadData(){
-    const projectId=new URLSearchParams(location.search).get('project_id');
-    if(!projectId){setDrawMessage('Missing project_id.','err');return;}
-    setDrawMessage('Loading project map data...','info');
-    try{
-      const [projectResult,phaseResult]=await Promise.all([
-        client.from('projects').select('project_id,project_name,location,project_type,project_details').eq('project_id',projectId).limit(1),
-        client.from('project_phases').select('phase_id,project_id,phase_code,phase_name,status,sequence_no').eq('project_id',projectId).order('sequence_no',{ascending:true})
-      ]);
-      if(projectResult.error)throw projectResult.error;
-      if(phaseResult.error)throw phaseResult.error;
-      if(!projectResult.data?.length)throw new Error('Road project not found.');
-      const phases=phaseResult.data||[];
-      const phaseIds=phases.map(p=>p.phase_id);
-
-      let sections=[];
-      if(phaseIds.length){
-        const result=await client.from('project_sections').select('section_id,phase_id,section_code,section_name,station_start_m,station_end_m,route_length_m,status,start_lat,start_lng,end_lat,end_lng').in('phase_id',phaseIds).order('station_start_m',{ascending:true});
-        if(result.error)throw result.error;
-        sections=(result.data||[]).map(s=>({...s,geometry:null}));
-      }
-
-      const sectionIds=sections.map(s=>s.section_id);
-      let components=[];
-      if(sectionIds.length){
-        const result=await client.from('project_work_components').select('work_component_id,section_id,component_type,component_side,component_name,station_start_m,station_end_m,planned_quantity,quantity_unit,status,is_optional,is_active,sort_order').in('section_id',sectionIds).eq('is_active',true).order('sort_order',{ascending:true});
-        if(result.error)throw result.error;
-        components=(result.data||[]).map(c=>({...c,geometry:null}));
-      }
-
-      projectData={project:projectResult.data[0],phases,sections,components};
-      const name=qs('roadMapProjectName'); if(name)name.textContent=projectData.project?.project_name||'ROAD PROJECT MAP';
-      populateTargets();
-      renderLayers();
-
-      const d=projectData.project?.project_details||{};
-      if(Number.isFinite(Number(d.map_lat))&&Number.isFinite(Number(d.map_lng))){
-        map.setCenter({lat:Number(d.map_lat),lng:Number(d.map_lng)});
-        map.setZoom(Number(d.map_zoom)||15);
-      }else{
-        map.setCenter({lat:7.1907,lng:124.383});
-        map.setZoom(13);
-      }
-
-      loadGeometryOverlay(projectId);
-      setDrawMessage('Google map ready. Select a road section or work component to map its alignment.','ok');
-    }catch(error){
-      console.error('AMANAH Road Map load error:',error);
-      setDrawMessage(error?.message||'Unable to load road project map data.','err');
-      updateMapSummary();
-    }
-  }
-
-  async function loadGeometryOverlay(projectId){
-    try{
-      const {data,error}=await client.rpc('get_road_project_map_data',{p_project_id:projectId});
-      if(error)throw error;
-      if(!data)return;
-      const sectionMap=new Map((data.sections||[]).map(s=>[s.section_id,s.geometry]));
-      const componentMap=new Map((data.components||[]).map(c=>[c.work_component_id,c.geometry]));
-      projectData.sections=projectData.sections.map(s=>({...s,geometry:sectionMap.get(s.section_id)||null}));
-      projectData.components=projectData.components.map(c=>({...c,geometry:componentMap.get(c.work_component_id)||null}));
-      renderLayers();
-      fitProject();
-    }catch(error){console.warn('AMANAH geometry overlay load:',error?.message||error);}
-  }
-
-  function bindButtons(){
-    const q=(id,fn)=>qs(id)?.addEventListener('click',fn);
-    qs('mapTargetType')?.addEventListener('change',populateTargets);
-    q('mapDrawLine',()=>{
-      if(drawState)finishDrawing();
-      else startLineDrawing();
-    });
-    q('mapClearLine',clearSelectedGeometry);
-    q('mapStartPoint',()=>setPointMode('START'));
-    q('mapEndPoint',()=>setPointMode('END'));
-    q('mapFit',fitProject);
-    q('mapSetCenter',setCenterModeToggle);
-    q('mapSatellite',toggleSatellite);
-    q('mapGoogleSettings',openGoogleSettings);
-  }
-
   async function init(){
-    if(document.readyState==='loading'){
-      document.addEventListener('DOMContentLoaded',init,{once:true});
-      return;
+    const mapEl=qs('roadMap');
+    const leafletEl=qs('roadMapLeaflet')||mapEl;
+    if(!mapEl||!window.L)return;
+    map=L.map(leafletEl,{zoomControl:true});
+
+    // Try several public street-map tile providers. Some networks block
+    // individual tile hosts, so AMANAH automatically rotates to the next one.
+    const basemapProviders=[
+      {
+        name:'OpenStreetMap',
+        url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'OpenStreetMap DE',
+        url:'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'OSM France',
+        url:'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+        options:{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+      },
+      {
+        name:'CARTO',
+        url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        options:{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}
+      }
+    ];
+
+    let providerIndex=0;
+    let tileErrorCount=0;
+    let tileLoaded=false;
+
+    function useBasemap(index){
+      providerIndex=index;
+      tileErrorCount=0;
+      tileLoaded=false;
+      const provider=basemapProviders[providerIndex];
+      if(basemapLayer){
+        map.removeLayer(basemapLayer);
+        basemapLayer=null;
+      }
+      basemapLayer=L.tileLayer(provider.url,provider.options).addTo(map);
+      setDrawMessage('Loading '+provider.name+' map tiles...','info');
+
+      basemapLayer.on('tileload',()=>{
+        tileLoaded=true;
+        setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
+      });
+
+      basemapLayer.on('tileerror',()=>{
+        tileErrorCount++;
+        if(tileErrorCount>=3){
+          if(providerIndex<basemapProviders.length-1){
+            useBasemap(providerIndex+1);
+          }else{
+            showEmbeddedMapFallback();
+          }
+        }
+      });
     }
-    await initGoogleMap();
+
+    useBasemap(0);
+    setTimeout(()=>{
+      if(!tileLoaded) showEmbeddedMapFallback();
+    },4500);
+
+    drawnItems=new L.FeatureGroup().addTo(map);
+    statusLayer=L.layerGroup().addTo(map);
+
+    map.on('moveend',syncEmbeddedViewport);
+    setTimeout(()=>map.invalidateSize(),150);
+
+    qs('mapTargetType').addEventListener('change',populateTargets);
+    qs('mapDrawLine').addEventListener('click',startLineDrawing);
+    qs('mapClearLine').addEventListener('click',clearSelectedGeometry);
+    qs('mapStartPoint').addEventListener('click',()=>setPointMode('START'));
+    qs('mapEndPoint').addEventListener('click',()=>setPointMode('END'));
+    qs('mapFit').addEventListener('click',()=>{
+      const bounds=allGeometryBounds();
+      if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
+      else setDrawMessage('No saved geometry yet. Draw the first road alignment line.','info');
+    });
+    qs('mapSetCenter').addEventListener('click',()=>{
+      mapCenterMode=!mapCenterMode;
+      qs('mapSetCenter').textContent=mapCenterMode?'CLICK MAP TO SAVE CENTER':'SET MAP CENTER';
+      qs('mapSetCenter').classList.toggle('active',mapCenterMode);
+      setDrawMessage(mapCenterMode?'Click the map at the actual project location.':'Map center mode cancelled.','info');
+    });
+
+    map.on('click',async e=>{
+      if(pointMode){
+        const section=selectedSection();
+        const kind=pointMode;
+        if(section) await saveSectionPoint(section,kind,e.latlng.lat,e.latlng.lng);
+        return;
+      }
+      if(mapCenterMode){
+        mapCenterMode=false;
+        qs('mapSetCenter').textContent='SET MAP CENTER';
+        qs('mapSetCenter').classList.remove('active');
+        await saveMapCenter(e.latlng.lat,e.latlng.lng);
+      }
+    });
+
+    map.on(L.Draw.Event.CREATED,async e=>{
+      drawnItems.clearLayers();
+      drawnItems.addLayer(e.layer);
+      await saveDrawnGeometry(e.layer);
+      drawnItems.clearLayers();
+    });
+
+    await loadData();
   }
 
   window.AMANAHRoadMap={init,refresh:loadData};
-  init();
 })();
