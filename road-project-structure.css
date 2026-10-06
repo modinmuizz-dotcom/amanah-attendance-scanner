@@ -140,3 +140,10 @@ button{cursor:pointer}
 .project-map-card.project-alignment-active #mapStartPoint,
 .project-map-card.project-alignment-active #mapEndPoint,
 .project-map-card.project-alignment-active #mapSetCenter{display:none!important}
+
+.map-process-filter{display:flex;align-items:flex-end;gap:14px;padding:12px 16px;border-top:1px solid var(--gray200);background:#f8fafc}
+.map-process-filter .map-field{min-width:280px}
+.map-process-filter .map-field label{display:block;margin:0 0 6px;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--gray700)}
+.map-process-filter select{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--gray300);border-radius:10px;background:#fff;color:var(--navy);font-weight:800}
+.map-process-help{padding-bottom:10px;color:var(--gray500);font-size:11px;font-weight:700}
+@media(max-width:700px){.map-process-filter{flex-direction:column;align-items:stretch}.map-process-filter .map-field{min-width:0}.map-process-help{padding-bottom:0}}
