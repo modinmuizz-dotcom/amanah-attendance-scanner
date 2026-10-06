@@ -121,9 +121,9 @@
         },
         'reports.html':{
           kicker:'REPORTING & ANALYTICS',
-          title:'ATTENDANCE REPORTS',
-          desc:'Analyze AMANAH attendance, working hours and fuel usage with filters and report exports.',
-          badge:'Attendance Analytics'
+          title:'REPORTS',
+          desc:'Generate project, attendance and cost reports from one centralized AMANAH reporting module.',
+          badge:'Management Reports'
         }
       };
       return map[file] || null;
