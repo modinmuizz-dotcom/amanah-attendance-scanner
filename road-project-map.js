@@ -14,7 +14,6 @@
   let statusLayer=null;
   let basemapLayer=null;
   let basemapFallbackUsed=false;
-  let embeddedMapActive=false;
 
   const qs=id=>document.getElementById(id);
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -241,49 +240,6 @@
       const bounds=allGeometryBounds();
       if(bounds.length) map.fitBounds(L.latLngBounds(bounds),{padding:[35,35]});
     }catch(_error){}
-  }
-
-  function syncEmbeddedViewport(){
-    if(!embeddedMapActive||!map)return;
-    const iframe=qs('roadMapFallback');
-    if(!iframe)return;
-    const b=map.getBounds();
-    if(!b.isValid())return;
-    const padLat=Math.max((b.getNorth()-b.getSouth())*0.04,0.001);
-    const padLng=Math.max((b.getEast()-b.getWest())*0.04,0.001);
-    const west=b.getWest()-padLng;
-    const south=b.getSouth()-padLat;
-    const east=b.getEast()+padLng;
-    const north=b.getNorth()+padLat;
-    iframe.src='https://www.openstreetmap.org/export/embed.html?bbox='
-      +encodeURIComponent(west)+','+encodeURIComponent(south)+','+encodeURIComponent(east)+','+encodeURIComponent(north)
-      +'&layer=mapnik';
-  }
-
-  function showEmbeddedMapFallback(){
-    const iframe=qs('roadMapFallback');
-    const leafletEl=qs('roadMapLeaflet');
-    const mapEl=qs('roadMap');
-    embeddedMapActive=true;
-    if(iframe){
-      iframe.style.display='block';
-      iframe.src='https://www.openstreetmap.org/export/embed.html?bbox=124.30%2C7.14%2C124.46%2C7.24&layer=mapnik';
-    }
-    if(leafletEl){
-      // In embedded mode the iframe is the real visible/pannable map.
-      // Hide the Leaflet panes/markers so they cannot drift independently
-      // of the embedded map and appear to jump to random locations.
-      leafletEl.style.display='none';
-      leafletEl.classList.remove('map-interaction-overlay');
-    }
-    if(mapEl)mapEl.classList.add('embedded-map-mode');
-    if(map){
-      map.invalidateSize();
-      map.getContainer().style.pointerEvents='none';
-      if(statusLayer)statusLayer.clearLayers();
-      if(centerMarker){centerMarker.remove();centerMarker=null;}
-    }
-    setDrawMessage('Embedded map view active. The map can be panned and zoomed normally.','info');
   }
 
   function setDrawMessage(text,type='info'){
