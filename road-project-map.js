@@ -415,8 +415,7 @@
 
   function formatDistance(meters){
     if(!Number.isFinite(meters))return '—';
-    if(meters>=1000)return (meters/1000).toFixed(3)+' km ('+meters.toFixed(1)+' m)';
-    return meters.toFixed(1)+' m';
+    return meters.toFixed(2)+' m';
   }
 
   function getCurveRows(){
