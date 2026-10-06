@@ -261,10 +261,6 @@ function openModal(type, mode='add', record=null) {
       formField('Section Name','section_name',s.section_name||'', 'text', null, true) +
       formField('Station Start (m)','station_start_m',s.station_start_m ?? '') +
       formField('Station End (m)','station_end_m',s.station_end_m ?? '') +
-      formField('Start Latitude','start_lat',s.start_lat ?? '') +
-      formField('Start Longitude','start_lng',s.start_lng ?? '') +
-      formField('End Latitude','end_lat',s.end_lat ?? '') +
-      formField('End Longitude','end_lng',s.end_lng ?? '') +
       formField('Status','status',s.status||'PLANNED','select',[{value:'PLANNED',label:'PLANNED'},{value:'IN PROGRESS',label:'IN PROGRESS'},{value:'DONE',label:'DONE'},{value:'ON HOLD',label:'ON HOLD'},{value:'CANCELLED',label:'CANCELLED'}]) +
       formTextarea('Notes','notes',s.notes||'');
   }
@@ -333,10 +329,6 @@ function readModalValues() {
       section_name:get('section_name').value.trim(),
       station_start_m:nullableNumber(get('station_start_m').value),
       station_end_m:nullableNumber(get('station_end_m').value),
-      start_lat:nullableNumber(get('start_lat').value),
-      start_lng:nullableNumber(get('start_lng').value),
-      end_lat:nullableNumber(get('end_lat').value),
-      end_lng:nullableNumber(get('end_lng').value),
       status:get('status').value,
       notes:get('notes').value.trim()||null
     };
@@ -412,15 +404,27 @@ async function saveModal() {
   } else if (m.type==='section') {
     const payload={...values,phase_id:state.selectedPhaseId};
     const q = m.mode==='add'
-      ? supabaseClient.from('project_sections').insert(payload)
-      : supabaseClient.from('project_sections').update({...payload,updated_at:new Date().toISOString()}).eq('section_id',m.record.section_id);
-    const {error}=await q; if(error) throw error;
+      ? supabaseClient.from('project_sections').insert(payload).select('section_id').single()
+      : supabaseClient.from('project_sections').update({...payload,updated_at:new Date().toISOString()}).eq('section_id',m.record.section_id).select('section_id').single();
+    const {data:sectionData,error}=await q; if(error) throw error;
+
+    const sectionId=sectionData?.section_id||m.record?.section_id;
+    if(!sectionId) throw new Error('Unable to determine the saved road section.');
+    const {error:geometryError}=await supabaseClient.rpc('refresh_road_section_geometry',{p_section_id:sectionId});
+    if(geometryError) throw geometryError;
   } else {
     const payload={...values,section_id:state.selectedSectionId};
     const q = m.mode==='add'
-      ? supabaseClient.from('project_work_components').insert(payload)
-      : supabaseClient.from('project_work_components').update({...payload,updated_at:new Date().toISOString()}).eq('work_component_id',m.record.work_component_id);
-    const {error}=await q; if(error) throw error;
+      ? supabaseClient.from('project_work_components').insert(payload).select('work_component_id').single()
+      : supabaseClient.from('project_work_components').update({...payload,updated_at:new Date().toISOString()}).eq('work_component_id',m.record.work_component_id).select('work_component_id').single();
+    const {data:componentData,error}=await q; if(error) throw error;
+
+    const componentId=componentData?.work_component_id||m.record?.work_component_id;
+    if(!componentId) throw new Error('Unable to determine the saved work component.');
+    if(values.is_active!==false){
+      const {error:geometryError}=await supabaseClient.rpc('refresh_road_work_component_geometry',{p_work_component_id:componentId});
+      if(geometryError) throw geometryError;
+    }
   }
   closeModal();
   await loadStructure();
@@ -442,10 +446,14 @@ async function quickTwoLaneSet() {
   if (!rows.length) {
     showNotice('LEFT LANE and RIGHT LANE already exist for this section.','ok'); return;
   }
-  const {error}=await supabaseClient.from('project_work_components').insert(rows.map((x,i)=>({
+  const {data:inserted,error}=await supabaseClient.from('project_work_components').insert(rows.map((x,i)=>({
     ...x,section_id:section.section_id,station_start_m:start,station_end_m:end,planned_quantity:qty,quantity_unit:'M',status:'PLANNED',is_optional:false,is_active:true,sort_order:i+1
-  })));
+  }))).select('work_component_id');
   if(error) throw error;
+  for(const row of (inserted||[])){
+    const {error:geometryError}=await supabaseClient.rpc('refresh_road_work_component_geometry',{p_work_component_id:row.work_component_id});
+    if(geometryError) throw geometryError;
+  }
   await loadStructure();
   if (window.AMANAHRoadMap?.refresh) await window.AMANAHRoadMap.refresh();
   showNotice('Standard LEFT LANE + RIGHT LANE components created. Shoulders remain optional.','ok');
