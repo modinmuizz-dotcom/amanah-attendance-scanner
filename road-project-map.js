@@ -183,7 +183,7 @@
       if(a.work_component_id!==componentId)return false;
       if(String(a.approval_status||'').toUpperCase()!=='APPROVED')return false;
       if(mapProgressProcess==='ALL')return true;
-      return String(a.activity_type||'').trim().toUpperCase()===mapProgressProcess;
+      return String(a.activity||'').trim().toUpperCase()===mapProgressProcess;
     });
   }
 
@@ -577,7 +577,7 @@
       try{
         const activityResult=await withTimeout(
           client.from('project_activities')
-            .select('activity_id,work_component_id,activity_type,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
+            .select('activity_id,work_component_id,activity,activity_quantity,accomplishment,station_start_m,station_end_m,approval_status,activity_status')
             .eq('project_id',projectId)
             .eq('approval_status','APPROVED'),
           4000,'Activity progress'
