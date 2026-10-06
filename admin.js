@@ -3751,9 +3751,9 @@ async function saveEmployee(
 
   const employeePosition = (values.position || '').trim().toUpperCase();
   const mobilePosition = ['DRIVER', 'OPERATOR', 'DRIVER/OPERATOR', 'DRIVER / OPERATOR'].includes(employeePosition);
-  const employeeEmail = (values.email || '').trim().toLowerCase();
+  const mobileEmployeeEmail = (values.email || '').trim().toLowerCase();
 
-  if (mobilePosition && !employeeEmail) {
+  if (mobilePosition && !mobileEmployeeEmail) {
     throw new Error('A registered email is required for every Driver / Operator because this email will be used for mobile app access.');
   }
 
