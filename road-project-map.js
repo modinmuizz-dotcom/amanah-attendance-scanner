@@ -1141,18 +1141,7 @@
   }
 
   function curvesForMapBounds(){
-    const points=[];
-    getCurveRows().forEach(row=>{
-      [
-        ['.curve-pc-lat','.curve-pc-lng'],
-        ['.curve-p1-lat','.curve-p1-lng'],
-        ['.curve-pt-lat','.curve-pt-lng']
-      ].forEach(([la,ln])=>{
-        const lat=Number(row.querySelector(la)?.value),lng=Number(row.querySelector(ln)?.value);
-        if(Number.isFinite(lat)&&Number.isFinite(lng))points.push([lat,lng]);
-      });
-    });
-    return points;
+    return [];
   }
 
   async function handleProjectGenerateAlignment(){
