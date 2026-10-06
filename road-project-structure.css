@@ -43,7 +43,13 @@ button{cursor:pointer}
 .project-alignment-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr)) auto;gap:10px;align-items:end}
 .project-alignment-grid .map-field input,.project-alignment-grid .map-field select{width:100%;min-height:42px;border:1px solid var(--gray300);border-radius:10px;background:#fff;padding:9px 11px;color:var(--navy)}
 .project-alignment-actions{align-self:end;justify-content:flex-start}
-.project-alignment-help{margin-top:9px;padding:9px 11px;border-radius:9px;background:#f8fafc;border:1px dashed var(--gray300);color:var(--gray500);font-size:10px;font-weight:700;line-height:1.45}.project-control-point-editor{margin-top:10px;padding:12px;border:1px solid var(--gray200);border-radius:12px;background:#fbfdff}
+.project-alignment-help{margin-top:9px;padding:9px 11px;border-radius:9px;background:#f8fafc;border:1px dashed var(--gray300);color:var(--gray500);font-size:10px;font-weight:700;line-height:1.45}.project-distance-summary{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px;margin-top:10px}
+.project-distance-card{border:1px solid var(--gray200);border-radius:12px;background:#fff;padding:10px 12px}
+.project-distance-card span{display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--gray500)}
+.project-distance-card strong{display:block;margin-top:4px;font-size:18px;line-height:1.1;color:var(--navy)}
+.project-distance-card small{display:block;margin-top:4px;font-size:9px;color:var(--gray500);font-weight:600}
+@media(max-width:700px){.project-distance-summary{grid-template-columns:1fr}}
+.project-control-point-editor{margin-top:10px;padding:12px;border:1px solid var(--gray200);border-radius:12px;background:#fbfdff}
 .project-control-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
 .project-control-head strong{display:block;font-size:10px;letter-spacing:.08em;color:var(--navy)}
 .project-control-head span{display:block;margin-top:3px;font-size:10px;color:var(--gray500);font-weight:600}
