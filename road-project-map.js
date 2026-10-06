@@ -266,6 +266,9 @@
     updateProjectAlignmentControls();
     updateProjectDistanceSummary();
 
+    const generateButton=qs('projectGenerateAlignment');
+    if(generateButton)generateButton.textContent='REGENERATE ALIGNMENT';
+
     const help=qs('projectAlignmentHelp');
     if(help){
       help.textContent=hasCurves
@@ -1109,7 +1112,7 @@
 
     clearProjectAlignmentState();
     const button=qs('projectGenerateAlignment');
-    if(button)button.textContent='GENERATE ALIGNMENT';
+    if(button)button.textContent='REGENERATE ALIGNMENT';
     const help=qs('projectAlignmentHelp');
     help.textContent=mode==='CUSTOM_CURVE'
       ? 'Curve elements saved. You can edit the coordinates and generate a new alignment to replace them.'
@@ -1174,7 +1177,22 @@
       ]),{padding:[70,70],animate:false});
 
       if(mode==='STRAIGHT'){
-        await finishCoordinateAlignmentSave();
+        const built=buildEngineeringAlignment(coords.start,coords.end,[]);
+        projectAlignmentState.built=built;
+
+        if(projectAlignmentState.previewLine)projectAlignmentState.previewLine.remove();
+        projectAlignmentState.previewLine=L.polyline(
+          built.geometry.coordinates.map(c=>[c[1],c[0]]),
+          {color:'#7c3aed',weight:6,opacity:.95,dashArray:'10 7',interactive:false}
+        ).addTo(map);
+
+        focusAlignmentMap(built.geometry.coordinates.map(c=>[c[1],c[0]]),17);
+        const button=qs('projectGenerateAlignment');
+        if(button)button.textContent='REGENERATE ALIGNMENT';
+        const help=qs('projectAlignmentHelp');
+        help.textContent='Alignment preview generated. Review it, then click SAVE ALIGNMENT COORDINATES to store it for this project.';
+        updateProjectDistanceSummary();
+        setDrawMessage('Alignment preview generated. Click SAVE ALIGNMENT COORDINATES to save it.','ok');
         return;
       }
 
@@ -1200,7 +1218,7 @@
         }
 
         const button=qs('projectGenerateAlignment');
-        if(button)button.textContent='SAVE ALIGNMENT';
+        if(button)button.textContent='REGENERATE ALIGNMENT';
         setDrawMessage('Define each circular curve with PC, P1 and PT. Add more curve elements as needed, then click SAVE ALIGNMENT.','info');
       }
     }catch(error){
@@ -1311,7 +1329,7 @@
     if(targetType==='PROJECT' && projectAlignmentState){
       clearProjectAlignmentState();
       const button=qs('projectGenerateAlignment');
-      if(button)button.textContent='GENERATE ALIGNMENT';
+      if(button)button.textContent=projectData.alignment?'REGENERATE ALIGNMENT':'GENERATE ALIGNMENT';
       setDrawMessage('Project alignment draft cleared. Nothing was changed in Supabase.','info');
       return;
     }
@@ -1412,10 +1430,7 @@
       updateProjectAlignmentControls();
     });
     qs('projectSaveAlignment')?.addEventListener('click',saveCurrentAlignmentCoordinates);
-    qs('projectGenerateAlignment')?.addEventListener('click',async()=>{
-      if(projectAlignmentState?.mode==='CUSTOM_CURVE') await finishCoordinateAlignmentSave();
-      else await handleProjectGenerateAlignment();
-    });
+    qs('projectGenerateAlignment')?.addEventListener('click',handleProjectGenerateAlignment);
     qs('projectAddCurve')?.addEventListener('click',()=>{
       addCurveRow();
       if(qs('projectAlignmentMode').value==='CUSTOM_CURVE'){
@@ -1433,7 +1448,7 @@
     qs('projectAlignmentMode')?.addEventListener('change',()=>{
       clearProjectAlignmentState();
       const b=qs('projectGenerateAlignment');
-      if(b)b.textContent='GENERATE ALIGNMENT';
+      if(b)b.textContent=projectData.alignment?'REGENERATE ALIGNMENT':'GENERATE ALIGNMENT';
       updateProjectAlignmentControls();
     });
     qs('mapDrawLine')?.addEventListener('click',startLineDrawing);
