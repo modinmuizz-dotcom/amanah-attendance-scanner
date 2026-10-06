@@ -17,7 +17,7 @@
       <div>
         <div class="eyebrow">PROJECT ARCHITECTURE</div>
         <h1>ROAD PROJECT STRUCTURE</h1>
-        <p>Define the project hierarchy before scheduling work: Phase → Road Section → Work Components.</p>
+        <p>Define the project hierarchy around one primary road alignment: Phase → Station-based Road Section → Station-based Work Components.</p>
       </div>
       <button class="back-button" id="backToProjects" type="button">← PROJECT MASTER</button>
     </header>
@@ -48,25 +48,25 @@
         <span class="map-project-chip" id="roadMapProjectName">ROAD PROJECT</span>
       </div>
       <div class="road-map-toolbar">
-        <div class="map-field">
-          <label>MAP TARGET</label>
+        <div class="map-field" style="display:none">
+          <label>MAP VIEW</label>
           <select id="mapTargetType">
             <option value="PROJECT">PROJECT ALIGNMENT</option>
             <option value="SECTION">ROAD SECTION</option>
             <option value="COMPONENT">WORK COMPONENT</option>
           </select>
         </div>
-        <div class="map-field map-target-field">
+        <div class="map-field map-target-field" style="display:none">
           <label id="mapTargetLabel">SELECT ROAD SECTION</label>
           <select id="mapTarget"><option value="">SELECT ROAD SECTION</option></select>
         </div>
         <div class="map-toolbar-actions">
-          <button class="soft-btn" id="mapDrawLine" type="button">DRAW / REPLACE LINE</button>
+          <button class="soft-btn" id="mapDrawLine" type="button" style="display:none" type="button">DRAW / REPLACE LINE</button>
           <button class="secondary-btn" id="mapClearLine" type="button">CLEAR LINE</button>
-          <button class="secondary-btn" id="mapStartPoint" type="button">SET START POINT</button>
-          <button class="secondary-btn" id="mapEndPoint" type="button">SET END POINT</button>
+          <button class="secondary-btn" id="mapStartPoint" type="button" style="display:none" type="button">SET START POINT</button>
+          <button class="secondary-btn" id="mapEndPoint" type="button" style="display:none" type="button">SET END POINT</button>
           <button class="secondary-btn" id="mapFit" type="button">FIT ALIGNMENT</button>
-          <button class="secondary-btn" id="mapSetCenter" type="button">SET MAP CENTER</button>
+          <button class="secondary-btn" id="mapSetCenter" type="button" style="display:none" type="button">SET MAP CENTER</button>
         </div>
       </div>
       <div id="projectAlignmentControls" class="project-alignment-controls" style="display:none">
@@ -184,8 +184,8 @@
       <div class="rule-grid">
         <div><strong>Stationing is primary.</strong><span>Left/right is defined relative to increasing station direction.</span></div>
         <div><strong>Shouldering is optional.</strong><span>No shoulder records are created unless the project actually includes them.</span></div>
-        <div><strong>Components are independent.</strong><span>Each lane or shoulder can have a different station range and planned quantity.</span></div>
-        <div><strong>Future map-ready.</strong><span>Sections and components already contain PostGIS LineString geometry for the embedded AMANAH map.</span></div>
+        <div><strong>Components follow stationing.</strong><span>Each lane or shoulder can have its own station range, but its map geometry is derived from the primary alignment.</span></div>
+        <div><strong>Alignment is the source of truth.</strong><span>Road sections and work components are generated from station ranges on the primary alignment; they are not independent drawn lines.</span></div>
       </div>
     </section>
   </main>
@@ -225,6 +225,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="road-project-map.js?v=34"></script>
-  <script src="road-project-structure.js?v=2"></script>
+  <script src="road-project-structure.js?v=3"></script>
 </body>
 </html>
