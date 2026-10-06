@@ -181,7 +181,7 @@
     return (projectData.activities||[])
       .filter(a=>a.work_component_id===componentId && String(a.approval_status||'').toUpperCase()==='APPROVED')
       .reduce((sum,a)=>{
-        const q=Number(a.activity_quantity);
+        const q=Number(a.accomplishment);
         return sum+(Number.isFinite(q)?q:0);
       },0);
   }
