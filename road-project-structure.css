@@ -134,7 +134,7 @@ button{cursor:pointer}
 @media(max-width:1050px){.road-map-toolbar{grid-template-columns:1fr 1fr}.map-toolbar-actions{grid-column:1/-1;justify-content:flex-start}.summary-stats{min-width:0;grid-template-columns:repeat(3,1fr)}.architecture-grid{grid-template-columns:1fr}.stage-panel.wide{grid-column:auto}.rule-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.road-map-toolbar{grid-template-columns:1fr}.map-toolbar-actions{grid-column:auto}.road-map-canvas{height:420px}.road-map-footer{flex-direction:column;align-items:flex-start}.road-map-legend{justify-content:flex-start}.road-structure-wrap{width:min(100% - 18px,1440px);padding-top:18px}.road-structure-header{flex-direction:column;align-items:stretch}.summary-stats{grid-template-columns:repeat(2,1fr)}.project-summary{flex-direction:column}.form-grid{grid-template-columns:1fr}.full-field{grid-column:auto}.component-card{grid-template-columns:1fr 1fr}.component-card .component-name{grid-column:1/-1}.rule-grid{grid-template-columns:1fr}.panel-head{flex-direction:column}.button-cluster{justify-content:flex-start}}
 
-.project-map-card.project-alignment-active .road-map-toolbar{grid-template-columns:1fr;align-items:center}
+.road-map-panel.project-alignment-active .road-map-toolbar{grid-template-columns:1fr;align-items:center}
 .project-map-card.project-alignment-active .map-toolbar-actions{justify-content:flex-start;align-items:center}
 .project-map-card.project-alignment-active #mapDrawLine,
 .project-map-card.project-alignment-active #mapStartPoint,
