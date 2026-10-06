@@ -173,7 +173,8 @@
         </div>
         <div class="field">
           <label>RECEIVED QTY</label>
-          <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0">
+          <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0" readonly>
+          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">Updated automatically after the approved pickup activity is completed.</div>
         </div>
         <div class="field full">
           <label>READY FOR PICKUP QTY</label>
@@ -191,11 +192,11 @@
 
         <div class="field">
           <label>RECEIVED DATE</label>
-          <input id="supplyReceivedDate" type="date">
+          <input id="supplyReceivedDate" type="date" readonly>
         </div>
         <div class="field">
           <label>DELIVERY REFERENCE</label>
-          <input id="supplyDeliveryReference" placeholder="DR / Invoice / Delivery Receipt No.">
+          <input id="supplyDeliveryReference" placeholder="Created automatically from pickup activity" readonly>
         </div>
         <div class="field full">
           <label>RECEIVING REMARKS</label>
@@ -317,7 +318,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=27"></script>
+<script src="purchasing.js?v=28"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
