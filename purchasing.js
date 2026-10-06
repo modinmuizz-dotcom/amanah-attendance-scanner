@@ -458,7 +458,10 @@ function openPOModal(requestId){
  if(!["APPROVED","PARTIALLY ORDERED"].includes(r.status))return msg("Purchase Request must be approved by the General Manager before creating a PO.","err");
  clearPOValidation();
  state.editingOrderId=null;
- const items=state.requestItems.filter(x=>x.purchase_request_id===requestId).map(x=>({...x,unit_price:0}));state.poDraftRequest={r,items};
+ const items=state.requestItems
+   .filter(x=>x.purchase_request_id===requestId)
+   .map(x=>({...x,unit_price:""}));
+ state.poDraftRequest={r,items};
  document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";document.getElementById("poFromRequest").textContent=r.request_no+" • "+r.project_name+" • Requested by "+r.requester_name;
  const poDate=today();
  const requestedDelivery=r.needed_by_date||"";
@@ -483,18 +486,58 @@ async function openPOEdit(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
  if(["RECEIVED","CLOSED","CANCELLED"].includes(o.status))return msg("This Purchase Order cannot be edited in its current status.","err");
  state.editingOrderId=id;const req=state.requests.find(x=>x.purchase_request_id===o.purchase_request_id)||{request_no:o.purchase_request_no,project_id:o.project_id,project_name:o.project_name,project_location:o.project_location,requester_employee_id:o.requester_employee_id,requester_name:o.requester_name};
- state.poDraftRequest={r:req,items:state.orderItems.filter(x=>x.purchase_order_id===id).map(x=>({...x,unit_price:Number(x.unit_price||0)}))};
+ state.poDraftRequest={
+  r:req,
+  items:state.orderItems
+    .filter(x=>x.purchase_order_id===id)
+    .map(x=>({...x,unit_price:x.unit_price==null?"":Number(x.unit_price)})
+    )
+};
  document.getElementById("poModalTitle").textContent="EDIT PURCHASE ORDER";document.getElementById("poFromRequest").textContent=o.po_no+" • "+o.project_name+" • Requested by "+(o.requester_name||"—");
  document.getElementById("poSupplier").value=o.supplier_id||"";document.getElementById("poSupplierContact").value=o.supplier_contact||"";document.getElementById("poSupplierAddress").value=o.supplier_address||"";document.getElementById("poDate").value=o.po_date||today();document.getElementById("poDelivery").value=o.expected_delivery_date||"";document.getElementById("poPaymentTerms").value=o.payment_terms||"";document.getElementById("poDeliveryTerms").value=o.delivery_terms||"";document.getElementById("poRemarks").value=o.remarks||"";
  renderPoItems();document.getElementById("poModal").style.display="flex";
 }
 function renderPoItems(){
  const items=state.poDraftRequest.items;
- document.getElementById("poItems").innerHTML='<div class="items-box">'+items.map((it,i)=>'<div class="item-row"><div class="field"><label>Material</label><input data-po-field="material_name" data-i="'+i+'" value="'+esc(it.material_name)+'"></div><div class="field"><label>Specifications</label><input data-po-field="specifications" data-i="'+i+'" value="'+esc(it.specifications||"")+'"></div><div class="field"><label>Qty</label><input data-po-field="quantity" data-i="'+i+'" type="number" min="0.001" step="0.001" value="'+esc(it.quantity)+'"></div><div class="field"><label>Unit</label><input data-po-field="unit" data-i="'+i+'" value="'+esc(it.unit)+'"></div><div class="field"><label>Unit Price</label><input data-po-field="unit_price" data-i="'+i+'" type="number" min="0" step="0.01" value="'+esc(it.unit_price||0)+'"></div><div class="item-total" data-po-total="'+i+'">'+money(Number(it.quantity||0)*Number(it.unit_price||0))+'</div></div>').join("")+'</div>';
- document.querySelectorAll("[data-po-field]").forEach(el=>el.addEventListener("input",()=>{const i=Number(el.dataset.i),f=el.dataset.poField;items[i][f]=(f==="quantity"||f==="unit_price")?Number(el.value||0):el.value;updatePoTotal();}));
+ document.getElementById("poItems").innerHTML='<div class="items-box">'+items.map((it,i)=>{
+   const hasPrice=it.unit_price!=="" && it.unit_price!==null && it.unit_price!==undefined;
+   const lineTotal=hasPrice ? Number(it.quantity||0)*Number(it.unit_price||0) : null;
+   return '<div class="item-row">'+
+     '<div class="field"><label>Material</label><input data-po-field="material_name" data-i="'+i+'" value="'+esc(it.material_name)+'"></div>'+
+     '<div class="field"><label>Specifications</label><input data-po-field="specifications" data-i="'+i+'" value="'+esc(it.specifications||"")+'"></div>'+
+     '<div class="field"><label>Qty</label><input data-po-field="quantity" data-i="'+i+'" type="number" min="0.001" step="0.001" value="'+esc(it.quantity)+'"></div>'+
+     '<div class="field"><label>Unit</label><input data-po-field="unit" data-i="'+i+'" value="'+esc(it.unit)+'"></div>'+
+     '<div class="field"><label>Unit Price <span style="color:#64748b;font-size:8px">(OPTIONAL)</span></label><input data-po-field="unit_price" data-i="'+i+'" type="number" min="0" step="0.01" placeholder="TO BE QUOTED" value="'+(hasPrice?esc(it.unit_price):"")+'"></div>'+
+     '<div class="item-total" data-po-total="'+i+'">'+(lineTotal===null?'<span style="color:#64748b;font-size:10px">TO BE PRICED</span>':money(lineTotal))+'</div>'+
+   '</div>';
+ }).join("")+'</div>';
+ document.querySelectorAll("[data-po-field]").forEach(el=>el.addEventListener("input",()=>{
+   const i=Number(el.dataset.i),f=el.dataset.poField;
+   if(f==="quantity")items[i][f]=Number(el.value||0);
+   else if(f==="unit_price")items[i][f]=el.value===""?"":Number(el.value);
+   else items[i][f]=el.value;
+   updatePoTotal();
+ }));
  updatePoTotal();
 }
-function updatePoTotal(){const items=state.poDraftRequest?.items||[];const total=items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);items.forEach((x,i)=>{const el=document.querySelector('[data-po-total="'+i+'"]');if(el)el.textContent=money(Number(x.quantity||0)*Number(x.unit_price||0));});document.getElementById("poSubtotal").textContent=money(total);}
+function updatePoTotal(){
+ const items=state.poDraftRequest?.items||[];
+ let total=0;
+ let pending=false;
+ items.forEach((x,i)=>{
+   const hasPrice=x.unit_price!=="" && x.unit_price!==null && x.unit_price!==undefined;
+   const el=document.querySelector('[data-po-total="'+i+'"]');
+   if(hasPrice){
+     const line=Number(x.quantity||0)*Number(x.unit_price||0);
+     total+=line;
+     if(el)el.textContent=money(line);
+   }else{
+     pending=true;
+     if(el)el.innerHTML='<span style="color:#64748b;font-size:10px">TO BE PRICED</span>';
+   }
+ });
+ document.getElementById("poSubtotal").textContent=pending ? money(total)+" + PENDING PRICE" : money(total);
+}
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;state.editingOrderId=null;document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";}
 async function savePurchaseOrder(){
  const d=state.poDraftRequest;
@@ -519,15 +562,19 @@ async function savePurchaseOrder(){
    document.getElementById("poDelivery")?.focus();
    return;
  }
- for(const it of d.items){if(!it.material_name.trim())return msg("Every PO line needs a material name.","err");if(!(Number(it.quantity)>0))return msg("Every PO line needs a quantity greater than zero.","err");if(!(Number(it.unit_price)>=0))return msg("Unit price cannot be negative.","err");}
- const total=d.items.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);
+ for(const it of d.items){
+   if(!it.material_name.trim())return msg("Every PO line needs a material name.","err");
+   if(!(Number(it.quantity)>0))return msg("Every PO line needs a quantity greater than zero.","err");
+   if(it.unit_price!=="" && it.unit_price!==null && it.unit_price!==undefined && Number(it.unit_price)<0) return msg("Unit price cannot be negative.","err");
+ }
+ const total=d.items.reduce((n,x)=>n+(x.unit_price===""||x.unit_price===null||x.unit_price===undefined ? 0 : Number(x.quantity||0)*Number(x.unit_price||0)),0);
  const btn=document.getElementById("savePo");btn.disabled=true;btn.textContent=editing?"SAVING CHANGES...":"SAVING...";
  try{
   let poId=state.editingOrderId,poNo="";
   const payload={project_id:d.r.project_id,project_name:d.r.project_name,project_location:d.r.project_location||null,requester_employee_id:d.r.requester_employee_id||null,requester_name:d.r.requester_name||null,supplier_id:supplierId,supplier_name:supplier.supplier_name,supplier_contact:contact||null,supplier_address:address||null,po_date:poDate,expected_delivery_date:delivery||null,subtotal:total,tax_amount:0,other_charges:0,grand_total:total,payment_terms:payment||null,delivery_terms:deliveryTerms||null,remarks:remarks||null};
   if(editing){const {error}=await supabaseClient.from("purchase_orders").update(payload).eq("purchase_order_id",poId);if(error)throw error;const {error:delErr}=await supabaseClient.from("purchase_order_items").delete().eq("purchase_order_id",poId);if(delErr)throw delErr;}
   else{payload.purchase_request_id=d.r.purchase_request_id;payload.purchase_request_no=d.r.request_no;payload.status="DRAFT";const {data,error}=await supabaseClient.from("purchase_orders").insert(payload).select("purchase_order_id,po_no").single();if(error)throw error;poId=data.purchase_order_id;poNo=data.po_no;}
-  const items=d.items.map((it,i)=>({purchase_order_id:poId,line_no:i+1,purchase_request_item_id:it.purchase_request_item_id||null,material_name:it.material_name.trim(),specifications:it.specifications?.trim()||null,quantity:Number(it.quantity),unit:it.unit.trim(),unit_price:Number(it.unit_price||0)}));
+  const items=d.items.map((it,i)=>({purchase_order_id:poId,line_no:i+1,purchase_request_item_id:it.purchase_request_item_id||null,material_name:it.material_name.trim(),specifications:it.specifications?.trim()||null,quantity:Number(it.quantity),unit:it.unit.trim(),unit_price:(it.unit_price===""||it.unit_price===null||it.unit_price===undefined)?null:Number(it.unit_price)}));
   const {error:ierr}=await supabaseClient.from("purchase_order_items").insert(items);if(ierr)throw ierr;
   if(!editing){
     const {error:requestStatusError}=await supabaseClient
