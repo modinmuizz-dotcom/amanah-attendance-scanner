@@ -35,7 +35,7 @@
     <div>
       <div style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:900;letter-spacing:.1em">PROCUREMENT CONTROL</div>
       <h1>PURCHASING</h1>
-      <p>Site engineers raise project-specific material requests. Purchasing reviews the request, prepares the purchase order, and tracks supplier delivery.</p>
+      <p>Purchasing Officers encode material requests received from Site Engineers. Every submitted Purchase Request is automatically routed to the General Manager for approval or rejection before a Purchase Order can be created.</p>
     </div>
     <div class="hero-chip"><small>System Module</small><strong>Purchase Request &amp; Purchase Order</strong></div>
   </section>
@@ -45,9 +45,9 @@
 <div class="modal-backdrop" id="confirmModal">  <div class="confirm-modal">    <div class="modal-head">      <div style="display:flex;align-items:center;gap:12px">        <div class="confirm-icon">?</div>        <div><h3 style="margin:0;font-size:18px;font-weight:900" id="confirmTitle">CONFIRM ACTION</h3><div style="margin-top:4px;color:#64748b;font-size:10px;font-weight:800;letter-spacing:.06em">PURCHASING CONTROL</div></div>      </div>      <button class="modal-x" id="closeConfirm" type="button">×</button>    </div>    <div class="modal-body"><p class="confirm-message" id="confirmMessage">Please confirm this action.</p></div>    <div class="confirm-actions"><button class="btn gray" id="cancelConfirm" type="button">CANCEL</button><button class="btn green" id="acceptConfirm" type="button">CONFIRM</button></div>  </div></div>
 
   <section class="metrics">
-    <div class="metric"><small>Open Requests</small><strong id="mOpen">0</strong></div>
-    <div class="metric"><small>Pending Review</small><strong id="mReview">0</strong></div>
-    <div class="metric"><small>Approved Requests</small><strong id="mApproved">0</strong></div>
+    <div class="metric"><small>ACTIVE REQUESTS</small><strong id="mOpen">0</strong></div>
+    <div class="metric"><small>AWAITING GM APPROVAL</small><strong id="mReview">0</strong></div>
+    <div class="metric"><small>APPROVED — READY FOR PO</small><strong id="mApproved">0</strong></div>
     <div class="metric"><small>Active Purchase Orders</small><strong id="mPO">0</strong></div>
   </section>
 
@@ -96,7 +96,7 @@
 
 <div class="modal-backdrop" id="requestModal">
   <div class="modal">
-    <div class="modal-head"><div><h3>PURCHASE REQUEST</h3><div style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700">Raised by the site engineer for a specific project.</div></div><button class="modal-x" id="closeRequest" type="button">×</button></div>
+    <div class="modal-head"><div><h3>PURCHASE REQUEST</h3><div style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700">Encoded by the Purchasing Officer on behalf of the requesting Site Engineer. After submission, the request is routed to the General Manager.</div></div><button class="modal-x" id="closeRequest" type="button">×</button></div>
     <div class="form-section">
       <div class="form-grid">
         <div class="field"><label>Project</label><select id="requestProject"></select></div>
@@ -149,7 +149,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=8"></script>
+<script src="purchasing.js?v=9"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
