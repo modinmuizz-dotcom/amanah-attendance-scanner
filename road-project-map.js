@@ -222,7 +222,7 @@
         }
       }
 
-      setDrawMessage('Map ready. Select a road section or work component to map its alignment.','ok');
+      setDrawMessage('Map ready. Select PROJECT ALIGNMENT to draw the main project road line, or choose a section/component for detailed geometry.','ok');
 
       // Geometry is optional for initial rendering and loads separately.
       loadGeometryOverlay(projectId);
