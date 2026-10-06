@@ -562,6 +562,7 @@ function updatePoTotal(){
 function supplyStatusClass(status){
  const s=String(status||"").toUpperCase();
  if(s==="AVAILABLE"||s==="SUBSTITUTE APPROVED"||s==="RECEIVED")return "b-received";
+ if(s==="READY FOR PICKUP")return "b-approved";
  if(s==="UNAVAILABLE"||s==="CANCELLED")return "b-rejected";
  if(s==="BACKORDERED"||s==="PENDING SUPPLIER CONFIRMATION"||s==="SUBSTITUTE PROPOSED")return "b-review";
  if(s==="PARTIALLY AVAILABLE")return "b-ordered";
@@ -586,7 +587,7 @@ function effectiveProcurementQuantityForRequestItem(requestItemId){
      if(["UNAVAILABLE","CANCELLED"].includes(status))return sum;
      if(status==="PARTIALLY AVAILABLE")return sum+Number(x.confirmed_quantity||0);
      if(status==="RECEIVED")return sum+Number(x.received_quantity||0);
-     if(status==="AVAILABLE" || status==="SUBSTITUTE APPROVED")return sum+Number(x.confirmed_quantity||0);
+     if(status==="AVAILABLE" || status==="READY FOR PICKUP" || status==="SUBSTITUTE APPROVED")return sum+Number(x.confirmed_quantity||0);
      return sum+Number(x.quantity||0);
    },0);
 }
@@ -652,7 +653,7 @@ async function openSupplyModal(itemId){
 
  const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
  const pickupBtn=document.getElementById("requestPickup");
- const canPickup=["AVAILABLE","PARTIALLY AVAILABLE","SUBSTITUTE APPROVED"].includes(String(item.supply_status||"").toUpperCase()) && remaining>0;
+ const canPickup=String(item.supply_status||"").toUpperCase()==="READY FOR PICKUP" && remaining>0;
  pickupBtn.style.display=canPickup?"inline-block":"none";
  pickupBtn.disabled=!!activePickup;
  pickupBtn.textContent=activePickup ? "PICKUP REQUEST SENT" : "REQUEST MATERIAL PICKUP ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
@@ -783,6 +784,7 @@ async function saveSupplyStatus(){
  if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
  if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
  if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
+ if(status==="READY FOR PICKUP" && confirmed<=received)return showSupplyValidation("READY FOR PICKUP requires a confirmed quantity greater than the quantity already received.");
  if(received>0 && !receivedDate)return showSupplyValidation("Received date is required when received quantity is greater than zero.");
  if(received>0 && !deliveryReference)return showSupplyValidation("Delivery reference (DR / Invoice / Receipt No.) is required when recording a receipt.");
  if(status==="AVAILABLE" && confirmed<=0)return showSupplyValidation("Enter the quantity confirmed available by the supplier.");
