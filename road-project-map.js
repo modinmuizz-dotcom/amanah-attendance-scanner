@@ -343,25 +343,11 @@
       renderRoadCorridorReferences();
     }
 
-    projectData.sections.forEach(s=>{
-      if(!s.geometry?.coordinates)return;
-      const line=featureLine(s.geometry.coordinates,{color:'#0f172a',weight:7,opacity:.45},{
-        title:s.section_code+' — '+s.section_name,
-        subtitle:'ROAD SECTION • '+String(s.status||'PLANNED').toUpperCase(),
-        station:stationLabel(s.station_start_m)+' → '+stationLabel(s.station_end_m)
-      });
-      if(line)line.addTo(statusLayer);
-    });
-
-    projectData.components.forEach(c=>{
-      if(!c.geometry?.coordinates)return;
-      const line=featureLine(c.geometry.coordinates,{color:statusColor(c.status),weight:8,opacity:.88},{
-        title:c.component_name,
-        subtitle:(c.component_type||'WORK COMPONENT')+' • '+(c.component_side||'NONE')+' • '+(c.status||'PLANNED'),
-        station:stationLabel(c.station_start_m)+' → '+stationLabel(c.station_end_m)
-      });
-      if(line)line.addTo(statusLayer);
-    });
+    // Road sections and work components are station references on the
+    // primary alignment. Do not draw their stored centerline geometry here,
+    // otherwise lane components would stack directly on top of the alignment.
+    // renderRoadCorridorReferences() already renders the left/right lane and
+    // shoulder lines at their correct offsets and colors them by progress.
 
     if(projectData.project?.project_details){
       const d=projectData.project.project_details||{};
