@@ -675,7 +675,7 @@ async function openPickupRequestModal(){
  document.getElementById("pickupFromPO").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(order.supplier_name||"")+" • "+(order.project_name||"");
  document.getElementById("pickupMaterial").textContent=item.material_name||"—";
  document.getElementById("pickupQuantity").value=remaining;
- document.getElementById("pickupUnit").textContent=item.unit||"—";
+ document.getElementById("pickupUnitLabel").textContent=item.unit||"—";
  document.getElementById("pickupDate").value=today();
  document.getElementById("pickupStart").value="08:00";
  document.getElementById("pickupEnd").value="17:00";
