@@ -159,9 +159,9 @@
             <option>SUBSTITUTE PROPOSED</option>
             <option>SUBSTITUTE APPROVED</option>
             <option>CANCELLED</option>
-            <option>RECEIVED</option>
+            <option value="RECEIVED" disabled>RECEIVED (AUTO AFTER PICKUP)</option>
           </select>
-          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">Set <strong>READY FOR PICKUP</strong> only when the supplier confirms the material is prepared and can be collected.</div>
+          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700"><span id="supplyStatusHelp">Set <strong>READY FOR PICKUP</strong> only when the supplier confirms the material is prepared and can be collected. <strong>RECEIVED</strong> is recorded automatically after the approved pickup activity is completed.</span></div>
         </div>
         <div class="field">
           <label>UNIT PRICE <span style="color:#64748b;font-size:8px">(OPTIONAL)</span></label>
@@ -317,7 +317,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=26"></script>
+<script src="purchasing.js?v=27"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
