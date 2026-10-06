@@ -7,7 +7,7 @@
   <title>AMANAH Road Project Structure</title>
   <link rel="stylesheet" href="style.css?v=9">
   <link rel="stylesheet" href="amanah-ui.css?v=4">
-  <link rel="stylesheet" href="road-project-structure.css?v=9">
+  <link rel="stylesheet" href="road-project-structure.css?v=10">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
 </head>
@@ -116,7 +116,7 @@
         <div class="project-curve-head">
           <div>
             <strong>HORIZONTAL CURVE ELEMENTS</strong>
-            <span>Define each curve with PC, P1 on the arc, and PT. AMANAH calculates radius, direction, arc length, tangent length, and stationing.</span>
+            <span>Define each curve by PC, P1 and PT stations, plus radius and direction. AMANAH calculates the coordinates, circular arc, length and stationing automatically.</span>
           </div>
           <div class="button-cluster">
             <button class="secondary-btn" id="projectAddCurve" type="button">+ ADD CURVE</button>
@@ -125,7 +125,7 @@
         </div>
         <div id="projectCurveRows" class="project-curve-rows"></div>
         <div class="project-curve-note">
-          PC = Point of Curvature, P1 = a point on the actual circular curve, PT = Point of Tangency. Multiple curves are connected by tangent elements automatically.
+          PC = Point of Curvature, P1 = station on the circular curve, PT = Point of Tangency. Radius and direction define the curve; coordinates are calculated automatically.
         </div>
       </div>
         <div class="project-alignment-help" id="projectAlignmentHelp">
