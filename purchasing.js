@@ -424,7 +424,23 @@ function openPOModal(requestId){
  state.editingOrderId=null;
  const items=state.requestItems.filter(x=>x.purchase_request_id===requestId).map(x=>({...x,unit_price:0}));state.poDraftRequest={r,items};
  document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";document.getElementById("poFromRequest").textContent=r.request_no+" • "+r.project_name+" • Requested by "+r.requester_name;
- document.getElementById("poSupplier").value="";document.getElementById("poSupplierContact").value="";document.getElementById("poSupplierAddress").value="";document.getElementById("poDate").value=today();document.getElementById("poDelivery").value=r.needed_by_date||"";document.getElementById("poPaymentTerms").value="";document.getElementById("poDeliveryTerms").value="Delivered to project site";document.getElementById("poRemarks").value="";
+ const poDate=today();
+ const requestedDelivery=r.needed_by_date||"";
+ const deliveryDate=requestedDelivery && requestedDelivery>=poDate ? requestedDelivery : poDate;
+ document.getElementById("poSupplier").value="";
+ document.getElementById("poSupplierContact").value="";
+ document.getElementById("poSupplierAddress").value="";
+ document.getElementById("poDate").value=poDate;
+ document.getElementById("poDelivery").value=deliveryDate;
+ document.getElementById("poPaymentTerms").value="";
+ document.getElementById("poDeliveryTerms").value="Delivered to project site";
+ document.getElementById("poRemarks").value="";
+
+ if(state.suppliers.length===1){
+   document.getElementById("poSupplier").value=state.suppliers[0].supplier_id;
+   applySelectedSupplier();
+ }
+
  renderPoItems();document.getElementById("poModal").style.display="flex";
 }
 async function openPOEdit(id){
