@@ -61,9 +61,6 @@
       if(line)line.addTo(statusLayer);
     }
 
-    if(projectData.alignment?.geometry?.coordinates){
-      projectData.alignment.geometry.coordinates.forEach(c=>bounds.push([c[1],c[0]]));
-    }
     projectData.sections.forEach(s=>{
       if(!s.geometry?.coordinates)return;
       const line=featureLine(s.geometry.coordinates,{color:'#0f172a',weight:7,opacity:.45},{
@@ -95,6 +92,9 @@
 
   function allGeometryBounds(){
     const bounds=[];
+    if(projectData.alignment?.geometry?.coordinates){
+      projectData.alignment.geometry.coordinates.forEach(c=>bounds.push([c[1],c[0]]));
+    }
     projectData.sections.forEach(s=>{
       s.geometry?.coordinates?.forEach(c=>bounds.push([c[1],c[0]]));
       if(s.start_lat!=null&&s.start_lng!=null)bounds.push([Number(s.start_lat),Number(s.start_lng)]);
