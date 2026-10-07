@@ -93,6 +93,41 @@
 
       <!-- ACTIVE ATTENDANCE -->
       <div id="activeAttendance" class="active-card" hidden></div>
+      <div id="pickupActivitiesCard" class="card" hidden>
+        <div class="step-number">!</div>
+        <div class="card-title">MATERIAL PICKUP ACTIVITIES</div>
+        <div class="card-subtitle">Approved material pickup activities assigned to your current equipment.</div>
+        <div id="pickupActivityList"></div>
+        <div class="button-row" style="margin-top:12px">
+          <button id="refreshPickupActivitiesButton" class="secondary-button full-button" type="button">REFRESH PICKUP ACTIVITIES</button>
+        </div>
+      </div>
+
+      <div id="pickupActivityModal" class="modal-backdrop" hidden>
+        <div class="card" style="width:min(700px,94%);max-height:90vh;overflow:auto;position:relative">
+          <button id="closePickupActivityButton" type="button" style="position:absolute;right:12px;top:12px;border:0;background:#eef2f7;border-radius:9px;padding:8px 12px;font-weight:900">×</button>
+          <div class="card-title">MATERIAL PICKUP ACTIVITY</div>
+          <div id="pickupActivityValidation" class="status-message error" hidden></div>
+          <div id="pickupActivityDetails"></div>
+          <div style="margin-top:16px">
+            <div class="activity-evidence-title">RECEIVING EVIDENCE — 1 PHOTO REQUIRED</div>
+            <label class="fuel-photo-label">
+              <span>📷 TAKE / ATTACH PICKUP RECEIVING PHOTO</span>
+              <input id="pickupEvidencePhoto" class="fuel-photo-input" type="file" accept="image/*">
+            </label>
+            <img id="pickupEvidencePreview" class="fuel-photo-preview" alt="Pickup receiving evidence preview">
+            <div id="pickupEvidenceStatus" class="fuel-photo-status">Take a photo showing the materials after pickup / delivery.</div>
+          </div>
+          <div style="margin-top:14px">
+            <label for="pickupCompletionRemarks">RECEIVING REMARKS</label>
+            <textarea id="pickupCompletionRemarks" class="text-input" rows="4" placeholder="Enter any delivery condition, shortage, or receiving note..."></textarea>
+          </div>
+          <div class="button-row" style="margin-top:14px">
+            <button id="cancelPickupActivityButton" class="secondary-button" type="button">CANCEL</button>
+            <button id="completePickupActivityButton" class="primary-button" type="button">MARK MATERIALS RECEIVED</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ==========================
            TIME IN DETAILS
@@ -430,6 +465,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
