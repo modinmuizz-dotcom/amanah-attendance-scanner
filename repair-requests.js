@@ -1133,18 +1133,36 @@ function openApprovalConfirmation(id){
   }
 
   const confirmationModal=$("approvalConfirmModal");
+  const detailModal=$("detailModal");
+  const detailDialog=detailModal?.querySelector(".dialog");
+
   if(confirmationModal){
-    // Move the confirmation layer to the document root so it can never sit
-    // behind the detail dialog or another modal stacking context.
-    if(confirmationModal.parentElement!==document.body){
-      document.body.appendChild(confirmationModal);
+    // Keep the confirmation INSIDE the Repair Request dialog so it always
+    // appears visibly in front of the form that triggered it.
+    if(detailDialog && confirmationModal.parentElement!==detailDialog){
+      detailDialog.appendChild(confirmationModal);
     }
-    confirmationModal.style.position="fixed";
-    confirmationModal.style.zIndex="10000";
+
+    if(detailDialog){
+      detailDialog.style.position="relative";
+    }
+
+    confirmationModal.style.position="absolute";
+    confirmationModal.style.inset="0";
+    confirmationModal.style.zIndex="9999";
     confirmationModal.style.display="flex";
+    confirmationModal.style.alignItems="center";
+    confirmationModal.style.justifyContent="center";
+    confirmationModal.style.padding="18px";
+    confirmationModal.style.background="rgba(15,23,42,.68)";
+    confirmationModal.style.borderRadius="18px";
     confirmationModal.setAttribute("aria-modal","true");
     confirmationModal.setAttribute("role","dialog");
   }
+
+  // Ensure the original Repair Request form remains open underneath.
+  if(detailModal) detailModal.classList.add("open");
+
   state.approvalConfirmRequestId=id;
 }
 
@@ -1154,6 +1172,14 @@ function closeApprovalConfirmation(){
   if(modal){
     modal.classList.remove("open");
     modal.style.display="none";
+    modal.style.position="";
+    modal.style.inset="";
+    modal.style.zIndex="";
+    modal.style.alignItems="";
+    modal.style.justifyContent="";
+    modal.style.padding="";
+    modal.style.background="";
+    modal.style.borderRadius="";
     modal.removeAttribute("aria-modal");
     modal.removeAttribute("role");
   }
