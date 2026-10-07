@@ -720,7 +720,7 @@ async function openSupplyModal(itemId){
  const sourceRemaining=sourceRemainingQuantity(item.purchase_request_item_id);
  const showAlternative=savedStatus==="UNAVAILABLE"&&sourceRemaining>0;
  alt.style.display=showAlternative?"inline-block":"none";
- alt.textContent="SOURCE ALTERNATIVE ("+sourceRemaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")"";
+ alt.textContent="SOURCE ALTERNATIVE ("+sourceRemaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
 
  document.getElementById("saveSupply").style.display=statusLocked?"none":"inline-block";
  document.getElementById("supplyModal").style.display="flex";
