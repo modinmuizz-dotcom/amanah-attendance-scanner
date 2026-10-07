@@ -102,6 +102,8 @@ const state = {
   lastMeterOut: null,
   lastActivities: [],
   lastFuelPhotoPath: null,
+  pickupActivities: [],
+  selectedPickupActivity: null,
 
   lastQrData: '',
   lastQrTime: 0
@@ -191,6 +193,31 @@ function setupButtons() {
     function () {
       addActivityRow();
     }
+  );
+
+  bindClick(
+    'refreshPickupActivitiesButton',
+    loadDriverPickupActivities
+  );
+
+  bindClick(
+    'closePickupActivityButton',
+    closePickupActivityModal
+  );
+
+  bindClick(
+    'cancelPickupActivityButton',
+    closePickupActivityModal
+  );
+
+  bindClick(
+    'completePickupActivityButton',
+    completeDriverMaterialPickup
+  );
+
+  bindChange(
+    'pickupEvidencePhoto',
+    pickupEvidencePhotoChanged
   );
 
   bindClick(
@@ -821,6 +848,7 @@ async function loadSystemData() {
     syncAttendanceMode();
     updateActiveAttendanceDisplay();
     updateButtons();
+    await loadDriverPickupActivities();
 
 
     setStatus(
@@ -1093,8 +1121,309 @@ function employeeChanged() {
   updateActiveAttendanceDisplay();
   syncAttendanceMode();
   updateButtons();
+  loadDriverPickupActivities();
 }
 
+
+/* ==========================================================
+   MATERIAL PICKUP ACTIVITIES
+   ========================================================== */
+
+async function loadDriverPickupActivities() {
+  const card = $('pickupActivitiesCard');
+  const list = $('pickupActivityList');
+  const active = getActiveAttendance();
+
+  if (!card || !list) return;
+
+  if (!active || !state.selectedEmployee) {
+    state.pickupActivities = [];
+    card.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc(
+      'amanah_get_driver_material_pickups',
+      {
+        p_employee_id: String(state.selectedEmployee.employee_id),
+        p_attendance_id: String(active.attendance_id)
+      }
+    );
+
+    if (error) throw error;
+
+    state.pickupActivities = Array.isArray(data) ? data : [];
+    renderDriverPickupActivities();
+  } catch (error) {
+    console.error('Pickup activity load error:', error);
+    state.pickupActivities = [];
+    card.hidden = true;
+    list.innerHTML = '';
+  }
+}
+
+function renderDriverPickupActivities() {
+  const card = $('pickupActivitiesCard');
+  const list = $('pickupActivityList');
+  if (!card || !list) return;
+
+  if (!state.pickupActivities.length) {
+    card.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+
+  card.hidden = false;
+
+  list.innerHTML = state.pickupActivities.map((item) => {
+    const materials = Array.isArray(item.materials) ? item.materials : [];
+    const materialHtml = materials.map((m) =>
+      '<div style="padding:7px 0;border-bottom:1px solid #e2e8f0">' +
+        '<strong>' + escapeHtml(m.material_name || 'Material') + '</strong>' +
+        (m.specifications ? ' • ' + escapeHtml(m.specifications) : '') +
+        '<div style="color:#64748b;font-size:12px;margin-top:2px">' +
+          escapeHtml(m.quantity) + ' ' + escapeHtml(m.unit || '') +
+        '</div>' +
+      '</div>'
+    ).join('');
+
+    const time = item.scheduled_start
+      ? formatTime(item.scheduled_start) + (item.scheduled_end ? ' – ' + formatTime(item.scheduled_end) : '')
+      : 'Schedule as assigned';
+
+    return '<div style="border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin-top:12px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">' +
+        '<div><div style="font-size:12px;font-weight:900;color:#2563eb">MATERIAL PICKUP</div>' +
+        '<div style="font-size:16px;font-weight:900;margin-top:4px">' + escapeHtml(item.purchase_order_no || 'PURCHASE ORDER') + '</div></div>' +
+        '<div style="font-size:11px;font-weight:900;color:#475569">' + escapeHtml(time) + '</div>' +
+      '</div>' +
+      '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#f8fafc;font-size:12px;line-height:1.55">' +
+        '<strong>SUPPLIER:</strong> ' + escapeHtml(item.supplier_name || '—') + '<br>' +
+        '<strong>PICK UP AT:</strong> ' + escapeHtml(item.pickup_location || '—') + '<br>' +
+        '<strong>DELIVER TO:</strong> ' + escapeHtml(item.delivery_location || item.project_name || '—') +
+      '</div>' +
+      '<div style="margin-top:10px">' + materialHtml + '</div>' +
+      '<button type="button" data-pickup-activity="' + escapeHtml(item.activity_id) + '" class="primary-button full-button" style="margin-top:12px">SELECT PICKUP ACTIVITY</button>' +
+    '</div>';
+  }).join('');
+
+  list.querySelectorAll('[data-pickup-activity]').forEach((button) => {
+    button.addEventListener('click', () => openPickupActivityModal(button.dataset.pickupActivity));
+  });
+}
+
+function openPickupActivityModal(activityId) {
+  const activity = state.pickupActivities.find((x) => String(x.activity_id) === String(activityId));
+  if (!activity) return;
+
+  state.selectedPickupActivity = activity;
+  const modal = $('pickupActivityModal');
+  const details = $('pickupActivityDetails');
+  const validation = $('pickupActivityValidation');
+  if (!modal || !details) return;
+
+  if (validation) {
+    validation.hidden = true;
+    validation.textContent = '';
+  }
+
+  const materials = Array.isArray(activity.materials) ? activity.materials : [];
+  details.innerHTML =
+    '<div style="margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;font-size:12px;line-height:1.6">' +
+      '<strong>PO:</strong> ' + escapeHtml(activity.purchase_order_no || '—') + '<br>' +
+      '<strong>SUPPLIER:</strong> ' + escapeHtml(activity.supplier_name || '—') + '<br>' +
+      '<strong>PICK UP AT:</strong> ' + escapeHtml(activity.pickup_location || '—') + '<br>' +
+      '<strong>DELIVER TO:</strong> ' + escapeHtml(activity.delivery_location || activity.project_name || '—') +
+    '</div>' +
+    '<div style="margin-top:12px"><strong>MATERIALS</strong>' +
+    materials.map((m) =>
+      '<div style="padding:9px 0;border-bottom:1px solid #e2e8f0">' +
+        '<strong>' + escapeHtml(m.material_name || 'Material') + '</strong>' +
+        '<div style="color:#64748b;font-size:12px">' + escapeHtml(m.quantity) + ' ' + escapeHtml(m.unit || '') +
+        (m.specifications ? ' • ' + escapeHtml(m.specifications) : '') + '</div>' +
+      '</div>'
+    ).join('') +
+    '</div>' +
+    '<div style="margin-top:12px;color:#475569;font-size:12px;line-height:1.5">' +
+      'After selecting this activity, proceed to the supplier, collect the listed materials, deliver them to the destination, then use <strong>MARK MATERIALS RECEIVED</strong> below.' +
+    '</div>';
+
+  const photo = $('pickupEvidencePhoto');
+  const preview = $('pickupEvidencePreview');
+  const status = $('pickupEvidenceStatus');
+  if (photo) photo.value = '';
+  if (preview) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+  }
+  if (status) status.textContent = 'Take a photo showing the materials after pickup / delivery.';
+  const remarks = $('pickupCompletionRemarks');
+  if (remarks) remarks.value = '';
+
+  modal.hidden = false;
+  modal.style.display = 'flex';
+}
+
+function closePickupActivityModal() {
+  const modal = $('pickupActivityModal');
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = 'none';
+  }
+  state.selectedPickupActivity = null;
+}
+
+function pickupEvidencePhotoChanged() {
+  const input = $('pickupEvidencePhoto');
+  const preview = $('pickupEvidencePreview');
+  const status = $('pickupEvidenceStatus');
+  const file = input && input.files && input.files[0] ? input.files[0] : null;
+
+  if (!file) {
+    if (preview) {
+      preview.removeAttribute('src');
+      preview.style.display = 'none';
+    }
+    if (status) status.textContent = 'Take a photo showing the materials after pickup / delivery.';
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    input.value = '';
+    setStatus('Pickup receiving evidence must be an image.', 'error');
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    input.value = '';
+    setStatus('Pickup receiving evidence is larger than 10 MB. Please choose a smaller photo.', 'error');
+    return;
+  }
+
+  if (preview) {
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  }
+
+  if (status) {
+    status.textContent = file.name + ' • ' + formatFileSize(file.size) + ' • Required';
+  }
+}
+
+async function completeDriverMaterialPickup() {
+  const active = getActiveAttendance();
+  const employee = state.selectedEmployee;
+  const activity = state.selectedPickupActivity;
+  const input = $('pickupEvidencePhoto');
+  const file = input && input.files && input.files[0] ? input.files[0] : null;
+  const button = $('completePickupActivityButton');
+
+  if (!active || !employee || !activity) {
+    setPickupValidationMessage('Select a valid active Material Pickup activity.');
+    return;
+  }
+
+  if (!file) {
+    setPickupValidationMessage('Receiving evidence photo is required.');
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    setPickupValidationMessage('Receiving evidence photo must be an image.');
+    return;
+  }
+
+  const remarks = ($('pickupCompletionRemarks')?.value || '').trim();
+
+  button.disabled = true;
+  button.textContent = 'UPLOADING / RECEIVING...';
+  try {
+    const photoPath = await uploadPickupEvidence(
+      String(active.attendance_id),
+      String(activity.activity_id),
+      file
+    );
+
+    const { data, error } = await supabaseClient.rpc(
+      'amanah_complete_driver_material_pickup',
+      {
+        p_employee_id: String(employee.employee_id),
+        p_attendance_id: String(active.attendance_id),
+        p_activity_id: String(activity.activity_id),
+        p_photo_path: photoPath,
+        p_remarks: remarks || null
+      }
+    );
+
+    if (error) throw error;
+
+    closePickupActivityModal();
+
+    const names = Array.isArray(data?.materials)
+      ? data.materials.map((m) => (m.material_name || 'Material') + ' ' + (m.quantity || '') + ' ' + (m.unit || '')).join(', ')
+      : 'Selected materials';
+
+    setStatus(
+      '✓ MATERIALS RECEIVED — ' + names,
+      'success'
+    );
+
+    showResult(
+      {
+        employee_name: employee.employee_name,
+        equipment_name: active.equipment_name,
+        project_name: active.project_name,
+        attendance_date: active.attendance_date,
+        time_in: active.time_in
+      },
+      'MATERIALS RECEIVED'
+    );
+
+    await loadDriverPickupActivities();
+  } catch (error) {
+    console.error('Driver material pickup completion failed:', error);
+    setPickupValidationMessage(error.message || 'Unable to mark materials received.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'MARK MATERIALS RECEIVED';
+  }
+}
+
+function setPickupValidationMessage(message) {
+  const box = $('pickupActivityValidation');
+  if (!box) {
+    setStatus(message, 'error');
+    return;
+  }
+  box.hidden = false;
+  box.textContent = message;
+}
+
+async function uploadPickupEvidence(attendanceId, activityId, file) {
+  const safeAttendanceId = String(attendanceId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeActivityId = String(activityId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const path = 'pickup/' + safeAttendanceId + '/' + safeActivityId + '-' + String(Date.now()) + getImageExtension(file);
+
+  const uploadResult = await supabaseClient
+    .storage
+    .from('attendance-activity-evidence')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || 'image/jpeg'
+    });
+
+  if (uploadResult.error) {
+    if (String(uploadResult.error.message || '').toLowerCase().includes('bucket not found')) {
+      throw new Error('Photo storage bucket "attendance-activity-evidence" is missing.');
+    }
+    throw new Error('Pickup receiving photo upload failed: ' + uploadResult.error.message);
+  }
+
+  return path;
+}
 
 /* ==========================================================
    EQUIPMENT
@@ -3382,6 +3711,9 @@ function cancelTimeOut() {
     'outDetails',
     true
   );
+  const pickupCard = $('pickupActivitiesCard');
+  if (pickupCard) pickupCard.hidden = true;
+  closePickupActivityModal();
 
   hideElement(
     'fuelQuestion',
@@ -4462,6 +4794,7 @@ function resetOutWorkflowForNewAttendance() {
   );
 
   updateEquipmentMeterUI();
+  loadDriverPickupActivities();
 }
 
 
@@ -4506,6 +4839,8 @@ async function restartScanner() {
   state.lastMeterOut = null;
   state.lastActivities = [];
   state.lastFuelPhotoPath = null;
+  state.pickupActivities = [];
+  state.selectedPickupActivity = null;
   state.lastQrData = '';
   state.lastQrTime = 0;
 
