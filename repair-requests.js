@@ -281,8 +281,7 @@ function renderSelectedFiles(){
           '<img src="'+url+'" alt="Photo preview" style="width:100%;height:100%;object-fit:cover">'+
         '</div>'+
         '<div style="padding:9px">'+
-          '<div style="font-size:11px;font-weight:900;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escapeHtml(file.name)+'">'+escapeHtml(file.name)+'</div>'+
-          '<div style="margin-top:4px;color:#64748b;font-size:10px">'+escapeHtml(entry.category)+' • '+size+' KB</div>'+
+          '<div style="margin-top:4px;color:#64748b;font-size:10px">'+escapeHtml(entry.category)+'</div>'+
           '<button type="button" data-remove-photo="'+index+'" class="btn btn-gray" style="margin-top:8px;width:100%;min-height:32px">REMOVE</button>'+
         '</div>'+
       '</div>';
