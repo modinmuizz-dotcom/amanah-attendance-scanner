@@ -52,7 +52,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
     <div>
       <div class="kicker">MAINTENANCE CONTROL</div>
       <h1>REPAIR REQUESTS</h1>
-      <p>Digitize the AMANAH Repair Form, keep PM damage evidence attached, and require the reviewer and approver to acknowledge the photo evidence before moving the request forward.</p>
+      <p>Save the Repair Request as a draft while gathering information, then submit it directly to the General Manager for approval before repair starts.</p>
     </div>
     <div class="hero-card"><small>System Module</small><strong>Repair &amp; Evidence Control</strong></div>
   </section>
@@ -61,12 +61,12 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 
   <section class="card">
     <div class="toolbar">
-      <div><h2>REPAIR REQUEST REGISTER</h2><p>Draft → Review → Approval → Repair → Completion → Closure</p></div>
+      <div><h2>REPAIR REQUEST REGISTER</h2><p>Draft → GM Approval → Repair → Completion → Closure</p></div>
       <button class="btn btn-primary" id="newRequest">+ NEW REPAIR REQUEST</button>
     </div>
 
     <div class="filters">
-      <div class="field"><label>Status</label><select class="select" id="statusFilter"><option value="">ALL STATUS</option><option>DRAFT</option><option>PENDING REVIEW</option><option>PENDING APPROVAL</option><option>APPROVED</option><option>RETURNED</option><option>IN PROGRESS</option><option>COMPLETED</option><option>CLOSED</option></select></div>
+      <div class="field"><label>Status</label><select class="select" id="statusFilter"><option value="">ALL STATUS</option><option>DRAFT</option><option>PENDING APPROVAL</option><option>APPROVED</option><option>RETURNED</option><option>IN PROGRESS</option><option>COMPLETED</option><option>CLOSED</option></select></div>
       <div class="field"><label>Equipment</label><select class="select" id="equipmentFilter"><option value="">ALL EQUIPMENT</option></select></div>
       <div class="field"><label>Project</label><select class="select" id="projectFilter"><option value="">ALL PROJECTS</option></select></div>
     </div>
@@ -144,7 +144,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="repair-requests.js?v=9"></script>
+<script src="repair-requests.js?v=10"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
