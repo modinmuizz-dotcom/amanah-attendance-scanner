@@ -152,16 +152,10 @@
           <select id="supplyStatus">
             <option>PENDING SUPPLIER CONFIRMATION</option>
             <option>AVAILABLE</option>
-            <option>READY FOR PICKUP</option>
-            <option>BACKORDERED</option>
-            <option>PARTIALLY AVAILABLE</option>
             <option>UNAVAILABLE</option>
-            <option>SUBSTITUTE PROPOSED</option>
-            <option>SUBSTITUTE APPROVED</option>
-            <option>CANCELLED</option>
             <option value="RECEIVED" disabled>RECEIVED (AUTO AFTER PICKUP)</option>
           </select>
-          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700"><span id="supplyStatusHelp">Set <strong>READY FOR PICKUP</strong> only when the supplier confirms the material is prepared and can be collected. <strong>RECEIVED</strong> is recorded automatically after the approved pickup activity is completed.</span></div>
+          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700"><span id="supplyStatusHelp">Select <strong>AVAILABLE</strong> once and enter the exact quantity confirmed by the supplier. The status locks after saving. When the supplier later calls that the material is ready, use the <strong>REQUEST MATERIAL PICKUP</strong> button. <strong>RECEIVED</strong> is recorded automatically after the approved pickup activity is completed.</span></div>
         </div>
         <div class="field">
           <label>UNIT PRICE <span style="color:#64748b;font-size:8px">(OPTIONAL)</span></label>
@@ -172,16 +166,12 @@
           <input id="supplyConfirmedQty" type="number" min="0" step="0.001" placeholder="0">
         </div>
         <div class="field">
-          <label>RECEIVED QTY</label>
-          <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0" readonly>
-          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">Updated automatically after the approved pickup activity is completed.</div>
+          <label id="receivedQtyFieldLabel" style="display:none">RECEIVED QTY</label>
+          <input id="supplyReceivedQty" type="number" min="0" step="0.001" placeholder="0" readonly style="display:none">
         </div>
-        <div class="field full" id="readyForPickupField">
+        <div class="field full" id="readyForPickupField" style="display:none">
           <label>READY FOR PICKUP QTY</label>
-          <input id="supplyReadyForPickupQty" type="number" min="0" step="0.001" placeholder="0">
-          <div style="margin-top:6px;color:#64748b;font-size:10px;font-weight:700">
-            Enter only the quantity that the supplier has physically prepared and is ready for pickup. Existing received quantity is preserved.
-          </div>
+          <input id="supplyReadyForPickupQty" type="number" min="0" step="0.001" placeholder="0" readonly>
         </div>
 
         <div class="field full" id="receivingDetailsSection" style="display:none">
@@ -321,7 +311,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=31"></script>
+<script src="purchasing.js?v=32"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
