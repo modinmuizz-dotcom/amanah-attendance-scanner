@@ -1133,35 +1133,40 @@ function openApprovalConfirmation(id){
   }
 
   const confirmationModal=$("approvalConfirmModal");
-  const detailModal=$("detailModal");
-  const detailDialog=detailModal?.querySelector(".dialog");
 
   if(confirmationModal){
-    // Keep the confirmation INSIDE the Repair Request dialog so it always
-    // appears visibly in front of the form that triggered it.
-    if(detailDialog && confirmationModal.parentElement!==detailDialog){
-      detailDialog.appendChild(confirmationModal);
+    // Put the confirmation layer at document level so it covers the ENTIRE
+    // Repair Request form/screen, not just the visible portion of the dialog.
+    if(confirmationModal.parentElement!==document.body){
+      document.body.appendChild(confirmationModal);
     }
 
-    if(detailDialog){
-      detailDialog.style.position="relative";
-    }
-
-    confirmationModal.style.position="absolute";
+    confirmationModal.style.position="fixed";
+    confirmationModal.style.left="0";
+    confirmationModal.style.top="0";
+    confirmationModal.style.right="0";
+    confirmationModal.style.bottom="0";
     confirmationModal.style.inset="0";
-    confirmationModal.style.zIndex="9999";
+    confirmationModal.style.zIndex="20000";
     confirmationModal.style.display="flex";
     confirmationModal.style.alignItems="center";
     confirmationModal.style.justifyContent="center";
     confirmationModal.style.padding="18px";
-    confirmationModal.style.background="rgba(15,23,42,.68)";
-    confirmationModal.style.borderRadius="18px";
+    confirmationModal.style.background="rgba(15,23,42,.78)";
+    confirmationModal.style.borderRadius="0";
     confirmationModal.setAttribute("aria-modal","true");
     confirmationModal.setAttribute("role","dialog");
-  }
 
-  // Ensure the original Repair Request form remains open underneath.
-  if(detailModal) detailModal.classList.add("open");
+    const confirmationDialog=confirmationModal.querySelector(".dialog");
+    if(confirmationDialog){
+      confirmationDialog.style.position="relative";
+      confirmationDialog.style.zIndex="20001";
+      confirmationDialog.style.width="min(540px,100%)";
+      confirmationDialog.style.maxHeight="none";
+      confirmationDialog.style.overflow="visible";
+      confirmationDialog.style.boxShadow="0 24px 80px rgba(0,0,0,.35)";
+    }
+  }
 
   state.approvalConfirmRequestId=id;
 }
@@ -1173,6 +1178,10 @@ function closeApprovalConfirmation(){
     modal.classList.remove("open");
     modal.style.display="none";
     modal.style.position="";
+    modal.style.left="";
+    modal.style.top="";
+    modal.style.right="";
+    modal.style.bottom="";
     modal.style.inset="";
     modal.style.zIndex="";
     modal.style.alignItems="";
@@ -1180,6 +1189,15 @@ function closeApprovalConfirmation(){
     modal.style.padding="";
     modal.style.background="";
     modal.style.borderRadius="";
+    const confirmationDialog=modal.querySelector(".dialog");
+    if(confirmationDialog){
+      confirmationDialog.style.position="";
+      confirmationDialog.style.zIndex="";
+      confirmationDialog.style.width="";
+      confirmationDialog.style.maxHeight="";
+      confirmationDialog.style.overflow="";
+      confirmationDialog.style.boxShadow="";
+    }
     modal.removeAttribute("aria-modal");
     modal.removeAttribute("role");
   }
