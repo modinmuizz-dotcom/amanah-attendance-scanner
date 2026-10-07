@@ -1122,86 +1122,113 @@ function openApprovalConfirmation(id){
   const request=state.selectedRequest?.request;
   if(!request || String(request.repair_request_id)!==String(id))return;
 
-  const detail=$("approvalConfirmDetails");
-  if(detail){
-    detail.innerHTML=
-      "<strong>"+escapeHtml(request.repair_form_no||"Repair Request")+"</strong>"+
-      "<div style='margin-top:5px;color:#64748b'>"+
-      escapeHtml(state.equipment.find(x=>x.equipment_id===request.equipment_id)?.equipment_name||request.equipment_id||"")+
-      " • "+escapeHtml(state.projects.find(x=>x.project_id===request.project_id)?.project_name||request.project_id||"No project")+
-      "</div>";
-  }
+  // Remove any previous confirmation overlay.
+  const oldOverlay=document.getElementById("approvalConfirmOverlay");
+  if(oldOverlay)oldOverlay.remove();
 
-  const confirmationModal=$("approvalConfirmModal");
-
-  if(confirmationModal){
-    // Put the confirmation layer at document level so it covers the ENTIRE
-    // Repair Request form/screen, not just the visible portion of the dialog.
-    if(confirmationModal.parentElement!==document.body){
-      document.body.appendChild(confirmationModal);
-    }
-
-    confirmationModal.style.position="fixed";
-    confirmationModal.style.left="0";
-    confirmationModal.style.top="0";
-    confirmationModal.style.right="0";
-    confirmationModal.style.bottom="0";
-    confirmationModal.style.inset="0";
-    confirmationModal.style.zIndex="20000";
-    confirmationModal.style.display="flex";
-    confirmationModal.style.alignItems="center";
-    confirmationModal.style.justifyContent="center";
-    confirmationModal.style.padding="18px";
-    confirmationModal.style.background="rgba(15,23,42,.78)";
-    confirmationModal.style.borderRadius="0";
-    confirmationModal.setAttribute("aria-modal","true");
-    confirmationModal.setAttribute("role","dialog");
-
-    const confirmationDialog=confirmationModal.querySelector(".dialog");
-    if(confirmationDialog){
-      confirmationDialog.style.position="relative";
-      confirmationDialog.style.zIndex="20001";
-      confirmationDialog.style.width="min(540px,100%)";
-      confirmationDialog.style.maxHeight="none";
-      confirmationDialog.style.overflow="visible";
-      confirmationDialog.style.boxShadow="0 24px 80px rgba(0,0,0,.35)";
-    }
+  // Hide the legacy modal so it can never interfere with the new overlay.
+  const legacyModal=$("approvalConfirmModal");
+  if(legacyModal){
+    legacyModal.classList.remove("open");
+    legacyModal.style.display="none";
   }
 
   state.approvalConfirmRequestId=id;
+
+  const equipmentName=state.equipment.find(x=>x.equipment_id===request.equipment_id)?.equipment_name||request.equipment_id||"";
+  const projectName=state.projects.find(x=>x.project_id===request.project_id)?.project_name||request.project_id||"No project";
+
+  const overlay=document.createElement("div");
+  overlay.id="approvalConfirmOverlay";
+  overlay.style.cssText=[
+    "position:fixed",
+    "left:0",
+    "top:0",
+    "width:100vw",
+    "height:100vh",
+    "background:rgba(15,23,42,.78)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "padding:24px",
+    "box-sizing:border-box",
+    "z-index:2147483647"
+  ].join(";");
+
+  const dialog=document.createElement("div");
+  dialog.style.cssText=[
+    "width:min(540px,calc(100vw - 48px))",
+    "background:#fff",
+    "border-radius:18px",
+    "padding:20px",
+    "box-sizing:border-box",
+    "box-shadow:0 24px 80px rgba(0,0,0,.45)"
+  ].join(";");
+
+  dialog.innerHTML=
+    '<div class="dialog-head">'+
+      '<h2 style="margin:0">SUBMIT FOR APPROVAL?</h2>'+
+      '<button type="button" class="close" id="dynamicCloseApproval">×</button>'+
+    '</div>'+
+    '<div style="margin-top:14px;padding:15px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:12px;line-height:1.6">'+
+      'Please confirm that this Repair Request is complete and ready to be reviewed by the General Manager.'+
+      '<div style="margin-top:10px;padding:10px;border-radius:9px;background:#fff;border:1px solid #dbeafe;color:#334155">'+
+        '<strong>'+escapeHtml(request.repair_form_no||"Repair Request")+'</strong>'+
+        '<div style="margin-top:5px;color:#64748b">'+escapeHtml(equipmentName)+" • "+escapeHtml(projectName)+'</div>'+
+      '</div>'+
+      '<div style="margin-top:10px;font-weight:800">After submission, the request will become PENDING APPROVAL and editing will be locked until the GM returns or approves it.</div>'+
+    '</div>'+
+    '<div class="actions" style="justify-content:flex-end">'+
+      '<button type="button" class="btn btn-gray" id="dynamicCancelApproval">CANCEL</button>'+
+      '<button type="button" class="btn btn-green" id="dynamicConfirmApproval">YES, SUBMIT FOR APPROVAL</button>'+
+    '</div>';
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const closeBtn=dialog.querySelector("#dynamicCloseApproval");
+  const cancelBtn=dialog.querySelector("#dynamicCancelApproval");
+  const confirmBtn=dialog.querySelector("#dynamicConfirmApproval");
+
+  const cancel=()=>closeApprovalConfirmation();
+  closeBtn.addEventListener("click",cancel);
+  cancelBtn.addEventListener("click",cancel);
+  overlay.addEventListener("click",e=>{
+    if(e.target===overlay)closeApprovalConfirmation();
+  });
+
+  confirmBtn.addEventListener("click",async()=>{
+    const requestId=state.approvalConfirmRequestId;
+    if(!requestId)return;
+
+    confirmBtn.disabled=true;
+    confirmBtn.textContent="SUBMITTING...";
+    try{
+      await submitRepairForApproval(requestId);
+      closeApprovalConfirmation();
+    }catch(err){
+      console.error(err);
+      showMessage(err.message||"Unable to submit Repair Request for approval.","error");
+    }finally{
+      confirmBtn.disabled=false;
+      confirmBtn.textContent="YES, SUBMIT FOR APPROVAL";
+    }
+  });
 }
+
 
 function closeApprovalConfirmation(){
   state.approvalConfirmRequestId=null;
-  const modal=$("approvalConfirmModal");
-  if(modal){
-    modal.classList.remove("open");
-    modal.style.display="none";
-    modal.style.position="";
-    modal.style.left="";
-    modal.style.top="";
-    modal.style.right="";
-    modal.style.bottom="";
-    modal.style.inset="";
-    modal.style.zIndex="";
-    modal.style.alignItems="";
-    modal.style.justifyContent="";
-    modal.style.padding="";
-    modal.style.background="";
-    modal.style.borderRadius="";
-    const confirmationDialog=modal.querySelector(".dialog");
-    if(confirmationDialog){
-      confirmationDialog.style.position="";
-      confirmationDialog.style.zIndex="";
-      confirmationDialog.style.width="";
-      confirmationDialog.style.maxHeight="";
-      confirmationDialog.style.overflow="";
-      confirmationDialog.style.boxShadow="";
-    }
-    modal.removeAttribute("aria-modal");
-    modal.removeAttribute("role");
+  const overlay=document.getElementById("approvalConfirmOverlay");
+  if(overlay)overlay.remove();
+
+  const legacyModal=$("approvalConfirmModal");
+  if(legacyModal){
+    legacyModal.classList.remove("open");
+    legacyModal.style.display="none";
   }
 }
+
 
 async function submitRepairForApproval(id){
   const request=state.selectedRequest?.request;
@@ -1317,23 +1344,8 @@ $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove(
 $("closeApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
 $("cancelApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
 $("approvalConfirmModal").addEventListener("click",e=>{if(e.target.id==="approvalConfirmModal")closeApprovalConfirmation();});
-$("confirmApprovalSubmit").addEventListener("click",async()=>{
-  const id=state.approvalConfirmRequestId;
-  if(!id)return;
-  const btn=$("confirmApprovalSubmit");
-  btn.disabled=true;
-  btn.textContent="SUBMITTING...";
-  try{
-    await submitRepairForApproval(id);
-    closeApprovalConfirmation();
-  }catch(err){
-    console.error(err);
-    showMessage(err.message||"Unable to submit Repair Request for approval.","error");
-  }finally{
-    btn.disabled=false;
-    btn.textContent="YES, SUBMIT FOR APPROVAL";
-  }
-});
+// Approval submission confirmation is handled by the dynamically created
+// full-screen overlay in openApprovalConfirmation().
 $("closeDeleteConfirm").addEventListener("click",closeDeleteConfirm);
 $("cancelDeleteConfirm").addEventListener("click",closeDeleteConfirm);
 $("confirmDeleteButton").addEventListener("click",async()=>{try{await deleteRepairRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to delete the Repair Request.","error");}});
