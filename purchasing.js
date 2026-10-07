@@ -896,9 +896,11 @@ async function saveSupplyStatus(){
    await Promise.all([loadRequests(),loadOrders()]);
    renderAll();
    await openPODetails(item.purchase_order_id);
+   const refreshedItem=state.orderItems.find(x=>x.purchase_order_item_id===item.purchase_order_item_id);
+   if(refreshedItem)await openSupplyModal(refreshedItem.purchase_order_item_id);
    msg(status==="AVAILABLE"
-     ?"Supplier availability saved. Use REQUEST MATERIAL PICKUP when the supplier calls that the material is ready."
-     :"Supplier marked the material unavailable. Substitute details are now available.","ok");
+     ?"Supplier availability saved. The status is locked. REQUEST MATERIAL PICKUP is now available for the confirmed quantity."
+     :"Supplier marked the material unavailable. Substitute details are now visible and the status is locked.","ok");
  }catch(error){
    console.error(error);
    showSupplyValidation(error.message||"Unable to save supplier availability.");
