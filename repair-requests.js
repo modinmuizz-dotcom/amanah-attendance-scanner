@@ -276,7 +276,6 @@ function renderSelectedFiles(){
     state.selectedFiles.map((entry,index)=>{
       const file=entry.file;
       const url=URL.createObjectURL(file);
-      const size=Math.max(1,Math.round(file.size/1024));
       return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff;position:relative">'+
         '<div style="height:125px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
           '<img src="'+url+'" alt="Photo preview" style="width:100%;height:100%;object-fit:cover">'+
