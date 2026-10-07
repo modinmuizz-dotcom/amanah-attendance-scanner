@@ -112,28 +112,12 @@ function bind(){
  document.getElementById("supplyStatus").addEventListener("change",()=>{
    const status=document.getElementById("supplyStatus").value;
    const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
-   updateSupplyConditionalFields(status);
    if(!item)return;
-
-   if(status==="RECEIVED"){
-     const fullyReceived=Number(item.received_quantity||0)>=Number(item.quantity||0) && Number(item.quantity||0)>0;
-     document.getElementById("supplyStatus").value=fullyReceived?"RECEIVED":String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
-     updateSupplyConditionalFields(document.getElementById("supplyStatus").value);
-     return showSupplyValidation("RECEIVED is not a manual status. It is created automatically after the approved pickup activity is completed.");
+   if(item.supply_status_locked||["AVAILABLE","UNAVAILABLE","RECEIVED"].includes(String(item.supply_status||"").toUpperCase())){
+     document.getElementById("supplyStatus").value=String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+     return showSupplyValidation("Supplier availability status is already locked and cannot be changed.");
    }
-
-   if(status==="READY FOR PICKUP"){
-     const ordered=Number(item.quantity||0);
-     const received=Number(item.received_quantity||0);
-     const confirmed=Number(item.confirmed_quantity||0);
-     const availableForPickup=Math.max(confirmed-received,0);
-     if(availableForPickup<=0){
-       document.getElementById("supplyStatus").value=(received>=ordered && ordered>0)?"RECEIVED":String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
-       updateSupplyConditionalFields(document.getElementById("supplyStatus").value);
-       return showSupplyValidation("This material cannot be marked READY FOR PICKUP because there is no confirmed quantity remaining after received quantity.");
-     }
-     document.getElementById("supplyReadyForPickupQty").value=availableForPickup;
-   }
+   updateSupplyConditionalFields(status);
  });document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
  ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
  ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
@@ -588,34 +572,33 @@ function updatePoTotal(){
 
 function updateSupplyConditionalFields(statusOverride=null){
  const status=String(statusOverride||document.getElementById("supplyStatus")?.value||"").toUpperCase();
- const showExpected=["PARTIALLY AVAILABLE","UNAVAILABLE","BACKORDERED"].includes(status);
- const showSubstitute=status==="SUBSTITUTE PROPOSED";
- const showReady=status==="READY FOR PICKUP";
+ const showUnavailableDetails=status==="UNAVAILABLE";
  const showReceiving=status==="RECEIVED";
-
  const setDisplay=(id,show)=>{const el=document.getElementById(id);if(el)el.style.display=show?"":"none";};
- setDisplay("expectedAvailabilityField",showExpected);
- setDisplay("substituteStatusField",showSubstitute);
- setDisplay("substituteMaterialField",showSubstitute);
- setDisplay("substituteSpecificationsField",showSubstitute);
- setDisplay("readyForPickupField",showReady);
+
+ setDisplay("expectedAvailabilityField",showUnavailableDetails);
+ setDisplay("substituteStatusField",showUnavailableDetails);
+ setDisplay("substituteMaterialField",showUnavailableDetails);
+ setDisplay("substituteSpecificationsField",showUnavailableDetails);
+ setDisplay("readyForPickupField",false);
  setDisplay("receivingDetailsSection",showReceiving);
  setDisplay("receivedDateField",showReceiving);
  setDisplay("deliveryReferenceField",showReceiving);
  setDisplay("receivingRemarksField",showReceiving);
 
- if(!showExpected){
-   const el=document.getElementById("supplyAvailabilityDate"); if(el)el.value="";
- }
- if(!showSubstitute){
-   const st=document.getElementById("supplySubstituteStatus"); if(st)st.value="NONE";
-   const m=document.getElementById("supplySubstituteMaterial"); if(m)m.value="";
-   const s=document.getElementById("supplySubstituteSpecifications"); if(s)s.value="";
- }
- if(!showReady){
-   const el=document.getElementById("supplyReadyForPickupQty"); if(el)el.value=0;
+ const receivedLabel=document.getElementById("receivedQtyFieldLabel");
+ const receivedInput=document.getElementById("supplyReceivedQty");
+ if(receivedLabel)receivedLabel.style.display=showReceiving?"":"none";
+ if(receivedInput)receivedInput.style.display=showReceiving?"":"none";
+
+ if(!showUnavailableDetails){
+   const d=document.getElementById("supplyAvailabilityDate");if(d)d.value="";
+   const st=document.getElementById("supplySubstituteStatus");if(st)st.value="NONE";
+   const m=document.getElementById("supplySubstituteMaterial");if(m)m.value="";
+   const s=document.getElementById("supplySubstituteSpecifications");if(s)s.value="";
  }
 }
+
 
 function supplyStatusClass(status){
  const s=String(status||"").toUpperCase();
@@ -690,14 +673,19 @@ async function openSupplyModal(itemId){
  document.getElementById("supplySpecifications").textContent=item.specifications||"—";
  document.getElementById("supplyOrderedQty").textContent=Number(item.quantity||0).toLocaleString("en-PH",{maximumFractionDigits:3});
  document.getElementById("supplyUnit").textContent=item.unit||"—";
- const isFullyReceived=Number(item.received_quantity||0)>=Number(item.quantity||0) && Number(item.quantity||0)>0;
- const savedStatus=isFullyReceived ? "RECEIVED" : String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
+
+ const fullyReceived=Number(item.received_quantity||0)>=Number(item.quantity||0)&&Number(item.quantity||0)>0;
+ const savedStatus=fullyReceived?"RECEIVED":String(item.supply_status||"PENDING SUPPLIER CONFIRMATION").toUpperCase();
  const statusSelect=document.getElementById("supplyStatus");
  statusSelect.value=savedStatus;
+
+ const statusLocked=Boolean(item.supply_status_locked)||["AVAILABLE","UNAVAILABLE","RECEIVED"].includes(savedStatus);
+ statusSelect.disabled=statusLocked;
+
  document.getElementById("supplyUnitPrice").value=item.unit_price==null?"":item.unit_price;
  document.getElementById("supplyConfirmedQty").value=item.confirmed_quantity??0;
  document.getElementById("supplyReceivedQty").value=item.received_quantity??0;
- document.getElementById("supplyReadyForPickupQty").value=item.ready_for_pickup_quantity??0;
+ document.getElementById("supplyReadyForPickupQty").value=0;
  document.getElementById("supplyReceivedDate").value=item.received_date||"";
  document.getElementById("supplyDeliveryReference").value=item.delivery_reference||"";
  document.getElementById("supplyReceivingRemarks").value=item.receiving_remarks||"";
@@ -708,56 +696,51 @@ async function openSupplyModal(itemId){
  document.getElementById("supplySupplierRemarks").value=item.supplier_remarks||"";
  updateSupplyConditionalFields(savedStatus);
 
- const unreceivedQty=Math.max(Number(item.quantity||0)-Number(item.received_quantity||0),0);
  const help=document.getElementById("supplyStatusHelp");
  if(help){
    help.innerHTML=savedStatus==="RECEIVED"
-     ? "<strong>RECEIVED</strong> is locked because this material pickup was completed. Set a new READY FOR PICKUP quantity only for the next supplier release."
-     : "Set <strong>READY FOR PICKUP</strong> only when the supplier confirms the material is prepared and can be collected. <strong>RECEIVED</strong> is recorded automatically after the approved pickup activity is completed.";
+     ? "<strong>RECEIVED</strong> is automatic after pickup completion."
+     : statusLocked
+       ? "<strong>"+esc(savedStatus)+"</strong> is locked. Wait for the supplier's pickup call, then use <strong>REQUEST MATERIAL PICKUP</strong>."
+       : "Select <strong>AVAILABLE</strong> or <strong>UNAVAILABLE</strong> once and save. The status cannot be changed afterward.";
  }
- const readyOption=document.querySelector('#supplyStatus option[value="READY FOR PICKUP"]');
- if(readyOption){
-   readyOption.disabled=unreceivedQty<=0;
-   readyOption.title=unreceivedQty<=0 ? "This material is already fully received." : "";
- }
+
  const receivedOption=document.querySelector('#supplyStatus option[value="RECEIVED"]');
- if(receivedOption){
-   receivedOption.disabled=!isFullyReceived && savedStatus!=="RECEIVED";
-   receivedOption.title=receivedOption.disabled ? "RECEIVED is created automatically after completed pickup." : "";
- }
+ if(receivedOption)receivedOption.disabled=!fullyReceived&&savedStatus!=="RECEIVED";
 
- const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
- const showAlternative=["UNAVAILABLE","BACKORDERED","PARTIALLY AVAILABLE","SUBSTITUTE PROPOSED"].includes(String(item.supply_status||"").toUpperCase()) && remaining>0;
- const alt=document.getElementById("sourceAlternative");
- alt.style.display=showAlternative?"inline-block":"none";
- alt.textContent="SOURCE ALTERNATIVE ("+remaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
-
- const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
+ const remainingForPickup=Math.max(Number(item.confirmed_quantity||0)-Number(item.received_quantity||0),0);
+ const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id&&["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
  const pickupBtn=document.getElementById("requestPickup");
- const canPickup=String(item.supply_status||"").toUpperCase()==="READY FOR PICKUP" && Number(item.ready_for_pickup_quantity||0)>0;
+ const canPickup=savedStatus==="AVAILABLE"&&remainingForPickup>0;
  pickupBtn.style.display=canPickup?"inline-block":"none";
  pickupBtn.disabled=!!activePickup;
- const readyQty=Number(item.ready_for_pickup_quantity||0);
- pickupBtn.textContent=activePickup ? "PICKUP REQUEST SENT" : "REQUEST MATERIAL PICKUP ("+readyQty.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
+ pickupBtn.textContent=activePickup?"PICKUP REQUEST SENT":"REQUEST MATERIAL PICKUP ("+remainingForPickup.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
 
+ const alt=document.getElementById("sourceAlternative");
+ const sourceRemaining=sourceRemainingQuantity(item.purchase_request_item_id);
+ const showAlternative=savedStatus==="UNAVAILABLE"&&sourceRemaining>0;
+ alt.style.display=showAlternative?"inline-block":"none";
+ alt.textContent="SOURCE ALTERNATIVE ("+sourceRemaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")"";
+
+ document.getElementById("saveSupply").style.display=statusLocked?"none":"inline-block";
  document.getElementById("supplyModal").style.display="flex";
 }
-
 
 async function openPickupRequestModal(){
  const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
  if(!item)return;
  const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
  if(!order)return;
- const remaining=Number(item.ready_for_pickup_quantity||0);
- if(remaining<=0)return showSupplyValidation("No quantity is marked READY FOR PICKUP.");
+ const remaining=Math.max(Number(item.confirmed_quantity||0)-Number(item.received_quantity||0),0);
+ if(String(item.supply_status||"").toUpperCase()!=="AVAILABLE")return showSupplyValidation("Set this material to AVAILABLE and confirm the quantity before requesting pickup.");
+ if(remaining<=0)return showSupplyValidation("There is no confirmed quantity remaining for pickup.");
  const activePickup=state.pickupRequests.find(x=>x.purchase_order_item_id===item.purchase_order_item_id && ["PENDING APPROVAL","APPROVED"].includes(String(x.status||"").toUpperCase()));
  if(activePickup)return showSupplyValidation("A pickup request is already pending or approved for this material line.");
 
  state.pickupItemId=item.purchase_order_item_id;
  document.getElementById("pickupFromPO").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(order.supplier_name||"")+" • "+(order.project_name||"");
  document.getElementById("pickupMaterial").textContent=item.material_name||"—";
- document.getElementById("pickupQuantity").value=Number(item.ready_for_pickup_quantity||0);
+ document.getElementById("pickupQuantity").value=remaining;
  document.getElementById("pickupUnitLabel").textContent=item.unit||"—";
  document.getElementById("pickupDate").value=today();
  document.getElementById("pickupStart").value="08:00";
@@ -803,7 +786,8 @@ async function submitPickupRequest(){
  const location=document.getElementById("pickupLocation").value.trim();
  const remarks=document.getElementById("pickupRemarks").value.trim();
 
- const remaining=Number(item.ready_for_pickup_quantity||0);
+ const remaining=Math.max(Number(item.confirmed_quantity||0)-Number(item.received_quantity||0),0);
+ if(String(item.supply_status||"").toUpperCase()!=="AVAILABLE")return showPickupValidation("Supplier availability must be AVAILABLE before pickup can be requested.");
  if(!equipmentId)return showPickupValidation("Please select the pickup unit/equipment.");
  if(!pickupDate)return showPickupValidation("Please select the pickup date.");
  if(!(qty>0) || qty>remaining)return showPickupValidation("Pickup quantity must be greater than zero and cannot exceed the READY FOR PICKUP quantity of "+remaining+" "+(item.unit||"")+".");
@@ -848,57 +832,50 @@ function closeSupplyModal(){
 async function saveSupplyStatus(){
  const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
  if(!item)return;
+ if(item.supply_status_locked||["AVAILABLE","UNAVAILABLE","RECEIVED"].includes(String(item.supply_status||"").toUpperCase())){
+   return showSupplyValidation("Supplier availability has already been recorded and is locked.");
+ }
+
  const status=document.getElementById("supplyStatus").value;
- if(status==="RECEIVED")return showSupplyValidation("RECEIVED is recorded automatically after the approved material pickup activity is completed.");
+ if(!["AVAILABLE","UNAVAILABLE"].includes(status))return showSupplyValidation("Choose AVAILABLE or UNAVAILABLE.");
+
  const unitPriceRaw=document.getElementById("supplyUnitPrice").value;
  const unitPrice=unitPriceRaw===""?null:Number(unitPriceRaw);
  const confirmed=Number(document.getElementById("supplyConfirmedQty").value||0);
- const received=Number(document.getElementById("supplyReceivedQty").value||0);
- const readyForPickup=Number(document.getElementById("supplyReadyForPickupQty").value||0);
- const availability=document.getElementById("supplyAvailabilityDate").value||null;
- const substituteStatus=document.getElementById("supplySubstituteStatus").value;
- const substituteMaterial=document.getElementById("supplySubstituteMaterial").value.trim()||null;
- const substituteSpecifications=document.getElementById("supplySubstituteSpecifications").value.trim()||null;
  const supplierRemarks=document.getElementById("supplySupplierRemarks").value.trim()||null;
+ const availability=status==="UNAVAILABLE"?(document.getElementById("supplyAvailabilityDate").value||null):null;
+ const substituteStatus=status==="UNAVAILABLE"?document.getElementById("supplySubstituteStatus").value:"NONE";
+ const substituteMaterial=status==="UNAVAILABLE"?(document.getElementById("supplySubstituteMaterial").value.trim()||null):null;
+ const substituteSpecifications=status==="UNAVAILABLE"?(document.getElementById("supplySubstituteSpecifications").value.trim()||null):null;
  const ordered=Number(item.quantity||0);
 
- if(confirmed<0 || confirmed>ordered)return showSupplyValidation("Confirmed quantity must be between 0 and the ordered quantity.");
- if(received<0 || received>confirmed)return showSupplyValidation("Received quantity cannot exceed the confirmed quantity.");
- const unreceived=Math.max(ordered-received,0);
- const confirmedUnreceived=Math.max(confirmed-received,0);
- if(readyForPickup<0 || readyForPickup>confirmedUnreceived)return showSupplyValidation("READY FOR PICKUP quantity cannot exceed the confirmed-but-not-yet-received quantity of "+confirmedUnreceived+" "+(item.unit||"")+".");
- if(unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
- if(status==="READY FOR PICKUP" && unreceived<=0)return showSupplyValidation("This material is already fully received. There is no quantity left to mark READY FOR PICKUP.");
- if(status==="READY FOR PICKUP" && readyForPickup<=0)return showSupplyValidation("Enter the quantity that is physically READY FOR PICKUP.");
- if(status==="AVAILABLE" && confirmed<=0)return showSupplyValidation("Enter the quantity confirmed available by the supplier.");
- if(status==="RECEIVED" && received<=0)return showSupplyValidation("Enter the quantity actually received.");
- if((status==="UNAVAILABLE"||status==="BACKORDERED") && !supplierRemarks)return showSupplyValidation("Please record the supplier's reason or availability remarks.");
- if(status==="SUBSTITUTE PROPOSED" && !substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
- if(status==="SUBSTITUTE PROPOSED" && substituteStatus==="PROPOSED" && !substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
+ if(status==="AVAILABLE"&&(confirmed<=0||confirmed>ordered))return showSupplyValidation("Enter the exact quantity confirmed available by the supplier.");
+ if(status==="UNAVAILABLE"&&confirmed!==0)return showSupplyValidation("Set confirmed quantity to 0 when the supplier says the material is unavailable.");
+ if(status==="UNAVAILABLE"&&!supplierRemarks)return showSupplyValidation("Please record the supplier's reason or availability remarks.");
+ if(status==="UNAVAILABLE"&&substituteStatus==="PROPOSED"&&!substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
+ if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
 
  const btn=document.getElementById("saveSupply");
- btn.disabled=true;
- btn.textContent="SAVING...";
+ btn.disabled=true;btn.textContent="SAVING...";
 
  try{
    const {data:savedItem,error}=await supabaseClient.from("purchase_order_items").update({
      supply_status:status,
+     supply_status_locked:true,
+     supply_status_locked_at:new Date().toISOString(),
      unit_price:unitPrice,
      confirmed_quantity:confirmed,
-     ready_for_pickup_quantity:status==="READY FOR PICKUP" ? readyForPickup : 0,
-     expected_availability_date:status==="PARTIALLY AVAILABLE"||status==="UNAVAILABLE"||status==="BACKORDERED" ? availability : null,
+     ready_for_pickup_quantity:0,
+     expected_availability_date:availability,
      supplier_remarks:supplierRemarks,
-     substitute_material_name:status==="SUBSTITUTE PROPOSED" ? substituteMaterial : null,
-     substitute_specifications:status==="SUBSTITUTE PROPOSED" ? substituteSpecifications : null,
-     substitute_status:status==="SUBSTITUTE PROPOSED" ? substituteStatus : "NONE"
-   }).eq("purchase_order_item_id",item.purchase_order_item_id)
-     .select("*")
-     .single();
+     substitute_material_name:substituteMaterial,
+     substitute_specifications:substituteSpecifications,
+     substitute_status:substituteStatus
+   }).eq("purchase_order_item_id",item.purchase_order_item_id).select("*").single();
    if(error)throw error;
 
-   // Immediately update the in-memory row so the open PO screen cannot show stale data.
    const savedIndex=state.orderItems.findIndex(x=>x.purchase_order_item_id===item.purchase_order_item_id);
-   if(savedIndex>=0) state.orderItems[savedIndex]={...state.orderItems[savedIndex],...savedItem};
+   if(savedIndex>=0)state.orderItems[savedIndex]={...state.orderItems[savedIndex},...savedItem};
 
    const {data:poItems,error:itemsError}=await supabaseClient.from("purchase_order_items").select("quantity,unit_price").eq("purchase_order_id",item.purchase_order_id);
    if(itemsError)throw itemsError;
@@ -908,91 +885,26 @@ async function saveSupplyStatus(){
 
    const {error:poStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_order_status",{p_purchase_order_id:item.purchase_order_id});
    if(poStatusError)throw poStatusError;
+
    const requestItem=state.requestItems.find(ri=>ri.purchase_request_item_id===item.purchase_request_item_id);
-   const request=state.requests.find(pr=>pr.purchase_request_id===requestItem?.purchase_request_id);
-   if(request){
-     const {error:requestStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_request_status",{p_purchase_request_id:request.purchase_request_id});
-     if(requestStatusError)throw requestStatusError;
+   if(requestItem){
+     const {error:reqError}=await supabaseClient.rpc("amanah_refresh_purchase_request_status",{p_purchase_request_id:requestItem.purchase_request_id});
+     if(reqError)throw reqError;
    }
 
    closeSupplyModal();
-
-   // Fresh read after the write, then redraw the open PO details.
    await Promise.all([loadRequests(),loadOrders()]);
-   const freshItem=state.orderItems.find(x=>x.purchase_order_item_id===item.purchase_order_item_id);
-   if(freshItem && freshItem.supply_status!==status){
-     // Last-resort authoritative refresh of this single row.
-     const {data:authoritativeItem,error:authoritativeError}=await supabaseClient
-       .from("purchase_order_items")
-       .select("*")
-       .eq("purchase_order_item_id",item.purchase_order_item_id)
-       .single();
-     if(!authoritativeError && authoritativeItem){
-       const idx=state.orderItems.findIndex(x=>x.purchase_order_item_id===item.purchase_order_item_id);
-       if(idx>=0)state.orderItems[idx]=authoritativeItem;
-     }
-   }
-
    renderAll();
    await openPODetails(item.purchase_order_id);
-   msg(received>0 ? "Supply and receiving details updated successfully." : "Material supply status updated successfully.","ok");
+   msg(status==="AVAILABLE"
+     ?"Supplier availability saved. Use REQUEST MATERIAL PICKUP when the supplier calls that the material is ready."
+     :"Supplier marked the material unavailable. Substitute details are now available.","ok");
  }catch(error){
    console.error(error);
-   showSupplyValidation(error.message||"Unable to save material supply status.");
+   showSupplyValidation(error.message||"Unable to save supplier availability.");
  }finally{
-   btn.disabled=false;
-   btn.textContent="SAVE SUPPLY STATUS";
+   btn.disabled=false;btn.textContent="SAVE SUPPLY STATUS";
  }
-}
-
-async function sourceAlternativeSupplier(){
- const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
- if(!item)return;
- const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
- if(!order)return;
- const remaining=sourceRemainingQuantity(item.purchase_request_item_id);
- if(remaining<=0)return showSupplyValidation("There is no remaining quantity that needs an alternative supplier.");
-
- const availableSuppliers=state.suppliers.filter(s=>s.supplier_id!==order.supplier_id);
- if(!availableSuppliers.length)return showSupplyValidation("No alternative active supplier is registered. Add another supplier in Master Data first.");
-
- const req=state.requests.find(x=>x.purchase_request_id===order.purchase_request_id)||{
-   purchase_request_id:order.purchase_request_id,
-   request_no:order.purchase_request_no,
-   project_id:order.project_id,
-   project_name:order.project_name,
-   project_location:order.project_location,
-   requester_employee_id:order.requester_employee_id,
-   requester_name:order.requester_name,
-   needed_by_date:order.expected_delivery_date
- };
- state.poDraftRequest={r:req,items:[{
-   purchase_request_item_id:item.purchase_request_item_id,
-   material_name:item.material_name,
-   specifications:item.specifications||"",
-   quantity:remaining,
-   unit:item.unit||"",
-   unit_price:""
- }]};
- state.editingOrderId=null;
- state.alternativeSourceItemId=item.purchase_request_item_id;
- state.alternativeSourceSupplierId=order.supplier_id;
-
- closeSupplyModal();
- document.getElementById("poModalTitle").textContent="SOURCE ALTERNATIVE SUPPLIER";
- document.getElementById("poFromRequest").textContent=(order.po_no||"PURCHASE ORDER")+" • "+(req.request_no||"PURCHASE REQUEST")+" • Remaining "+remaining+" "+(item.unit||"");
- refreshPoSupplierOptions(order.supplier_id);
- document.getElementById("poSupplier").value="";
- document.getElementById("poSupplierContact").value="";
- document.getElementById("poSupplierAddress").value="";
- document.getElementById("poDate").value=today();
- document.getElementById("poDelivery").value=req.needed_by_date && req.needed_by_date>=today()?req.needed_by_date:today();
- document.getElementById("poPaymentTerms").value="";
- document.getElementById("poDeliveryTerms").value="Delivered to project site";
- document.getElementById("poRemarks").value="Alternative supplier for unavailable material from "+(order.supplier_name||"original supplier")+".";
-
- renderPoItems();
- document.getElementById("poModal").style.display="flex";
 }
 
 function closePoModal(){document.getElementById("poModal").style.display="none";state.poDraftRequest=null;state.editingOrderId=null;document.getElementById("poModalTitle").textContent="CREATE PURCHASE ORDER";}
