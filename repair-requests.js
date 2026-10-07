@@ -1000,7 +1000,7 @@ async function submitRepairForApproval(id){
 
     if(error)throw error;
 
-    closeDetail();
+    $("detailModal").classList.remove("open");
     showMessage(
       (current.repair_form_no||"Repair Request")+" was sent to the Approval Center for General Manager approval.",
       "success"
