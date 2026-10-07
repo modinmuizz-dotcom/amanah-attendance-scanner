@@ -80,7 +80,7 @@ begin
   )
   values(
     v_po.purchase_order_id,null,v_pr.purchase_request_id,v_po.project_id,v_po.project_name,v_po.project_location,
-    'MULTIPLE MATERIALS','',0,'MIXED',v_po.supplier_id,v_po.supplier_name,v_po.supplier_contact,
+    'MULTIPLE MATERIALS','',1,'MIXED',v_po.supplier_id,v_po.supplier_name,v_po.supplier_contact,
     coalesce(v_supplier.address,v_po.supplier_address,'Supplier pickup location'),
     v_equipment.equipment_id,v_equipment.equipment_name,p_pickup_date,v_start,v_end,p_remarks,'PENDING APPROVAL',v_uid,v_name
   )
