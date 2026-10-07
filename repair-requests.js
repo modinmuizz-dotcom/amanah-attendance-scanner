@@ -114,18 +114,28 @@ function renderRequests(){
   const rows=filteredRequests();
   const body=$("requestBody");
   if(!rows.length){body.innerHTML='<tr><td colspan="8" class="empty">No repair requests found.</td></tr>';return;}
-  body.innerHTML=rows.map(x=>`
-    <tr>
-      <td><strong>${escapeHtml(x.repair_form_no)}</strong></td>
-      <td>${escapeHtml(x.request_date||"")}</td>
-      <td>${escapeHtml(x.equipment_name||x.equipment_id)}</td>
-      <td>${escapeHtml(x.project_name||"—")}</td>
-      <td>${escapeHtml(x.reported_by)}</td>
-      <td>${Number(x.photo_count||0)} photo(s)</td>
-      <td>${statusPill(x.status)}</td>
-      <td><div style="display:flex;flex-wrap:wrap;gap:7px"><button class="btn btn-blue" type="button" onclick="openDetail('${x.repair_request_id}')">VIEW</button>${String(x.status||"").toUpperCase()==="CLOSED" ? '<button class="btn btn-danger" type="button" onclick="openDeleteConfirm(\'${x.repair_request_id}\')">DELETE</button>' : ""}</div></td>
-    </tr>
-  `).join("");
+  body.innerHTML=rows.map(x=>
+    '<tr>' +
+      '<td><strong>'+escapeHtml(x.repair_form_no)+'</strong></td>' +
+      '<td>'+escapeHtml(x.request_date||"")+'</td>' +
+      '<td>'+escapeHtml(x.equipment_name||x.equipment_id)+'</td>' +
+      '<td>'+escapeHtml(x.project_name||"—")+'</td>' +
+      '<td>'+escapeHtml(x.reported_by)+'</td>' +
+      '<td>'+Number(x.photo_count||0)+' photo(s)</td>' +
+      '<td>'+statusPill(x.status)+'</td>' +
+      '<td><div style="display:flex;flex-wrap:wrap;gap:7px">' +
+        '<button class="btn btn-blue" type="button" data-repair-view="'+escapeHtml(x.repair_request_id)+'">VIEW</button>' +
+        (String(x.status||"").toUpperCase()==="CLOSED" ? '<button class="btn btn-danger" type="button" data-repair-delete="'+escapeHtml(x.repair_request_id)+'">DELETE</button>' : '') +
+      '</div></td>' +
+    '</tr>'
+  ).join("");
+
+  body.querySelectorAll("[data-repair-view]").forEach(btn=>{
+    btn.addEventListener("click",()=>openDetail(btn.dataset.repairView));
+  });
+  body.querySelectorAll("[data-repair-delete]").forEach(btn=>{
+    btn.addEventListener("click",()=>openDeleteConfirm(btn.dataset.repairDelete));
+  });
 }
 
 function openDeleteConfirm(requestId){
@@ -333,7 +343,24 @@ async function uploadPhotos(requestId){
   }
 }
 
-async function openDetail(id){
+function openDetail(id){
+  const row=state.requests.find(x=>String(x.repair_request_id)===String(id));
+  if(!row){showMessage("Repair Request not found.","error");return;}
+  const eq=state.equipment.find(x=>x.equipment_id===row.equipment_id);
+  const project=state.projects.find(x=>x.project_id===row.project_id);
+  $("detailContent").innerHTML=
+    '<div class="detail-grid">' +
+      '<div class="detail-box"><h3>Repair Form</h3><div class="detail-text"><strong>'+escapeHtml(row.repair_form_no)+'</strong><br>Date: '+escapeHtml(row.request_date||"")+'</div></div>' +
+      '<div class="detail-box"><h3>Status</h3>'+statusPill(row.status)+'</div>' +
+      '<div class="detail-box"><h3>Equipment</h3><div class="detail-text"><strong>'+escapeHtml(eq?.equipment_name||row.equipment_id)+'</strong></div></div>' +
+      '<div class="detail-box"><h3>Project</h3><div class="detail-text">'+escapeHtml(project?.project_name||row.project_id||"No project assigned")+'</div></div>' +
+    '</div>' +
+    '<div style="margin-top:14px;padding:12px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:800">Loading full repair details…</div>';
+  $("detailModal").classList.add("open");
+  openDetailFull(id);
+}
+
+async function openDetailFull(id){
   const r=await supabaseClient.from("repair_requests").select("*").eq("repair_request_id",id).single();
   if(r.error){showMessage(r.error.message,"error");return;}
 
