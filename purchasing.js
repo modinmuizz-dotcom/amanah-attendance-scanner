@@ -128,6 +128,7 @@ function startPurchasingRealtime(){
 }
 
 async function init(){
+ startPurchasingRealtime();
  const allowed=await loadAccess();
  if(!allowed)return;
 
