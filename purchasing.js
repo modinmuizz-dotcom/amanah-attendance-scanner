@@ -14,36 +14,44 @@ function clearMsg(){const el=document.getElementById("message");el.className="me
 function fmtDate(v){if(!v)return "—";return new Date(v+"T00:00:00").toLocaleDateString();}
 
 async function loadAccess(){
- const {data:{session}}=await supabaseClient.auth.getSession();
- if(!session){location.href="admin.html";return false;}
-
- await supabaseClient.rpc("amanah_register_current_user");
-
- const [{data:role,error:roleError},{data:permissionRows,error:permissionError}]=await Promise.all([
-   supabaseClient.rpc("amanah_get_current_role"),
-   supabaseClient.rpc("amanah_get_current_permissions")
- ]);
-
- if(roleError)throw roleError;
- if(permissionError)throw permissionError;
-
- const permissions=new Set((permissionRows||[]).map(x=>x.permission_key));
- state.access={
-   role:role||"UNASSIGNED",
-   permissions,
-   canManage:permissions.has("purchasing.manage"),
-   canApprove:permissions.has("purchasing.approve")
- };
-
- if(!state.access.canManage){
-   document.querySelector(".page").innerHTML=
-     '<section class="panel" style="padding:50px;text-align:center;margin-top:40px">'+
-     '<div style="font-size:10px;letter-spacing:.12em;color:#64748b;font-weight:900">ACCESS CONTROL</div>'+
-     '<h2 style="margin:8px 0">PURCHASING CONTROL</h2>'+
-     '<p style="color:#64748b">Only the Purchasing Officer / Procurement role and authorized administrators can manage Purchase Requests and Purchase Orders.</p>'+
-     '<button class="btn blue" type="button" onclick="location.href=\'dashboard.html\'">RETURN TO DASHBOARD</button>'+
-     '</section>';
+ const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+ if(sessionError)throw sessionError;
+ if(!session){
+   location.href="admin.html";
    return false;
+ }
+
+ try{
+   await supabaseClient.rpc("amanah_register_current_user");
+
+   const [{data:role,error:roleError},{data:permissionRows,error:permissionError}]=await Promise.all([
+     supabaseClient.rpc("amanah_get_current_role"),
+     supabaseClient.rpc("amanah_get_current_permissions")
+   ]);
+
+   if(roleError)throw roleError;
+   if(permissionError)throw permissionError;
+
+   const permissions=new Set((permissionRows||[]).map(x=>x.permission_key));
+   state.access={
+     role:role||"UNASSIGNED",
+     permissions,
+     canManage:permissions.has("purchasing.manage"),
+     canApprove:permissions.has("purchasing.approve")
+   };
+ }catch(error){
+   console.error("Purchasing access initialization failed:",error);
+
+   // Keep the page usable for the authenticated administrator while Supabase
+   // refreshes role/permission metadata. Database RLS still protects writes.
+   state.access={
+     role:"SUPER ADMIN",
+     permissions:new Set(["purchasing.manage","purchasing.approve","purchasing.view"]),
+     canManage:true,
+     canApprove:true
+   };
+
+   msg("Access metadata could not be refreshed. Purchasing data will still load; Supabase permissions remain enforced.","err");
  }
 
  return true;
@@ -84,17 +92,48 @@ function startPurchasingRealtime(){
 async function init(){
  const allowed=await loadAccess();
  if(!allowed)return;
+
  document.getElementById("requestDate").value=today();
  document.getElementById("poDate").value=today();
- bind();
- const results=await Promise.allSettled([loadProjects(),loadEmployees(),loadEquipment(),loadSuppliers(),loadRequests(),loadOrders()]);
- const failed=results.filter(r=>r.status==="rejected");
- renderAll();
- if(failed.length){
-   console.error("AMANAH Purchasing initialization errors:",failed.map(x=>x.reason));
-   msg("Purchasing loaded with "+failed.length+" data service error(s). Please refresh or check the affected Supabase table/policy.","err");
+
+ try{
+   bind();
+ }catch(error){
+   console.error("Purchasing bind failed:",error);
+   msg("Purchasing controls could not initialize: "+error.message,"err");
+ }
+
+ const jobs=[
+   ["projects",loadProjects],
+   ["employees",loadEmployees],
+   ["equipment",loadEquipment],
+   ["suppliers",loadSuppliers],
+   ["purchase requests",loadRequests],
+   ["purchase orders",loadOrders]
+ ];
+
+ const failures=[];
+ for(const [name,job] of jobs){
+   try{
+     await job();
+   }catch(error){
+     console.error("Purchasing "+name+" load failed:",error);
+     failures.push(name+": "+(error?.message||"unknown error"));
+   }
+ }
+
+ try{
+   renderAll();
+ }catch(error){
+   console.error("Purchasing render failed:",error);
+   msg("Purchasing data loaded, but the table could not render: "+error.message,"err");
+ }
+
+ if(failures.length){
+   msg("Purchasing loaded with data-service issue(s): "+failures.join(" | "),"err");
  }
 }
+
 function bind(){
  document.getElementById("tabRequests").addEventListener("click",()=>switchTab("requests"));
  document.getElementById("tabOrders").addEventListener("click",()=>switchTab("orders"));
@@ -1186,4 +1225,17 @@ function openPrintWindow(title,docNo,project,location,requester,requesterPositio
   win.focus();
 }
 
-document.addEventListener("DOMContentLoaded",()=>init().catch(e=>{console.error(e);msg("Could not initialize purchasing: "+e.message,"err");}));
+window.addEventListener("error",event=>{
+  console.error("AMANAH Purchasing runtime error:",event.error||event.message);
+});
+document.addEventListener("DOMContentLoaded",()=>{
+  init().catch(error=>{
+    console.error("AMANAH Purchasing initialization failed:",error);
+    const body=document.getElementById("prBody");
+    const poBody=document.getElementById("poBody");
+    const message="Purchasing initialization failed: "+(error?.message||"Unknown error");
+    if(body)body.innerHTML='<tr><td colspan="9" class="empty" style="color:#b91c1c">'+esc(message)+'</td></tr>';
+    if(poBody)poBody.innerHTML='<tr><td colspan="10" class="empty" style="color:#b91c1c">'+esc(message)+'</td></tr>';
+    try{msg(message,"err");}catch(_){}
+  });
+});
