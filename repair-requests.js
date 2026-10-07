@@ -298,6 +298,141 @@ function renderSelectedFiles(){
   });
 }
 
+async function renderExistingPhotosForEdit(){
+  const container=$("selectedPhotos");
+  if(!container || !state.editingRequestId || !state.selectedRequest?.photos?.length)return;
+
+  const photos=state.selectedRequest.photos||[];
+  let section=document.getElementById("existingPhotoEvidence");
+  if(section)section.remove();
+
+  section=document.createElement("div");
+  section.id="existingPhotoEvidence";
+  section.style.marginTop="14px";
+  section.innerHTML=
+    '<div style="font-size:12px;font-weight:900;color:#334155;margin-bottom:10px">CURRENT PHOTO EVIDENCE</div>'+
+    '<div id="existingPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">'+
+      '<div style="padding:14px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;font-size:11px;grid-column:1/-1;text-align:center">Loading current photos…</div>'+
+    '</div>';
+  container.appendChild(section);
+
+  const signed=await Promise.all(
+    photos.map(photo=>supabaseClient.storage.from("repair-evidence").createSignedUrl(photo.file_path,600))
+  );
+
+  const grid=section.querySelector("#existingPhotoGrid");
+  grid.innerHTML=photos.map((photo,index)=>{
+    const src=signed[index]?.data?.signedUrl||"";
+    return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff">'+
+      '<div style="height:125px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+        (src
+          ? '<img src="'+escapeHtml(src)+'" alt="Photo evidence" style="width:100%;height:100%;object-fit:cover">'
+          : '<div style="color:#94a3b8;font-size:11px;font-weight:800">PHOTO UNAVAILABLE</div>')+
+      '</div>'+
+      '<div style="padding:9px">'+
+        '<div style="color:#64748b;font-size:10px;font-weight:800">'+escapeHtml(photo.photo_category||"OTHER")+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px">'+
+          '<button type="button" class="btn btn-blue" style="flex:1;min-height:32px" data-replace-photo="'+escapeHtml(photo.photo_id)+'">REPLACE</button>'+
+          '<button type="button" class="btn btn-danger" style="flex:1;min-height:32px" data-delete-photo="'+escapeHtml(photo.photo_id)+'">DELETE</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+
+  grid.querySelectorAll("[data-replace-photo]").forEach(btn=>{
+    btn.addEventListener("click",()=>replaceExistingPhoto(btn.dataset.replacePhoto));
+  });
+  grid.querySelectorAll("[data-delete-photo]").forEach(btn=>{
+    btn.addEventListener("click",()=>deleteExistingPhoto(btn.dataset.deletePhoto));
+  });
+}
+
+async function replaceExistingPhoto(photoId){
+  const photo=(state.selectedRequest?.photos||[]).find(x=>String(x.photo_id)===String(photoId));
+  if(!photo)return;
+
+  const input=$("photoReplaceInput");
+  if(!input)return;
+
+  input.value="";
+  input.dataset.replacePhotoId=photoId;
+  input.onchange=async()=>{
+    const file=input.files?.[0];
+    input.value="";
+    if(!file)return;
+    if(!file.type.startsWith("image/")){
+      showMessage("Please select an image file.","error");
+      return;
+    }
+
+    try{
+      const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+      const newPath=photo.repair_request_id+"/"+crypto.randomUUID()+"-"+safe;
+
+      const upload=await supabaseClient.storage.from("repair-evidence").upload(
+        newPath,file,{upsert:false,contentType:file.type||"image/jpeg"}
+      );
+      if(upload.error)throw upload.error;
+
+      const inserted=await supabaseClient.from("repair_request_photos").insert({
+        repair_request_id:photo.repair_request_id,
+        pm_inspection_item_id:photo.pm_inspection_item_id||null,
+        photo_category:photo.photo_category||"OTHER",
+        file_path:newPath,
+        file_name:file.name,
+        caption:photo.caption||null,
+        uploaded_by:state.userId
+      }).select("*").single();
+
+      if(inserted.error){
+        await supabaseClient.storage.from("repair-evidence").remove([newPath]);
+        throw inserted.error;
+      }
+
+      const deleted=await supabaseClient.from("repair_request_photos").delete().eq("photo_id",photo.photo_id);
+      if(deleted.error)throw deleted.error;
+
+      const storageDelete=await supabaseClient.storage.from("repair-evidence").remove([photo.file_path]);
+      if(storageDelete.error){
+        console.warn("Old repair photo cleanup warning:",storageDelete.error);
+      }
+
+      state.selectedRequest.photos=(state.selectedRequest.photos||[]).map(x=>String(x.photo_id)===String(photoId)?inserted.data:x);
+      await renderExistingPhotosForEdit();
+      showMessage("Photo evidence replaced successfully.","success");
+    }catch(error){
+      console.error("Replace repair photo failed:",error);
+      showMessage(error.message||"Unable to replace the photo evidence.","error");
+    }
+  };
+
+  input.click();
+}
+
+async function deleteExistingPhoto(photoId){
+  const photo=(state.selectedRequest?.photos||[]).find(x=>String(x.photo_id)===String(photoId));
+  if(!photo)return;
+
+  if(!window.confirm("Delete this photo evidence? This cannot be undone."))return;
+
+  try{
+    const deleted=await supabaseClient.from("repair_request_photos").delete().eq("photo_id",photo.photo_id);
+    if(deleted.error)throw deleted.error;
+
+    const storageDelete=await supabaseClient.storage.from("repair-evidence").remove([photo.file_path]);
+    if(storageDelete.error){
+      console.warn("Deleted database photo row but storage cleanup failed:",storageDelete.error);
+    }
+
+    state.selectedRequest.photos=(state.selectedRequest.photos||[]).filter(x=>String(x.photo_id)!==String(photoId));
+    await renderExistingPhotosForEdit();
+    showMessage("Photo evidence deleted successfully.","success");
+  }catch(error){
+    console.error("Delete repair photo failed:",error);
+    showMessage(error.message||"Unable to delete the photo evidence.","error");
+  }
+}
+
 function openNewRequest(){
   state.selectedRequest=null;
   state.editingRequestId=null;
@@ -308,6 +443,8 @@ function openNewRequest(){
   $("items").innerHTML="";
   addItemRow();
   state.selectedFiles=[];
+  const existingSection=document.getElementById("existingPhotoEvidence");
+  if(existingSection)existingSection.remove();
   renderSelectedFiles();
   const existingPhotoNote=document.createElement("div");
   const existingCount=Number(state.selectedRequest?.photos?.length||0);
@@ -355,6 +492,7 @@ async function openEditRequest(){
   state.selectedFiles=[];
   renderSelectedFiles();
   $("requestModal").classList.add("open");
+  await renderExistingPhotosForEdit();
 }
 
 async function createRequest(){
@@ -411,6 +549,9 @@ async function createRequest(){
     }
 
     await uploadPhotos(requestId);
+    const refreshedPhotos=await supabaseClient.from("repair_request_photos").select("*").eq("repair_request_id",requestId).order("uploaded_at",{ascending:false});
+    if(refreshedPhotos.error)throw refreshedPhotos.error;
+    if(state.selectedRequest)state.selectedRequest.photos=refreshedPhotos.data||[];
 
     const current=await supabaseClient
       .from("repair_requests")
