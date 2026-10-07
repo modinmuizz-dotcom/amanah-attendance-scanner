@@ -21,7 +21,8 @@ const state = {
   requests: [],
   selectedRequest: null,
   selectedFiles: [],
-  deleteRequestId: null
+  deleteRequestId: null,
+  editingRequestId: null
 };
 
 function $(id){ return document.getElementById(id); }
@@ -261,6 +262,10 @@ function renderSelectedFiles(){
 }
 
 function openNewRequest(){
+  state.selectedRequest=null;
+  state.editingRequestId=null;
+  $("modalTitle").textContent="NEW REPAIR REQUEST";
+  $("saveDraft").textContent="SAVE DRAFT";
   $("requestForm").reset();
   $("requestDate").value=localDate();
   $("items").innerHTML="";
@@ -272,6 +277,39 @@ function openNewRequest(){
 
 function closeRequestModal(){
   $("requestModal").classList.remove("open");
+  state.editingRequestId=null;
+}
+
+async function openEditRequest(){
+  const request=state.selectedRequest?.request;
+  if(!request)return;
+
+  if(!["DRAFT","RETURNED"].includes(String(request.status||"").toUpperCase())){
+    showMessage("Only DRAFT or RETURNED Repair Requests can be edited.","error");
+    return;
+  }
+
+  state.editingRequestId=request.repair_request_id;
+  $("modalTitle").textContent="EDIT REPAIR REQUEST";
+  $("saveDraft").textContent="SAVE CHANGES";
+
+  $("equipmentId").value=request.equipment_id||"";
+  $("projectId").value=request.project_id||"";
+  $("requestDate").value=request.request_date||localDate();
+  $("reportedBy").value=request.reported_by||"";
+  $("bodyPlateNo").value=request.body_plate_no||"";
+  $("pmInspectionId").value=request.pm_inspection_ref||"";
+  $("problems").value=request.problems_encountered||"";
+  $("remarks").value=request.remarks||"";
+
+  $("items").innerHTML="";
+  const items=state.selectedRequest.items||[];
+  if(items.length) items.forEach(addItemRow);
+  else addItemRow();
+
+  state.selectedFiles=[];
+  renderSelectedFiles();
+  $("requestModal").classList.add("open");
 }
 
 async function createRequest(){
@@ -284,10 +322,69 @@ async function createRequest(){
   const pm=$("pmInspectionId").value.trim()||null;
   const remarks=$("remarks").value.trim()||null;
 
-  if(!eq||!date||!reported||!problems)throw new Error("Equipment, date, reported by, and problems encountered are required.");
+  if(!eq||!date||!reported||!problems){
+    throw new Error("Equipment, date, reported by, and problems encountered are required.");
+  }
 
   const eqRow=state.equipment.find(x=>x.equipment_id===eq);
   const finalBody=body||(eqRow?.plate_number||null);
+  const items=getItems();
+
+  if(state.editingRequestId){
+    const requestId=state.editingRequestId;
+
+    const update=await supabaseClient
+      .from("repair_requests")
+      .update({
+        request_date:date,
+        equipment_id:eq,
+        project_id:proj,
+        pm_inspection_ref:pm,
+        reported_by:reported,
+        body_plate_no:finalBody,
+        problems_encountered:problems,
+        remarks,
+        prepared_by:state.userId,
+        prepared_at:new Date().toISOString(),
+        updated_at:new Date().toISOString()
+      })
+      .eq("repair_request_id",requestId);
+
+    if(update.error)throw update.error;
+
+    const removeItems=await supabaseClient
+      .from("repair_request_items")
+      .delete()
+      .eq("repair_request_id",requestId);
+
+    if(removeItems.error)throw removeItems.error;
+
+    if(items.length){
+      const itemsPayload=items.map((x,i)=>({...x,repair_request_id:requestId,display_order:i}));
+      const ir=await supabaseClient.from("repair_request_items").insert(itemsPayload);
+      if(ir.error)throw ir.error;
+    }
+
+    await uploadPhotos(requestId);
+
+    const current=await supabaseClient
+      .from("repair_requests")
+      .select("repair_form_no,status")
+      .eq("repair_request_id",requestId)
+      .single();
+
+    if(current.error)throw current.error;
+
+    const status=current.data?.status||"DRAFT";
+    closeRequestModal();
+    $("detailModal").classList.remove("open");
+    showMessage(
+      current.data.repair_form_no+" saved successfully as "+status+".",
+      "success"
+    );
+    await loadRequests();
+    return;
+  }
 
   const r=await supabaseClient.from("repair_requests").insert({
     request_date:date,
@@ -297,14 +394,15 @@ async function createRequest(){
     reported_by:reported,
     body_plate_no:finalBody,
     problems_encountered:problems,
-    remarks
+    remarks,
+    prepared_by:state.userId,
+    prepared_at:new Date().toISOString()
   }).select("repair_request_id,repair_form_no").single();
 
   if(r.error)throw r.error;
 
   const requestId=r.data.repair_request_id;
 
-  const items=getItems();
   if(items.length){
     const itemsPayload=items.map((x,i)=>({...x,repair_request_id:requestId,display_order:i}));
     const ir=await supabaseClient.from("repair_request_items").insert(itemsPayload);
@@ -314,9 +412,10 @@ async function createRequest(){
   await uploadPhotos(requestId);
 
   closeRequestModal();
-  showMessage("Repair request "+r.data.repair_form_no+" saved as DRAFT.","success");
+  showMessage("Repair request "+r.data.repair_form_no+" saved as DRAFT. You can edit it until it is submitted for GM approval.","success");
   await loadRequests();
 }
+
 
 async function uploadPhotos(requestId){
   const files=state.selectedFiles;
@@ -748,21 +847,18 @@ function wireRepairExecutionHandlers(request,photos){
 function renderDetailActions(){
   const r=state.selectedRequest.request;
   const actions=$("detailActions");
-  const photoCount=state.selectedRequest.photos.length;
-
   let html="";
 
-  if(r.status==="DRAFT"){
-    html += '<button class="btn btn-blue" id="submitReviewButton">SUBMIT FOR REVIEW</button>';
-  }
-
-  if(r.status==="PENDING REVIEW"){
-    html += '<button class="btn btn-green" id="reviewAndForward">REVIEW & FORWARD</button>';
+  if(r.status==="DRAFT" || r.status==="RETURNED"){
+    html += '<button class="btn btn-blue" id="editRepairRequestButton">EDIT REPAIR REQUEST</button>';
+    html += '<button class="btn btn-green" id="submitRepairApprovalButton">SUBMIT FOR APPROVAL</button>';
+    if(r.status==="RETURNED"){
+      html += '<div style="width:100%;margin-top:8px;color:#92400e;font-size:11px;font-weight:800">This request was returned by the General Manager. Update the details, then resubmit for approval.</div>';
+    }
   }
 
   if(r.status==="PENDING APPROVAL"){
-    html += '<button class="btn btn-green" id="approveRequest">APPROVE REPAIR</button>';
-    html += '<button class="btn btn-gray" id="returnRequest">RETURN</button>';
+    html += '<div style="width:100%;padding:12px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:900">AWAITING GENERAL MANAGER APPROVAL</div>';
   }
 
   if(r.status==="APPROVED"){
@@ -770,21 +866,17 @@ function renderDetailActions(){
   }
 
   if(r.status==="IN PROGRESS"){
-    const hasRepairedBy = !!String(r.repaired_by || "").trim();
-    const hasAfterPhoto = state.selectedRequest.photos.some(x => x.photo_category === "REPAIR AFTER");
-    const canComplete = hasRepairedBy && hasAfterPhoto;
+    const hasRepairedBy=!!String(r.repaired_by||"").trim();
+    const hasAfterPhoto=state.selectedRequest.photos.some(x=>x.photo_category==="REPAIR AFTER");
+    const canComplete=hasRepairedBy&&hasAfterPhoto;
 
-    html += '<button class="btn btn-green" id="completeRepairButton" ' +
-      (canComplete ? "" : "disabled") +
-      '>MARK COMPLETED</button>';
+    html += '<button class="btn btn-green" id="completeRepairButton" '+(canComplete?"":"disabled")+'>MARK COMPLETED</button>';
 
     if(!canComplete){
-      const missing = [];
-      if(!hasRepairedBy) missing.push("Repaired By");
-      if(!hasAfterPhoto) missing.push("REPAIR AFTER photo");
-      html += '<div style="width:100%;margin-top:8px;color:#64748b;font-size:11px;font-weight:800">' +
-        'Completion locked until: ' + escapeHtml(missing.join(" and ")) +
-        '</div>';
+      const missing=[];
+      if(!hasRepairedBy)missing.push("Repaired By");
+      if(!hasAfterPhoto)missing.push("REPAIR AFTER photo");
+      html += '<div style="width:100%;margin-top:8px;color:#64748b;font-size:11px;font-weight:800">Completion locked until: '+escapeHtml(missing.join(" and "))+'</div>';
     }
   }
 
@@ -798,63 +890,26 @@ function renderDetailActions(){
 
   actions.innerHTML=html;
 
-  const submit=document.getElementById("submitReviewButton");
-  if(submit){
-    submit.addEventListener("click",async()=>{
-      await setStatus(r.repair_request_id,"PENDING REVIEW");
-    });
-  }
-
-  const review=document.getElementById("reviewAndForward");
-  if(review){
-    review.addEventListener("click",async()=>{
-      const checked=document.getElementById("reviewEvidence")?.checked || false;
-
-      if(photoCount>0 && !checked){
-        showMessage(
-          "Reviewer must confirm that all photo evidence has been reviewed.",
-          "error"
-        );
-        return;
+  const editButton=document.getElementById("editRepairRequestButton");
+  if(editButton){
+    editButton.addEventListener("click",async()=>{
+      try{
+        openEditRequest();
+      }catch(e){
+        showMessage(e.message||"Unable to edit Repair Request.","error");
       }
-
-      await updateWorkflow(
-        r.repair_request_id,
-        "PENDING APPROVAL",
-        {
-          reviewer_evidence_reviewed: checked
-        }
-      );
     });
   }
 
-  const approve=document.getElementById("approveRequest");
-  if(approve){
-    approve.addEventListener("click",async()=>{
-      const checked=document.getElementById("approveEvidence")?.checked || false;
-
-      if(photoCount>0 && !checked){
-        showMessage(
-          "Approver must confirm that all photo evidence has been reviewed.",
-          "error"
-        );
-        return;
+  const submitApproval=document.getElementById("submitRepairApprovalButton");
+  if(submitApproval){
+    submitApproval.addEventListener("click",async()=>{
+      try{
+        await submitRepairForApproval(r.repair_request_id);
+      }catch(e){
+        console.error(e);
+        showMessage(e.message||"Unable to submit Repair Request for approval.","error");
       }
-
-      await updateWorkflow(
-        r.repair_request_id,
-        "APPROVED",
-        {
-          approver_evidence_reviewed: checked
-        }
-      );
-    });
-  }
-
-  const returnButton=document.getElementById("returnRequest");
-  if(returnButton){
-    returnButton.addEventListener("click",async()=>{
-      await setStatus(r.repair_request_id,"RETURNED");
     });
   }
 
@@ -892,6 +947,73 @@ function renderDetailActions(){
     });
   }
 }
+
+async function submitRepairForApproval(id){
+  const request=state.selectedRequest?.request;
+  if(!request || request.repair_request_id!==id){
+    await openDetailFull(id);
+  }
+
+  const current=state.selectedRequest?.request;
+  if(!current)throw new Error("Repair Request details are not loaded.");
+  if(!["DRAFT","RETURNED"].includes(String(current.status||"").toUpperCase())){
+    throw new Error("Only DRAFT or RETURNED Repair Requests can be submitted for approval.");
+  }
+
+  if(!String(current.equipment_id||"").trim() || !String(current.problems_encountered||"").trim()){
+    throw new Error("Complete the required equipment and problem details before submitting for approval.");
+  }
+
+  const itemSummary=(state.selectedRequest.items||[])
+    .map(x=>[x.work_to_be_done,x.material_or_spare_part,x.quantity,x.unit].filter(v=>v!==null&&v!==undefined&&String(v).trim()!=="").join(" "))
+    .join(" • ");
+
+  const button=document.getElementById("submitRepairApprovalButton");
+  if(button){
+    button.disabled=true;
+    button.textContent="SUBMITTING...";
+  }
+
+  try{
+    const {data,error}=await supabaseClient.rpc("amanah_submit_approval",{
+      p_request_type:"REPAIR_REQUEST",
+      p_entity_id:id,
+      p_title:"Repair Request: "+(current.repair_form_no||id),
+      p_description:"Repair request submitted directly by Maintenance for General Manager approval.",
+      p_payload:{
+        request_action:"CREATE",
+        repair_request_id:id,
+        repair_form_no:current.repair_form_no,
+        request_date:current.request_date,
+        equipment_id:current.equipment_id,
+        equipment_name:state.equipment.find(x=>x.equipment_id===current.equipment_id)?.equipment_name||current.equipment_id,
+        project_id:current.project_id,
+        project_name:state.projects.find(x=>x.project_id===current.project_id)?.project_name||current.project_id,
+        pm_inspection_ref:current.pm_inspection_ref,
+        reported_by:current.reported_by,
+        problems_encountered:current.problems_encountered,
+        items_summary:itemSummary||"No work/material line items recorded yet.",
+        photo_count:state.selectedRequest.photos.length,
+        remarks:current.remarks
+      }
+    });
+
+    if(error)throw error;
+
+    closeDetail();
+    showMessage(
+      (current.repair_form_no||"Repair Request")+" was sent to the Approval Center for General Manager approval.",
+      "success"
+    );
+    await loadRequests();
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent="SUBMIT FOR APPROVAL";
+    }
+  }
+}
+
 
 async function updateWorkflow(id,next,extra={}){
   const payload={status:next,...extra};
