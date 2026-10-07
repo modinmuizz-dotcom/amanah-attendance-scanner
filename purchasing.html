@@ -124,7 +124,7 @@
   <div class="modal">
     <div class="modal-head"><h3 id="detailTitle">PURCHASE REQUEST DETAILS</h3><button class="modal-x" id="closeDetail" type="button">×</button></div>
     <div class="form-section" id="detailBody"></div>
-    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
+    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn blue" id="detailPickupButton" type="button" style="display:none">REQUEST MATERIALS PICKUP</button><button class="btn green" id="detailDeliverButton" type="button" style="display:none">DELIVER TO SITE</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
   </div>
 </div>
 
@@ -232,6 +232,108 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="deliverSiteModal">
+  <div class="modal" style="width:min(900px,100%)">
+    <div class="modal-head">
+      <div>
+        <h3>DELIVER TO SITE</h3>
+        <div id="deliverSiteFromPO" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div>
+      </div>
+      <button class="modal-x" id="closeDeliverSite" type="button">×</button>
+    </div>
+    <div class="form-section">
+      <div id="deliverSiteValidation" style="display:none;margin-bottom:14px;padding:11px 13px;border:1px solid #fecaca;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:900"></div>
+      <div style="padding:12px;border:1px solid #dcfce7;border-radius:12px;background:#f0fdf4;color:#166534;font-size:11px;font-weight:800;line-height:1.5">
+        Use this only when the Purchasing Officer is manually confirming delivery to the project site. <strong>RECEIVED</strong> will be recorded automatically for the selected quantities.
+      </div>
+      <div class="section-label">MATERIALS RECEIVED</div>
+      <div class="table-wrap">
+        <table class="table" style="min-width:760px">
+          <thead><tr><th>Select</th><th>Material</th><th>Specification</th><th>Confirmed</th><th>Already Received</th><th>Qty Received Now</th><th>Unit</th></tr></thead>
+          <tbody id="deliverSiteItemsBody"></tbody>
+        </table>
+      </div>
+      <div class="form-grid" style="margin-top:16px">
+        <div class="field">
+          <label>DELIVERY DATE *</label>
+          <input id="deliverSiteDate" type="date">
+        </div>
+        <div class="field">
+          <label>DELIVERY REFERENCE</label>
+          <input id="deliverSiteReference" placeholder="DR / Invoice / Delivery Receipt No.">
+        </div>
+        <div class="field full">
+          <label>DELIVERY REMARKS</label>
+          <textarea id="deliverSiteRemarks" placeholder="Condition, shortages, damaged items, or receiving notes."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn gray" id="cancelDeliverSite" type="button">CANCEL</button>
+      <button class="btn green" id="submitDeliverSite" type="button">MARK MATERIALS RECEIVED</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="bulkPickupModal">
+  <div class="modal" style="width:min(900px,100%)">
+    <div class="modal-head">
+      <div>
+        <h3>REQUEST MATERIALS PICKUP</h3>
+        <div id="bulkPickupFromPO" style="margin-top:4px;color:#64748b;font-size:11px;font-weight:700"></div>
+      </div>
+      <button class="modal-x" id="closeBulkPickup" type="button">×</button>
+    </div>
+    <div class="form-section">
+      <div id="bulkPickupValidation" style="display:none;margin-bottom:14px;padding:11px 13px;border:1px solid #fecaca;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:11px;font-weight:900"></div>
+      <div style="padding:12px;border:1px solid #dbeafe;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:11px;font-weight:800;line-height:1.5">
+        Select the materials that the supplier has confirmed are ready for pickup. <strong>RECEIVED materials are not selectable.</strong>
+      </div>
+      <div class="section-label">MATERIALS READY FOR PICKUP</div>
+      <div class="table-wrap">
+        <table class="table" style="min-width:760px">
+          <thead><tr><th>Select</th><th>Material</th><th>Specification</th><th>Confirmed</th><th>Already Received</th><th>Qty to Pickup</th><th>Unit</th></tr></thead>
+          <tbody id="bulkPickupItemsBody"></tbody>
+        </table>
+      </div>
+      <div class="form-grid" style="margin-top:16px">
+        <div class="field">
+          <label>PICKUP UNIT / EQUIPMENT *</label>
+          <select id="bulkPickupUnit"><option value="">SELECT PICKUP UNIT</option></select>
+        </div>
+        <div class="field">
+          <label>PICKUP DATE *</label>
+          <input id="bulkPickupDate" type="date">
+        </div>
+        <div class="field">
+          <label>START TIME</label>
+          <input id="bulkPickupStart" type="time" value="08:00">
+        </div>
+        <div class="field">
+          <label>END TIME</label>
+          <input id="bulkPickupEnd" type="time" value="17:00">
+        </div>
+        <div class="field full">
+          <label>PICKUP LOCATION *</label>
+          <input id="bulkPickupLocation" placeholder="Supplier warehouse / pickup point">
+        </div>
+        <div class="field full">
+          <label>DELIVER TO SITE</label>
+          <input id="bulkPickupDeliveryLocation" readonly>
+        </div>
+        <div class="field full">
+          <label>REMARKS</label>
+          <textarea id="bulkPickupRemarks" placeholder="Pickup instructions for the driver/operator."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn gray" id="cancelBulkPickup" type="button">CANCEL</button>
+      <button class="btn green" id="submitBulkPickup" type="button">SEND TO APPROVAL CENTER</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="pickupModal">
   <div class="modal" style="width:min(760px,100%)">
     <div class="modal-head">
@@ -311,7 +413,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=36"></script>
+<script src="purchasing.js?v=37"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
