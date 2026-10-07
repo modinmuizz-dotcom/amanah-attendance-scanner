@@ -253,13 +253,50 @@ function getItems(){
 }
 
 function renderSelectedFiles(){
-  const summary=state.selectedFiles.map((f,i)=>
-    "Photo " + (i+1) + " attached • " +
-    Math.max(1, Math.round(f.size/1024)) + " KB"
-  ).join("\n");
+  const container=$("selectedPhotos");
+  if(!container)return;
 
-  $("selectedPhotos").textContent =
-    summary || "No photos selected yet.";
+  const hint=$("photoCategoryHint");
+  const activeCategory=$("photoCategory")?.value||"PM FINDING";
+  if(hint)hint.textContent=activeCategory;
+
+  if(!state.selectedFiles.length){
+    container.innerHTML=
+      '<div style="padding:14px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:12px;text-align:center">'+
+      'No new photos added yet. Click <strong>+ ADD PHOTO</strong> to attach evidence.'+
+      '</div>';
+    return;
+  }
+
+  container.innerHTML=
+    '<div style="font-size:12px;font-weight:900;color:#334155;margin-bottom:10px">'+
+      state.selectedFiles.length+' new photo(s) ready to be saved'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">'+
+    state.selectedFiles.map((entry,index)=>{
+      const file=entry.file;
+      const url=URL.createObjectURL(file);
+      const size=Math.max(1,Math.round(file.size/1024));
+      return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff;position:relative">'+
+        '<div style="height:125px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+          '<img src="'+url+'" alt="Photo preview" style="width:100%;height:100%;object-fit:cover">'+
+        '</div>'+
+        '<div style="padding:9px">'+
+          '<div style="font-size:11px;font-weight:900;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+escapeHtml(file.name)+'">'+escapeHtml(file.name)+'</div>'+
+          '<div style="margin-top:4px;color:#64748b;font-size:10px">'+escapeHtml(entry.category)+' • '+size+' KB</div>'+
+          '<button type="button" data-remove-photo="'+index+'" class="btn btn-gray" style="margin-top:8px;width:100%;min-height:32px">REMOVE</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div>';
+
+  container.querySelectorAll("[data-remove-photo]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const index=Number(btn.dataset.removePhoto);
+      state.selectedFiles.splice(index,1);
+      renderSelectedFiles();
+    });
+  });
 }
 
 function openNewRequest(){
@@ -273,6 +310,14 @@ function openNewRequest(){
   addItemRow();
   state.selectedFiles=[];
   renderSelectedFiles();
+  const existingPhotoNote=document.createElement("div");
+  const existingCount=Number(state.selectedRequest?.photos?.length||0);
+  if(existingCount){
+    existingPhotoNote.id="existingPhotoNote";
+    existingPhotoNote.style.cssText="margin-top:10px;padding:10px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:11px;font-weight:800";
+    existingPhotoNote.textContent=existingCount+" existing photo(s) are already attached to this Repair Request. Use + ADD PHOTO to add more evidence.";
+    $("selectedPhotos").prepend(existingPhotoNote);
+  }
   $("requestModal").classList.add("open");
 }
 
@@ -422,13 +467,15 @@ async function uploadPhotos(requestId){
   const files=state.selectedFiles;
   if(!files.length)return;
 
-  const category=$("photoCategory").value;
-
-  for(const file of files){
+  for(const entry of files){
+    const file=entry.file;
+    const category=entry.category||$("photoCategory")?.value||"OTHER";
     const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
     const path=requestId+"/"+crypto.randomUUID()+"-"+safe;
 
-    const upload=await supabaseClient.storage.from("repair-evidence").upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
+    const upload=await supabaseClient.storage.from("repair-evidence").upload(
+      path,file,{upsert:false,contentType:file.type||"image/jpeg"}
+    );
     if(upload.error)throw upload.error;
 
     const row=await supabaseClient.from("repair_request_photos").insert({
@@ -1054,7 +1101,16 @@ $("newRequest").addEventListener("click",openNewRequest);
 $("closeModal").addEventListener("click",closeRequestModal);
 $("cancelRequest").addEventListener("click",closeRequestModal);
 $("addItem").addEventListener("click",()=>addItemRow());
-$("photoInput").addEventListener("change",e=>{state.selectedFiles=[...e.target.files];renderSelectedFiles();});
+$("addPhotoButton").addEventListener("click",()=>$("photoInput").click());
+$("photoCategory").addEventListener("change",()=>renderSelectedFiles());
+$("photoInput").addEventListener("change",e=>{
+  const category=$("photoCategory").value||"OTHER";
+  const incoming=[...e.target.files].filter(file=>file.type.startsWith("image/"));
+  if(!incoming.length)return;
+  state.selectedFiles.push(...incoming.map(file=>({file,category})));
+  e.target.value="";
+  renderSelectedFiles();
+});
 $("requestForm").addEventListener("submit",async e=>{e.preventDefault();try{await createRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to create repair request.","error");}});
 $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove("open"));
 $("closeApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
