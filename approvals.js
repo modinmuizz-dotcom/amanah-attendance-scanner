@@ -51,7 +51,17 @@ async function deleteHistoryRecord(){
     btn.textContent='DELETE RECORD';
   }
 }
-function typeLabel(type){return type==='PURCHASE_REQUEST'?'PURCHASING':type==='MATERIAL_PICKUP'?'MATERIAL PICKUP':type==='MAINTENANCE'?'MAINTENANCE':'ACTIVITY CALENDAR';}
+function typeLabel(type){
+  return type==='PURCHASE_REQUEST'
+    ? 'PURCHASING'
+    : type==='MATERIAL_PICKUP'
+      ? 'MATERIAL PICKUP'
+      : type==='REPAIR_REQUEST'
+        ? 'REPAIR REQUEST'
+        : type==='MAINTENANCE'
+          ? 'MAINTENANCE'
+          : 'ACTIVITY CALENDAR';
+}
 function detailCard(label,value,opts={}){
   const full=opts.full?' detail-card-full':'';
   const accent=opts.accent?' detail-card-accent-'+opts.accent:'';
@@ -181,6 +191,27 @@ function payloadCards(a, historical=false){
       </div>`;
   }
 
+  if(a.request_type==='REPAIR_REQUEST'){
+    return commonHeader+`
+      <div class="review-section">
+        <div class="review-section-title"><span>01</span><div><strong>REPAIR REQUEST</strong><small>Maintenance request awaiting General Manager approval</small></div></div>
+        <div class="detail-grid detail-grid-3">
+          ${detailCard('REPAIR FORM NO.',p.repair_form_no||a.title)}
+          ${detailCard('REQUEST DATE',p.request_date||'—')}
+          ${detailCard('REQUESTED BY',a.requested_by_name||a.requester_email||'—')}
+          ${detailCard('EQUIPMENT',p.equipment_name||p.equipment_id||'—')}
+          ${detailCard('PROJECT',p.project_name||p.project_id||'—')}
+          ${detailCard('PM INSPECTION REF.',p.pm_inspection_ref||'—')}
+          ${detailCard('REPORTED BY',p.reported_by||'—')}
+          ${detailCard('PHOTO EVIDENCE',String(p.photo_count??0)+' photo(s)')}
+          ${detailCard('WORKS / MATERIALS',p.items_summary||'No work/material line items recorded yet.',{full:true})}
+          ${detailCard('PROBLEMS ENCOUNTERED (SIRA)',p.problems_encountered||'—',{full:true})}
+          ${detailCard('REMARKS',p.remarks||'—',{full:true})}
+        </div>
+      </div>
+    `;
+  }
+
   return commonHeader+`
     <div class="review-section">
       <div class="review-section-title"><span>01</span><div><strong>MAINTENANCE REQUEST</strong><small>Equipment maintenance details</small></div></div>
@@ -277,7 +308,7 @@ async function loadHistory(){
   renderHistory();
 }
 function render(){
-  const counts={ACTIVITY:0,PURCHASE_REQUEST:0,MAINTENANCE:0};
+  const counts={ACTIVITY:0,PURCHASE_REQUEST:0,MATERIAL_PICKUP:0,REPAIR_REQUEST:0,MAINTENANCE:0};
   approvals.forEach(a=>counts[a.request_type]=(counts[a.request_type]||0)+1);
   document.getElementById('pendingCount').textContent=approvals.length;
   document.getElementById('activityCount').textContent=counts.ACTIVITY||0;
