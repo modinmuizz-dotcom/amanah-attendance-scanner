@@ -352,13 +352,132 @@ function renderHistory(){
       '<td><span class="requester"><strong>'+esc(a.decided_by_name||'—')+'</strong></span></td>'+
       '<td>'+esc(formatDateTime(a.decided_at))+'</td>'+
       '<td><span class="history-status-chip '+decisionClass+'">'+esc(decision)+'</span></td>'+
-      '<td><div class="action-group"><button class="mini review" type="button" data-history="'+esc(a.approval_id)+'">VIEW</button><button class="mini delete-history" type="button" data-delete-history="'+esc(a.approval_id)+'">DELETE</button></div></td>'+
+      '<td><div class="action-group"><button class="mini review" type="button" data-history="'+esc(a.approval_id)+'">VIEW</button><button class="mini print" type="button" data-print-history="'+esc(a.approval_id)+'">PRINT</button><button class="mini delete-history" type="button" data-delete-history="'+esc(a.approval_id)+'">DELETE</button></div></td>'+
     '</tr>';
   }).join('');
   body.querySelectorAll('[data-history]').forEach(btn=>btn.addEventListener('click',()=>openHistory(btn.dataset.history)));
+  body.querySelectorAll('[data-print-history]').forEach(btn=>btn.addEventListener('click',()=>printApprovalRecordById(btn.dataset.printHistory)));
   body.querySelectorAll('[data-delete-history]').forEach(btn=>btn.addEventListener('click',()=>openDeleteHistory(btn.dataset.deleteHistory)));
 }
 
+function approvalPrintStyles(){
+  return `
+    @page{size:A4 portrait;margin:14mm}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff;color:#172033;font-family:Arial,Helvetica,sans-serif}
+    body{font-size:12px;line-height:1.45}
+    .print-wrap{max-width:780px;margin:0 auto}
+    .print-header{border-bottom:3px solid #173f91;padding-bottom:12px;margin-bottom:16px}
+    .print-brand{font-size:18px;font-weight:900;letter-spacing:.04em;color:#173f91}
+    .print-sub{margin-top:3px;color:#64748b;font-size:10px;font-weight:700}
+    .print-title{margin-top:12px;font-size:22px;font-weight:900;text-transform:uppercase}
+    .print-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+    .meta-box,.print-card{border:1px solid #d9e0ea;border-radius:8px;padding:9px}
+    .meta-label,.print-label{font-size:8px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+    .meta-value,.print-value{margin-top:3px;font-weight:800;color:#172033}
+    .print-section{margin-top:14px;break-inside:avoid}
+    .print-section h3{margin:0 0 7px;font-size:11px;text-transform:uppercase;color:#173f91;letter-spacing:.04em}
+    .print-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .print-full{grid-column:1/-1}
+    .print-status{display:inline-block;padding:5px 9px;border-radius:999px;font-weight:900;border:1px solid #cbd5e1}
+    .print-status.approved{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+    .print-status.rejected{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+    .print-status.cancelled{background:#f8fafc;color:#475569}
+    .print-photos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .print-photo{border:1px solid #d9e0ea;border-radius:8px;overflow:hidden;break-inside:avoid}
+    .print-photo img{display:block;width:100%;height:230px;object-fit:cover}
+    .print-photo-cap{padding:7px;font-size:9px;font-weight:900;color:#475569}
+    .print-footer{margin-top:20px;padding-top:8px;border-top:1px solid #d9e0ea;color:#64748b;font-size:9px}
+  `;
+}
+function printPayloadDetails(record,p){
+  const rows=[];
+  const add=(label,value,full=false)=>rows.push(`<div class="print-card ${full?'print-full':''}"><div class="print-label">${esc(label)}</div><div class="print-value">${esc(value==null||value===''?'—':value)}</div></div>`);
+  if(record.request_type==='REPAIR_REQUEST'){
+    add('Repair Form No.',p.repair_form_no||record.title);
+    add('Request Date',p.request_date);
+    add('Equipment',p.equipment_name||p.equipment_id);
+    add('Project',p.project_name||p.project_id);
+    add('PM Inspection Ref.',p.pm_inspection_ref);
+    add('Reported By',p.reported_by);
+    add('Photo Evidence',String(p.photo_count??0)+' photo(s)');
+    add('Works / Materials',p.items_summary,true);
+    add('Problems Encountered (SIRA)',p.problems_encountered,true);
+    add('Remarks',p.remarks,true);
+  }else{
+    add('Request Description',record.description,true);
+    Object.entries(p).slice(0,14).forEach(([key,value])=>{
+      if(value===null||value===undefined||typeof value==='object')return;
+      add(key.replaceAll('_',' ').toUpperCase(),value);
+    });
+  }
+  return rows.join('');
+}
+function buildDecisionPrintHtml(record,photos=[]){
+  const p=record.payload||{};
+  const status=String(record.status||'—').toUpperCase();
+  const cls=status==='APPROVED'?'approved':status==='REJECTED'?'rejected':status==='CANCELLED'?'cancelled':'';
+  return `
+    <div class="print-wrap">
+      <div class="print-header">
+        <div class="print-brand">AMANAH CONSTRUCTION SERVICES</div>
+        <div class="print-sub">MANAGEMENT APPROVAL CENTER</div>
+        <div class="print-title">DECISION RECORD</div>
+        <div class="print-meta">
+          <div class="meta-box"><div class="meta-label">Request Type</div><div class="meta-value">${esc(typeLabel(record.request_type))}</div></div>
+          <div class="meta-box"><div class="meta-label">Request</div><div class="meta-value">${esc(record.title||'—')}</div></div>
+          <div class="meta-box"><div class="meta-label">Decision</div><div class="meta-value"><span class="print-status ${cls}">${esc(status)}</span></div></div>
+          <div class="meta-box"><div class="meta-label">Requested By</div><div class="meta-value">${esc(record.requested_by_name||record.requester_email||'—')}</div></div>
+          <div class="meta-box"><div class="meta-label">Submitted</div><div class="meta-value">${esc(formatDateTime(record.submitted_at))}</div></div>
+          <div class="meta-box"><div class="meta-label">Decided By</div><div class="meta-value">${esc(record.decided_by_name||'—')}</div></div>
+          <div class="meta-box"><div class="meta-label">Decision Date</div><div class="meta-value">${esc(formatDateTime(record.decided_at||record.cancelled_at))}</div></div>
+          <div class="meta-box print-full"><div class="meta-label">Decision Remarks</div><div class="meta-value">${esc(record.decision_remarks||record.cancellation_reason||'No decision remarks recorded.')}</div></div>
+        </div>
+      </div>
+      <div class="print-section">
+        <h3>Request Details</h3>
+        <div class="print-grid">${printPayloadDetails(record,p)}</div>
+      </div>
+      ${photos.length?`
+      <div class="print-section">
+        <h3>Photo Evidence</h3>
+        <div class="print-photos">${photos.map(photo=>`
+          <div class="print-photo">
+            <img src="${esc(photo.url)}" alt="Repair evidence">
+            <div class="print-photo-cap">${esc(photo.category||'OTHER')}</div>
+          </div>`).join('')}</div>
+      </div>`:''}
+      <div class="print-footer">Printed from AMANAH Approval Center • Generated ${esc(formatDateTime(new Date().toISOString()))}</div>
+    </div>`;
+}
+async function printApprovalRecordById(id){
+  const record=approvalHistory.find(a=>String(a.approval_id)===String(id));
+  if(record)await printApprovalRecord(record);
+}
+async function printApprovalRecord(record){
+  const win=window.open('','_blank');
+  if(!win){showMsg('Please allow pop-ups to print the decision record.','error');return;}
+  win.document.open();
+  win.document.write('<!doctype html><html><head><title>AMANAH Decision Record</title><style>'+approvalPrintStyles()+'</style></head><body><div id="printRoot"><div class="print-wrap" style="padding:30px;text-align:center;color:#64748b;font-weight:800">Preparing print record…</div></div></body></html>');
+  win.document.close();
+
+  let photos=[];
+  if(record.request_type==='REPAIR_REQUEST'){
+    try{
+      const {data,error}=await supabaseClient.from('repair_request_photos').select('file_path,photo_category').eq('repair_request_id',record.entity_id).order('uploaded_at',{ascending:false});
+      if(!error&&data?.length){
+        const signed=await Promise.all(data.map(photo=>supabaseClient.storage.from('repair-evidence').createSignedUrl(photo.file_path,600)));
+        photos=data.map((photo,i)=>({url:signed[i]?.data?.signedUrl||'',category:photo.photo_category})).filter(x=>x.url);
+      }
+    }catch(error){console.warn('Print photo load warning:',error);}
+  }
+
+  const root=win.document.getElementById('printRoot');
+  if(root)root.innerHTML=buildDecisionPrintHtml(record,photos);
+  win.focus();
+  setTimeout(()=>win.print(),350);
+  setTimeout(()=>{try{win.close();}catch(_){ }},1200);
+}
 function openHistory(id){
   const record=approvalHistory.find(a=>a.approval_id===id);
   if(!record)return;
@@ -461,10 +580,14 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.getElementById('historyStatusFilter').addEventListener('change',loadHistory);
     document.getElementById('closeApprovalModal').addEventListener('click',closeModal);
     document.getElementById('cancelApproval').addEventListener('click',closeModal);
+    document.getElementById('printPendingApproval').addEventListener('click',()=>{
+      if(currentApproval)printApprovalRecord({...currentApproval,status:'PENDING APPROVAL',decided_by_name:'—',decided_at:null,decision_remarks:'Pending General Manager decision.'});
+    });
     document.getElementById('approveApproval').addEventListener('click',()=>decide('APPROVED'));
     document.getElementById('rejectApproval').addEventListener('click',()=>decide('REJECTED'));
     document.getElementById('approvalModal').addEventListener('click',e=>{if(e.target.id==='approvalModal')closeModal();});
     document.getElementById('closeHistoryModal').addEventListener('click',closeHistoryModal);
+    document.getElementById('historyPrintButton').addEventListener('click',()=>{if(currentHistoryRecord)printApprovalRecord(currentHistoryRecord);});
     document.getElementById('historyCloseButton').addEventListener('click',closeHistoryModal);
     document.getElementById('historyModal').addEventListener('click',e=>{if(e.target.id==='historyModal')closeHistoryModal();});
     document.getElementById('closeDeleteHistoryModal').addEventListener('click',closeDeleteHistoryModal);
