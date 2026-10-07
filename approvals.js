@@ -295,7 +295,8 @@ async function requireAccess(){
 async function loadApprovals(){
   const type=document.getElementById('typeFilter').value;
   let q=supabaseClient.from('amanah_approval_requests').select('*').eq('status','PENDING').order('submitted_at',{ascending:false});
-  if(type)q=q.eq('request_type',type);
+  if(type==='MAINTENANCE') q=q.in('request_type',['MAINTENANCE','REPAIR_REQUEST']);
+  else if(type) q=q.eq('request_type',type);
   const {data,error}=await q;
   if(error)throw error;
   approvals=data||[];
@@ -305,7 +306,8 @@ async function loadHistory(){
   const type=document.getElementById('historyTypeFilter').value;
   const status=document.getElementById('historyStatusFilter').value;
   let q=supabaseClient.from('amanah_approval_requests').select('*').neq('status','PENDING').order('decided_at',{ascending:false}).order('submitted_at',{ascending:false}).limit(200);
-  if(type)q=q.eq('request_type',type);
+  if(type==='MAINTENANCE') q=q.in('request_type',['MAINTENANCE','REPAIR_REQUEST']);
+  else if(type) q=q.eq('request_type',type);
   if(status)q=q.eq('status',status);
   const {data,error}=await q;
   if(error)throw error;
@@ -318,7 +320,7 @@ function render(){
   document.getElementById('pendingCount').textContent=approvals.length;
   document.getElementById('activityCount').textContent=counts.ACTIVITY||0;
   document.getElementById('purchaseCount').textContent=counts.PURCHASE_REQUEST||0;
-  document.getElementById('maintenanceCount').textContent=counts.MAINTENANCE||0;
+  document.getElementById('maintenanceCount').textContent=(counts.MAINTENANCE||0)+(counts.REPAIR_REQUEST||0);
   const body=document.getElementById('approvalBody');
   if(!approvals.length){body.innerHTML='<tr><td colspan="6" class="empty">No pending approvals. The General Manager approval queue is clear.</td></tr>';return;}
   body.innerHTML=approvals.map(a=>'<tr>'+
