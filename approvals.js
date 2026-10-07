@@ -209,8 +209,13 @@ function payloadCards(a, historical=false){
           ${detailCard('REMARKS',p.remarks||'—',{full:true})}
         </div>
       </div>
-    `;
-  }
+      <div class="review-section review-section-last">
+        <div class="review-section-title"><span>02</span><div><strong>PHOTO EVIDENCE</strong><small>Review the attached Maintenance evidence before deciding.</small></div></div>
+        <div id="repairApprovalPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+          <div style="grid-column:1/-1;padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:800;text-align:center">Loading photo evidence…</div>
+        </div>
+      </div>
+    `;  }
 
   return commonHeader+`
     <div class="review-section">
@@ -372,6 +377,45 @@ function openHistory(id){
   document.getElementById('historyModal').setAttribute('aria-hidden','false');
 }
 
+async function loadRepairApprovalPhotos(approval){
+  if(!approval || approval.request_type!=='REPAIR_REQUEST')return;
+  const grid=document.getElementById('repairApprovalPhotoGrid');
+  if(!grid)return;
+  try{
+    const {data,error}=await supabaseClient
+      .from('repair_request_photos')
+      .select('photo_id,file_path,photo_category,caption,uploaded_at')
+      .eq('repair_request_id',approval.entity_id)
+      .order('uploaded_at',{ascending:false});
+    if(error)throw error;
+    if(!data?.length){
+      grid.innerHTML='<div style="grid-column:1/-1;padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:800;text-align:center">No photo evidence attached.</div>';
+      return;
+    }
+    const signed=await Promise.all(data.map(photo=>supabaseClient.storage.from('repair-evidence').createSignedUrl(photo.file_path,600)));
+    grid.innerHTML=data.map((photo,index)=>{
+      const src=signed[index]?.data?.signedUrl||'';
+      return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff">'+
+        '<div style="height:190px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+          (src?'<img src="'+esc(src)+'" alt="Repair photo evidence" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" data-approval-photo="'+esc(src)+'">':'<div style="color:#94a3b8;font-size:11px;font-weight:800">PHOTO UNAVAILABLE</div>')+
+        '</div>'+
+        '<div style="padding:9px"><div style="font-size:10px;font-weight:900;color:#1e293b">'+esc(photo.photo_category||'OTHER')+'</div>'+
+        (photo.caption?'<div style="margin-top:4px;color:#64748b;font-size:10px">'+esc(photo.caption)+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    grid.querySelectorAll('[data-approval-photo]').forEach(img=>{
+      img.addEventListener('click',()=>{
+        const src=img.getAttribute('data-approval-photo');
+        const win=window.open();
+        if(win)win.document.write('<body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+src+'" style="max-width:96vw;max-height:96vh;object-fit:contain"></body>');
+      });
+    });
+  }catch(error){
+    console.error(error);
+    grid.innerHTML='<div style="grid-column:1/-1;padding:18px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:11px;font-weight:800">Unable to load photo evidence.</div>';
+  }
+}
+
 function openReview(id){
   const approval=approvals.find(a=>a.approval_id===id);if(!approval)return;
   currentApproval=approval;
@@ -380,6 +424,7 @@ function openReview(id){
   document.getElementById('decisionRemarks').value='';
   document.getElementById('approvalModal').classList.remove('hidden');
   document.getElementById('approvalModal').setAttribute('aria-hidden','false');
+  if(approval.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(approval);
 }
 async function decide(decision){
   if(!currentApproval)return;
