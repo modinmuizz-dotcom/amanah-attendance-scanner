@@ -487,36 +487,24 @@ async function openDetailFull(id){
   detail.innerHTML=`
     <div class="detail-grid">
       <div class="detail-box"><h3>Repair Form</h3><div class="detail-text"><strong>${escapeHtml(r.data.repair_form_no)}</strong>\nDate: ${escapeHtml(r.data.request_date)}</div></div>
-      <div class="detail-box"><h3>Status</h3>${statusPill(r.data.status)}<div class="workflow"><span class="step ${["PENDING REVIEW","PENDING APPROVAL","APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">REVIEW</span><span class="step ${["PENDING APPROVAL","APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">APPROVAL</span><span class="step ${["IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">REPAIR</span><span class="step ${["COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">COMPLETE</span></div></div>
+      <div class="detail-box"><h3>Status</h3>${statusPill(r.data.status)}<div class="workflow"><span class="step ${["DRAFT","RETURNED","PENDING APPROVAL","APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">DRAFT</span><span class="step ${["PENDING APPROVAL","APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">GM APPROVAL</span><span class="step ${["APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">REPAIR</span><span class="step ${["COMPLETED","CLOSED"].includes(r.data.status)?"active":""}">COMPLETE</span></div></div>
       <div class="detail-box"><h3>Equipment</h3><div class="detail-text"><strong>${escapeHtml(eq?.equipment_name||r.data.equipment_id)}</strong>\nPlate: ${escapeHtml(r.data.body_plate_no||eq?.plate_number||"—")}</div></div>
       <div class="detail-box"><h3>Project</h3><div class="detail-text">${escapeHtml(project?.project_name||r.data.project_id||"No project assigned")}</div></div>
       <div class="detail-box" style="grid-column:1/-1"><h3>Problems Encountered (Sira)</h3><div class="detail-text">${escapeHtml(r.data.problems_encountered)}</div></div>
       <div class="detail-box">
-        <h3>Reviewer Evidence Check</h3>
-        ${r.data.status === "PENDING REVIEW"
-          ? '<div class="check-row"><input type="checkbox" id="reviewEvidence"> <label for="reviewEvidence">Photo evidence reviewed</label></div>'
-          : '<div style="font-weight:800;color:#64748b">' +
-            (r.data.reviewer_evidence_reviewed ? "✓ Evidence reviewed" : "Not yet required") +
-            '</div>'}
-        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.reviewed_at
-          ? "Reviewed at " + escapeHtml(r.data.reviewed_at)
-          : "Reviewer check is required at Pending Review."}</div>
+        <h3>SUBMISSION CONTROL</h3>
+        <div style="font-weight:800;color:#334155">${r.data.status==="PENDING APPROVAL"?"✓ Submitted to General Manager Approval Center":"Maintenance Officer may continue editing until submission."}</div>
+        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.updated_at?"Last updated: "+escapeHtml(r.data.updated_at):"—"}</div>
       </div>
       <div class="detail-box">
-        <h3>Approver Evidence Check</h3>
-        ${r.data.status === "PENDING APPROVAL"
-          ? '<div class="check-row"><input type="checkbox" id="approveEvidence"> <label for="approveEvidence">Photo evidence reviewed</label></div>'
-          : '<div style="font-weight:800;color:#64748b">' +
-            (r.data.approver_evidence_reviewed ? "✓ Evidence reviewed" : "Not yet required") +
-            '</div>'}
-        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.approved_at
-          ? "Approved at " + escapeHtml(r.data.approved_at)
-          : "Approver check is required at Pending Approval."}</div>
+        <h3>GM DECISION</h3>
+        <div style="font-weight:800;color:#334155">${r.data.status==="APPROVED" ? "✓ APPROVED — Repair may proceed." : r.data.status==="RETURNED" ? "↩ RETURNED — Correct the request and resubmit." : r.data.status==="PENDING APPROVAL" ? "Awaiting General Manager decision." : "No GM decision recorded yet."}</div>
+        <div style="margin-top:8px;color:#64748b;font-size:11px">${r.data.approved_at?"Decision date: "+escapeHtml(r.data.approved_at):"The Approval Center controls the approval decision."}</div>
       </div>
     </div>
 
     <section class="card" style="margin-top:16px;padding:14px">
-      <div class="toolbar"><div><h2 style="font-size:15px">PHOTO EVIDENCE</h2><p class="subtitle">Reviewer and Approver must review the evidence before forwarding or approving.</p></div></div>
+      <div class="toolbar"><div><h2 style="font-size:15px">PHOTO EVIDENCE</h2><p class="subtitle">Repair evidence remains attached to the request. The General Manager reviews the full request in the Approval Center before approval.</p></div></div>
       <div id="photoGrid" class="photo-grid"></div>
     </section>
 
