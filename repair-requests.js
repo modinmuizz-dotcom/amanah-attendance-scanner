@@ -20,7 +20,8 @@ const state = {
   projects: [],
   requests: [],
   selectedRequest: null,
-  selectedFiles: []
+  selectedFiles: [],
+  deleteRequestId: null
 };
 
 function $(id){ return document.getElementById(id); }
@@ -122,9 +123,95 @@ function renderRequests(){
       <td>${escapeHtml(x.reported_by)}</td>
       <td>${Number(x.photo_count||0)} photo(s)</td>
       <td>${statusPill(x.status)}</td>
-      <td><button class="btn btn-blue" type="button" onclick="openDetail('${x.repair_request_id}')">VIEW</button></td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:7px"><button class="btn btn-blue" type="button" onclick="openDetail('${x.repair_request_id}')">VIEW</button>${String(x.status||"").toUpperCase()==="CLOSED" ? '<button class="btn btn-danger" type="button" onclick="openDeleteConfirm(\'${x.repair_request_id}\')">DELETE</button>' : ""}</div></td>
     </tr>
   `).join("");
+}
+
+function openDeleteConfirm(requestId){
+  const request=state.requests.find(x=>String(x.repair_request_id)===String(requestId));
+  if(!request)return;
+  if(String(request.status||"").toUpperCase()!=="CLOSED"){
+    showMessage("Only CLOSED repair requests can be deleted.","error");
+    return;
+  }
+  state.deleteRequestId=request.repair_request_id;
+  const details=$("deleteConfirmDetails");
+  if(details){
+    details.innerHTML="<strong>"+escapeHtml(request.repair_form_no||"Repair Request")+"</strong>"+
+      "<div style='margin-top:5px;color:#64748b;font-size:12px'>"+
+      escapeHtml(request.equipment_name||request.equipment_id||"")+" • "+
+      escapeHtml(request.project_name||"No project")+" • "+
+      escapeHtml(request.request_date||"")+"</div>";
+  }
+  $("deleteConfirmModal").classList.add("open");
+}
+
+function closeDeleteConfirm(){
+  state.deleteRequestId=null;
+  $("deleteConfirmModal").classList.remove("open");
+}
+
+async function deleteRepairRequest(){
+  const requestId=state.deleteRequestId;
+  if(!requestId)return;
+
+  const request=state.requests.find(x=>String(x.repair_request_id)===String(requestId));
+  if(!request){
+    closeDeleteConfirm();
+    return;
+  }
+
+  const button=$("confirmDeleteButton");
+  button.disabled=true;
+  button.textContent="DELETING...";
+
+  try{
+    const photos=await supabaseClient
+      .from("repair_request_photos")
+      .select("file_path")
+      .eq("repair_request_id",requestId);
+
+    if(photos.error)throw photos.error;
+
+    const paths=(photos.data||[]).map(x=>x.file_path).filter(Boolean);
+
+    const {data,error}=await supabaseClient.rpc(
+      "amanah_delete_repair_request",
+      {p_repair_request_id:requestId}
+    );
+
+    if(error)throw error;
+
+    if(paths.length){
+      const storageDelete=await supabaseClient
+        .storage
+        .from("repair-evidence")
+        .remove(paths);
+
+      if(storageDelete.error){
+        console.warn("Repair photo storage cleanup warning:",storageDelete.error);
+      }
+    }
+
+    closeDeleteConfirm();
+    await loadRequests();
+
+    showMessage(
+      (data?.repair_form_no||request.repair_form_no||"Repair Request")+
+      " was deleted successfully.",
+      "success"
+    );
+  }catch(error){
+    console.error("Delete repair request failed:",error);
+    showMessage(
+      error.message||"Unable to delete the Repair Request.",
+      "error"
+    );
+  }finally{
+    button.disabled=false;
+    button.textContent="DELETE REPAIR REQUEST";
+  }
 }
 
 function resetItems(){
@@ -814,6 +901,10 @@ $("addItem").addEventListener("click",()=>addItemRow());
 $("photoInput").addEventListener("change",e=>{state.selectedFiles=[...e.target.files];renderSelectedFiles();});
 $("requestForm").addEventListener("submit",async e=>{e.preventDefault();try{await createRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to create repair request.","error");}});
 $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove("open"));
+$("closeDeleteConfirm").addEventListener("click",closeDeleteConfirm);
+$("cancelDeleteConfirm").addEventListener("click",closeDeleteConfirm);
+$("confirmDeleteButton").addEventListener("click",async()=>{try{await deleteRepairRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to delete the Repair Request.","error");}});
+$("deleteConfirmModal").addEventListener("click",e=>{if(e.target.id==="deleteConfirmModal")closeDeleteConfirm();});
 ["statusFilter","equipmentFilter","projectFilter"].forEach(id=>$(id).addEventListener("change",renderRequests));
 
 (async function(){
