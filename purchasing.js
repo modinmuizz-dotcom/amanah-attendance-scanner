@@ -93,12 +93,13 @@ function startPurchasingRealtime(){
         async payload=>{
           const next=payload.new||{};
           const previous=payload.old||{};
-          if(String(next.status||"")!==String(previous.status||"")){
+          if(String(next.status||"").toUpperCase()==="COMPLETED"){
             await loadOrders();
             renderAll();
-            if(String(next.status||"").toUpperCase()==="COMPLETED"){
-              msg("MATERIALS RECEIVED — "+(next.pickup_request_no||"Pickup Request")+" has been completed by the field operation.","ok");
-            }
+            msg("MATERIALS RECEIVED — "+(next.pickup_request_no||"Pickup Request")+" has been completed by the field operation.","ok");
+          } else if(String(next.status||"")!==String(previous.status||"")){
+            await loadOrders();
+            renderAll();
           }
         }
       )
