@@ -102,12 +102,32 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
       </div>
 
       <div class="card" style="padding:14px;margin-top:16px">
-        <div class="toolbar"><div><h2 style="font-size:15px">PHOTO EVIDENCE</h2><p class="subtitle">PM findings and repair evidence stay attached to the request.</p></div></div>
-        <div class="upload-row" style="margin-top:12px">
-          <div class="field"><label>Photo Category</label><select class="select" id="photoCategory"><option>PM FINDING</option><option>PART / DAMAGE EVIDENCE</option><option>REPAIR BEFORE</option><option>REPAIR DURING</option><option>REPAIR AFTER</option><option>OTHER</option></select></div>
-          <div class="field"><label>Add Photos</label><input class="input" type="file" id="photoInput" accept="image/*" multiple capture="environment"></div>
+        <div class="toolbar">
+          <div>
+            <h2 style="font-size:15px">PHOTO EVIDENCE</h2>
+            <p class="subtitle">Photos are displayed immediately before the Repair Request is saved. Add more evidence at any time while the request is still editable.</p>
+          </div>
+          <button class="btn btn-blue" type="button" id="addPhotoButton">+ ADD PHOTO</button>
         </div>
-        <div id="selectedPhotos" style="margin-top:10px;color:#64748b;font-size:12px"></div>
+        <div class="upload-row" style="margin-top:12px">
+          <div class="field">
+            <label>Photo Category</label>
+            <select class="select" id="photoCategory">
+              <option>PM FINDING</option>
+              <option>PART / DAMAGE EVIDENCE</option>
+              <option>REPAIR BEFORE</option>
+              <option>REPAIR DURING</option>
+              <option>REPAIR AFTER</option>
+              <option>OTHER</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Selected Category</label>
+            <div id="photoCategoryHint" style="min-height:40px;display:flex;align-items:center;padding:0 12px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;color:#475569;font-size:12px;font-weight:800">PM FINDING</div>
+          </div>
+        </div>
+        <input class="input" style="display:none" type="file" id="photoInput" accept="image/*" multiple capture="environment">
+        <div id="selectedPhotos" style="margin-top:12px"></div>
       </div>
 
       <div class="actions">
@@ -162,7 +182,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="repair-requests.js?v=11"></script>
+<script src="repair-requests.js?v=12"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
