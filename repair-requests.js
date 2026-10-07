@@ -1132,13 +1132,31 @@ function openApprovalConfirmation(id){
       "</div>";
   }
 
+  const confirmationModal=$("approvalConfirmModal");
+  if(confirmationModal){
+    // Move the confirmation layer to the document root so it can never sit
+    // behind the detail dialog or another modal stacking context.
+    if(confirmationModal.parentElement!==document.body){
+      document.body.appendChild(confirmationModal);
+    }
+    confirmationModal.style.position="fixed";
+    confirmationModal.style.zIndex="10000";
+    confirmationModal.style.display="flex";
+    confirmationModal.setAttribute("aria-modal","true");
+    confirmationModal.setAttribute("role","dialog");
+  }
   state.approvalConfirmRequestId=id;
-  $("approvalConfirmModal").classList.add("open");
 }
 
 function closeApprovalConfirmation(){
   state.approvalConfirmRequestId=null;
-  $("approvalConfirmModal").classList.remove("open");
+  const modal=$("approvalConfirmModal");
+  if(modal){
+    modal.classList.remove("open");
+    modal.style.display="none";
+    modal.removeAttribute("aria-modal");
+    modal.removeAttribute("role");
+  }
 }
 
 async function submitRepairForApproval(id){
