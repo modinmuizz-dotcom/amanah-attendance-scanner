@@ -127,6 +127,18 @@ function payloadCards(a, historical=false){
     </div>`;
 
   if(a.request_type==='MATERIAL_PICKUP'){
+    const materialLines=Array.isArray(p.materials)?p.materials:[];
+    const materialsHtml=materialLines.length
+      ? '<div class="detail-card detail-card-full"><div class="detail-label">MATERIALS SELECTED FOR PICKUP</div><div class="detail-value">'+
+          materialLines.map(m =>
+            '<div style="padding:9px 0;border-bottom:1px solid #e2e8f0">'+
+              '<strong>'+esc(m.material_name||'Material')+'</strong>'+
+              (m.specifications?' • '+esc(m.specifications):'')+
+              '<div style="margin-top:3px;color:#64748b;font-size:11px">'+esc(m.quantity??'—')+' '+esc(m.unit||'')+'</div>'+
+            '</div>'
+          ).join('')+
+        '</div></div>'
+      : detailCard('MATERIAL',p.material_name||'—');
     return commonHeader+`
       <div class="review-section">
         <div class="review-section-title"><span>01</span><div><strong>MATERIAL PICKUP REQUEST</strong><small>Purchasing pickup request for GM approval</small></div></div>
@@ -135,11 +147,10 @@ function payloadCards(a, historical=false){
           ${detailCard('PURCHASE ORDER',p.purchase_order_no||'—')}
           ${detailCard('PURCHASE REQUEST',p.purchase_request_no||'—')}
           ${detailCard('PROJECT',p.project_name||'—')}
-          ${detailCard('MATERIAL',p.material_name||'—')}
-          ${detailCard('SPECIFICATIONS',p.specifications||'—')}
-          ${detailCard('QUANTITY',String(p.quantity??'—')+' '+String(p.unit||''))}
+          ${materialsHtml}
           ${detailCard('SUPPLIER',p.supplier_name||'—')}
           ${detailCard('PICKUP LOCATION',p.pickup_location||'—',{full:true})}
+          ${detailCard('DELIVER TO SITE',p.delivery_location||p.project_location||'—',{full:true})}
           ${detailCard('PICKUP UNIT',p.equipment_name||p.equipment_id||'—')}
           ${detailCard('PICKUP DATE',p.pickup_date||'—')}
           ${detailCard('SCHEDULED TIME',(p.scheduled_start||p.scheduled_end)?formatDateTime(p.scheduled_start)+' — '+formatDateTime(p.scheduled_end):'—')}
