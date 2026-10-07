@@ -118,6 +118,24 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   </div>
 </div>
 
+
+<div class="modal" id="approvalConfirmModal">
+  <div class="dialog" style="width:min(540px,100%)">
+    <div class="dialog-head">
+      <h2>SUBMIT FOR APPROVAL?</h2>
+      <button class="close" id="closeApprovalConfirm" type="button">×</button>
+    </div>
+    <div style="margin-top:14px;padding:15px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:12px;line-height:1.6">
+      Please confirm that this Repair Request is complete and ready to be reviewed by the General Manager.
+      <div id="approvalConfirmDetails" style="margin-top:10px;padding:10px;border-radius:9px;background:#fff;border:1px solid #dbeafe;color:#334155"></div>
+      <div style="margin-top:10px;font-weight:800">After submission, the request will become PENDING APPROVAL and editing will be locked until the GM returns or approves it.</div>
+    </div>
+    <div class="actions" style="justify-content:flex-end">
+      <button class="btn btn-gray" type="button" id="cancelApprovalConfirm">CANCEL</button>
+      <button class="btn btn-green" type="button" id="confirmApprovalSubmit">YES, SUBMIT FOR APPROVAL</button>
+    </div>
+  </div>
+</div>
 <div class="modal" id="deleteConfirmModal">
   <div class="dialog" style="width:min(520px,100%)">
     <div class="dialog-head">
@@ -144,7 +162,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="repair-requests.js?v=10"></script>
+<script src="repair-requests.js?v=11"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
