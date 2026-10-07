@@ -21,6 +21,7 @@ const state = {
   requests: [],
   selectedRequest: null,
   selectedFiles: [],
+  repairExecutionFiles: [],
   deleteRequestId: null,
   editingRequestId: null,
   approvalConfirmRequestId: null
@@ -774,6 +775,7 @@ async function openDetailFull(id){
           <input class="input" type="file" id="repairPhotoInput" accept="image/*" multiple capture="environment">
         </div>
       </div>
+      <div id="repairPhotoPreview" style="margin-top:12px"></div>
       <div class="actions">
         <button class="btn btn-gray" type="button" id="saveRepairDetails">SAVE REPAIR DETAILS</button>
         <button class="btn btn-blue" type="button" id="uploadRepairPhotos">UPLOAD REPAIR PHOTOS</button>
@@ -949,13 +951,50 @@ async function deleteRepairCost(id){
   showMessage("Repair cost deleted successfully.","success");
 }
 
-async function uploadRepairPhotos(request){
-  const input=document.getElementById("repairPhotoInput");
-  const category=document.getElementById("repairPhotoCategory")?.value;
-  if(!input || !input.files.length) throw new Error("Please choose at least one repair photo.");
-  if(!category) throw new Error("Please select a repair photo category.");
+function renderRepairExecutionPhotoPreview(){
+  const box=document.getElementById("repairPhotoPreview");
+  if(!box)return;
 
-  for(const file of [...input.files]){
+  const files=state.repairExecutionFiles||[];
+  if(!files.length){
+    box.innerHTML='<div style="padding:14px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;text-align:center">No new repair photos selected. Choose a photo and it will appear here before upload.</div>';
+    return;
+  }
+
+  box.innerHTML=
+    '<div style="font-size:11px;font-weight:900;color:#334155;margin-bottom:9px">'+files.length+' photo(s) selected</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">'+
+      files.map((entry,index)=>{
+        const url=URL.createObjectURL(entry.file);
+        return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff">'+
+          '<div style="height:135px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+            '<img src="'+url+'" alt="Selected repair photo" style="width:100%;height:100%;object-fit:cover">'+
+          '</div>'+
+          '<div style="padding:9px">'+
+            '<div style="font-size:10px;font-weight:900;color:#475569">'+escapeHtml(entry.category)+'</div>'+
+            '<button type="button" class="btn btn-gray" data-remove-repair-photo="'+index+'" style="margin-top:8px;width:100%;min-height:32px">REMOVE</button>'+
+          '</div>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+
+  box.querySelectorAll("[data-remove-repair-photo]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const index=Number(btn.dataset.removeRepairPhoto);
+      state.repairExecutionFiles.splice(index,1);
+      renderRepairExecutionPhotoPreview();
+    });
+  });
+}
+
+async function uploadRepairPhotos(request){
+  const files=state.repairExecutionFiles||[];
+  if(!files.length) throw new Error("Please choose at least one repair photo.");
+
+  for(const entry of files){
+    const file=entry.file;
+    const category=entry.category||"REPAIR BEFORE";
+
     const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
     const path=request.repair_request_id+"/"+crypto.randomUUID()+"-"+safe;
 
@@ -977,6 +1016,7 @@ async function uploadRepairPhotos(request){
     if(row.error) throw row.error;
   }
 
+  state.repairExecutionFiles=[];
   await openDetail(request.repair_request_id);
   showMessage("Repair photo evidence uploaded successfully.","success");
 }
@@ -996,6 +1036,25 @@ async function saveRepairDetails(request){
 }
 
 function wireRepairExecutionHandlers(request,photos){
+  state.repairExecutionFiles=state.repairExecutionFiles||[];
+  renderRepairExecutionPhotoPreview();
+
+  const photoInput=document.getElementById("repairPhotoInput");
+  if(photoInput){
+    photoInput.addEventListener("change",event=>{
+      const category=document.getElementById("repairPhotoCategory")?.value||"REPAIR BEFORE";
+      const incoming=[...event.target.files].filter(file=>file.type.startsWith("image/"));
+      if(!incoming.length)return;
+
+      state.repairExecutionFiles.push(
+        ...incoming.map(file=>({file,category}))
+      );
+
+      event.target.value="";
+      renderRepairExecutionPhotoPreview();
+    });
+  }
+
   const save=document.getElementById("saveRepairDetails");
   if(save){
     save.addEventListener("click",async()=>{
