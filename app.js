@@ -4871,6 +4871,10 @@ async function restartScanner() {
     true
   );
 
+  const pickupCard = $('pickupActivitiesCard');
+  if (pickupCard) pickupCard.hidden = true;
+  closePickupActivityModal();
+
   const activityList =
     $('activityList');
 
