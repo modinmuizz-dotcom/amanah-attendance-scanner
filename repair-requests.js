@@ -22,7 +22,8 @@ const state = {
   selectedRequest: null,
   selectedFiles: [],
   deleteRequestId: null,
-  editingRequestId: null
+  editingRequestId: null,
+  approvalConfirmRequestId: null
 };
 
 function $(id){ return document.getElementById(id); }
@@ -891,13 +892,8 @@ function renderDetailActions(){
 
   const submitApproval=document.getElementById("submitRepairApprovalButton");
   if(submitApproval){
-    submitApproval.addEventListener("click",async()=>{
-      try{
-        await submitRepairForApproval(r.repair_request_id);
-      }catch(e){
-        console.error(e);
-        showMessage(e.message||"Unable to submit Repair Request for approval.","error");
-      }
+    submitApproval.addEventListener("click",()=>{
+      openApprovalConfirmation(r.repair_request_id);
     });
   }
 
@@ -934,6 +930,29 @@ function renderDetailActions(){
       await setStatus(r.repair_request_id,"CLOSED");
     });
   }
+}
+
+function openApprovalConfirmation(id){
+  const request=state.selectedRequest?.request;
+  if(!request || String(request.repair_request_id)!==String(id))return;
+
+  const detail=$("approvalConfirmDetails");
+  if(detail){
+    detail.innerHTML=
+      "<strong>"+escapeHtml(request.repair_form_no||"Repair Request")+"</strong>"+
+      "<div style='margin-top:5px;color:#64748b'>"+
+      escapeHtml(state.equipment.find(x=>x.equipment_id===request.equipment_id)?.equipment_name||request.equipment_id||"")+
+      " • "+escapeHtml(state.projects.find(x=>x.project_id===request.project_id)?.project_name||request.project_id||"No project")+
+      "</div>";
+  }
+
+  state.approvalConfirmRequestId=id;
+  $("approvalConfirmModal").classList.add("open");
+}
+
+function closeApprovalConfirmation(){
+  state.approvalConfirmRequestId=null;
+  $("approvalConfirmModal").classList.remove("open");
 }
 
 async function submitRepairForApproval(id){
@@ -1038,6 +1057,26 @@ $("addItem").addEventListener("click",()=>addItemRow());
 $("photoInput").addEventListener("change",e=>{state.selectedFiles=[...e.target.files];renderSelectedFiles();});
 $("requestForm").addEventListener("submit",async e=>{e.preventDefault();try{await createRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to create repair request.","error");}});
 $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove("open"));
+$("closeApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
+$("cancelApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
+$("approvalConfirmModal").addEventListener("click",e=>{if(e.target.id==="approvalConfirmModal")closeApprovalConfirmation();});
+$("confirmApprovalSubmit").addEventListener("click",async()=>{
+  const id=state.approvalConfirmRequestId;
+  if(!id)return;
+  const btn=$("confirmApprovalSubmit");
+  btn.disabled=true;
+  btn.textContent="SUBMITTING...";
+  try{
+    await submitRepairForApproval(id);
+    closeApprovalConfirmation();
+  }catch(err){
+    console.error(err);
+    showMessage(err.message||"Unable to submit Repair Request for approval.","error");
+  }finally{
+    btn.disabled=false;
+    btn.textContent="YES, SUBMIT FOR APPROVAL";
+  }
+});
 $("closeDeleteConfirm").addEventListener("click",closeDeleteConfirm);
 $("cancelDeleteConfirm").addEventListener("click",closeDeleteConfirm);
 $("confirmDeleteButton").addEventListener("click",async()=>{try{await deleteRepairRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to delete the Repair Request.","error");}});
