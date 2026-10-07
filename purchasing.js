@@ -832,12 +832,15 @@ function closeSupplyModal(){
 async function saveSupplyStatus(){
  const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
  if(!item)return;
+
  if(item.supply_status_locked||["AVAILABLE","UNAVAILABLE","RECEIVED"].includes(String(item.supply_status||"").toUpperCase())){
    return showSupplyValidation("Supplier availability has already been recorded and is locked.");
  }
 
  const status=document.getElementById("supplyStatus").value;
- if(!["AVAILABLE","UNAVAILABLE"].includes(status))return showSupplyValidation("Choose AVAILABLE or UNAVAILABLE.");
+ if(!["AVAILABLE","UNAVAILABLE"].includes(status)){
+   return showSupplyValidation("Choose AVAILABLE or UNAVAILABLE.");
+ }
 
  const unitPriceRaw=document.getElementById("supplyUnitPrice").value;
  const unitPrice=unitPriceRaw===""?null:Number(unitPriceRaw);
@@ -849,46 +852,85 @@ async function saveSupplyStatus(){
  const substituteSpecifications=status==="UNAVAILABLE"?(document.getElementById("supplySubstituteSpecifications").value.trim()||null):null;
  const ordered=Number(item.quantity||0);
 
- if(status==="AVAILABLE"&&(confirmed<=0||confirmed>ordered))return showSupplyValidation("Enter the exact quantity confirmed available by the supplier.");
- if(status==="UNAVAILABLE"&&confirmed!==0)return showSupplyValidation("Set confirmed quantity to 0 when the supplier says the material is unavailable.");
- if(status==="UNAVAILABLE"&&!supplierRemarks)return showSupplyValidation("Please record the supplier's reason or availability remarks.");
- if(status==="UNAVAILABLE"&&substituteStatus==="PROPOSED"&&!substituteMaterial)return showSupplyValidation("Enter the proposed substitute material.");
- if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0))return showSupplyValidation("Unit price must be blank or zero and above.");
+ if(status==="AVAILABLE"&&(confirmed<=0||confirmed>ordered)){
+   return showSupplyValidation("Enter the exact quantity confirmed available by the supplier.");
+ }
+ if(status==="UNAVAILABLE"&&confirmed!==0){
+   return showSupplyValidation("Set confirmed quantity to 0 when the supplier says the material is unavailable.");
+ }
+ if(status==="UNAVAILABLE"&&!supplierRemarks){
+   return showSupplyValidation("Please record the supplier's reason or availability remarks.");
+ }
+ if(status==="UNAVAILABLE"&&substituteStatus==="PROPOSED"&&!substituteMaterial){
+   return showSupplyValidation("Enter the proposed substitute material.");
+ }
+ if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0)){
+   return showSupplyValidation("Unit price must be blank or zero and above.");
+ }
 
  const btn=document.getElementById("saveSupply");
- btn.disabled=true;btn.textContent="SAVING...";
+ btn.disabled=true;
+ btn.textContent="SAVING...";
 
  try{
-   const {data:savedItem,error}=await supabaseClient.from("purchase_order_items").update({
-     supply_status:status,
-     supply_status_locked:true,
-     supply_status_locked_at:new Date().toISOString(),
-     unit_price:unitPrice,
-     confirmed_quantity:confirmed,
-     ready_for_pickup_quantity:0,
-     expected_availability_date:availability,
-     supplier_remarks:supplierRemarks,
-     substitute_material_name:substituteMaterial,
-     substitute_specifications:substituteSpecifications,
-     substitute_status:substituteStatus
-   }).eq("purchase_order_item_id",item.purchase_order_item_id).select("*").single();
+   const {data:savedItem,error}=await supabaseClient
+     .from("purchase_order_items")
+     .update({
+       supply_status:status,
+       supply_status_locked:true,
+       supply_status_locked_at:new Date().toISOString(),
+       unit_price:unitPrice,
+       confirmed_quantity:confirmed,
+       ready_for_pickup_quantity:0,
+       expected_availability_date:availability,
+       supplier_remarks:supplierRemarks,
+       substitute_material_name:substituteMaterial,
+       substitute_specifications:substituteSpecifications,
+       substitute_status:substituteStatus
+     })
+     .eq("purchase_order_item_id",item.purchase_order_item_id)
+     .select("*")
+     .single();
+
    if(error)throw error;
 
    const savedIndex=state.orderItems.findIndex(x=>x.purchase_order_item_id===item.purchase_order_item_id);
-   if(savedIndex>=0)state.orderItems[savedIndex]={...state.orderItems[savedIndex},...savedItem};
+   if(savedIndex>=0){
+     state.orderItems[savedIndex]={...state.orderItems[savedIndex],...savedItem};
+   }
 
-   const {data:poItems,error:itemsError}=await supabaseClient.from("purchase_order_items").select("quantity,unit_price").eq("purchase_order_id",item.purchase_order_id);
+   const {data:poItems,error:itemsError}=await supabaseClient
+     .from("purchase_order_items")
+     .select("quantity,unit_price")
+     .eq("purchase_order_id",item.purchase_order_id);
    if(itemsError)throw itemsError;
-   const subtotal=(poItems||[]).reduce((sum,x)=>sum+(x.unit_price==null?0:Number(x.quantity||0)*Number(x.unit_price||0)),0);
-   const {error:poUpdateError}=await supabaseClient.from("purchase_orders").update({subtotal,grand_total:subtotal}).eq("purchase_order_id",item.purchase_order_id);
+
+   const subtotal=(poItems||[]).reduce(
+     (sum,x)=>sum+(x.unit_price==null?0:Number(x.quantity||0)*Number(x.unit_price||0)),
+     0
+   );
+
+   const {error:poUpdateError}=await supabaseClient
+     .from("purchase_orders")
+     .update({subtotal,grand_total:subtotal})
+     .eq("purchase_order_id",item.purchase_order_id);
    if(poUpdateError)throw poUpdateError;
 
-   const {error:poStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_order_status",{p_purchase_order_id:item.purchase_order_id});
+   const {error:poStatusError}=await supabaseClient.rpc(
+     "amanah_refresh_purchase_order_status",
+     {p_purchase_order_id:item.purchase_order_id}
+   );
    if(poStatusError)throw poStatusError;
 
-   const requestItem=state.requestItems.find(ri=>ri.purchase_request_item_id===item.purchase_request_item_id);
+   const requestItem=state.requestItems.find(
+     ri=>ri.purchase_request_item_id===item.purchase_request_item_id
+   );
+
    if(requestItem){
-     const {error:reqError}=await supabaseClient.rpc("amanah_refresh_purchase_request_status",{p_purchase_request_id:requestItem.purchase_request_id});
+     const {error:reqError}=await supabaseClient.rpc(
+       "amanah_refresh_purchase_request_status",
+       {p_purchase_request_id:requestItem.purchase_request_id}
+     );
      if(reqError)throw reqError;
    }
 
@@ -896,16 +938,26 @@ async function saveSupplyStatus(){
    await Promise.all([loadRequests(),loadOrders()]);
    renderAll();
    await openPODetails(item.purchase_order_id);
-   const refreshedItem=state.orderItems.find(x=>x.purchase_order_item_id===item.purchase_order_item_id);
-   if(refreshedItem)await openSupplyModal(refreshedItem.purchase_order_item_id);
-   msg(status==="AVAILABLE"
-     ?"Supplier availability saved. The status is locked. REQUEST MATERIAL PICKUP is now available for the confirmed quantity."
-     :"Supplier marked the material unavailable. Substitute details are now visible and the status is locked.","ok");
+
+   const refreshedItem=state.orderItems.find(
+     x=>x.purchase_order_item_id===item.purchase_order_item_id
+   );
+   if(refreshedItem){
+     await openSupplyModal(refreshedItem.purchase_order_item_id);
+   }
+
+   msg(
+     status==="AVAILABLE"
+       ? "Supplier availability saved. The status is locked. REQUEST MATERIAL PICKUP is now available for the confirmed quantity."
+       : "Supplier marked the material unavailable. Substitute details are now visible and the status is locked.",
+     "ok"
+   );
  }catch(error){
-   console.error(error);
+   console.error("Supplier availability save failed:",error);
    showSupplyValidation(error.message||"Unable to save supplier availability.");
  }finally{
-   btn.disabled=false;btn.textContent="SAVE SUPPLY STATUS";
+   btn.disabled=false;
+   btn.textContent="SAVE SUPPLY STATUS";
  }
 }
 
