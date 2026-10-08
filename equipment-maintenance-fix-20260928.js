@@ -573,8 +573,7 @@ function openModal(record = null) {
     $("remarks").value =
       record.remarks || "";
 
-    $("saveButton").textContent =
-      "UPDATE MAINTENANCE";
+    $("saveButton").textContent = "SAVE";
 
     $("modalBackdrop").classList.add("open");
 
@@ -584,7 +583,7 @@ function openModal(record = null) {
 
   } else {
     $("modalTitle").textContent = "ADD MAINTENANCE";
-    $("saveButton").textContent = "SAVE MAINTENANCE";
+    $("saveButton").textContent = "SAVE";
     $("modalBackdrop").classList.add("open");
   }
 }
@@ -791,174 +790,99 @@ async function deleteExistingMaintenancePhoto(photoId, storagePath) {
   }
 }
 
-async function saveRecord(event) {
-  event.preventDefault();
-  clearMessage();
+function getMaintenancePayload(){
+  return {
+    equipment_id: $("equipmentId").value,
+    project_id: $("projectId").value || null,
+    maintenance_date: $("maintenanceDate").value,
+    maintenance_type: $("maintenanceType").value,
+    description: $("description").value.trim(),
+    supplier_shop: $("supplierShop").value.trim() || null,
+    reference_no: $("referenceNo").value.trim() || null,
+    quantity: Number($("quantity").value || 0),
+    unit: $("unit").value.trim() || "LOT",
+    unit_cost: Number($("unitCost").value || 0),
+    remarks: $("remarks").value.trim() || null
+  };
+}
 
-  const button = $("saveButton");
-  button.disabled = true;
-  const editingRecordId =
-    state.editingId;
+function validateMaintenancePayload(payload){
+  if (!payload.equipment_id)
+    throw new Error("Please select equipment.");
 
-  const isEditing =
-    !!editingRecordId;
+  if (!payload.maintenance_date)
+    throw new Error("Please select the date.");
 
-  button.textContent =
-    isEditing
-      ? "UPDATING..."
-      : "SAVING...";
+  if (!payload.maintenance_type)
+    throw new Error("Please select a maintenance type.");
 
-  try {
-    const payload = {
-      equipment_id: $("equipmentId").value,
-      project_id: $("projectId").value || null,
-      maintenance_date: $("maintenanceDate").value,
-      maintenance_type: $("maintenanceType").value,
-      description: $("description").value.trim(),
-      supplier_shop: $("supplierShop").value.trim() || null,
-      reference_no: $("referenceNo").value.trim() || null,
-      quantity: Number($("quantity").value || 0),
-      unit: $("unit").value.trim() || "LOT",
-      unit_cost: Number($("unitCost").value || 0),
-      remarks: $("remarks").value.trim() || null
-    };
+  if (!payload.description)
+    throw new Error("Please enter a description.");
 
-    if (!payload.equipment_id)
-      throw new Error("Please select equipment.");
+  if (payload.quantity < 0)
+    throw new Error("Quantity cannot be negative.");
 
-    if (!payload.maintenance_date)
-      throw new Error("Please select the date.");
+  if (payload.unit_cost < 0)
+    throw new Error("Unit cost cannot be negative.");
+}
 
-    if (!payload.description)
-      throw new Error("Please enter a description.");
+async function persistMaintenanceRecord(){
+  const editingRecordId = state.editingId;
+  const isEditing = !!editingRecordId;
+  const payload = getMaintenancePayload();
 
-    if (payload.quantity < 0)
-      throw new Error("Quantity cannot be negative.");
+  validateMaintenancePayload(payload);
 
-    if (payload.unit_cost < 0)
-      throw new Error("Unit cost cannot be negative.");
+  const totalAmount =
+    Number(payload.quantity || 0) *
+    Number(payload.unit_cost || 0);
 
-    const totalAmount =
-      Number(payload.quantity || 0) *
-      Number(payload.unit_cost || 0);
+  if (isEditing) {
+    /*
+      SAVE/EDIT MODE:
+      Never submit or create an approval request automatically.
+      The existing approval state stays exactly as it is.
+    */
+    const existingRecord = state.records.find(
+      row => row.maintenance_id === editingRecordId
+    );
 
-    if (state.editingId) {
-      /*
-        EDIT MODE:
-        Updating an existing maintenance record MUST NOT create or resubmit
-        an approval request. The existing approval state is preserved.
+    const existingApprovalStatus =
+      existingRecord?.approval_status || "NOT REQUIRED";
 
-        If the record is already PENDING, only the existing pending approval's
-        details are refreshed so the GM sees the latest edited information.
-      */
-      const existingRecord = state.records.find(
-        row => row.maintenance_id === editingRecordId
-      );
+    const result =
+      await supabaseClient
+        .from("equipment_maintenance")
+        .update(payload)
+        .eq("maintenance_id", editingRecordId);
 
-      const existingApprovalStatus =
-        existingRecord?.approval_status || "NOT REQUIRED";
+    if (result.error)
+      throw result.error;
 
-      const result =
-        await supabaseClient
-          .from("equipment_maintenance")
-          .update(payload)
-          .eq(
-            "maintenance_id",
-            editingRecordId
-          );
+    await uploadPhotosForMaintenance(editingRecordId);
 
-      if (result.error)
-        throw result.error;
+    const equipmentName =
+      equipmentNameById(payload.equipment_id);
 
-      await uploadPhotosForMaintenance(
-        editingRecordId
-      );
+    const projectName =
+      projectNameById(payload.project_id);
 
-      const equipmentName =
-        equipmentNameById(payload.equipment_id);
-
-      const projectName =
-        projectNameById(payload.project_id);
-
-      if (existingApprovalStatus === "PENDING") {
-        const { error: approvalUpdateError } =
-          await supabaseClient.rpc(
-            "amanah_update_pending_maintenance_approval",
-            {
-              p_entity_id: editingRecordId,
-              p_title:
-                equipmentName +
-                " — " +
-                (payload.maintenance_type || "MAINTENANCE"),
-              p_description:
-                "Maintenance request details were updated. Existing General Manager approval request retained.",
-              p_payload: {
-                equipment_id: payload.equipment_id,
-                equipment_name: equipmentName,
-                project_id: payload.project_id || "",
-                project_name: projectName,
-                maintenance_date: payload.maintenance_date,
-                maintenance_type: payload.maintenance_type,
-                description: payload.description,
-                supplier_shop: payload.supplier_shop || "",
-                reference_no: payload.reference_no || "",
-                quantity: payload.quantity,
-                unit: payload.unit,
-                unit_cost: payload.unit_cost,
-                total_amount: totalAmount,
-                remarks: payload.remarks || ""
-              }
-            }
-          );
-
-        if (approvalUpdateError)
-          throw approvalUpdateError;
-      }
-
-      closeModal();
-
-      showMessage(
-        existingApprovalStatus === "PENDING"
-          ? "Maintenance changes saved. The existing GM approval request was updated; no new approval request was created."
-          : "Maintenance changes saved successfully. The approval status was not changed.",
-        "success"
-      );
-
-    } else {
-      /*
-        total_amount is generated by the database from
-        quantity × unit_cost. Do not send a value for it.
-      */
-      payload.approval_status = "PENDING";
-      payload.approval_requested_at = new Date().toISOString();
-
-      const result =
-        await supabaseClient
-          .from("equipment_maintenance")
-          .insert(payload)
-          .select()
-          .single();
-
-      if (result.error)
-        throw result.error;
-
-      const maintenanceId =
-        result.data?.maintenance_id;
-
-      await uploadPhotosForMaintenance(
-        maintenanceId
-      );
-
-      const equipmentName = equipmentNameById(payload.equipment_id);
-      const projectName = projectNameById(payload.project_id);
-      const { error: approvalError } =
+    /*
+      When an approval is already PENDING, refresh the existing approval
+      details only. This does not submit another approval request.
+    */
+    if (existingApprovalStatus === "PENDING") {
+      const { error: approvalUpdateError } =
         await supabaseClient.rpc(
-          "amanah_submit_approval",
+          "amanah_update_pending_maintenance_approval",
           {
-            p_request_type: "MAINTENANCE",
-            p_entity_id: maintenanceId,
-            p_title: equipmentName + " — " + (payload.maintenance_type || "MAINTENANCE"),
-            p_description: "Maintenance request submitted for General Manager approval.",
+            p_entity_id: editingRecordId,
+            p_title:
+              equipmentName +
+              " — " +
+              (payload.maintenance_type || "MAINTENANCE"),
+            p_description:
+              "Maintenance request details updated. Existing General Manager approval request retained.",
             p_payload: {
               equipment_id: payload.equipment_id,
               equipment_name: equipmentName,
@@ -968,39 +892,179 @@ async function saveRecord(event) {
               maintenance_type: payload.maintenance_type,
               description: payload.description,
               supplier_shop: payload.supplier_shop || "",
-              total_amount: totalAmount
+              reference_no: payload.reference_no || "",
+              quantity: payload.quantity,
+              unit: payload.unit,
+              unit_cost: payload.unit_cost,
+              total_amount: totalAmount,
+              remarks: payload.remarks || ""
             }
           }
         );
 
-      if (approvalError)
-        throw approvalError;
-
-      closeModal();
-
-      showMessage(
-        "Maintenance request submitted for General Manager approval.",
-        "success"
-      );
+      if (approvalUpdateError)
+        throw approvalUpdateError;
     }
 
-    await loadRecords();
+    return {
+      maintenanceId: editingRecordId,
+      payload,
+      totalAmount,
+      existingApprovalStatus,
+      isEditing: true
+    };
+  }
 
+  /*
+    NEW RECORD:
+    Save as a draft only. approval_status remains the database default
+    (NOT REQUIRED) until the user explicitly clicks SUBMIT FOR APPROVAL.
+  */
+  const result =
+    await supabaseClient
+      .from("equipment_maintenance")
+      .insert(payload)
+      .select()
+      .single();
+
+  if (result.error)
+    throw result.error;
+
+  const maintenanceId =
+    result.data?.maintenance_id;
+
+  if (!maintenanceId)
+    throw new Error("Maintenance record was saved but its ID was not returned.");
+
+  await uploadPhotosForMaintenance(maintenanceId);
+
+  return {
+    maintenanceId,
+    payload,
+    totalAmount,
+    existingApprovalStatus: "NOT REQUIRED",
+    isEditing: false
+  };
+}
+
+async function saveRecord(event){
+  event?.preventDefault();
+  clearMessage();
+
+  const button = $("saveButton");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "SAVING...";
+  }
+
+  try {
+    await persistMaintenanceRecord();
+
+    closeModal();
+
+    showMessage(
+      "Maintenance record saved successfully. No approval request was sent.",
+      "success"
+    );
+
+    await loadRecords();
   } catch (error) {
     console.error(error);
 
     showMessage(
-      error.message ||
-        "Unable to save maintenance record.",
+      error.message || "Unable to save maintenance record.",
       "error"
     );
-
   } finally {
-    button.disabled = false;
-    button.textContent =
-      isEditing
-        ? "UPDATE MAINTENANCE"
-        : "SAVE MAINTENANCE";
+    if (button) {
+      button.disabled = false;
+      button.textContent = "SAVE";
+    }
+  }
+}
+
+async function submitMaintenanceForApproval(){
+  clearMessage();
+
+  const saveButton = $("saveButton");
+  const submitButton = $("submitApprovalButton");
+
+  if (saveButton) saveButton.disabled = true;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "SUBMITTING...";
+  }
+
+  try {
+    const confirmed = window.confirm(
+      "Submit this Maintenance Request to the General Manager for approval?\n\nAfter submission, the request will be marked PENDING and the GM can review it in the Approval Center."
+    );
+
+    if (!confirmed) return;
+
+    const saved = await persistMaintenanceRecord();
+
+    const equipmentName =
+      equipmentNameById(saved.payload.equipment_id);
+
+    const projectName =
+      projectNameById(saved.payload.project_id);
+
+    const { error: approvalError } =
+      await supabaseClient.rpc(
+        "amanah_submit_approval",
+        {
+          p_request_type: "MAINTENANCE",
+          p_entity_id: saved.maintenanceId,
+          p_title:
+            equipmentName +
+            " — " +
+            (saved.payload.maintenance_type || "MAINTENANCE"),
+          p_description:
+            "Maintenance request submitted for General Manager approval.",
+          p_payload: {
+            equipment_id: saved.payload.equipment_id,
+            equipment_name: equipmentName,
+            project_id: saved.payload.project_id || "",
+            project_name: projectName,
+            maintenance_date: saved.payload.maintenance_date,
+            maintenance_type: saved.payload.maintenance_type,
+            description: saved.payload.description,
+            supplier_shop: saved.payload.supplier_shop || "",
+            reference_no: saved.payload.reference_no || "",
+            quantity: saved.payload.quantity,
+            unit: saved.payload.unit,
+            unit_cost: saved.payload.unit_cost,
+            total_amount: saved.totalAmount,
+            remarks: saved.payload.remarks || ""
+          }
+        }
+      );
+
+    if (approvalError)
+      throw approvalError;
+
+    closeModal();
+
+    showMessage(
+      "Maintenance Request has been sent to the Approval Center for General Manager approval.",
+      "success"
+    );
+
+    await loadRecords();
+  } catch (error) {
+    console.error(error);
+
+    showMessage(
+      error.message || "Unable to submit maintenance request for approval.",
+      "error"
+    );
+  } finally {
+    if (saveButton) saveButton.disabled = false;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "SUBMIT FOR APPROVAL";
+    }
   }
 }
 
