@@ -128,7 +128,7 @@ function renderRequests(){
       '<td>'+statusPill(x.status)+'</td>' +
       '<td><div style="display:flex;flex-wrap:wrap;gap:7px">' +
         '<button class="btn btn-blue" type="button" data-repair-view="'+escapeHtml(x.repair_request_id)+'">VIEW</button>' +
-        (String(x.status||"").toUpperCase()==="CLOSED" ? '<button class="btn btn-danger" type="button" data-repair-delete="'+escapeHtml(x.repair_request_id)+'">DELETE</button>' : '') +
+        '<button class="btn btn-danger" type="button" data-repair-delete="'+escapeHtml(x.repair_request_id)+'">DELETE</button>' +
       '</div></td>' +
     '</tr>'
   ).join("");
@@ -144,10 +144,6 @@ function renderRequests(){
 function openDeleteConfirm(requestId){
   const request=state.requests.find(x=>String(x.repair_request_id)===String(requestId));
   if(!request)return;
-  if(String(request.status||"").toUpperCase()!=="CLOSED"){
-    showMessage("Only CLOSED repair requests can be deleted.","error");
-    return;
-  }
   state.deleteRequestId=request.repair_request_id;
   const details=$("deleteConfirmDetails");
   if(details){
