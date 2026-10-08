@@ -2,7 +2,7 @@ const SUPABASE_URL="https://bafmycjninxomufhkjvy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 
-const state={projects:[],employees:[],equipment:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],pickupRequests:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,pickupItemId:null,bulkPickupOrderId:null,deliverOrderId:null,access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
+const state={projects:[],employees:[],equipment:[],suppliers:[],requests:[],requestItems:[],orders:[],orderItems:[],pickupRequests:[],activeRequestId:null,activeOrderId:null,activeTab:"requests",prDraftItems:[],poDraftRequest:null,editingRequestId:null,editingOrderId:null,confirmResolver:null,supplyItemId:null,alternativeSourceItemId:null,alternativeSourceSupplierId:null,pickupItemId:null,bulkPickupOrderId:null,deliverOrderId:null,filters:{prSearch:"",prStatus:"",prProject:"",poSearch:"",poStatus:"",poProject:""},access:{role:"UNASSIGNED",permissions:new Set(),canManage:false,canApprove:false}};
 
 function esc(v){return v==null?"":String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -241,42 +241,81 @@ function bind(){
    updateSupplyConditionalFields(status);
  });document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
  /*
-    FILTER EVENTS:
-    Use delegated events as well as element handlers. This keeps the filters
-    working even when the table/UI is re-rendered or the page is entered
-    through the shared navigation.
+    FILTER STATE:
+    Keep filter values in application state so refreshes/re-renders cannot
+    bypass the user selection.
   */
- const prSearch=document.getElementById("prSearch");
- const prStatus=document.getElementById("prStatus");
- const prProject=document.getElementById("prProject");
- const poSearch=document.getElementById("poSearch");
- const poStatus=document.getElementById("poStatus");
- const poProject=document.getElementById("poProject");
-
- if(prSearch)prSearch.oninput=renderRequests;
- if(prStatus)prStatus.onchange=renderRequests;
- if(prProject)prProject.onchange=renderRequests;
- if(poSearch)poSearch.oninput=renderOrders;
- if(poStatus)poStatus.onchange=renderOrders;
- if(poProject)poProject.onchange=renderOrders;
-
- const resetPr=document.getElementById("clearPrFilters");
- const resetPo=document.getElementById("clearPoFilters");
-
- if(resetPr)resetPr.onclick=()=>{
-   if(prSearch)prSearch.value="";
-   if(prStatus)prStatus.value="";
-   if(prProject)prProject.value="";
+ const syncPrFilters=()=>{
+   state.filters.prSearch=document.getElementById("prSearch").value||"";
+   state.filters.prStatus=document.getElementById("prStatus").value||"";
+   state.filters.prProject=document.getElementById("prProject").value||"";
+ };
+ const syncPoFilters=()=>{
+   state.filters.poSearch=document.getElementById("poSearch").value||"";
+   state.filters.poStatus=document.getElementById("poStatus").value||"";
+   state.filters.poProject=document.getElementById("poProject").value||"";
+ };
+ document.getElementById("prSearch").oninput=()=>{syncPrFilters();renderRequests();};
+ document.getElementById("prStatus").onchange=()=>{syncPrFilters();renderRequests();};
+ document.getElementById("prProject").onchange=()=>{syncPrFilters();renderRequests();};
+ document.getElementById("poSearch").oninput=()=>{syncPoFilters();renderOrders();};
+ document.getElementById("poStatus").onchange=()=>{syncPoFilters();renderOrders();};
+ document.getElementById("poProject").onchange=()=>{syncPoFilters();renderOrders();};
+ document.getElementById("clearPrFilters").onclick=()=>{
+   state.filters.prSearch="";state.filters.prStatus="";state.filters.prProject="";
+   document.getElementById("prSearch").value="";
+   document.getElementById("prStatus").value="";
+   document.getElementById("prProject").value="";
    renderRequests();
  };
-
- if(resetPo)resetPo.onclick=()=>{
-   if(poSearch)poSearch.value="";
-   if(poStatus)poStatus.value="";
-   if(poProject)poProject.value="";
+ document.getElementById("clearPoFilters").onclick=()=>{
+   state.filters.poSearch="";state.filters.poStatus="";state.filters.poProject="";
+   document.getElementById("poSearch").value="";
+   document.getElementById("poStatus").value="";
+   document.getElementById("poProject").value="";
    renderOrders();
  };
 }
+
+// Global delegated Purchasing filter fallback.
+// This remains active even if another component rebinds or rerenders controls.
+document.addEventListener("input",event=>{
+  if(event.target?.id==="prSearch"){state.filters.prSearch=event.target.value||"";renderRequests();}
+  if(event.target?.id==="poSearch"){state.filters.poSearch=event.target.value||"";renderOrders();}
+});
+document.addEventListener("change",event=>{
+  if(event.target?.id==="prStatus"||event.target?.id==="prProject"){
+    state.filters.prStatus=document.getElementById("prStatus").value||"";
+    state.filters.prProject=document.getElementById("prProject").value||"";
+    renderRequests();
+  }
+  if(event.target?.id==="poStatus"||event.target?.id==="poProject"){
+    state.filters.poStatus=document.getElementById("poStatus").value||"";
+    state.filters.poProject=document.getElementById("poProject").value||"";
+    renderOrders();
+  }
+});
+document.addEventListener("click",event=>{
+  const prReset=event.target.closest("#clearPrFilters");
+  if(prReset){
+    event.preventDefault();
+    state.filters.prSearch=state.filters.prStatus=state.filters.prProject="";
+    document.getElementById("prSearch").value="";
+    document.getElementById("prStatus").value="";
+    document.getElementById("prProject").value="";
+    renderRequests();
+    return;
+  }
+  const poReset=event.target.closest("#clearPoFilters");
+  if(poReset){
+    event.preventDefault();
+    state.filters.poSearch=state.filters.poStatus=state.filters.poProject="";
+    document.getElementById("poSearch").value="";
+    document.getElementById("poStatus").value="";
+    document.getElementById("poProject").value="";
+    renderOrders();
+  }
+});
 function switchTab(tab){state.activeTab=tab;document.getElementById("requestsPanel").style.display=tab==="requests"?"block":"none";document.getElementById("ordersPanel").style.display=tab==="orders"?"block":"none";document.getElementById("tabRequests").classList.toggle("active",tab==="requests");document.getElementById("tabOrders").classList.toggle("active",tab==="orders");}
 async function loadProjects(){
  let data,error;
@@ -290,8 +329,12 @@ async function loadProjects(){
  const opts='<option value="">SELECT PROJECT</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+(p.location?" — "+esc(p.location):"")+'</option>').join("");
  document.getElementById("requestProject").innerHTML=opts;
  const filter='<option value="">ALL PROJECTS</option>'+state.projects.map(p=>'<option value="'+esc(p.project_id)+'">'+esc(p.project_name)+'</option>').join("");
+ const currentPr=state.filters.prProject||document.getElementById("prProject").value||"";
+ const currentPo=state.filters.poProject||document.getElementById("poProject").value||"";
  document.getElementById("prProject").innerHTML=filter;
  document.getElementById("poProject").innerHTML=filter;
+ document.getElementById("prProject").value=currentPr;
+ document.getElementById("poProject").value=currentPo;
 }
 async function loadEmployees(){
  let data,error;
@@ -459,9 +502,9 @@ async function cancelPurchaseRequest(id){
   }
 }
 function renderRequests(){
- const q=(document.getElementById("prSearch").value||"").toLowerCase().trim();
- const status=String(document.getElementById("prStatus").value||"").trim().toUpperCase();
- const pid=String(document.getElementById("prProject").value||"").trim();
+ const q=String(state.filters.prSearch||"").toLowerCase().trim();
+ const status=String(state.filters.prStatus||"").trim().toUpperCase();
+ const pid=String(state.filters.prProject||"").trim();
  const rows=state.requests.filter(r=>{
    const rowStatus=String(r.status||"").trim().toUpperCase();
    const rowProject=String(r.project_id||"").trim();
@@ -507,9 +550,9 @@ document.addEventListener("click",function(event){
 });
 
 function renderOrders(){
- const q=(document.getElementById("poSearch").value||"").toLowerCase().trim();
- const status=String(document.getElementById("poStatus").value||"").trim().toUpperCase();
- const pid=String(document.getElementById("poProject").value||"").trim();
+ const q=String(state.filters.poSearch||"").toLowerCase().trim();
+ const status=String(state.filters.poStatus||"").trim().toUpperCase();
+ const pid=String(state.filters.poProject||"").trim();
  const rows=state.orders.filter(o=>{
    const rowStatus=String(o.status||"").trim().toUpperCase();
    const rowProject=String(o.project_id||"").trim();
