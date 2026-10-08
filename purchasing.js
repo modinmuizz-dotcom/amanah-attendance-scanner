@@ -240,10 +240,37 @@ function bind(){
    }
    updateSupplyConditionalFields(status);
  });document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
- ["prSearch","prStatus","prProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderRequests));
- ["poSearch","poStatus","poProject"].forEach(id=>document.getElementById(id).addEventListener("input",renderOrders));
- document.getElementById("clearPrFilters").addEventListener("click",()=>{document.getElementById("prSearch").value="";document.getElementById("prStatus").value="";document.getElementById("prProject").value="";renderRequests();});
- document.getElementById("clearPoFilters").addEventListener("click",()=>{document.getElementById("poSearch").value="";document.getElementById("poStatus").value="";document.getElementById("poProject").value="";renderOrders();});
+ ["prSearch"].forEach(id=>{
+   const el=document.getElementById(id);
+   if(el)el.addEventListener("input",renderRequests);
+ });
+ ["prStatus","prProject"].forEach(id=>{
+   const el=document.getElementById(id);
+   if(el)el.addEventListener("change",renderRequests);
+ });
+
+ ["poSearch"].forEach(id=>{
+   const el=document.getElementById(id);
+   if(el)el.addEventListener("input",renderOrders);
+ });
+ ["poStatus","poProject"].forEach(id=>{
+   const el=document.getElementById(id);
+   if(el)el.addEventListener("change",renderOrders);
+ });
+
+ document.getElementById("clearPrFilters").addEventListener("click",()=>{
+   document.getElementById("prSearch").value="";
+   document.getElementById("prStatus").value="";
+   document.getElementById("prProject").value="";
+   renderRequests();
+ });
+
+ document.getElementById("clearPoFilters").addEventListener("click",()=>{
+   document.getElementById("poSearch").value="";
+   document.getElementById("poStatus").value="";
+   document.getElementById("poProject").value="";
+   renderOrders();
+ });
 }
 function switchTab(tab){state.activeTab=tab;document.getElementById("requestsPanel").style.display=tab==="requests"?"block":"none";document.getElementById("ordersPanel").style.display=tab==="orders"?"block":"none";document.getElementById("tabRequests").classList.toggle("active",tab==="requests");document.getElementById("tabOrders").classList.toggle("active",tab==="orders");}
 async function loadProjects(){
