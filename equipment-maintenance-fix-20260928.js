@@ -272,8 +272,8 @@ function render() {
             escapeHtml(row.maintenance_id) +
             "')\">EDIT</button>" +
 
-          (row.approval_status === "PENDING" ? "<button class=\"btn-action\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">CANCEL REQUEST</button>" : "") +
-          (row.approval_status === "APPROVED" ? "<button class=\"btn-action\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">REQUEST CANCELLATION</button>" : "") +
+          (row.approval_status === "PENDING" ? "<button class=\"btn-action maintenance-cancel-visible\" style=\"background:#dc2626!important;color:#fff!important;border:1px solid #dc2626!important;font-weight:900!important;opacity:1!important;cursor:pointer!important\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">CANCEL REQUEST</button>" : "") +
+          (row.approval_status === "APPROVED" ? "<button class=\"btn-action maintenance-cancel-visible\" style=\"background:#f59e0b!important;color:#fff!important;border:1px solid #f59e0b!important;font-weight:900!important;opacity:1!important;cursor:pointer!important;box-shadow:0 5px 12px rgba(245,158,11,.2)\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">REQUEST CANCELLATION</button>" : "") +
           "<button class=\"btn-danger\" type=\"button\" onclick=\"deleteRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">DELETE</button>" +
