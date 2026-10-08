@@ -1095,7 +1095,7 @@ function renderDetailActions(){
     html += '<div style="width:100%;padding:12px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:900">AWAITING GENERAL MANAGER APPROVAL</div>';
   }
 
-  if(r.status==="APPROVED"){
+  if(r.status==="APPROVED" || r.status==="IN PROGRESS"){
     const materialItems=(state.selectedRequest.items||[]).filter(x=>
       String(x.material_or_spare_part||"").trim() &&
       Number(x.quantity||0)>0
