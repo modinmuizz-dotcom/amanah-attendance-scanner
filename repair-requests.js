@@ -1096,6 +1096,19 @@ function renderDetailActions(){
   }
 
   if(r.status==="APPROVED"){
+    const materialItems=(state.selectedRequest.items||[]).filter(x=>
+      String(x.material_or_spare_part||"").trim() &&
+      Number(x.quantity||0)>0
+    );
+
+    if(materialItems.length){
+      if(r.materials_purchase_request_id){
+        html += '<div style="width:100%;padding:12px;border-radius:10px;background:#dcfce7;color:#166534;font-size:12px;font-weight:900">REPAIR MATERIALS REQUESTED — SENT TO PURCHASING</div>';
+      }else{
+        html += '<button class="btn btn-green" id="requestRepairMaterialsButton">REQUEST REPAIR MATERIALS</button>';
+      }
+    }
+
     html += '<button class="btn btn-primary" id="startRepairButton">START REPAIR</button>';
   }
 
@@ -1142,6 +1155,13 @@ function renderDetailActions(){
     });
   }
 
+  const requestRepairMaterials=document.getElementById("requestRepairMaterialsButton");
+  if(requestRepairMaterials){
+    requestRepairMaterials.addEventListener("click",()=>{
+      openRepairMaterialsConfirmation(r.repair_request_id);
+    });
+  }
+
   const startRepair=document.getElementById("startRepairButton");
   if(startRepair){
     startRepair.addEventListener("click",async()=>{
@@ -1175,6 +1195,137 @@ function renderDetailActions(){
       await setStatus(r.repair_request_id,"CLOSED");
     });
   }
+}
+
+
+// ---------------------------------------------------------
+// REQUEST REPAIR MATERIALS
+// Creates a REPAIR MATERIALS Purchase Request in Purchasing
+// after the Repair Request has already been approved by GM.
+// ---------------------------------------------------------
+function openRepairMaterialsConfirmation(id){
+  const request=state.selectedRequest?.request;
+  if(!request || String(request.repair_request_id)!==String(id))return;
+
+  const materialItems=(state.selectedRequest.items||[]).filter(x=>
+    String(x.material_or_spare_part||"").trim() &&
+    Number(x.quantity||0)>0
+  );
+
+  if(request.status!=="APPROVED"){
+    showMessage("Repair materials can only be requested after GM approval.","error");
+    return;
+  }
+
+  if(request.materials_purchase_request_id){
+    showMessage("Repair materials have already been sent to Purchasing for this Repair Request.","info");
+    return;
+  }
+
+  if(!materialItems.length){
+    showMessage("No material or spare-part line with a quantity was found in this Repair Request.","error");
+    return;
+  }
+
+  const existing=document.getElementById("repairMaterialsConfirmOverlay");
+  if(existing)existing.remove();
+
+  const overlay=document.createElement("div");
+  overlay.id="repairMaterialsConfirmOverlay";
+  overlay.style.cssText=[
+    "position:fixed",
+    "inset:0",
+    "width:100vw",
+    "height:100vh",
+    "background:rgba(15,23,42,.78)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "padding:24px",
+    "box-sizing:border-box",
+    "z-index:2147483647"
+  ].join(";");
+
+  const dialog=document.createElement("div");
+  dialog.style.cssText=[
+    "width:min(560px,calc(100vw - 48px))",
+    "background:#fff",
+    "border-radius:18px",
+    "padding:20px",
+    "box-sizing:border-box",
+    "box-shadow:0 24px 80px rgba(0,0,0,.45)"
+  ].join(";");
+
+  const lines=materialItems.map(x=>
+    '<div style="padding:8px 0;border-bottom:1px solid #e2e8f0">'+
+      '<strong>'+escapeHtml(x.material_or_spare_part)+'</strong>'+
+      '<div style="margin-top:3px;color:#64748b;font-size:11px">'+
+        escapeHtml(x.quantity)+' '+escapeHtml(x.unit||'')+
+        (x.work_to_be_done?' • '+escapeHtml(x.work_to_be_done):'')+
+      '</div>'+
+    '</div>'
+  ).join("");
+
+  dialog.innerHTML=
+    '<div style="display:flex;gap:12px;align-items:flex-start">'+
+      '<div>'+
+        '<div style="color:#2563eb;font-size:9px;font-weight:900;letter-spacing:.08em">PURCHASING</div>'+
+        '<h2 style="margin:5px 0 0;color:#0f172a;font-size:20px">REQUEST REPAIR MATERIALS?</h2>'+
+      '</div>'+
+      '<button type="button" id="repairMaterialsClose" style="margin-left:auto;width:34px;height:34px;border:1px solid #dbe3ef;background:#fff;border-radius:9px;font-size:20px;color:#475569;cursor:pointer">×</button>'+
+    '</div>'+
+    '<div style="margin-top:14px;padding:14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:12px;line-height:1.6">'+
+      'The General Manager has already approved this Repair Request. Confirming will send the required materials/spare parts to the Purchasing module as an <strong>APPROVED — REPAIR MATERIALS</strong> Purchase Request.'+
+    '</div>'+
+    '<div style="margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc">'+
+      '<div style="font-size:11px;font-weight:900;color:#334155;margin-bottom:7px">'+escapeHtml(request.repair_form_no||"Repair Request")+'</div>'+
+      '<div style="color:#64748b;font-size:11px;margin-bottom:8px">Materials / spare parts to send to Purchasing:</div>'+
+      lines+
+    '</div>'+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'+
+      '<button type="button" class="btn btn-gray" id="repairMaterialsCancel">CANCEL</button>'+
+      '<button type="button" class="btn btn-green" id="repairMaterialsConfirm">YES, SEND TO PURCHASING</button>'+
+    '</div>';
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const close=()=>overlay.remove();
+  dialog.querySelector("#repairMaterialsClose").addEventListener("click",close);
+  dialog.querySelector("#repairMaterialsCancel").addEventListener("click",close);
+  overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+
+  dialog.querySelector("#repairMaterialsConfirm").addEventListener("click",async()=>{
+    const button=dialog.querySelector("#repairMaterialsConfirm");
+    button.disabled=true;
+    button.textContent="SENDING...";
+
+    try{
+      const {data,error}=await supabaseClient.rpc(
+        "amanah_request_repair_materials",
+        {p_repair_request_id:id}
+      );
+      if(error)throw error;
+
+      close();
+
+      const requestNo=data?.request_no||"Purchase Request";
+      showMessage(
+        requestNo+" was created in Purchasing as REPAIR MATERIALS.",
+        "success"
+      );
+
+      await openDetailFull(id);
+    }catch(error){
+      console.error("Request repair materials failed:",error);
+      showMessage(
+        error.message||"Unable to send the repair materials request to Purchasing.",
+        "error"
+      );
+      button.disabled=false;
+      button.textContent="YES, SEND TO PURCHASING";
+    }
+  });
 }
 
 function openApprovalConfirmation(id){
