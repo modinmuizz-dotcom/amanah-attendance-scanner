@@ -156,7 +156,11 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
           </div>
         </div>
       </div>
-      <div class="modal-actions"><button class="btn-secondary" type="button" id="cancelButton">CANCEL</button><button class="btn-green" type="submit" id="saveButton">SAVE MAINTENANCE</button></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" id="cancelButton">CANCEL</button>
+        <button class="btn-green" type="submit" id="saveButton">SAVE</button>
+        <button class="btn-primary" type="button" id="submitApprovalButton" onclick="submitMaintenanceForApproval()">SUBMIT FOR APPROVAL</button>
+      </div>
     </form>
   </div>
 </div>
@@ -194,7 +198,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="equipment-maintenance-fix-20260928.js?v=10"></script>
+<script src="equipment-maintenance-fix-20260928.js?v=11"></script>
 <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
