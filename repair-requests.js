@@ -1320,11 +1320,50 @@ function openRepairMaterialsConfirmation(id){
       );
       if(error)throw error;
 
+      /*
+        Optional SAMPLE MATERIAL evidence:
+        After Purchasing PR creation, carry the repair's SAMPLE MATERIAL
+        photo paths onto every generated repair-material line. This keeps
+        the photo optional while making it immediately available in Purchasing.
+      */
+      const samplePaths=(state.selectedRequest?.photos||[])
+        .filter(x=>String(x.photo_category||"").toUpperCase()==="SAMPLE MATERIAL")
+        .map(x=>x.file_path)
+        .filter(Boolean);
+
+      if(data?.purchase_request_id && samplePaths.length){
+        const {data:purchaseItems,error:purchaseItemsError}=await supabaseClient
+          .from("purchase_request_items")
+          .select("purchase_request_item_id")
+          .eq("purchase_request_id",data.purchase_request_id);
+
+        if(purchaseItemsError)throw purchaseItemsError;
+
+        if((purchaseItems||[]).length){
+          const {error:updatePhotoError}=await supabaseClient
+            .from("purchase_request_items")
+            .update({sample_material_photo_paths:samplePaths})
+            .eq("purchase_request_id",data.purchase_request_id);
+
+          if(updatePhotoError)throw updatePhotoError;
+        }
+      }
+
+      if(data?.purchase_request_id){
+        const {error:sourceLinkError}=await supabaseClient
+          .from("purchase_requests")
+          .update({source_repair_request_id:id})
+          .eq("purchase_request_id",data.purchase_request_id);
+
+        if(sourceLinkError)throw sourceLinkError;
+      }
+
       close();
 
       const requestNo=data?.request_no||"Purchase Request";
       showMessage(
-        requestNo+" was created in Purchasing as REPAIR MATERIALS.",
+        requestNo+" was created in Purchasing as REPAIR MATERIALS"+
+        (samplePaths.length ? " with SAMPLE MATERIAL photo evidence." : "."),
         "success"
       );
 
