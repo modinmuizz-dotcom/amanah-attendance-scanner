@@ -63,7 +63,7 @@
           <div class="field"><label>Search</label><input id="prSearch" placeholder="PR no. / project / requester"></div>
           <div class="field"><label>Status</label><select id="prStatus"><option value="">ALL STATUS</option><option>PENDING APPROVAL</option><option>DRAFT</option><option>SUBMITTED</option><option>UNDER REVIEW</option><option>APPROVED</option><option>REJECTED</option><option>PARTIALLY ORDERED</option><option>ORDERED</option><option>CANCELLED</option><option>CLOSED</option></select></div>
           <div class="field"><label>Project</label><select id="prProject"></select></div>
-          <div class="field"><label>Purchase Type</label><select id="prType"><option value="">ALL PURCHASE TYPES</option><option>PROJECT MATERIALS</option><option>MAINTENANCE</option><option>REPAIR</option></select></div>
+          <div class="field"><label>Purchase Type</label><select id="prType"><option value="">ALL PURCHASE TYPES</option><option>PROJECT MATERIALS</option><option>MAINTENANCE MATERIALS</option><option>REPAIR MATERIALS</option></select></div>
           <div class="field filter-action"><button class="btn gray" id="clearPrFilters" type="button">RESET FILTERS</button></div>
         </div>
         <button class="btn green" id="newRequest" type="button">+ NEW PURCHASE REQUEST</button>
@@ -82,7 +82,7 @@
           <div class="field"><label>Search</label><input id="poSearch" placeholder="PO no. / supplier / project"></div>
           <div class="field"><label>Status</label><select id="poStatus"><option value="">ALL STATUS</option><option>DRAFT</option><option>APPROVED</option><option>SENT TO SUPPLIER</option><option>WAITING FOR SUPPLIER</option><option>READY FOR PICKUP</option><option>PARTIALLY FULFILLED</option><option>PARTIALLY RECEIVED</option><option>RECEIVED</option><option>CANCELLED</option><option>CLOSED</option></select></div>
           <div class="field"><label>Project</label><select id="poProject"></select></div>
-          <div class="field"><label>Purchase Type</label><select id="poType"><option value="">ALL PURCHASE TYPES</option><option>PROJECT MATERIALS</option><option>MAINTENANCE</option><option>REPAIR</option></select></div>
+          <div class="field"><label>Purchase Type</label><select id="poType"><option value="">ALL PURCHASE TYPES</option><option>PROJECT MATERIALS</option><option>MAINTENANCE MATERIALS</option><option>REPAIR MATERIALS</option></select></div>
           <div class="field filter-action"><button class="btn gray" id="clearPoFilters" type="button">RESET FILTERS</button></div>
         </div>
       </div>
@@ -108,7 +108,7 @@
         <div class="field"><label>Request Date</label><input id="requestDate" type="date"></div>
         <div class="field"><label>Needed By</label><input id="neededBy" type="date"></div>
         <div class="field"><label>Priority</label><select id="requestPriority"><option>LOW</option><option selected>NORMAL</option><option>HIGH</option><option>URGENT</option></select></div>
-        <div class="field"><label>Purchase Type</label><select id="requestType"><option selected>PROJECT MATERIALS</option><option>MAINTENANCE</option><option>REPAIR</option></select></div>
+        <div class="field"><label>Purchase Type</label><select id="requestType"><option selected>PROJECT MATERIALS</option><option>MAINTENANCE MATERIALS</option><option>REPAIR MATERIALS</option></select></div>
         <div class="field"><label>Purpose</label><input id="requestPurpose" placeholder="Example: Concrete pouring for foundation"></div>
         <div class="field full"><label>Remarks</label><textarea id="requestRemarks" placeholder="Explain why the materials are required..."></textarea></div>
       </div>
@@ -416,7 +416,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="purchasing.js?v=46"></script>
+<script src="purchasing.js?v=47"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
