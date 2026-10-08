@@ -128,49 +128,96 @@ function startPurchasingRealtime(){
 }
 
 async function init(){
- startPurchasingRealtime();
- const allowed=await loadAccess();
- if(!allowed)return;
+  /*
+    FAST START:
+    1. Start realtime immediately.
+    2. Authenticate/access-check once.
+    3. Bind the UI immediately so the page becomes interactive.
+    4. Load independent data sources in parallel instead of waiting
+       for projects -> employees -> equipment -> suppliers -> requests -> orders.
+  */
+  startPurchasingRealtime();
 
- document.getElementById("requestDate").value=today();
- document.getElementById("poDate").value=today();
+  const allowed=await loadAccess();
+  if(!allowed)return;
 
- try{
-   bind();
- }catch(error){
-   console.error("Purchasing bind failed:",error);
-   msg("Purchasing controls could not initialize: "+error.message,"err");
- }
+  document.getElementById("requestDate").value=today();
+  document.getElementById("poDate").value=today();
 
- const jobs=[
-   ["projects",loadProjects],
-   ["employees",loadEmployees],
-   ["equipment",loadEquipment],
-   ["suppliers",loadSuppliers],
-   ["purchase requests",loadRequests],
-   ["purchase orders",loadOrders]
- ];
+  try{
+    bind();
+  }catch(error){
+    console.error("Purchasing bind failed:",error);
+    msg("Purchasing controls could not initialize: "+error.message,"err");
+  }
 
- const failures=[];
- for(const [name,job] of jobs){
-   try{
-     await job();
-   }catch(error){
-     console.error("Purchasing "+name+" load failed:",error);
-     failures.push(name+": "+(error?.message||"unknown error"));
-   }
- }
+  /*
+    Render the empty shell immediately. This prevents the page from feeling
+    frozen while Supabase loads the six independent data sets.
+  */
+  try{
+    renderAll();
+  }catch(error){
+    console.error("Purchasing initial render failed:",error);
+  }
 
- try{
-   renderAll();
- }catch(error){
-   console.error("Purchasing render failed:",error);
-   msg("Purchasing data loaded, but the table could not render: "+error.message,"err");
- }
+  const jobs=[
+    ["projects",loadProjects],
+    ["employees",loadEmployees],
+    ["equipment",loadEquipment],
+    ["suppliers",loadSuppliers],
+    ["purchase requests",loadRequests],
+    ["purchase orders",loadOrders]
+  ];
 
- if(failures.length){
-   msg("Purchasing loaded with data-service issue(s): "+failures.join(" | "),"err");
- }
+  const results=await Promise.allSettled(
+    jobs.map(([name,job]) =>
+      Promise.resolve()
+        .then(job)
+        .then(
+          ()=>({name,ok:true}),
+          error=>({name,ok:false,error})
+        )
+    )
+  );
+
+  const failures=[];
+
+  results.forEach(result=>{
+    const value=result.value;
+
+    if(value && !value.ok){
+      console.error(
+        "Purchasing "+value.name+" load failed:",
+        value.error
+      );
+
+      failures.push(
+        value.name+
+        ": "+
+        (value.error?.message||"unknown error")
+      );
+    }
+  });
+
+  try{
+    renderAll();
+  }catch(error){
+    console.error("Purchasing render failed:",error);
+    msg(
+      "Purchasing data loaded, but the table could not render: "+
+      error.message,
+      "err"
+    );
+  }
+
+  if(failures.length){
+    msg(
+      "Purchasing loaded with data-service issue(s): "+
+      failures.join(" | "),
+      "err"
+    );
+  }
 }
 
 function bind(){
