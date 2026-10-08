@@ -736,9 +736,14 @@ async function openDetailFull(id){
   }
 
   const il=$("itemList");
-  il.innerHTML=state.selectedRequest.items.length
-    ? state.selectedRequest.items.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong> — '+escapeHtml(x.material_or_spare_part||"")+' '+escapeHtml(x.quantity??"")+' '+escapeHtml(x.unit||"")+'</div>').join("")
-    : '<div class="empty">No work/material lines yet.</div>';
+  const materialsLocked=["PENDING APPROVAL","APPROVED","IN PROGRESS","COMPLETED","CLOSED"].includes(String(r.data.status||"").toUpperCase());
+  il.innerHTML=
+    (materialsLocked
+      ? '<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-size:11px;font-weight:900">MATERIALS / SPARE PARTS LOCKED — These quantities and descriptions are fixed after GM submission/approval and cannot be edited.</div>'
+      : '')+
+    (state.selectedRequest.items.length
+      ? state.selectedRequest.items.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong> — '+escapeHtml(x.material_or_spare_part||"")+' '+escapeHtml(x.quantity??"")+' '+escapeHtml(x.unit||"")+'</div>').join("")
+      : '<div class="empty">No work/material lines yet.</div>');
 
   renderRepairCosts();
 
@@ -1095,7 +1100,7 @@ function renderDetailActions(){
     html += '<div style="width:100%;padding:12px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:900">AWAITING GENERAL MANAGER APPROVAL</div>';
   }
 
-  if(r.status==="APPROVED" || r.status==="IN PROGRESS"){
+  if(r.status==="APPROVED"){
     const materialItems=(state.selectedRequest.items||[]).filter(x=>
       String(x.material_or_spare_part||"").trim() &&
       Number(x.quantity||0)>0
