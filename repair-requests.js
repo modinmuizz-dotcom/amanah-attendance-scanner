@@ -235,9 +235,11 @@ function resetItems(){
 function addItemRow(values={}){
   const row=document.createElement("div");
   row.className="item-row";
+  row.style.cssText="display:grid;grid-template-columns:1.15fr 1.15fr 1.35fr .65fr .75fr;gap:8px;align-items:center";
   row.innerHTML=`
     <input class="input work" placeholder="Works to be done" value="${escapeHtml(values.work_to_be_done||"")}">
     <input class="input material" placeholder="Materials / spare parts" value="${escapeHtml(values.material_or_spare_part||"")}">
+    <input class="input specification" placeholder="Specification / grade / size" value="${escapeHtml(values.specifications||"")}">
     <input class="input qty" type="number" min="0" step="0.001" placeholder="Qty" value="${escapeHtml(values.quantity??"")}">
     <input class="input unit" placeholder="Unit" value="${escapeHtml(values.unit||"")}">
   `;
@@ -248,9 +250,10 @@ function getItems(){
   return [...document.querySelectorAll(".item-row")].map(row=>({
     work_to_be_done:row.querySelector(".work").value.trim()||null,
     material_or_spare_part:row.querySelector(".material").value.trim()||null,
+    specifications:row.querySelector(".specification").value.trim()||null,
     quantity:row.querySelector(".qty").value===""?null:Number(row.querySelector(".qty").value),
     unit:row.querySelector(".unit").value.trim()||null
-  })).filter(x=>x.work_to_be_done||x.material_or_spare_part);
+  })).filter(x=>x.work_to_be_done||x.material_or_spare_part||x.specifications);
 }
 
 function renderSelectedFiles(){
@@ -742,7 +745,12 @@ async function openDetailFull(id){
       ? '<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-size:11px;font-weight:900">MATERIALS / SPARE PARTS LOCKED — These quantities and descriptions are fixed after GM submission/approval and cannot be edited.</div>'
       : '')+
     (state.selectedRequest.items.length
-      ? state.selectedRequest.items.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong> — '+escapeHtml(x.material_or_spare_part||"")+' '+escapeHtml(x.quantity??"")+' '+escapeHtml(x.unit||"")+'</div>').join("")
+      ? state.selectedRequest.items.map(x=>'<div style="padding:10px 0;border-bottom:1px solid #e5e7eb">'+
+  '<div><strong>'+escapeHtml(x.work_to_be_done||"")+'</strong></div>'+
+  (x.material_or_spare_part ? '<div style="margin-top:4px"><span style="font-weight:800">MATERIAL:</span> '+escapeHtml(x.material_or_spare_part)+'</div>' : '')+
+  (x.specifications ? '<div style="margin-top:4px;color:#475569"><span style="font-weight:800">SPECIFICATION:</span> '+escapeHtml(x.specifications)+'</div>' : '')+
+  ((x.quantity!==null&&x.quantity!==undefined) ? '<div style="margin-top:4px;color:#64748b;font-size:11px">'+escapeHtml(x.quantity)+' '+escapeHtml(x.unit||"")+'</div>' : '')+
+'</div>').join("")
       : '<div class="empty">No work/material lines yet.</div>');
 
   renderRepairCosts();
@@ -1467,7 +1475,7 @@ async function submitRepairForApproval(id){
   }
 
   const itemSummary=(state.selectedRequest.items||[])
-    .map(x=>[x.work_to_be_done,x.material_or_spare_part,x.quantity,x.unit].filter(v=>v!==null&&v!==undefined&&String(v).trim()!=="").join(" "))
+    .map(x=>[x.work_to_be_done,x.material_or_spare_part,x.specifications,x.quantity,x.unit].filter(v=>v!==null&&v!==undefined&&String(v).trim()!=="").join(" "))
     .join(" • ");
 
   const button=document.getElementById("submitRepairApprovalButton");
