@@ -678,16 +678,48 @@ async function setRequestStatus(id,status){
 }
 function resolveConfirm(answer){const modal=document.getElementById("confirmModal");modal.style.display="none";document.getElementById("messageShade").style.display="none";if(state.confirmResolver){const resolve=state.confirmResolver;state.confirmResolver=null;resolve(answer);}}
 function showConfirm(title,message,confirmText,danger){document.getElementById("confirmTitle").textContent=title;document.getElementById("confirmMessage").textContent=message;const btn=document.getElementById("acceptConfirm");btn.textContent=confirmText;btn.className=danger?"btn red":"btn green";document.getElementById("confirmModal").style.display="flex";return new Promise(resolve=>{state.confirmResolver=resolve;});}
+async function renderSampleMaterialEvidence(items){
+ const paths=[...new Set(
+   (items||[]).flatMap(item=>Array.isArray(item.sample_material_photo_paths)?item.sample_material_photo_paths:[])
+     .filter(Boolean)
+ )];
+ const host=document.getElementById("sampleMaterialEvidence");
+ if(!host)return;
+ if(!paths.length){
+   host.innerHTML='<div style="padding:12px 14px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:700">No sample material photo was provided. Sample photo is optional.</div>';
+   return;
+ }
+
+ host.innerHTML='<div style="padding:12px 14px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:11px;font-weight:900">OPTIONAL SAMPLE MATERIAL — Review these photos when selecting the material to purchase.</div>'+
+   '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px">'+
+     paths.map((_,i)=>'<div id="sampleMaterialPhoto'+i+'" style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff;min-height:170px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:800">LOADING PHOTO…</div>').join('')+
+   '</div>';
+
+ const signed=await Promise.all(paths.map(path=>
+   supabaseClient.storage.from("repair-evidence").createSignedUrl(path,600)
+ ));
+
+ paths.forEach((path,i)=>{
+   const box=document.getElementById("sampleMaterialPhoto"+i);
+   if(!box)return;
+   const url=signed[i]?.data?.signedUrl||"";
+   box.innerHTML=url
+     ? '<img src="'+esc(url)+'" alt="Sample material photo" style="width:100%;height:180px;object-fit:cover;display:block">'
+     : '<div style="padding:20px;text-align:center">PHOTO UNAVAILABLE</div>';
+ });
+}
+
 function openRequestDetails(id){
  state.activeRequestId=id;state.activeOrderId=null;
  const r=state.requests.find(x=>x.purchase_request_id===id),items=state.requestItems.filter(x=>x.purchase_request_id===id);if(!r)return;
  const title=document.getElementById("detailTitle");title.dataset.type="PR";title.textContent="PURCHASE REQUEST DETAILS";
- document.getElementById("detailBody").innerHTML='<div class="detail-grid"><div class="detail-card"><label>Request No.</label><strong>'+esc(r.request_no)+'</strong></div><div class="detail-card"><label>Status</label><strong>'+statusBadge(r.status)+'</strong></div><div class="detail-card"><label>Project</label><div>'+esc(r.project_name)+'<br><small>'+esc(r.project_location||"")+'</small></div></div><div class="detail-card"><label>Requester</label><div>'+esc(r.requester_name)+'<br><small>'+esc(r.requester_position||r.requester_role)+'</small></div></div><div class="detail-card"><label>Request Date</label><div>'+esc(fmtDate(r.request_date))+'</div></div><div class="detail-card"><label>Needed By</label><div>'+esc(fmtDate(r.needed_by_date))+'</div></div><div class="detail-card"><label>Priority</label><div>'+esc(r.priority)+'</div></div><div class="detail-card"><label>Purchase Type</label><div>'+esc(normalizePurchaseType(r.purchase_type))+'</div></div><div class="detail-card full"><label>Purpose</label><div>'+esc(r.purpose||"—")+'</div></div><div class="detail-card full"><label>Remarks</label><div>'+esc(r.remarks||"—")+'</div></div></div><div class="section-label">REQUEST ITEMS</div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+items.map(i=>'<tr><td><strong>'+esc(i.material_name)+'</strong></td><td>'+esc(i.specifications||"—")+'</td><td>'+esc(i.quantity)+'</td><td>'+esc(i.unit)+'</td></tr>').join("")+'</tbody></table></div>';
+ document.getElementById("detailBody").innerHTML='<div class="detail-grid"><div class="detail-card"><label>Request No.</label><strong>'+esc(r.request_no)+'</strong></div><div class="detail-card"><label>Status</label><strong>'+statusBadge(r.status)+'</strong></div><div class="detail-card"><label>Project</label><div>'+esc(r.project_name)+'<br><small>'+esc(r.project_location||"")+'</small></div></div><div class="detail-card"><label>Requester</label><div>'+esc(r.requester_name)+'<br><small>'+esc(r.requester_position||r.requester_role)+'</small></div></div><div class="detail-card"><label>Request Date</label><div>'+esc(fmtDate(r.request_date))+'</div></div><div class="detail-card"><label>Needed By</label><div>'+esc(fmtDate(r.needed_by_date))+'</div></div><div class="detail-card"><label>Priority</label><div>'+esc(r.priority)+'</div></div><div class="detail-card"><label>Purchase Type</label><div>'+esc(normalizePurchaseType(r.purchase_type))+'</div></div><div class="detail-card full"><label>Purpose</label><div>'+esc(r.purpose||"—")+'</div></div><div class="detail-card full"><label>Remarks</label><div>'+esc(r.remarks||"—")+'</div></div></div><div class="section-label">REQUEST ITEMS</div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+items.map(i=>'<tr><td><strong>'+esc(i.material_name)+'</strong></td><td>'+esc(i.specifications||"—")+'</td><td>'+esc(i.quantity)+'</td><td>'+esc(i.unit)+'</td></tr>').join("")+'</tbody></table></div><div class="section-label">SAMPLE MATERIAL PHOTO</div><div id="sampleMaterialEvidence"></div>';
  const editBtn=document.getElementById("detailEditButton");editBtn.style.display=["CANCELLED","CLOSED","ORDERED"].includes(r.status)?"none":"inline-block";editBtn.textContent="EDIT PURCHASE REQUEST";
  const printBtn=document.getElementById("detailPrintButton");printBtn.style.display="inline-block";printBtn.textContent="PRINT / SAVE PDF";
  document.getElementById("detailPrimaryAction").style.display=(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))?"inline-block":"none";
  if(state.access.canManage && (r.status==="APPROVED"||r.status==="PARTIALLY ORDERED"))document.getElementById("detailPrimaryAction").textContent="CREATE PURCHASE ORDER";
  document.getElementById("detailModal").style.display="flex";
+ renderSampleMaterialEvidence(items);
 }
 async function openRequestEdit(id){
  const r=state.requests.find(x=>x.purchase_request_id===id);if(!r)return;
