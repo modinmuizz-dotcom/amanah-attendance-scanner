@@ -230,6 +230,12 @@ function payloadCards(a, historical=false){
         ${detailCard('TOTAL AMOUNT',p.total_amount==null?'—':'₱'+Number(p.total_amount).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}))}
         ${detailCard('DESCRIPTION',p.description||a.description||'No additional description provided.',{full:true})}
       </div>
+    </div>
+    <div class="review-section review-section-last">
+      <div class="review-section-title"><span>02</span><div><strong>PHOTO EVIDENCE</strong><small>Review the maintenance photos before making the General Manager decision.</small></div></div>
+      <div id="maintenanceApprovalPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+        <div style="grid-column:1/-1;padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:800;text-align:center">Loading maintenance photo evidence…</div>
+      </div>
     </div>`;
 }
 
@@ -496,6 +502,61 @@ function openHistory(id){
   banner.innerHTML='<div><span class="history-banner-dot"></span><strong>'+esc(status)+'</strong><small>'+esc(bannerText)+'</small></div>';
   document.getElementById('historyModal').classList.remove('hidden');
   document.getElementById('historyModal').setAttribute('aria-hidden','false');
+  if(record.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(record);
+  if(record.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(record);
+}
+
+async function loadMaintenanceApprovalPhotos(approval){
+  if(!approval || approval.request_type!=='MAINTENANCE')return;
+  const grid=document.getElementById('maintenanceApprovalPhotoGrid');
+  if(!grid)return;
+
+  try{
+    const {data,error}=await supabaseClient
+      .from('equipment_maintenance_photos')
+      .select('photo_id,storage_path,caption,created_at')
+      .eq('maintenance_id',approval.entity_id)
+      .order('created_at',{ascending:false});
+    if(error)throw error;
+
+    if(!data?.length){
+      grid.innerHTML='<div style="grid-column:1/-1;padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;font-weight:800;text-align:center">No maintenance photo evidence attached.</div>';
+      return;
+    }
+
+    const signed=await Promise.all(
+      data.map(photo=>supabaseClient.storage.from('equipment-maintenance-evidence').createSignedUrl(photo.storage_path,600))
+    );
+
+    grid.innerHTML=data.map((photo,index)=>{
+      const src=signed[index]?.data?.signedUrl||'';
+      return '<div style="border:1px solid #dbe2ea;border-radius:12px;overflow:hidden;background:#fff">'+
+        '<div style="height:190px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+          (src
+            ? '<img src="'+esc(src)+'" alt="Maintenance photo evidence" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" data-maintenance-approval-photo="'+esc(src)+'">'
+            : '<div style="color:#94a3b8;font-size:11px;font-weight:800">PHOTO UNAVAILABLE</div>')+
+        '</div>'+
+        '<div style="padding:9px">'+
+          '<div style="font-size:10px;font-weight:900;color:#1e293b">MAINTENANCE EVIDENCE</div>'+
+          (photo.caption?'<div style="margin-top:4px;color:#64748b;font-size:10px">'+esc(photo.caption)+'</div>':'')+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    grid.querySelectorAll('[data-maintenance-approval-photo]').forEach(img=>{
+      img.addEventListener('click',()=>{
+        const src=img.getAttribute('data-maintenance-approval-photo');
+        const win=window.open('','_blank');
+        if(win){
+          win.document.write('<title>Maintenance Photo Evidence</title><body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+src+'" style="max-width:96vw;max-height:96vh;object-fit:contain"></body>');
+          win.document.close();
+        }
+      });
+    });
+  }catch(error){
+    console.error('Unable to load maintenance approval photos:',error);
+    grid.innerHTML='<div style="grid-column:1/-1;padding:18px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:11px;font-weight:800">Unable to load maintenance photo evidence.</div>';
+  }
 }
 
 async function loadRepairApprovalPhotos(approval){
@@ -546,6 +607,7 @@ function openReview(id){
   document.getElementById('approvalModal').classList.remove('hidden');
   document.getElementById('approvalModal').setAttribute('aria-hidden','false');
   if(approval.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(approval);
+  if(approval.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(approval);
 }
 async function decide(decision){
   if(!currentApproval)return;
