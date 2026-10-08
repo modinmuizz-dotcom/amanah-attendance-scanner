@@ -240,37 +240,42 @@ function bind(){
    }
    updateSupplyConditionalFields(status);
  });document.getElementById("sourceAlternative").addEventListener("click",sourceAlternativeSupplier);document.getElementById("requestPickup").addEventListener("click",openPickupRequestModal);document.getElementById("closePickup").addEventListener("click",closePickupRequestModal);document.getElementById("cancelPickup").addEventListener("click",closePickupRequestModal);document.getElementById("submitPickup").addEventListener("click",submitPickupRequest);
- ["prSearch"].forEach(id=>{
-   const el=document.getElementById(id);
-   if(el)el.addEventListener("input",renderRequests);
- });
- ["prStatus","prProject"].forEach(id=>{
-   const el=document.getElementById(id);
-   if(el)el.addEventListener("change",renderRequests);
- });
+ /*
+    FILTER EVENTS:
+    Use delegated events as well as element handlers. This keeps the filters
+    working even when the table/UI is re-rendered or the page is entered
+    through the shared navigation.
+  */
+ const prSearch=document.getElementById("prSearch");
+ const prStatus=document.getElementById("prStatus");
+ const prProject=document.getElementById("prProject");
+ const poSearch=document.getElementById("poSearch");
+ const poStatus=document.getElementById("poStatus");
+ const poProject=document.getElementById("poProject");
 
- ["poSearch"].forEach(id=>{
-   const el=document.getElementById(id);
-   if(el)el.addEventListener("input",renderOrders);
- });
- ["poStatus","poProject"].forEach(id=>{
-   const el=document.getElementById(id);
-   if(el)el.addEventListener("change",renderOrders);
- });
+ if(prSearch)prSearch.oninput=renderRequests;
+ if(prStatus)prStatus.onchange=renderRequests;
+ if(prProject)prProject.onchange=renderRequests;
+ if(poSearch)poSearch.oninput=renderOrders;
+ if(poStatus)poStatus.onchange=renderOrders;
+ if(poProject)poProject.onchange=renderOrders;
 
- document.getElementById("clearPrFilters").addEventListener("click",()=>{
-   document.getElementById("prSearch").value="";
-   document.getElementById("prStatus").value="";
-   document.getElementById("prProject").value="";
+ const resetPr=document.getElementById("clearPrFilters");
+ const resetPo=document.getElementById("clearPoFilters");
+
+ if(resetPr)resetPr.onclick=()=>{
+   if(prSearch)prSearch.value="";
+   if(prStatus)prStatus.value="";
+   if(prProject)prProject.value="";
    renderRequests();
- });
+ };
 
- document.getElementById("clearPoFilters").addEventListener("click",()=>{
-   document.getElementById("poSearch").value="";
-   document.getElementById("poStatus").value="";
-   document.getElementById("poProject").value="";
+ if(resetPo)resetPo.onclick=()=>{
+   if(poSearch)poSearch.value="";
+   if(poStatus)poStatus.value="";
+   if(poProject)poProject.value="";
    renderOrders();
- });
+ };
 }
 function switchTab(tab){state.activeTab=tab;document.getElementById("requestsPanel").style.display=tab==="requests"?"block":"none";document.getElementById("ordersPanel").style.display=tab==="orders"?"block":"none";document.getElementById("tabRequests").classList.toggle("active",tab==="requests");document.getElementById("tabOrders").classList.toggle("active",tab==="orders");}
 async function loadProjects(){
@@ -454,8 +459,19 @@ async function cancelPurchaseRequest(id){
   }
 }
 function renderRequests(){
- const q=(document.getElementById("prSearch").value||"").toLowerCase().trim(),status=document.getElementById("prStatus").value,pid=document.getElementById("prProject").value;
- const rows=state.requests.filter(r=>(!q||[r.request_no,r.project_name,r.requester_name,r.purpose].join(" ").toLowerCase().includes(q))&&(!status||r.status===status)&&(!pid||r.project_id===pid));
+ const q=(document.getElementById("prSearch").value||"").toLowerCase().trim();
+ const status=String(document.getElementById("prStatus").value||"").trim().toUpperCase();
+ const pid=String(document.getElementById("prProject").value||"").trim();
+ const rows=state.requests.filter(r=>{
+   const rowStatus=String(r.status||"").trim().toUpperCase();
+   const rowProject=String(r.project_id||"").trim();
+   return (!q || [r.request_no,r.project_name,r.requester_name,r.purpose]
+     .map(v=>String(v||"").toLowerCase())
+     .join(" ")
+     .includes(q))
+     && (!status || rowStatus===status)
+     && (!pid || rowProject===pid);
+ });
  document.getElementById("prBody").innerHTML=rows.length?rows.map(r=>{
   const items=state.requestItems.filter(i=>i.purchase_request_id===r.purchase_request_id);
   let actions='<button class="mini blue" data-pr-view="'+esc(r.purchase_request_id)+'">VIEW</button><button class="mini print" data-pr-print="'+esc(r.purchase_request_id)+'">PRINT</button>';
@@ -491,8 +507,19 @@ document.addEventListener("click",function(event){
 });
 
 function renderOrders(){
- const q=(document.getElementById("poSearch").value||"").toLowerCase().trim(),status=document.getElementById("poStatus").value,pid=document.getElementById("poProject").value;
- const rows=state.orders.filter(o=>(!q||[o.po_no,o.supplier_name,o.project_name,o.purchase_request_no].join(" ").toLowerCase().includes(q))&&(!status||o.status===status)&&(!pid||o.project_id===pid));
+ const q=(document.getElementById("poSearch").value||"").toLowerCase().trim();
+ const status=String(document.getElementById("poStatus").value||"").trim().toUpperCase();
+ const pid=String(document.getElementById("poProject").value||"").trim();
+ const rows=state.orders.filter(o=>{
+   const rowStatus=String(o.status||"").trim().toUpperCase();
+   const rowProject=String(o.project_id||"").trim();
+   return (!q || [o.po_no,o.supplier_name,o.project_name,o.purchase_request_no]
+     .map(v=>String(v||"").toLowerCase())
+     .join(" ")
+     .includes(q))
+     && (!status || rowStatus===status)
+     && (!pid || rowProject===pid);
+ });
  document.getElementById("poBody").innerHTML=rows.length?rows.map(o=>{
    const items=state.orderItems.filter(x=>x.purchase_order_id===o.purchase_order_id);
    const unavailable=items.filter(x=>["UNAVAILABLE","BACKORDERED"].includes(String(x.supply_status||"").toUpperCase())).length;
