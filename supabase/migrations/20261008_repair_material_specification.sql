@@ -1,0 +1,1 @@
+alter table public.repair_request_items add column if not exists specifications text;
