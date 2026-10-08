@@ -474,7 +474,18 @@ async function printApprovalRecord(record){
     try{
       const {data,error}=await supabaseClient.from('repair_request_photos').select('file_path,photo_category').eq('repair_request_id',record.entity_id).order('uploaded_at',{ascending:false});
       if(!error&&data?.length){
-        const signed=await Promise.all(data.map(photo=>supabaseClient.storage.from('repair-evidence').createSignedUrl(photo.file_path,600)));
+        const signed=await Promise.all(data.map(async photo=>{
+      try{
+        const result=await Promise.race([
+          supabaseClient.storage.from('repair-evidence').createSignedUrl(photo.file_path,600),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('PHOTO URL TIMEOUT')),8000))
+        ]);
+        return result;
+      }catch(error){
+        console.error('Repair photo signed URL failed:',photo.file_path,error);
+        return {data:null,error};
+      }
+    }));
         photos=data.map((photo,i)=>({url:signed[i]?.data?.signedUrl||'',category:photo.photo_category})).filter(x=>x.url);
       }
     }catch(error){console.warn('Print photo load warning:',error);}
@@ -502,13 +513,14 @@ function openHistory(id){
   banner.innerHTML='<div><span class="history-banner-dot"></span><strong>'+esc(status)+'</strong><small>'+esc(bannerText)+'</small></div>';
   document.getElementById('historyModal').classList.remove('hidden');
   document.getElementById('historyModal').setAttribute('aria-hidden','false');
-  if(record.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(record);
-  if(record.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(record);
+  if(record.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(record,true);
+  if(record.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(record,true);
 }
 
-async function loadMaintenanceApprovalPhotos(approval){
+async function loadMaintenanceApprovalPhotos(approval,isHistory=false){
   if(!approval || approval.request_type!=='MAINTENANCE')return;
-  const grid=document.getElementById('maintenanceApprovalPhotoGrid');
+  const scope=isHistory?'#historyModal':'#approvalModal';
+  const grid=document.querySelector(scope+' #maintenanceApprovalPhotoGrid');
   if(!grid)return;
 
   try{
@@ -525,7 +537,18 @@ async function loadMaintenanceApprovalPhotos(approval){
     }
 
     const signed=await Promise.all(
-      data.map(photo=>supabaseClient.storage.from('equipment-maintenance-evidence').createSignedUrl(photo.storage_path,600))
+      data.map(async photo=>{
+        try{
+          const result=await Promise.race([
+            supabaseClient.storage.from('equipment-maintenance-evidence').createSignedUrl(photo.storage_path,600),
+            new Promise((_,reject)=>setTimeout(()=>reject(new Error('PHOTO URL TIMEOUT')),8000))
+          ]);
+          return result;
+        }catch(error){
+          console.error('Maintenance photo signed URL failed:',photo.storage_path,error);
+          return {data:null,error};
+        }
+      })
     );
 
     grid.innerHTML=data.map((photo,index)=>{
@@ -559,9 +582,10 @@ async function loadMaintenanceApprovalPhotos(approval){
   }
 }
 
-async function loadRepairApprovalPhotos(approval){
+async function loadRepairApprovalPhotos(approval,isHistory=false){
   if(!approval || approval.request_type!=='REPAIR_REQUEST')return;
-  const grid=document.getElementById('repairApprovalPhotoGrid');
+  const scope=isHistory?'#historyModal':'#approvalModal';
+  const grid=document.querySelector(scope+' #repairApprovalPhotoGrid');
   if(!grid)return;
   try{
     const {data,error}=await supabaseClient
@@ -606,8 +630,8 @@ function openReview(id){
   document.getElementById('decisionRemarks').value='';
   document.getElementById('approvalModal').classList.remove('hidden');
   document.getElementById('approvalModal').setAttribute('aria-hidden','false');
-  if(approval.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(approval);
-  if(approval.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(approval);
+  if(approval.request_type==='REPAIR_REQUEST') loadRepairApprovalPhotos(approval,false);
+  if(approval.request_type==='MAINTENANCE') loadMaintenanceApprovalPhotos(approval,false);
 }
 async function decide(decision){
   if(!currentApproval)return;
