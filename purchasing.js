@@ -42,16 +42,14 @@ async function loadAccess(){
  }catch(error){
    console.error("Purchasing access initialization failed:",error);
 
-   // Keep the page usable for the authenticated administrator while Supabase
-   // refreshes role/permission metadata. Database RLS still protects writes.
+   // Do not block the module with a full-screen message during access refresh.
+   // Database RLS remains the final authorization layer.
    state.access={
      role:"SUPER ADMIN",
      permissions:new Set(["purchasing.manage","purchasing.approve","purchasing.view"]),
      canManage:true,
      canApprove:true
    };
-
-   msg("Access metadata could not be refreshed. Purchasing data will still load; Supabase permissions remain enforced.","err");
  }
 
  return true;
@@ -129,38 +127,33 @@ function startPurchasingRealtime(){
 
 async function init(){
   /*
-    FAST START:
-    1. Start realtime immediately.
-    2. Authenticate/access-check once.
-    3. Bind the UI immediately so the page becomes interactive.
-    4. Load independent data sources in parallel instead of waiting
-       for projects -> employees -> equipment -> suppliers -> requests -> orders.
+    FAST FIRST PAINT:
+    Make the module interactive immediately. Access metadata and data loading
+    continue in the background so navigating to Purchasing does not feel
+    blocked by Supabase round-trips.
   */
   startPurchasingRealtime();
 
-  const allowed=await loadAccess();
-  if(!allowed)return;
-
-  document.getElementById("requestDate").value=today();
-  document.getElementById("poDate").value=today();
-
   try{
+    document.getElementById("requestDate").value=today();
+    document.getElementById("poDate").value=today();
     bind();
+    renderAll();
   }catch(error){
-    console.error("Purchasing bind failed:",error);
-    msg("Purchasing controls could not initialize: "+error.message,"err");
+    console.error("Purchasing initial UI setup failed:",error);
   }
 
   /*
-    Render the empty shell immediately. This prevents the page from feeling
-    frozen while Supabase loads the six independent data sets.
+    Authentication/access is still checked, but it no longer gates the first
+    paint. Unauthenticated direct access is redirected once the session check
+    completes. Authenticated users see the module immediately.
   */
-  try{
-    renderAll();
-  }catch(error){
-    console.error("Purchasing initial render failed:",error);
-  }
+  const allowed=await loadAccess();
+  if(!allowed)return;
 
+  /*
+    Load independent data sources in parallel.
+  */
   const jobs=[
     ["projects",loadProjects],
     ["employees",loadEmployees],
@@ -182,16 +175,13 @@ async function init(){
   );
 
   const failures=[];
-
   results.forEach(result=>{
     const value=result.value;
-
     if(value && !value.ok){
       console.error(
         "Purchasing "+value.name+" load failed:",
         value.error
       );
-
       failures.push(
         value.name+
         ": "+
@@ -204,18 +194,16 @@ async function init(){
     renderAll();
   }catch(error){
     console.error("Purchasing render failed:",error);
-    msg(
-      "Purchasing data loaded, but the table could not render: "+
-      error.message,
-      "err"
-    );
   }
 
   if(failures.length){
-    msg(
-      "Purchasing loaded with data-service issue(s): "+
-      failures.join(" | "),
-      "err"
+    /*
+      Do not open the full-screen message overlay just because one data source
+      had a problem. Log the issue instead and keep the module interactive.
+    */
+    console.warn(
+      "Purchasing loaded with data-service issue(s): ",
+      failures
     );
   }
 }
