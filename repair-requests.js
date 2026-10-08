@@ -1323,12 +1323,17 @@ function openRepairMaterialsConfirmation(id){
       await openDetailFull(id);
     }catch(error){
       console.error("Request repair materials failed:",error);
-      showMessage(
-        error.message||"Unable to send the repair materials request to Purchasing.",
-        "error"
-      );
       button.disabled=false;
       button.textContent="YES, SEND TO PURCHASING";
+
+      let errorBox=dialog.querySelector("#repairMaterialsError");
+      if(!errorBox){
+        errorBox=document.createElement("div");
+        errorBox.id="repairMaterialsError";
+        errorBox.style.cssText="margin-top:12px;padding:11px 12px;border-radius:10px;background:#fee2e2;border:1px solid #fecaca;color:#991b1b;font-size:11px;font-weight:800;line-height:1.5;";
+        dialog.querySelector(".actions").before(errorBox);
+      }
+      errorBox.textContent="Unable to send to Purchasing: "+(error?.message||"Unknown error");
     }
   });
 }
