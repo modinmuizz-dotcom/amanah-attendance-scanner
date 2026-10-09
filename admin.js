@@ -1391,6 +1391,13 @@ function renderProjects() {
               </button>
             ` : ''}
 
+            ${window.AmanahProjectFootprint?.supports(project.project_type) ? `
+              <button type="button" class="small-button material-estimate-button"
+                onclick="viewProjectSite('${encodeURIComponent(project.project_id)}')">
+                SITE MAP
+              </button>
+            ` : ''}
+            
             <button
               class="small-button material-estimate-button"
               onclick="openMaterialEstimate('${encodeURIComponent(project.project_id)}')"
@@ -1413,6 +1420,12 @@ function renderProjects() {
 
 }
 
+
+function viewProjectSite(encodedId) {
+  const id=decodeURIComponent(encodedId);
+  const project=state.projects.find(item=>item.project_id===id);
+  if(project)window.AmanahProjectFootprint?.showSaved(project);
+}
 
 function editProject(encodedId) {
 
@@ -1651,6 +1664,7 @@ function openModal(
 
 function closeModal() {
 
+  window.AmanahProjectFootprint?.destroy();
   resetEmployeePhotoDraft();
 
   document
@@ -3630,6 +3644,7 @@ function openProjectModal(mode,record=null) {
     ${field('Contract Amount','contract_amount',values.contract_amount,false,'number','0.00')}
     ${field('Current Progress (%)','current_progress',values.current_progress,false,'number','0')}
     ${selectField('Status','status',['ACTIVE','COMPLETED','ON HOLD','INACTIVE'],values.status||'ACTIVE')}
+    ${window.AmanahProjectFootprint?.renderPanel(type,details)||''}
     ${renderProjectSpecificFields(type,details)}
   `;
   const fields=document.getElementById('formFields');
@@ -3657,6 +3672,7 @@ function openProjectModal(mode,record=null) {
   calculateProjectFormulas();
 
   openModal(mode==='add'?'ADD PROJECT — '+type:'EDIT PROJECT — '+type,'project',mode,values);
+  window.AmanahProjectFootprint?.initForm();
 }
 /* =========================================================
    FORM FIELD HELPERS
@@ -4142,6 +4158,15 @@ async function saveProject(
       projectType,
       values
     );
+
+  // These four types have a surveyed-site-like map footprint, separate from
+  // engineering floor/column/beam calculations and road alignments.
+  if (window.AmanahProjectFootprint?.supports(projectType)) {
+    const footprint=window.AmanahProjectFootprint.collectForSave(state.modalMode);
+    if (footprint !== undefined) {
+      projectDetails.site_footprint=footprint;
+    }
+  }
 
   const payload = {
 
