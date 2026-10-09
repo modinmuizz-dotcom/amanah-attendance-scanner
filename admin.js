@@ -1901,6 +1901,25 @@ function openEmployeeModal(
     )
     .innerHTML = `
 
+      <div class="form-field employee-photo-field">
+        <label>Employee Photo <small>(Optional)</small></label>
+        <div class="employee-photo-control">
+          <div class="employee-photo-image" style="width:150px;height:150px;max-width:150px;max-height:150px;flex:0 0 150px;overflow:hidden;">
+            <img id="employeePhotoPreview" alt="Employee photo preview" style="width:100%;height:100%;max-width:100%;max-height:100%;object-fit:cover;" hidden>
+            <span id="employeePhotoPlaceholder">NO PHOTO</span>
+          </div>
+          <div class="employee-photo-actions">
+            <input id="employeePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="employee-photo-buttons">
+              <button class="button secondary" id="chooseEmployeePhotoButton" type="button">+ UPLOAD PHOTO</button>
+              <button class="button secondary employee-photo-remove" id="removeEmployeePhotoButton" type="button" hidden>REMOVE PHOTO</button>
+            </div>
+            <small>JPG, PNG, or WebP · Maximum 5 MB. A photo is not required to save an employee.</small>
+            <small id="employeePhotoError" class="employee-photo-error" role="alert" hidden></small>
+          </div>
+        </div>
+      </div>
+
       ${field(
         'Employee ID',
         'employee_id',
@@ -1994,24 +2013,6 @@ function openEmployeeModal(
         </div>
       ` : ''}
 
-      <div class="form-field employee-photo-field">
-        <label>Employee Photo <small>(Optional)</small></label>
-        <div class="employee-photo-control">
-          <div class="employee-photo-image">
-            <img id="employeePhotoPreview" alt="Employee photo preview" hidden>
-            <span id="employeePhotoPlaceholder">NO PHOTO</span>
-          </div>
-          <div class="employee-photo-actions">
-            <input id="employeePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-            <div class="employee-photo-buttons">
-              <button class="button secondary" id="chooseEmployeePhotoButton" type="button">+ UPLOAD PHOTO</button>
-              <button class="button secondary employee-photo-remove" id="removeEmployeePhotoButton" type="button" hidden>REMOVE PHOTO</button>
-            </div>
-            <small>JPG, PNG, or WebP · Maximum 5 MB. A photo is not required to save an employee.</small>
-            <small id="employeePhotoError" class="employee-photo-error" role="alert" hidden></small>
-          </div>
-        </div>
-      </div>
 
     `;
 
