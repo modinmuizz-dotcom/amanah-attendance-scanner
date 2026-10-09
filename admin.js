@@ -3970,9 +3970,12 @@ async function saveEmployee(
         (values.position || '').toUpperCase() === 'FINANCIAL MANAGER'
       )
         ? 'ACTIVE'
-        : (values.status || 'ACTIVE')
+        : (values.status || 'ACTIVE'),
 
-  ,photo_path: uploadedPhotoPath || (employeePhotoDraft.removed ? null : previousPhotoPath)
+    photo_path:
+      uploadedPhotoPath ||
+      (employeePhotoDraft.removed ? null : previousPhotoPath)
+
   };
 
 
