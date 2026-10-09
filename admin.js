@@ -183,6 +183,7 @@ const supabaseClient =
 const state = {
 
   employees: [],
+  employeePhotoUrls: {},
   equipment: [],
   projects: [],
   suppliers: [],
@@ -466,6 +467,22 @@ async function loadEmployees() {
 
   state.employees =
     data || [];
+
+  state.employeePhotoUrls = {};
+  const paths = [...new Set(state.employees.map(x=>x.photo_path).filter(Boolean))];
+  if (paths.length) {
+    const {data:photos,error:photoError} = await supabaseClient.storage
+      .from(EMPLOYEE_PHOTO_BUCKET).createSignedUrls(paths, 3600);
+    if (photoError) {
+      console.warn('Employee photo thumbnails unavailable:',photoError);
+    } else {
+      (photos || []).forEach((item,index) => {
+        if (item.signedUrl) {
+          state.employeePhotoUrls[item.path || paths[index]] = item.signedUrl;
+        }
+      });
+    }
+  }
 
 }
 
@@ -893,9 +910,12 @@ function renderEmployees() {
         </td>
 
         <td>
-          ${escapeHtml(
-            employee.employee_name
-          )}
+          <div class="employee-name-with-photo">
+            ${state.employeePhotoUrls[employee.photo_path]
+              ? '<img class="employee-list-photo" alt="" src="'+escapeHtml(state.employeePhotoUrls[employee.photo_path])+'">'
+              : '<span class="employee-list-photo employee-list-placeholder" aria-hidden="true">👤</span>'}
+            <span>${escapeHtml(employee.employee_name)}</span>
+          </div>
         </td>
 
         <td>
@@ -1631,6 +1651,8 @@ function openModal(
 
 function closeModal() {
 
+  resetEmployeePhotoDraft();
+
   document
     .getElementById(
       'modal'
@@ -1728,6 +1750,106 @@ function updateEmployeeRateFields() {
   dailyInput.required = true;
 
   setupDecimalInputs(document.getElementById('formFields'));
+}
+
+
+/* PRIVATE EMPLOYEE PORTRAIT UPLOAD (optional) */
+const EMPLOYEE_PHOTO_BUCKET = 'employee-photos';
+const employeePhotoDraft = {
+  originalPath: null, file: null, removed: false,
+  signedUrl: null, objectUrl: null, generation: 0
+};
+
+function resetEmployeePhotoDraft() {
+  employeePhotoDraft.generation++;
+  if (employeePhotoDraft.objectUrl) URL.revokeObjectURL(employeePhotoDraft.objectUrl);
+  employeePhotoDraft.objectUrl = null;
+  employeePhotoDraft.file = null;
+  employeePhotoDraft.originalPath = null;
+  employeePhotoDraft.removed = false;
+  employeePhotoDraft.signedUrl = null;
+}
+
+function showEmployeePhotoError(message = '') {
+  const element = document.getElementById('employeePhotoError');
+  if (!element) return;
+  element.textContent = message;
+  element.hidden = !message;
+}
+
+function renderEmployeePhotoPreview() {
+  const img = document.getElementById('employeePhotoPreview');
+  const fallback = document.getElementById('employeePhotoPlaceholder');
+  const uploadButton = document.getElementById('chooseEmployeePhotoButton');
+  const removeButton = document.getElementById('removeEmployeePhotoButton');
+  if (!img || !fallback || !uploadButton || !removeButton) return;
+
+  const url = employeePhotoDraft.objectUrl ||
+    (!employeePhotoDraft.removed ? employeePhotoDraft.signedUrl : null);
+  img.hidden = !url;
+  if (url) img.src = url;
+  else img.removeAttribute('src');
+  fallback.hidden = !!url;
+  uploadButton.textContent = url ? 'REPLACE PHOTO' : '+ UPLOAD PHOTO';
+  removeButton.hidden = !(url || (employeePhotoDraft.originalPath && !employeePhotoDraft.removed));
+}
+
+async function initEmployeePhotoField(values) {
+  resetEmployeePhotoDraft();
+  employeePhotoDraft.originalPath = values.photo_path || null;
+  const generation = employeePhotoDraft.generation;
+
+  const input = document.getElementById('employeePhotoInput');
+  const choose = document.getElementById('chooseEmployeePhotoButton');
+  const remove = document.getElementById('removeEmployeePhotoButton');
+
+  choose.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+      showEmployeePhotoError('Choose a JPG, PNG, or WebP photo.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showEmployeePhotoError('The employee photo must be 5 MB or smaller.');
+      return;
+    }
+    showEmployeePhotoError();
+    if (employeePhotoDraft.objectUrl) URL.revokeObjectURL(employeePhotoDraft.objectUrl);
+    employeePhotoDraft.file = file;
+    employeePhotoDraft.objectUrl = URL.createObjectURL(file);
+    employeePhotoDraft.removed = false;
+    renderEmployeePhotoPreview();
+  });
+  remove.addEventListener('click', () => {
+    if (employeePhotoDraft.objectUrl) URL.revokeObjectURL(employeePhotoDraft.objectUrl);
+    employeePhotoDraft.objectUrl = null;
+    employeePhotoDraft.file = null;
+    employeePhotoDraft.removed = true;
+    employeePhotoDraft.signedUrl = null;
+    showEmployeePhotoError();
+    renderEmployeePhotoPreview();
+  });
+  renderEmployeePhotoPreview();
+
+  // A private signed URL is fetched only for authorized Employee Master users.
+  if (employeePhotoDraft.originalPath) {
+    const {data,error} = await supabaseClient.storage
+      .from(EMPLOYEE_PHOTO_BUCKET)
+      .createSignedUrl(employeePhotoDraft.originalPath, 3600);
+    if (generation !== employeePhotoDraft.generation ||
+        state.modalType !== 'employee' || employeePhotoDraft.removed ||
+        employeePhotoDraft.file) return;
+    if (error) {
+      console.warn('Employee photo preview unavailable:',error);
+      showEmployeePhotoError('Existing photo could not be previewed. You may replace it.');
+    } else {
+      employeePhotoDraft.signedUrl = data.signedUrl;
+    }
+    renderEmployeePhotoPreview();
+  }
 }
 
 /* =========================================================
@@ -1872,6 +1994,25 @@ function openEmployeeModal(
         </div>
       ` : ''}
 
+      <div class="form-field employee-photo-field">
+        <label>Employee Photo <small>(Optional)</small></label>
+        <div class="employee-photo-control">
+          <div class="employee-photo-image">
+            <img id="employeePhotoPreview" alt="Employee photo preview" hidden>
+            <span id="employeePhotoPlaceholder">NO PHOTO</span>
+          </div>
+          <div class="employee-photo-actions">
+            <input id="employeePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="employee-photo-buttons">
+              <button class="button secondary" id="chooseEmployeePhotoButton" type="button">+ UPLOAD PHOTO</button>
+              <button class="button secondary employee-photo-remove" id="removeEmployeePhotoButton" type="button" hidden>REMOVE PHOTO</button>
+            </div>
+            <small>JPG, PNG, or WebP · Maximum 5 MB. A photo is not required to save an employee.</small>
+            <small id="employeePhotoError" class="employee-photo-error" role="alert" hidden></small>
+          </div>
+        </div>
+      </div>
+
     `;
 
   openModal(
@@ -1894,6 +2035,10 @@ function openEmployeeModal(
   }
 
   updateEmployeeRateFields();
+  initEmployeePhotoField(values).catch(error => {
+    console.warn('Unable to initialize employee photo:',error);
+    showEmployeePhotoError('Photo preview unavailable. You can still save or upload a new photo.');
+  });
 
 }
 
@@ -3757,6 +3902,23 @@ async function saveEmployee(
     throw new Error('A registered email is required for every Driver / Operator because this email will be used for mobile app access.');
   }
 
+  const previousPhotoPath = employeePhotoDraft.originalPath;
+  let uploadedPhotoPath = null;
+  if (employeePhotoDraft.file) {
+    const file = employeePhotoDraft.file;
+    const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
+    if (!extension || file.size > 5 * 1024 * 1024) {
+      throw new Error('Employee photo must be JPG, PNG, or WebP and under 5 MB.');
+    }
+    uploadedPhotoPath = 'employees/' + crypto.randomUUID() + '.' + extension;
+    const {error:uploadError} = await supabaseClient.storage
+      .from(EMPLOYEE_PHOTO_BUCKET)
+      .upload(uploadedPhotoPath, file, {upsert:false, contentType:file.type});
+    if (uploadError) {
+      throw new Error('Employee photo upload failed: ' + uploadError.message);
+    }
+  }
+
   const payload = {
 
     employee_id:
@@ -3810,9 +3972,11 @@ async function saveEmployee(
         ? 'ACTIVE'
         : (values.status || 'ACTIVE')
 
+  ,photo_path: uploadedPhotoPath || (employeePhotoDraft.removed ? null : previousPhotoPath)
   };
 
 
+  try {
   if (
     state.modalMode ===
     'add'
@@ -3856,6 +4020,21 @@ async function saveEmployee(
       );
     }
 
+  }
+  } catch (error) {
+    if (uploadedPhotoPath) {
+      const cleanup = await supabaseClient.storage
+        .from(EMPLOYEE_PHOTO_BUCKET).remove([uploadedPhotoPath]);
+      if (cleanup.error) console.warn('Unused employee upload cleanup failed:',cleanup.error);
+    }
+    throw error;
+  }
+
+  // Only retire the previous picture AFTER the employee row has saved.
+  if (previousPhotoPath && previousPhotoPath !== payload.photo_path) {
+    const cleanup = await supabaseClient.storage
+      .from(EMPLOYEE_PHOTO_BUCKET).remove([previousPhotoPath]);
+    if (cleanup.error) console.warn('Old employee photo cleanup failed:',cleanup.error);
   }
 
 }
