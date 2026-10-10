@@ -20,8 +20,7 @@ const state = {
   projects: [],
   selectedProject: null,
   transactions: [],
-  budget: null,
-  progressRequestId: 0
+  budget: null
 };
 
 /* =========================================================
@@ -195,14 +194,13 @@ function clearProjectUI() {
   state.selectedProject = null;
   state.transactions = [];
   state.budget = null;
-  state.progressRequestId += 1;
 
   $("projectId").value = "";
   $("projectName").value = "";
   $("contractAmount").value = "";
   $("approvedBudget").value = "";
 
-  renderProjectProgress(null);
+  renderCostProgress(0, 0);
 
   $("metricContract").textContent = money(0);
   $("metricBudget").textContent = money(0);
@@ -235,85 +233,47 @@ function populateProjectUI(project) {
   $("contractAmount").value =
     money(project.contract_amount);
 
-  renderProjectProgress(null, "loading");
+  renderCostProgress(0, 0);
 
   $("metricContract").textContent =
     money(project.contract_amount);
 }
 
 /* =========================================================
-   SCHEDULE-BASED PROJECT PROGRESS (NO MANUAL PERCENTAGE)
+   PROJECT COST PROGRESS: ACTUAL COST / APPROVED BUDGET
+   This is budget utilization, not physical construction progress.
    ========================================================= */
 
-function renderProjectProgress(summary = null, status = "ready") {
+function renderCostProgress(actual = 0, budget = 0) {
   const text = $("currentProgressText");
   const bar = $("progressBar");
   const info = $("progressSourceInfo");
-  const activityCount = Number(summary?.activity_count || 0);
-  const rawPercent = Number(summary?.progress_percent);
-  const hasData = status === "ready" &&
-    activityCount > 0 &&
-    summary?.progress_percent != null &&
-    Number.isFinite(rawPercent);
 
-  const percent = hasData
-    ? Math.min(100, Math.max(0, rawPercent))
-    : 0;
+  const hasProject = Boolean(state.selectedProject);
+  const hasBudget = Number.isFinite(budget) && budget > 0;
+  const percent = hasBudget ? Math.max(0, (actual / budget) * 100) : 0;
+  const displayWidth = Math.min(100, percent);
 
-  text.textContent = hasData
+  text.textContent = hasProject && hasBudget
     ? `${percent.toFixed(2)}%`
-    : status === "loading"
-      ? "Loading..."
-      : status === "error"
-        ? "Unavailable"
-        : "—";
+    : "—";
 
-  bar.style.width = `${percent}%`;
-  bar.setAttribute("aria-valuenow", hasData ? String(percent) : "0");
+  bar.style.width = `${displayWidth}%`;
+  bar.style.background = hasBudget && percent > 100 ? "#dc2626" : "";
+  text.style.color = hasBudget && percent > 100 ? "#dc2626" : "";
+  bar.setAttribute("aria-valuenow", String(displayWidth));
+  bar.setAttribute("aria-valuetext", hasProject && hasBudget
+    ? `${percent.toFixed(2)}% of budget used`
+    : "No approved budget");
 
-  if (status === "loading") {
-    info.textContent = "Calculating from approved activities and operator-reported quantities...";
-  } else if (status === "error") {
-    info.textContent = "Progress could not be loaded. Use REFRESH to try again; cost records are unaffected.";
-  } else if (!hasData) {
-    info.textContent = "No approved activities with measurable planned quantities yet.";
+  if (!hasProject) {
+    info.textContent = "Select a project to view its budget utilization.";
+  } else if (!hasBudget) {
+    info.textContent = "Save an approved budget to calculate project cost progress.";
   } else {
-    const done = Number(summary.completed_activities || 0);
-    const active = Number(summary.in_progress_activities || 0);
     info.textContent =
-      `Auto from Activity Schedule • ${activityCount} approved measurable ` +
-      `activit${activityCount === 1 ? "y" : "ies"} • ${done} done, ${active} in progress`;
-  }
-}
-
-async function loadProjectProgress(projectId = selectedProjectId()) {
-  const requestId = ++state.progressRequestId;
-
-  if (!projectId) {
-    renderProjectProgress(null);
-    return;
-  }
-
-  renderProjectProgress(null, "loading");
-
-  try {
-    const { data, error } = await supabaseClient
-      .rpc("get_project_schedule_progress", { p_project_id: projectId })
-      .single();
-
-    if (error) throw error;
-
-    if (requestId !== state.progressRequestId ||
-        projectId !== selectedProjectId()) return;
-
-    renderProjectProgress(data);
-  } catch (error) {
-    console.error("Could not load schedule-based project progress:", error);
-
-    if (requestId !== state.progressRequestId ||
-        projectId !== selectedProjectId()) return;
-
-    renderProjectProgress(null, "error");
+      `${money(actual)} of ${money(budget)} approved budget used` +
+      (percent > 100 ? " • Budget exceeded" : "");
   }
 }
 
@@ -818,6 +778,8 @@ function updateMetrics() {
       ? (actual / budget) * 100
       : 0;
 
+  renderCostProgress(actual, budget);
+
   $("metricContract").textContent =
     money(contract);
 
@@ -924,10 +886,13 @@ async function handleProjectChange() {
 
     populateProjectUI(project);
 
+    state.transactions = [];
+    state.budget = null;
+    updateMetrics();
+
     await Promise.all([
       loadBudget(),
-      loadTransactions(),
-      loadProjectProgress(projectId)
+      loadTransactions()
     ]);
 
   } catch (error) {
@@ -965,8 +930,7 @@ async function refreshProjectData() {
 
   await Promise.all([
     loadBudget(),
-    loadTransactions(),
-    loadProjectProgress(selectedProjectId())
+    loadTransactions()
   ]);
 }
 
@@ -1200,16 +1164,20 @@ document.addEventListener(
 
       await loadProjects();
 
-      // Updates submitted from the mobile app appear without manual progress entry.
+      // Keep actual costs and the utilization bar current while this page is open.
       window.setInterval(() => {
         if (!document.hidden && selectedProjectId()) {
-          loadProjectProgress(selectedProjectId());
+          loadTransactions().catch(error =>
+            console.error("Could not refresh project costs:", error)
+          );
         }
       }, 60000);
 
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && selectedProjectId()) {
-          loadProjectProgress(selectedProjectId());
+          loadTransactions().catch(error =>
+            console.error("Could not refresh project costs:", error)
+          );
         }
       });
 
