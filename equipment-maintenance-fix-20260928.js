@@ -271,6 +271,9 @@ function render() {
           "<button class=\"btn-action btn-edit\" type=\"button\" onclick=\"editRecord('" +
             escapeHtml(row.maintenance_id) +
             "')\">EDIT</button>" +
+          "<button class=\"btn-action\" type=\"button\" style=\"background:#0f766e\" onclick=\"printMaintenanceRecord('" +
+            escapeHtml(row.maintenance_id) +
+            "')\">PRINT</button>" +
 
           (row.approval_status === "PENDING" ? "<button class=\"btn-action maintenance-cancel-visible\" style=\"background:#dc2626!important;color:#fff!important;border:1px solid #dc2626!important;font-weight:900!important;opacity:1!important;cursor:pointer!important\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">CANCEL REQUEST</button>" : "") +
           (row.approval_status === "APPROVED" ? "<button class=\"btn-action maintenance-cancel-visible\" style=\"background:#f59e0b!important;color:#fff!important;border:1px solid #f59e0b!important;font-weight:900!important;opacity:1!important;cursor:pointer!important;box-shadow:0 5px 12px rgba(245,158,11,.2)\" type=\"button\" onclick=\"cancelMaintenanceRequest('" + escapeHtml(row.maintenance_id) + "')\">REQUEST CANCELLATION</button>" : "") +
@@ -281,6 +284,58 @@ function render() {
       "</tr>"
     );
   }).join("");
+}
+
+async function printMaintenanceRecord(id){
+  const printing=window.AmanahRecordPrint;
+  if(!printing){showMessage('Print module unavailable. Please refresh the page.','error');return;}
+  const win=printing.open('MAINTENANCE RECORD');
+  if(!win)return;
+  try{
+    const [record,photos]=await Promise.all([
+      supabaseClient.from('equipment_maintenance').select('*').eq('maintenance_id',id).single(),
+      supabaseClient.from('equipment_maintenance_photos').select('storage_path').eq('maintenance_id',id).order('created_at',{ascending:true})
+    ]);
+    if(record.error)throw record.error;
+    if(photos.error)throw photos.error;
+    const r=record.data, f=printing.fields,s=printing.section,cash=printing.cash;
+    const sections=[
+      s('MAINTENANCE INFORMATION',f([
+        ['Date',formatDate(r.maintenance_date)],
+        ['Equipment',equipmentNameById(r.equipment_id)],
+        ['Equipment ID',r.equipment_id],
+        ['Project',projectNameById(r.project_id)],
+        ['Maintenance Type',r.maintenance_type],
+        ['Approval Status',r.approval_status||'NOT REQUIRED'],
+        ['Supplier / Shop',r.supplier_shop],
+        ['Reference / OR No.',r.reference_no],
+        ['Description',r.description],
+        ['Remarks',r.remarks]
+      ])),
+      s('MAINTENANCE COST',f([
+        ['Quantity',r.quantity],
+        ['Unit',r.unit],
+        ['Unit Cost',cash(r.unit_cost)],
+        ['Total Amount',cash(r.total_amount)]
+      ]))
+    ];
+    const signed=await Promise.all((photos.data||[]).map(async p=>{
+      const result=await supabaseClient.storage.from('equipment-maintenance-evidence').createSignedUrl(p.storage_path,600);
+      if(result.error){console.warn('Maintenance print photo unavailable',result.error);return null;}
+      return {label:'MAINTENANCE PHOTO EVIDENCE',src:result.data?.signedUrl};
+    }));
+    printing.printPage(win,{
+      title:'EQUIPMENT MAINTENANCE RECORD',
+      number:String(r.maintenance_type||'MAINTENANCE')+' · '+(r.equipment_id||''),
+      status:r.approval_status||'NOT REQUIRED',
+      sections,
+      photos:signed.filter(Boolean)
+    });
+  }catch(error){
+    console.error('Maintenance printing failed',error);
+    printing.error(win,error);
+    showMessage(error.message||'Unable to print maintenance record.','error');
+  }
 }
 
 function showMaintenanceCancelDialog(record,approved=false){
@@ -574,7 +629,7 @@ function openModal(record = null) {
       record.remarks || "";
 
     $("saveButton").textContent = "SAVE";
-
+    $("printMaintenanceModal").hidden = false;
     $("modalBackdrop").classList.add("open");
 
     loadExistingMaintenancePhotos(
@@ -583,12 +638,14 @@ function openModal(record = null) {
 
   } else {
     $("modalTitle").textContent = "ADD MAINTENANCE";
+    $("printMaintenanceModal").hidden = true;
     $("saveButton").textContent = "SAVE";
     $("modalBackdrop").classList.add("open");
   }
 }
 
 function closeModal() {
+  $("printMaintenanceModal").hidden = true;
   state.editingId = null;
   resetMaintenancePhotos();
   $("modalBackdrop").classList.remove("open");
@@ -1391,6 +1448,10 @@ $("addButton").addEventListener("click", openModal);
 $("closeModal").addEventListener("click", closeModal);
 $("cancelButton").addEventListener("click", closeModal);
 $("recordForm").addEventListener("submit", saveRecord);
+$("printMaintenanceModal").addEventListener("click",()=>{
+  if(!state.editingId)return;
+  printMaintenanceRecord(state.editingId);
+});
 $("maintenancePhotoInput").addEventListener(
   "change",
   handleMaintenanceFormPhotos
