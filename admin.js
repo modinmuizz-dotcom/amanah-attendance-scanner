@@ -2838,21 +2838,7 @@ function printMaterialEstimate() {
 
   if (!card) return;
 
-  const printWindow =
-    window.open(
-      '',
-      '_blank',
-      'width=1000,height=800'
-    );
-
-  if (!printWindow) {
-    showMessage(
-      'globalMessage',
-      'The print window could not be opened. Please allow pop-ups for AMANAH and try again.',
-      'error'
-    );
-    return;
-  }
+  const printWindow = window.AmanahDirectPrint.create('PROJECT MATERIAL ESTIMATE');
 
   const clone =
     card.cloneNode(true);
@@ -3078,16 +3064,7 @@ function printMaterialEstimate() {
 
   printDocument.close();
 
-  const doPrint = () => {
-    printWindow.focus();
-    printWindow.print();
-
-    printWindow.onafterprint = () => {
-      printWindow.close();
-    };
-  };
-
-  setTimeout(doPrint, 350);
+  window.AmanahDirectPrint.finish(printWindow);
 }
 
 function closeMaterialEstimate() {
