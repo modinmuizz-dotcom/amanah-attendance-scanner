@@ -159,6 +159,7 @@ async function loadProjects() {
       target_completion,
       actual_completion,
       contract_amount,
+      project_type,
       status
     `)
     .order("project_name", {
