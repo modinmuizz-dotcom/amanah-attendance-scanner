@@ -6,6 +6,7 @@ let approvals=[];
 let currentApproval=null;
 let approvalHistory=[];
 let currentHistoryRecord=null;
+let lumpSumPendingCount=0;
 
 function esc(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function formatDateTime(v){if(!v)return '—';return new Date(v).toLocaleString();}
@@ -345,6 +346,8 @@ async function loadLumpSumApprovals(){
       });
     });
     rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    lumpSumPendingCount=rows.length;
+    document.getElementById('pendingCount').textContent=approvals.length+lumpSumPendingCount;
     if(!rows.length){
       body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum contract actions.</td></tr>';
       return;
@@ -361,6 +364,8 @@ async function loadLumpSumApprovals(){
     }).join('');
   }catch(error){
     console.error(error);
+    lumpSumPendingCount=0;
+    document.getElementById('pendingCount').textContent=approvals.length;
     body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum requests. Check access and refresh.</td></tr>';
   }
 }
@@ -389,7 +394,7 @@ async function loadHistory(){
 function render(){
   const counts={ACTIVITY:0,PURCHASE_REQUEST:0,MATERIAL_PICKUP:0,REPAIR_REQUEST:0,MAINTENANCE:0};
   approvals.forEach(a=>counts[a.request_type]=(counts[a.request_type]||0)+1);
-  document.getElementById('pendingCount').textContent=approvals.length;
+  document.getElementById('pendingCount').textContent=approvals.length+lumpSumPendingCount;
   document.getElementById('activityCount').textContent=counts.ACTIVITY||0;
   document.getElementById('purchaseCount').textContent=counts.PURCHASE_REQUEST||0;
   document.getElementById('maintenanceCount').textContent=(counts.MAINTENANCE||0)+(counts.REPAIR_REQUEST||0);
