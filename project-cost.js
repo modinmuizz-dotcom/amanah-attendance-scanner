@@ -20,7 +20,9 @@ const state = {
   projects: [],
   selectedProject: null,
   transactions: [],
-  budget: null
+  estimateCost: null,
+  estimateStatus: "missing",
+  projectDataVersion: 0
 };
 
 /* =========================================================
@@ -193,20 +195,22 @@ async function loadProjects() {
 function clearProjectUI() {
   state.selectedProject = null;
   state.transactions = [];
-  state.budget = null;
+  state.estimateCost = null;
+  state.estimateStatus = "missing";
+  state.projectDataVersion += 1;
 
   $("projectId").value = "";
   $("projectName").value = "";
   $("contractAmount").value = "";
-  $("approvedBudget").value = "";
+  $("projectEstimateCost").value = "";
 
   renderCostProgress(0, 0);
 
   $("metricContract").textContent = money(0);
-  $("metricBudget").textContent = money(0);
+  $("metricEstimate").textContent = "—";
   $("metricActual").textContent = money(0);
-  $("metricRemaining").textContent = money(0);
-  $("metricUsage").textContent = "0.00%";
+  $("metricRemaining").textContent = "—";
+  $("metricUsage").textContent = "—";
 
   $("breakdownLabor").textContent = money(0);
   $("breakdownEquipment").textContent = money(0);
@@ -223,6 +227,10 @@ function clearProjectUI() {
 
 function populateProjectUI(project) {
   state.selectedProject = project;
+  state.estimateCost = null;
+  state.estimateStatus = "loading";
+  state.projectDataVersion += 1;
+  $("projectEstimateCost").value = "Loading...";
 
   $("projectId").value =
     project.project_id || "";
@@ -240,155 +248,91 @@ function populateProjectUI(project) {
 }
 
 /* =========================================================
-   PROJECT COST PROGRESS: ACTUAL COST / APPROVED BUDGET
-   This is budget utilization, not physical construction progress.
+   PROJECT ESTIMATE COST (READ-ONLY FROM PROJECT MASTER)
+   Based on saved materials, labor, and custom BOM line totals.
+   Never falls back to contract amount or legacy project_budgets.
    ========================================================= */
 
-function renderCostProgress(actual = 0, budget = 0) {
+function renderCostProgress(actual = 0, estimateCost = null) {
   const text = $("currentProgressText");
   const bar = $("progressBar");
   const info = $("progressSourceInfo");
 
-  const hasProject = Boolean(state.selectedProject);
-  const hasBudget = Number.isFinite(budget) && budget > 0;
-  const percent = hasBudget ? Math.max(0, (actual / budget) * 100) : 0;
-  const displayWidth = Math.min(100, percent);
+  const ready = state.estimateStatus === "ready";
+  const hasEstimate = ready && estimateCost !== null &&
+    Number.isFinite(estimateCost) && estimateCost >= 0;
+  const positiveEstimate = hasEstimate && estimateCost > 0;
+  const percent = positiveEstimate
+    ? Math.max(0, (actual / estimateCost) * 100)
+    : null;
 
-  text.textContent = hasProject && hasBudget
-    ? `${percent.toFixed(2)}%`
-    : "—";
+  const widthPercent = percent === null ? 0 : Math.min(100, percent);
+  text.textContent = percent === null ? "—" : `${percent.toFixed(2)}%`;
+  bar.style.width = `${widthPercent}%`;
+  bar.style.background = percent !== null && percent > 100 ? "#dc2626" : "";
+  text.style.color = percent !== null && percent > 100 ? "#dc2626" : "";
+  bar.setAttribute("aria-valuenow", String(widthPercent));
+  bar.setAttribute("aria-valuetext",
+    percent === null ? "Project estimate is not available"
+      : `${percent.toFixed(2)}% of project estimate used`);
 
-  bar.style.width = `${displayWidth}%`;
-  bar.style.background = hasBudget && percent > 100 ? "#dc2626" : "";
-  text.style.color = hasBudget && percent > 100 ? "#dc2626" : "";
-  bar.setAttribute("aria-valuenow", String(displayWidth));
-  bar.setAttribute("aria-valuetext", hasProject && hasBudget
-    ? `${percent.toFixed(2)}% of budget used`
-    : "No approved budget");
-
-  if (!hasProject) {
-    info.textContent = "Select a project to view its budget utilization.";
-  } else if (!hasBudget) {
-    info.textContent = "Save an approved budget to calculate project cost progress.";
+  if (!state.selectedProject) {
+    info.textContent = "Select a project to view its estimate cost usage.";
+  } else if (state.estimateStatus === "loading") {
+    info.textContent = "Loading saved Project Estimate from Project Master...";
+  } else if (state.estimateStatus === "error") {
+    info.textContent = "Project Estimate could not be loaded. Use REFRESH to retry.";
+  } else if (!hasEstimate) {
+    info.textContent = "No Project Estimate saved yet. Save it in Project Master first.";
+  } else if (!positiveEstimate) {
+    info.textContent = "Saved Project Estimate is ₱0.00. Enter estimated quantities and rates in Project Master.";
   } else {
     info.textContent =
-      `${money(actual)} of ${money(budget)} approved budget used` +
-      (percent > 100 ? " • Budget exceeded" : "");
+      `${money(actual)} actual cost of ${money(estimateCost)} saved Project Estimate` +
+      (percent > 100 ? " • Estimate exceeded" : "");
   }
 }
 
-/* =========================================================
-   BUDGET
-   ========================================================= */
-
-async function loadBudget() {
+async function loadProjectEstimate() {
   const projectId = selectedProjectId();
+  const version = state.projectDataVersion;
+  if (!projectId || !state.selectedProject) return;
 
-  if (!projectId) {
-    $("approvedBudget").value = "";
-    state.budget = null;
-    return;
+  // Project Master uses ROAD only for CONCRETING OF ROAD; otherwise GENERAL.
+  const estimateType = state.selectedProject.project_type === "CONCRETING OF ROAD"
+    ? "ROAD" : "GENERAL";
+
+  if (state.estimateStatus !== "ready") {
+    state.estimateStatus = "loading";
+    $("projectEstimateCost").value = "Loading...";
+    updateMetrics();
   }
-
-  const { data, error } = await supabaseClient
-    .from("project_budgets")
-    .select("*")
-    .eq("project_id", projectId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  state.budget = data || null;
-
-  if (data) {
-    $("approvedBudget").value =
-      number(data.approved_budget).toFixed(2);
-  } else {
-    $("approvedBudget").value =
-      number(
-        state.selectedProject?.contract_amount
-      ).toFixed(2);
-  }
-
-  updateMetrics();
-}
-
-async function saveBudget() {
-  const projectId = selectedProjectId();
-
-  if (!projectId) {
-    showMessage(
-      "Select a project first.",
-      "error"
-    );
-    return;
-  }
-
-  const approvedBudget =
-    number($("approvedBudget").value);
-
-  if (approvedBudget < 0) {
-    showMessage(
-      "Approved budget cannot be negative.",
-      "error"
-    );
-    return;
-  }
-
-  const button =
-    $("saveBudgetButton");
-
-  button.disabled = true;
-  button.textContent = "SAVING...";
 
   try {
-    const payload = {
-      project_id: projectId,
-      approved_budget: approvedBudget,
-      notes: "AMANAH Project Cost Control"
-    };
+    const { data, error } = await supabaseClient.rpc("get_project_estimate_cost", {
+      p_project_id: projectId,
+      p_estimate_type: estimateType
+    });
 
-    const {
-      data,
-      error
-    } = await supabaseClient
-      .from("project_budgets")
-      .upsert(
-        payload,
-        {
-          onConflict: "project_id"
-        }
-      )
-      .select()
-      .single();
+    if (error) throw error;
+    if (version !== state.projectDataVersion || projectId !== selectedProjectId()) return;
 
-    if (error) {
-      throw error;
+    const parsed = data === null ? null : Number(data);
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+      throw new Error("The saved Project Estimate total is invalid.");
     }
 
-    state.budget = data;
-
-    showMessage(
-      "Project budget saved successfully.",
-      "success"
-    );
-
-    await refreshProjectData();
-
+    state.estimateCost = parsed;
+    state.estimateStatus = parsed === null ? "missing" : "ready";
+    $("projectEstimateCost").value = parsed === null ? "Not saved" : money(parsed);
+    updateMetrics();
   } catch (error) {
-    console.error(error);
-
-    showMessage(
-      "Could not save project budget: " +
-      error.message,
-      "error"
-    );
-
-  } finally {
-    button.disabled = false;
-    button.textContent = "SAVE BUDGET";
+    if (version !== state.projectDataVersion || projectId !== selectedProjectId()) return;
+    state.estimateCost = null;
+    state.estimateStatus = "error";
+    $("projectEstimateCost").value = "Unavailable";
+    updateMetrics();
+    throw error;
   }
 }
 
@@ -398,6 +342,7 @@ async function saveBudget() {
 
 async function loadTransactions() {
   const projectId = selectedProjectId();
+  const version = state.projectDataVersion;
 
   if (!projectId) {
     state.transactions = [];
@@ -439,6 +384,9 @@ async function loadTransactions() {
   if (error) {
     throw error;
   }
+
+  // Discard an obsolete response when a different project is selected.
+  if (version !== state.projectDataVersion || projectId !== selectedProjectId()) return;
 
   state.transactions = data || [];
 
@@ -753,47 +701,25 @@ async function deleteCost(id) {
 
 function updateMetrics() {
 
-  const contract =
-    number(
-      state.selectedProject?.contract_amount
-    );
+  const contract = number(state.selectedProject?.contract_amount);
+  const estimate = state.estimateStatus === "ready"
+    ? state.estimateCost : null;
 
-  const budget =
-    number(
-      state.budget?.approved_budget
-    );
+  const actual = state.transactions.reduce(
+    (sum, item) => sum + number(item.amount), 0
+  );
 
-  const actual =
-    state.transactions.reduce(
-      (sum, item) =>
-        sum + number(item.amount),
-      0
-    );
+  const remaining = estimate === null ? null : estimate - actual;
+  const usage = estimate !== null && estimate > 0
+    ? (actual / estimate) * 100 : null;
 
-  const remaining =
-    budget - actual;
+  renderCostProgress(actual, estimate);
 
-  const usage =
-    budget > 0
-      ? (actual / budget) * 100
-      : 0;
-
-  renderCostProgress(actual, budget);
-
-  $("metricContract").textContent =
-    money(contract);
-
-  $("metricBudget").textContent =
-    money(budget);
-
-  $("metricActual").textContent =
-    money(actual);
-
-  $("metricRemaining").textContent =
-    money(remaining);
-
-  $("metricUsage").textContent =
-    `${Math.max(0, usage).toFixed(2)}%`;
+  $("metricContract").textContent = money(contract);
+  $("metricEstimate").textContent = estimate === null ? "—" : money(estimate);
+  $("metricActual").textContent = money(actual);
+  $("metricRemaining").textContent = remaining === null ? "—" : money(remaining);
+  $("metricUsage").textContent = usage === null ? "—" : `${Math.max(0, usage).toFixed(2)}%`;
 
   const totals = {
     LABOR: 0,
@@ -839,14 +765,14 @@ function updateMetrics() {
     money(totals.OTHER);
 
   $("metricRemaining").style.color =
-    remaining < 0
+    remaining !== null && remaining < 0
       ? "#b91c1c"
       : "#0f172a";
 
   $("metricUsage").style.color =
-    usage > 100
+    usage !== null && usage > 100
       ? "#b91c1c"
-      : usage >= 90
+      : usage !== null && usage >= 90
         ? "#ea580c"
         : "#0f172a";
 }
@@ -887,11 +813,10 @@ async function handleProjectChange() {
     populateProjectUI(project);
 
     state.transactions = [];
-    state.budget = null;
     updateMetrics();
 
     await Promise.all([
-      loadBudget(),
+      loadProjectEstimate(),
       loadTransactions()
     ]);
 
@@ -929,7 +854,7 @@ async function refreshProjectData() {
   }
 
   await Promise.all([
-    loadBudget(),
+    loadProjectEstimate(),
     loadTransactions()
   ]);
 }
@@ -1164,22 +1089,15 @@ document.addEventListener(
 
       await loadProjects();
 
-      // Keep actual costs and the utilization bar current while this page is open.
-      window.setInterval(() => {
+      // Pick up both edited Project Master estimates and new cost transactions.
+      const updateProjectCostFigures = () => {
         if (!document.hidden && selectedProjectId()) {
-          loadTransactions().catch(error =>
-            console.error("Could not refresh project costs:", error)
-          );
+          Promise.all([loadProjectEstimate(), loadTransactions()])
+            .catch(error => console.error("Could not refresh project figures:", error));
         }
-      }, 60000);
-
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && selectedProjectId()) {
-          loadTransactions().catch(error =>
-            console.error("Could not refresh project costs:", error)
-          );
-        }
-      });
+      };
+      window.setInterval(updateProjectCostFigures, 60000);
+      document.addEventListener("visibilitychange", updateProjectCostFigures);
 
       const params =
         new URLSearchParams(
