@@ -478,20 +478,14 @@ function renderTransactions() {
         </td>
 
         <td>
-
-          <button
-            class="btn-danger"
-            style="
-              min-height:34px;
-              padding:7px 10px;
-              font-size:10px;
-            "
-            type="button"
-            onclick="deleteCost('${escapeHtml(item.id)}')"
-          >
-            DELETE
-          </button>
-
+          ${String(item.reference_id || "").startsWith("GROUP-LABOR:")
+            ? '<span style="display:inline-block;padding:7px 10px;border-radius:9px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:800;" title="Managed automatically by the associated Group Labor Payroll record">PAYROLL LINKED</span>'
+            : `<button
+                  class="btn-danger"
+                  style="min-height:34px;padding:7px 10px;font-size:10px;"
+                  type="button"
+                  onclick="deleteCost('${escapeHtml(item.id)}')"
+                >DELETE</button>`}
         </td>
 
       </tr>
@@ -655,6 +649,11 @@ async function deleteCost(id) {
     );
 
   if (!transaction) return;
+
+  if (String(transaction.reference_id || "").startsWith("GROUP-LABOR:")) {
+    showMessage("This Group Labor cost is managed through Payroll and cannot be deleted here.", "error");
+    return;
+  }
 
   const confirmed =
     window.confirm(
