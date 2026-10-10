@@ -64,6 +64,26 @@
     </div>
   </section>
 
+  <section class="approval-panel" id="lsApprovalsPanel">
+    <div class="panel-head">
+      <div>
+        <div class="approval-kicker">CONSTRUCTION CONTRACT BILLINGS</div>
+        <h2>LUMP-SUM APPROVAL QUEUE</h2>
+        <p>Site-verified fixed-price progress billings awaiting GM approval. Submitted claims still need engineer verification first.</p>
+      </div>
+      <div class="panel-actions">
+        <a href="lump-sum.html" class="button secondary" style="text-decoration:none">CONTRACT REGISTER</a>
+        <button id="refreshLumpApprovals" class="button secondary" type="button">REFRESH</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="approval-table">
+        <thead><tr><th>CONTRACT / PROJECT</th><th>MILESTONE</th><th>GROSS EARNED</th><th>STATUS</th><th>ACTION</th></tr></thead>
+        <tbody id="lumpApprovalBody"><tr><td colspan="5" class="empty">Loading lump-sum claims...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="approval-panel approval-history-panel">
     <div class="panel-head">
       <div>
@@ -186,7 +206,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="approvals.js?v=18"></script>
+<script src="approvals.js?v=19"></script>
 <script src="amanah-ui.js?v=9"></script>
 </body>
 </html>
