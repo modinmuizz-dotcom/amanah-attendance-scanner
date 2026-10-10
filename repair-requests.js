@@ -128,6 +128,7 @@ function renderRequests(){
       '<td>'+statusPill(x.status)+'</td>' +
       '<td><div style="display:flex;flex-wrap:wrap;gap:7px">' +
         '<button class="btn btn-blue" type="button" data-repair-view="'+escapeHtml(x.repair_request_id)+'">VIEW</button>' +
+        '<button class="btn btn-gray" type="button" data-repair-print="'+escapeHtml(x.repair_request_id)+'">PRINT</button>' +
         '<button class="btn btn-danger" type="button" data-repair-delete="'+escapeHtml(x.repair_request_id)+'">DELETE</button>' +
       '</div></td>' +
     '</tr>'
@@ -136,9 +137,88 @@ function renderRequests(){
   body.querySelectorAll("[data-repair-view]").forEach(btn=>{
     btn.addEventListener("click",()=>openDetail(btn.dataset.repairView));
   });
+  body.querySelectorAll("[data-repair-print]").forEach(btn=>{
+    btn.addEventListener("click",()=>printRepairRequest(btn.dataset.repairPrint));
+  });
   body.querySelectorAll("[data-repair-delete]").forEach(btn=>{
     btn.addEventListener("click",()=>openDeleteConfirm(btn.dataset.repairDelete));
   });
+}
+
+async function printRepairRequest(id) {
+  const printing=window.AmanahRecordPrint;
+  if(!printing) {showMessage('Print module was not loaded. Please refresh the page.','error');return;}
+  const pop=printing.open('REPAIR REQUEST');
+  if(!pop)return;
+  try{
+    const [record,items,photos,costs]=await Promise.all([
+      supabaseClient.from('repair_requests').select('*').eq('repair_request_id',id).single(),
+      supabaseClient.from('repair_request_items').select('*').eq('repair_request_id',id).order('display_order'),
+      supabaseClient.from('repair_request_photos').select('file_path,photo_category').eq('repair_request_id',id).order('uploaded_at',{ascending:true}),
+      supabaseClient.from('repair_request_costs').select('*').eq('repair_request_id',id).order('created_at',{ascending:true})
+    ]);
+    for(const r of [record,items,photos,costs]) if(r.error)throw r.error;
+    const x=record.data;
+    const eq=state.equipment.find(e=>e.equipment_id===x.equipment_id);
+    const project=state.projects.find(p=>p.project_id===x.project_id);
+    const f=printing.fields, sec=printing.section,tab=printing.table,cash=printing.cash;
+    const parts=items.data||[], charges=costs.data||[];
+    const chargeTotal=charges.reduce((sum,r)=>sum+Number(r.amount||0),0);
+    const sections=[
+      sec('REQUEST INFORMATION',f([
+        ['Repair Request No.',x.repair_form_no],
+        ['Request Date',x.request_date],
+        ['Status',x.status],
+        ['Equipment',eq?.equipment_name||x.equipment_id],
+        ['Body / Plate No.',x.body_plate_no||eq?.plate_number],
+        ['Project',project?.project_name||x.project_id||'No project'],
+        ['Reported By',x.reported_by],
+        ['PM Inspection Reference',x.pm_inspection_ref],
+        ['Prepared On',x.prepared_at]
+      ])),
+      sec('PROBLEMS & REMARKS',f([
+        ['Problems Encountered (SIRA)',x.problems_encountered],
+        ['Remarks',x.remarks],
+        ['GM Decision',x.status==='APPROVED'?'APPROVED':x.status==='RETURNED'?'RETURNED':x.status]
+      ])),
+      sec('WORKS AND MATERIALS',tab(
+        ['Work To Be Done','Material / Spare Part','Specification','Qty','Unit'],
+        parts.map(i=>[i.work_to_be_done,i.material_or_spare_part,i.specifications,i.quantity,i.unit])
+      )),
+      sec('REPAIR EXECUTION',f([
+        ['Repaired By',x.repaired_by],
+        ['Repair Started',x.repair_date_started],
+        ['Repair Completed',x.repair_date_completed],
+        ['Approved On',x.approved_at]
+      ])),
+      sec('REPAIR COST SUMMARY',f([
+        ['Total Actual Cost',cash(chargeTotal)],
+        ['Labor',cash(charges.filter(c=>c.cost_type==='LABOR').reduce((s,c)=>s+Number(c.amount||0),0))],
+        ['Materials',cash(charges.filter(c=>c.cost_type==='MATERIAL').reduce((s,c)=>s+Number(c.amount||0),0))],
+        ['Other',cash(charges.filter(c=>c.cost_type==='OTHER').reduce((s,c)=>s+Number(c.amount||0),0))]
+      ])),
+      sec('REPAIR COST DETAILS',tab(
+        ['Type','Description','Qty','Unit','Unit Cost','Amount'],
+        charges.map(c=>[c.cost_type,c.description,c.quantity,c.unit,cash(c.unit_cost),cash(c.amount)])
+      ))
+    ];
+    const signedPhotos=await Promise.all((photos.data||[]).map(async ph=>{
+      const s=await supabaseClient.storage.from('repair-evidence').createSignedUrl(ph.file_path,600);
+      if(s.error){console.warn('Repair photo print preview unavailable',s.error);return null;}
+      return {label:ph.photo_category,src:s.data?.signedUrl};
+    }));
+    printing.printPage(pop,{
+      title:'REPAIR REQUEST RECORD',
+      number:x.repair_form_no,
+      status:x.status,
+      sections,
+      photos:signedPhotos.filter(Boolean)
+    });
+  }catch(error){
+    console.error('Repair request printing failed',error);
+    printing.error(pop,error);
+    showMessage(error.message||'Unable to print Repair Request.','error');
+  }
 }
 
 function openDeleteConfirm(requestId){
@@ -1604,6 +1684,11 @@ $("photoInput").addEventListener("change",e=>{
 });
 $("requestForm").addEventListener("submit",async e=>{e.preventDefault();try{await createRequest();}catch(err){console.error(err);showMessage(err.message||"Unable to create repair request.","error");}});
 $("closeDetail").addEventListener("click",()=>$("detailModal").classList.remove("open"));
+$("printRepairDetail").addEventListener("click",()=>{
+  const id=state.selectedRequest?.request?.repair_request_id;
+  if(!id){showMessage('Wait for the Repair Request details to finish loading.','error');return;}
+  printRepairRequest(id);
+});
 $("closeApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
 $("cancelApprovalConfirm").addEventListener("click",closeApprovalConfirmation);
 $("approvalConfirmModal").addEventListener("click",e=>{if(e.target.id==="approvalConfirmModal")closeApprovalConfirmation();});
