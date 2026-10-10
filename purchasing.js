@@ -1573,11 +1573,7 @@ function printPurchaseOrder(id){
  openPrintWindow("PURCHASE ORDER",o.po_no,o.project_name,o.project_location,o.requester_name,"",o.po_date,o.expected_delivery_date,rows,"SUPPLIER PURCHASE ORDER",o.supplier_name,o.supplier_contact,o.supplier_address,o.payment_terms,o.delivery_terms,o.remarks,o.grand_total);
 }
 function openPrintWindow(title,docNo,project,location,requester,requesterPosition,date,needed,rows,subtitle,supplier,supplierContact,supplierAddress,paymentTerms,deliveryTerms,remarks,grandTotal){
-  const win=window.open("","_blank","width=1000,height=800");
-  if(!win){
-    msg("Please allow pop-ups for printable Purchasing documents.","err");
-    return;
-  }
+  const win=window.AmanahDirectPrint.create(title);
 
   const isPO=title==="PURCHASE ORDER";
   const css=[
@@ -1599,7 +1595,8 @@ function openPrintWindow(title,docNo,project,location,requester,requesterPositio
     ".remark{margin-top:16px;border:1px solid #cbd5e1;padding:10px}",
     ".actions{margin-top:24px;text-align:center}",
     ".actions button{padding:10px 16px;font-weight:800}",
-    "@media print{.actions{display:none}body{padding:20px}}"
+    "@page{size:A4 portrait;margin:12mm}",
+    "@media print{.actions{display:none}body{padding:0}html,body{overflow:visible!important;height:auto!important}.items{break-inside:auto}.items tr{break-inside:avoid}}"
   ].join("");
 
   win.document.open();
@@ -1650,12 +1647,12 @@ function openPrintWindow(title,docNo,project,location,requester,requesterPositio
       '<div class="sig">REQUESTED / PREPARED BY<br><br><strong>'+esc(requester||"")+'</strong></div>'+
       '<div class="sig">'+(isPO?"PURCHASING / APPROVAL":"PURCHASING REVIEW")+'<br><br><strong>AMANAH CONSTRUCTION SERVICES</strong></div>'+
     '</div>'+
-    '<div class="actions"><button onclick="window.print()">PRINT / SAVE PDF</button></div>'
+    ''
   );
 
   win.document.write('</body></html>');
   win.document.close();
-  win.focus();
+  window.AmanahDirectPrint.finish(win);
 }
 
 window.addEventListener("error",event=>{
