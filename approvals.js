@@ -463,8 +463,7 @@ async function printApprovalRecordById(id){
   if(record)await printApprovalRecord(record);
 }
 async function printApprovalRecord(record){
-  const win=window.open('','_blank');
-  if(!win){showMsg('Please allow pop-ups to print the decision record.','error');return;}
+  const win=window.AmanahDirectPrint.create('APPROVAL DECISION RECORD');
   win.document.open();
   win.document.write('<!doctype html><html><head><title>AMANAH Decision Record</title><style>'+approvalPrintStyles()+'</style></head><body><div id="printRoot"><div class="print-wrap" style="padding:30px;text-align:center;color:#64748b;font-weight:800">Preparing print record…</div></div></body></html>');
   win.document.close();
@@ -493,9 +492,7 @@ async function printApprovalRecord(record){
 
   const root=win.document.getElementById('printRoot');
   if(root)root.innerHTML=buildDecisionPrintHtml(record,photos);
-  win.focus();
-  setTimeout(()=>win.print(),350);
-  setTimeout(()=>{try{win.close();}catch(_){ }},1200);
+  window.AmanahDirectPrint.finish(win);
 }
 function openHistory(id){
   const record=approvalHistory.find(a=>a.approval_id===id);
