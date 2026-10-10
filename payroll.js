@@ -8,6 +8,48 @@ let payrollRows=[];
 let calculatedPeriod=null;
 let payrollEmployeeOptions=[];
 let groupLaborRows=[];
+let payrollProjects=[];
+let payrollSaved=false;
+let payrollSaving=false;
+
+async function loadGroupLaborProjects(){
+  const select=document.getElementById('groupLaborProject');
+  if(!select)return;
+
+  const original=select.value;
+  select.disabled=true;
+  select.innerHTML='<option value="">Loading projects...</option>';
+
+  try{
+    const {data,error}=await supabaseClient.from('projects')
+      .select('project_id,project_name,status')
+      .order('project_name');
+
+    if(error)throw error;
+
+    payrollProjects=(data||[]).filter(p=>
+      String(p.status||'').toUpperCase()==='ACTIVE'
+    );
+
+    select.innerHTML='<option value="">Select project</option>'+
+      payrollProjects.map(p=>
+        '<option value="'+escapeHtml(p.project_id)+'">'+
+        escapeHtml(p.project_name||p.project_id)+' — '+
+        escapeHtml(p.project_id)+'</option>'
+      ).join('');
+
+    if(payrollProjects.some(p=>p.project_id===original))select.value=original;
+    if(!payrollProjects.length){
+      select.innerHTML='<option value="">No active projects available</option>';
+    }
+  }catch(error){
+    select.innerHTML='<option value="">Unable to load projects</option>';
+    throw error;
+  }finally{
+    select.disabled=false;
+  }
+}
+
 
 
 
@@ -23,8 +65,13 @@ function updateGroupLaborPreview(){
   if(el)el.textContent=money(gross);
 }
 
-function openGroupLaborModal(){
+async function openGroupLaborModal(){
   clearMessage();
+  if(payrollSaved){
+    showMessage('This payroll run is already saved. Calculate a new payroll before adding more group labor.','error');
+    return;
+  }
+  document.getElementById('groupLaborProject').value='';
   document.getElementById('groupLaborName').value='';
   document.getElementById('groupLaborActivity').value='';
   document.getElementById('groupLaborRate').value='';
@@ -35,6 +82,12 @@ function openGroupLaborModal(){
   const modal=document.getElementById('groupLaborModal');
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden','false');
+  try{
+    await loadGroupLaborProjects();
+  }catch(error){
+    document.getElementById('groupLaborError').textContent=
+      'Projects could not be loaded: '+(error.message||'Please retry.');
+  }
 }
 
 function closeGroupLaborModal(){
@@ -47,6 +100,8 @@ function addGroupLaborEntry(){
   const error=document.getElementById('groupLaborError');
   error.textContent='';
 
+  const projectId=document.getElementById('groupLaborProject').value;
+  const project=payrollProjects.find(p=>p.project_id===projectId);
   const groupName=document.getElementById('groupLaborName').value.trim();
   const activity=document.getElementById('groupLaborActivity').value.trim();
   const rate=num(document.getElementById('groupLaborRate').value);
@@ -57,6 +112,10 @@ function addGroupLaborEntry(){
 
   if(!start||!end||end<start){
     error.textContent='Please set a valid payroll period first.';
+    return;
+  }
+  if(!project){
+    error.textContent='Please select the project where this group labor expense belongs.';
     return;
   }
   if(!groupName){
@@ -77,6 +136,8 @@ function addGroupLaborEntry(){
   }
 
   groupLaborRows.push({
+    projectId:project.project_id,
+    projectName:project.project_name||project.project_id,
     groupName,
     activity,
     ratePerMeter:rate,
@@ -107,7 +168,7 @@ function renderGroupLabor(){
   if(!body)return;
 
   if(!groupLaborRows.length){
-    body.innerHTML='<tr><td colspan="5" class="payroll-empty">No group labor entries added.</td></tr>';
+    body.innerHTML='<tr><td colspan="6" class="payroll-empty">No group labor entries added.</td></tr>';
     document.getElementById('groupLaborGross').textContent=money(0);
     return;
   }
@@ -115,12 +176,13 @@ function renderGroupLabor(){
   body.innerHTML=groupLaborRows.map((row,index)=>`
     <tr>
       <td><strong>${escapeHtml(row.groupName)}</strong></td>
+      <td><strong>${escapeHtml(row.projectName||row.projectId)}</strong><span class="payroll-sub">${escapeHtml(row.projectId||'')}</span></td>
       <td>${escapeHtml(row.activity)}</td>
       <td class="payroll-rate">${money(row.ratePerMeter)}<span class="payroll-sub">PER METER</span></td>
       <td>${num(row.metersAccomplished).toFixed(2)}</td>
       <td class="payroll-gross">
         ${money(groupLaborGross(row))}
-        <button type="button" class="group-labor-remove" data-group-index="${index}">REMOVE</button>
+        ${payrollSaved?'':'<button type="button" class="group-labor-remove" data-group-index="'+index+'">REMOVE</button>'}
       </td>
     </tr>`).join('');
 
@@ -262,6 +324,10 @@ function closeManualPayrollModal(){
 function addManualPayrollEntry(){
   const error=document.getElementById('manualPayrollError');
   error.textContent='';
+  if(payrollSaved){
+    error.textContent='Calculate a new payroll before adding entries to a saved run.';
+    return;
+  }
 
   const employee=manualPayrollEmployee();
   if(!employee){
@@ -526,7 +592,7 @@ function updateSummary(){
   document.getElementById('payrollTruckerHours').textContent=truckerHours.toFixed(2);
   document.getElementById('payrollGross').textContent=money(gross);
   const hasPayrollRows=payrollRows.length||groupLaborRows.length;
-  document.getElementById('savePayrollButton').disabled=!hasPayrollRows||!calculatedPeriod;
+  document.getElementById('savePayrollButton').disabled=!hasPayrollRows||!calculatedPeriod||payrollSaved||payrollSaving;
   document.getElementById('printPayrollButton').disabled=!hasPayrollRows||!calculatedPeriod;
 
 }
@@ -539,6 +605,14 @@ async function calculatePayroll(){
   const end=document.getElementById('payrollEnd').value;
   if(!start||!end){showMessage('Please select both the payroll start date and end date.','error');return;}
   if(end<start){showMessage('Payroll end date cannot be earlier than the start date.','error');return;}
+
+  // Start a fresh register after the previous payroll was successfully saved.
+  // Never silently carry previously posted group labor into another payroll.
+  if(payrollSaved){
+    groupLaborRows=[];
+    payrollSaved=false;
+    renderGroupLabor();
+  }
 
   const [{data:employees,error:empError},{data:attendance,error:attError}]=await Promise.all([
     supabaseClient.from('employees').select('employee_id,employee_name,department,hourly_rate,daily_rate,status').eq('status','ACTIVE').order('employee_name'),
@@ -571,7 +645,17 @@ async function calculatePayroll(){
 
 async function savePayroll(){
   clearMessage();
+  if(payrollSaving)return;
+  if(payrollSaved){
+    showMessage('This payroll has already been saved. Calculate a new payroll for another run.','error');
+    return;
+  }
   if(!calculatedPeriod||(!payrollRows.length&&!groupLaborRows.length)){showMessage('Add employee payroll or group labor before saving.','error');return;}
+  if(groupLaborRows.some(row=>!row.projectId||!payrollProjects.some(p=>p.project_id===row.projectId))){
+    showMessage('Every group labor item must have a valid selected project before saving.','error');
+    return;
+  }
+  payrollSaving=true;
   const button=document.getElementById('savePayrollButton');
   button.disabled=true;
   button.textContent='SAVING...';
@@ -613,6 +697,7 @@ async function savePayroll(){
     if(groupLaborRows.length){
       const groupItems=groupLaborRows.map(row=>({
         payroll_run_id:run.payroll_run_id,
+        project_id:row.projectId,
         group_name:row.groupName,
         activity_description:row.activity,
         rate_per_meter:Number(row.ratePerMeter.toFixed(2)),
@@ -627,13 +712,18 @@ async function savePayroll(){
       if(groupError)throw groupError;
     }
 
-    showMessage('Payroll run saved successfully.','success');
+    payrollSaved=true;
+    renderGroupLabor();
+    showMessage(
+      'Payroll saved successfully. Group Labor expenses were added automatically to their selected projects in Project Cost Control.',
+      'success'
+    );
     await loadPayrollHistory();
   }catch(error){
     showMessage(error.message||'Unable to save payroll.','error');
   }finally{
-    button.disabled=false;
-    button.textContent='SAVE PAYROLL';
+    payrollSaving=false;
+    button.textContent=payrollSaved?'PAYROLL SAVED':'SAVE PAYROLL';
     updateSummary();
   }
 }
@@ -716,9 +806,9 @@ document.addEventListener('DOMContentLoaded',async()=>{
       if(error)throw error;
       payrollEmployees = data || [];
       populatePayrollEmployeeFilter(payrollEmployees);
-      await loadPayrollHistory();
+      await Promise.all([loadPayrollHistory(),loadGroupLaborProjects()]);
     }catch(error){
-      showMessage(error.message||'Unable to load employee list.','error');
+      showMessage(error.message||'Unable to load employee list or projects.','error');
     }
   }
 });
