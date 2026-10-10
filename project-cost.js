@@ -939,27 +939,6 @@ function closeCostModal() {
     "";
 }
 
-function useContractAmount() {
-
-  const contract =
-    number(
-      state.selectedProject?.contract_amount
-    );
-
-  if (!state.selectedProject) {
-
-    showMessage(
-      "Select a project first.",
-      "error"
-    );
-
-    return;
-  }
-
-  $("approvedBudget").value =
-    contract.toFixed(2);
-}
-
 /* =========================================================
    LOGOUT
    ========================================================= */
@@ -993,18 +972,6 @@ document.addEventListener(
         .addEventListener(
           "change",
           handleProjectChange
-        );
-
-      $("saveBudgetButton")
-        .addEventListener(
-          "click",
-          saveBudget
-        );
-
-      $("useContractButton")
-        .addEventListener(
-          "click",
-          useContractAmount
         );
 
       $("addCostButton")
