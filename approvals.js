@@ -298,6 +298,44 @@ async function requireAccess(){
 
   return true;
 }
+
+async function loadLumpSumApprovals(){
+  const body=document.getElementById('lumpApprovalBody');
+  if(!body)return;
+  try{
+    const [billings,contracts]=await Promise.all([
+      supabaseClient.from('amanah_lump_billings')
+        .select('id,contract_id,milestone,gross_amount,status,submitted_at')
+        .in('status',['SUBMITTED','VERIFIED']).order('submitted_at',{ascending:false}),
+      supabaseClient.from('amanah_lump_contracts')
+        .select('id,project_id,scope_title,contractor_name')
+    ]);
+    if(billings.error)throw billings.error;
+    if(contracts.error)throw contracts.error;
+    const byId=new Map((contracts.data||[]).map(c=>[c.id,c]));
+    const rows=billings.data||[];
+    if(!rows.length){
+      body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum billings.</td></tr>';
+      return;
+    }
+    body.innerHTML=rows.map(b=>{
+      const c=byId.get(b.contract_id)||{};
+      const url='lump-sum.html?billing='+encodeURIComponent(b.id);
+      return '<tr>'+
+        '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
+        '<td>'+esc(b.milestone)+'</td>'+
+        '<td><strong>₱'+Number(b.gross_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+'</strong></td>'+
+        '<td><span class="pending-chip">'+esc(b.status)+'</span></td>'+
+        '<td><a class="mini review" href="'+url+'" style="text-decoration:none;display:inline-block">'+
+        (b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER')+'</a></td>'+
+        '</tr>';
+    }).join('');
+  }catch(error){
+    console.error(error);
+    body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum claims. Check access and refresh.</td></tr>';
+  }
+}
+
 async function loadApprovals(){
   const type=document.getElementById('typeFilter').value;
   let q=supabaseClient.from('amanah_approval_requests').select('*').eq('status','PENDING').order('submitted_at',{ascending:false});
@@ -659,6 +697,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   try{
     if(!(await requireAccess()))return;
     document.getElementById('refreshApprovals').addEventListener('click',loadApprovals);
+    document.getElementById('refreshLumpApprovals').addEventListener('click',loadLumpSumApprovals);
     document.getElementById('typeFilter').addEventListener('change',loadApprovals);
     document.getElementById('refreshHistory').addEventListener('click',loadHistory);
     document.getElementById('historyTypeFilter').addEventListener('change',loadHistory);
@@ -679,6 +718,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.getElementById('cancelDeleteHistory').addEventListener('click',closeDeleteHistoryModal);
     document.getElementById('confirmDeleteHistory').addEventListener('click',deleteHistoryRecord);
     document.getElementById('deleteHistoryModal').addEventListener('click',e=>{if(e.target.id==='deleteHistoryModal')closeDeleteHistoryModal();});
-    await Promise.all([loadApprovals(),loadHistory()]);
+    await Promise.all([loadApprovals(),loadHistory(),loadLumpSumApprovals()]);
   }catch(error){console.error(error);showMsg(error.message||'Unable to load approval center.','error');}
 });
