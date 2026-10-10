@@ -14,6 +14,7 @@
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar','schedule.view'],
+      ['lumpContracts','Lump-Sum Contracts','lump-sum.html','file','schedule.view'],
     ]},
     {section:'WORKFORCE',items:[
       ['attendance','Attendance','attendance.html','calendar','attendance.view'],
