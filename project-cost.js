@@ -20,7 +20,8 @@ const state = {
   projects: [],
   selectedProject: null,
   transactions: [],
-  budget: null
+  budget: null,
+  progressRequestId: 0
 };
 
 /* =========================================================
@@ -157,7 +158,6 @@ async function loadProjects() {
       target_completion,
       actual_completion,
       contract_amount,
-      current_progress,
       status
     `)
     .order("project_name", {
@@ -195,14 +195,14 @@ function clearProjectUI() {
   state.selectedProject = null;
   state.transactions = [];
   state.budget = null;
+  state.progressRequestId += 1;
 
   $("projectId").value = "";
   $("projectName").value = "";
   $("contractAmount").value = "";
   $("approvedBudget").value = "";
 
-  $("currentProgressText").textContent = "0%";
-  $("progressBar").style.width = "0%";
+  renderProjectProgress(null);
 
   $("metricContract").textContent = money(0);
   $("metricBudget").textContent = money(0);
@@ -235,19 +235,86 @@ function populateProjectUI(project) {
   $("contractAmount").value =
     money(project.contract_amount);
 
-  const progress = Math.max(
-    0,
-    Math.min(100, number(project.current_progress))
-  );
-
-  $("currentProgressText").textContent =
-    `${progress.toFixed(2)}%`;
-
-  $("progressBar").style.width =
-    `${progress}%`;
+  renderProjectProgress(null, "loading");
 
   $("metricContract").textContent =
     money(project.contract_amount);
+}
+
+/* =========================================================
+   SCHEDULE-BASED PROJECT PROGRESS (NO MANUAL PERCENTAGE)
+   ========================================================= */
+
+function renderProjectProgress(summary = null, status = "ready") {
+  const text = $("currentProgressText");
+  const bar = $("progressBar");
+  const info = $("progressSourceInfo");
+  const activityCount = Number(summary?.activity_count || 0);
+  const rawPercent = Number(summary?.progress_percent);
+  const hasData = status === "ready" &&
+    activityCount > 0 &&
+    summary?.progress_percent != null &&
+    Number.isFinite(rawPercent);
+
+  const percent = hasData
+    ? Math.min(100, Math.max(0, rawPercent))
+    : 0;
+
+  text.textContent = hasData
+    ? `${percent.toFixed(2)}%`
+    : status === "loading"
+      ? "Loading..."
+      : status === "error"
+        ? "Unavailable"
+        : "—";
+
+  bar.style.width = `${percent}%`;
+  bar.setAttribute("aria-valuenow", hasData ? String(percent) : "0");
+
+  if (status === "loading") {
+    info.textContent = "Calculating from approved activities and operator-reported quantities...";
+  } else if (status === "error") {
+    info.textContent = "Progress could not be loaded. Use REFRESH to try again; cost records are unaffected.";
+  } else if (!hasData) {
+    info.textContent = "No approved activities with measurable planned quantities yet.";
+  } else {
+    const done = Number(summary.completed_activities || 0);
+    const active = Number(summary.in_progress_activities || 0);
+    info.textContent =
+      `Auto from Activity Schedule • ${activityCount} approved measurable ` +
+      `activit${activityCount === 1 ? "y" : "ies"} • ${done} done, ${active} in progress`;
+  }
+}
+
+async function loadProjectProgress(projectId = selectedProjectId()) {
+  const requestId = ++state.progressRequestId;
+
+  if (!projectId) {
+    renderProjectProgress(null);
+    return;
+  }
+
+  renderProjectProgress(null, "loading");
+
+  try {
+    const { data, error } = await supabaseClient
+      .rpc("get_project_schedule_progress", { p_project_id: projectId })
+      .single();
+
+    if (error) throw error;
+
+    if (requestId !== state.progressRequestId ||
+        projectId !== selectedProjectId()) return;
+
+    renderProjectProgress(data);
+  } catch (error) {
+    console.error("Could not load schedule-based project progress:", error);
+
+    if (requestId !== state.progressRequestId ||
+        projectId !== selectedProjectId()) return;
+
+    renderProjectProgress(null, "error");
+  }
 }
 
 /* =========================================================
@@ -857,9 +924,11 @@ async function handleProjectChange() {
 
     populateProjectUI(project);
 
-    await loadBudget();
-
-    await loadTransactions();
+    await Promise.all([
+      loadBudget(),
+      loadTransactions(),
+      loadProjectProgress(projectId)
+    ]);
 
   } catch (error) {
 
@@ -894,9 +963,11 @@ async function refreshProjectData() {
       project;
   }
 
-  await loadBudget();
-
-  await loadTransactions();
+  await Promise.all([
+    loadBudget(),
+    loadTransactions(),
+    loadProjectProgress(selectedProjectId())
+  ]);
 }
 
 async function refreshAll() {
@@ -905,7 +976,12 @@ async function refreshAll() {
 
     clearMessage();
 
+    const previousProjectId = selectedProjectId();
     await loadProjects();
+
+    if (state.projects.some(project => project.project_id === previousProjectId)) {
+      $("projectSelect").value = previousProjectId;
+    }
 
     if (selectedProjectId()) {
 
@@ -1123,6 +1199,19 @@ document.addEventListener(
         localDateInputValue();
 
       await loadProjects();
+
+      // Updates submitted from the mobile app appear without manual progress entry.
+      window.setInterval(() => {
+        if (!document.hidden && selectedProjectId()) {
+          loadProjectProgress(selectedProjectId());
+        }
+      }, 60000);
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && selectedProjectId()) {
+          loadProjectProgress(selectedProjectId());
+        }
+      });
 
       const params =
         new URLSearchParams(
