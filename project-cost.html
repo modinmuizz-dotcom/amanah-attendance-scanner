@@ -685,11 +685,12 @@
         </div>
 
         <div class="field">
-          <label for="approvedBudget">Approved Budget</label>
-          <input id="approvedBudget" class="input" type="number" min="0" step="0.01" placeholder="0.00">
-          <div class="field-actions">
-            <button class="btn-secondary" id="useContractButton" type="button">USE CONTRACT AMOUNT</button>
-            <button class="btn-green" id="saveBudgetButton" type="button">SAVE BUDGET</button>
+          <label for="projectEstimateCost">Project Estimate Cost</label>
+          <input id="projectEstimateCost" class="input readonly" type="text"
+                 placeholder="No saved Project Estimate" readonly
+                 aria-describedby="projectEstimateHelp">
+          <div id="projectEstimateHelp" style="margin-top:8px;font-size:11px;line-height:1.5;color:#64748b;">
+            Read-only total from Project Master → Project Estimate, including materials and labor.
           </div>
         </div>
       </div>
@@ -700,10 +701,10 @@
           <strong id="currentProgressText">—</strong>
         </div>
         <div class="progress-track">
-          <div class="progress-bar" id="progressBar" role="progressbar" aria-label="Project cost budget utilization" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+          <div class="progress-bar" id="progressBar" role="progressbar" aria-label="Project estimate cost utilization" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
         </div>
         <div id="progressSourceInfo" style="margin-top:9px;color:#64748b;font-size:11px;line-height:1.5;">
-          Select a project to view its budget utilization.
+          Select a project to view its estimate cost usage.
         </div>
       </div>
     </section>
@@ -715,8 +716,8 @@
       </div>
 
       <div class="metric">
-        <div class="metric-label">Approved Budget</div>
-        <div class="metric-value" id="metricBudget">₱0.00</div>
+        <div class="metric-label">Project Estimate Cost</div>
+        <div class="metric-value" id="metricEstimate">—</div>
       </div>
 
       <div class="metric">
@@ -725,13 +726,13 @@
       </div>
 
       <div class="metric">
-        <div class="metric-label">Remaining Budget</div>
+        <div class="metric-label">Remaining Estimate</div>
         <div class="metric-value" id="metricRemaining">₱0.00</div>
       </div>
 
       <div class="metric">
-        <div class="metric-label">Cost Usage</div>
-        <div class="metric-value" id="metricUsage">0.00%</div>
+        <div class="metric-label">Estimate Usage</div>
+        <div class="metric-value" id="metricUsage">—</div>
       </div>
     </section>
 
@@ -888,7 +889,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="project-cost.js?v=3"></script>
+  <script src="project-cost.js?v=4"></script>
 <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
