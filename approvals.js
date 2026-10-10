@@ -303,39 +303,67 @@ async function loadLumpSumApprovals(){
   const body=document.getElementById('lumpApprovalBody');
   if(!body)return;
   try{
-    const [billings,contracts]=await Promise.all([
+    const [billings,contracts,variations]=await Promise.all([
       supabaseClient.from('amanah_lump_billings')
         .select('id,contract_id,milestone,gross_amount,status,submitted_at')
         .in('status',['SUBMITTED','VERIFIED']).order('submitted_at',{ascending:false}),
       supabaseClient.from('amanah_lump_contracts')
-        .select('id,project_id,scope_title,contractor_name')
+        .select('id,project_id,scope_title,contractor_name,original_amount,status,created_at'),
+      supabaseClient.from('amanah_lump_variations')
+        .select('id,contract_id,description,amount_delta,status,submitted_at')
+        .eq('status','SUBMITTED').order('submitted_at',{ascending:false})
     ]);
-    if(billings.error)throw billings.error;
-    if(contracts.error)throw contracts.error;
+    for(const v of [billings,contracts,variations])if(v.error)throw v.error;
     const byId=new Map((contracts.data||[]).map(c=>[c.id,c]));
-    const rows=billings.data||[];
+    const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const rows=[];
+    (contracts.data||[]).filter(c=>c.status==='DRAFT').forEach(c=>rows.push({
+      type:'CONTRACT ACTIVATION',contract:c,
+      title:c.scope_title,amount:money(c.original_amount),
+      status:'AWAIT GM',date:c.created_at,
+      href:'lump-sum.html?contract='+encodeURIComponent(c.id),
+      action:'GM REVIEW'
+    }));
+    (billings.data||[]).forEach(b=>{
+      const c=byId.get(b.contract_id)||{};
+      rows.push({
+        type:'PROGRESS BILLING',contract:c,
+        title:b.milestone,amount:money(b.gross_amount),
+        status:b.status,date:b.submitted_at,
+        href:'lump-sum.html?billing='+encodeURIComponent(b.id),
+        action:b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER'
+      });
+    });
+    (variations.data||[]).forEach(v=>{
+      const c=byId.get(v.contract_id)||{};
+      rows.push({
+        type:'VARIATION ORDER',contract:c,
+        title:v.description,amount:money(v.amount_delta),
+        status:'AWAIT GM',date:v.submitted_at,
+        href:'lump-sum.html?contract='+encodeURIComponent(v.contract_id),
+        action:'GM REVIEW'
+      });
+    });
+    rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
     if(!rows.length){
-      body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum billings.</td></tr>';
+      body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum contract actions.</td></tr>';
       return;
     }
-    body.innerHTML=rows.map(b=>{
-      const c=byId.get(b.contract_id)||{};
-      const url='lump-sum.html?billing='+encodeURIComponent(b.id);
+    body.innerHTML=rows.map(r=>{
+      const c=r.contract;
       return '<tr>'+
         '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
-        '<td>'+esc(b.milestone)+'</td>'+
-        '<td><strong>₱'+Number(b.gross_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+'</strong></td>'+
-        '<td><span class="pending-chip">'+esc(b.status)+'</span></td>'+
-        '<td><a class="mini review" href="'+url+'" style="text-decoration:none;display:inline-block">'+
-        (b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER')+'</a></td>'+
-        '</tr>';
+        '<td><strong>'+esc(r.type)+'</strong><span class="request-sub">'+esc(r.title)+'</span></td>'+
+        '<td><strong>'+esc(r.amount)+'</strong></td>'+
+        '<td><span class="pending-chip">'+esc(r.status)+'</span></td>'+
+        '<td><a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a></td>'+
+      '</tr>';
     }).join('');
   }catch(error){
     console.error(error);
-    body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum claims. Check access and refresh.</td></tr>';
+    body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum requests. Check access and refresh.</td></tr>';
   }
 }
-
 async function loadApprovals(){
   const type=document.getElementById('typeFilter').value;
   let q=supabaseClient.from('amanah_approval_requests').select('*').eq('status','PENDING').order('submitted_at',{ascending:false});
