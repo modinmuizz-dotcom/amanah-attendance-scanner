@@ -265,6 +265,9 @@ async function loadDashboard() {
       attendance
     );
 
+    // Expense-based chart is independent of site activity progress.
+    await loadDashboardProjectCostChart();
+
   } catch (error) {
 
     console.error(error);
@@ -589,6 +592,187 @@ function renderAttendance(
 }
 
 
+
+/* =========================================================
+   PROJECT COST CHART — FINANCIAL EXPENSE UTILIZATION
+   Not the Activity Calendar's physical/project-site progress.
+   Data: project_cost_entries.amount / saved Project Master estimate.
+   ========================================================= */
+
+let dashboardCostRows = [];
+let dashboardCostRequest = 0;
+
+function dashboardCurrency(amount) {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency', currency: 'PHP',
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  }).format(Number(amount || 0));
+}
+
+function dashboardCostValue(raw) {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
+function normalizeDashboardCostRow(row) {
+  const hasEstimate = row.estimate_cost !== null &&
+    row.estimate_cost !== undefined &&
+    Number.isFinite(Number(row.estimate_cost)) &&
+    Number(row.estimate_cost) >= 0;
+  const actual = dashboardCostValue(row.actual_cost);
+  const estimate = hasEstimate ? Number(row.estimate_cost) : null;
+  const usage = estimate !== null && estimate > 0
+    ? Math.max(0, actual * 100 / estimate) : null;
+
+  return {
+    project_id: String(row.project_id || ''),
+    project_name: String(row.project_name || 'Unnamed Project'),
+    project_type: String(row.project_type || 'Not classified'),
+    project_status: String(row.project_status || ''),
+    actual,
+    estimate,
+    usage,
+    hasEstimate
+  };
+}
+
+function renderDashboardProjectCostChart() {
+  const chart = document.getElementById('projectCostChartList');
+  const count = document.getElementById('costChartCount');
+  if (!chart || !count) return;
+
+  const filter = document.getElementById('projectCostChartFilter')?.value || 'all';
+  const all = dashboardCostRows;
+  const rows = all.filter(row => {
+    if (filter === 'saved') return row.hasEstimate;
+    if (filter === 'missing') return !row.hasEstimate;
+    if (filter === 'over') return row.usage !== null && row.usage > 100;
+    return true;
+  });
+
+  // Keep projects without a usable percentage visible, but sort below measured projects.
+  rows.sort((a, b) => {
+    if (a.usage === null && b.usage !== null) return 1;
+    if (a.usage !== null && b.usage === null) return -1;
+    if (a.usage !== null && b.usage !== null && a.usage !== b.usage) return b.usage - a.usage;
+    return a.project_name.localeCompare(b.project_name);
+  });
+
+  const totalActual = all.reduce((sum, row) => sum + row.actual, 0);
+  const totalEstimate = all.reduce((sum, row) => sum + (row.estimate || 0), 0);
+  const savedCount = all.filter(row => row.hasEstimate).length;
+
+  document.getElementById('costChartTotalExpenses').textContent = dashboardCurrency(totalActual);
+  document.getElementById('costChartTotalEstimate').textContent = dashboardCurrency(totalEstimate);
+  document.getElementById('costChartCoverage').textContent = savedCount + ' / ' + all.length;
+  count.textContent = rows.length + ' of ' + all.length + ' project' +
+    (all.length === 1 ? '' : 's') + ' shown';
+
+  if (all.length === 0) {
+    chart.innerHTML = '<div class="cost-chart-blank">No projects recorded yet. Add a project in Project Master.</div>';
+    return;
+  }
+  if (rows.length === 0) {
+    chart.innerHTML = '<div class="cost-chart-blank">No projects match the selected cost filter.</div>';
+    return;
+  }
+
+  chart.innerHTML = rows.map(row => {
+    const positiveEstimate = row.estimate !== null && row.estimate > 0;
+    const usage = row.usage;
+    const isOver = usage !== null && usage > 100;
+    const isWarn = usage !== null && usage >= 80 && !isOver;
+    const tone = isOver ? 'over' : isWarn ? 'warn' : '';
+    const pct = usage === null ? '—' : usage.toFixed(2) + '%';
+    const width = usage === null ? 0 : Math.max(0, Math.min(100, usage));
+    const estimateLabel = row.estimate === null
+      ? 'Project estimate not saved'
+      : !positiveEstimate
+        ? 'Saved estimate is ₱0.00'
+        : dashboardCurrency(row.actual) + ' / ' + dashboardCurrency(row.estimate);
+    const stateLabel = row.estimate === null
+      ? 'NO ESTIMATE'
+      : !positiveEstimate
+        ? 'ZERO ESTIMATE'
+        : isOver
+          ? 'OVER ESTIMATE'
+          : row.actual === 0
+            ? 'NO EXPENSES'
+            : 'ESTIMATE USED';
+    const progressText = usage === null
+      ? 'Cost percentage unavailable without a positive saved estimate'
+      : pct + ' of estimated cost used';
+
+    return `
+      <div class="cost-chart-entry">
+        <div class="cost-chart-project">
+          <a href="project-cost.html?project=${encodeURIComponent(row.project_id)}"
+             title="Open cost control for ${escapeHtml(row.project_name)}">
+            ${escapeHtml(row.project_name)}
+          </a>
+          <small>${escapeHtml(row.project_id)} • ${escapeHtml(row.project_type)}</small>
+        </div>
+        <div class="cost-chart-track-col">
+          <div class="cost-chart-meter" role="progressbar"
+               aria-label="Cost usage for ${escapeHtml(row.project_name)}"
+               aria-valuemin="0" aria-valuemax="100"
+               aria-valuenow="${width}"
+               aria-valuetext="${escapeHtml(progressText)}">
+            <div class="cost-chart-fill ${tone}" style="width:${width}%"></div>
+          </div>
+          <div class="cost-chart-line-sub">
+            <span>${escapeHtml(estimateLabel)}</span>
+            <span>${isOver ? 'Exceeded by ' + dashboardCurrency(row.actual - row.estimate) :
+              row.estimate !== null && row.estimate > 0
+                ? 'Remaining ' + dashboardCurrency(row.estimate - row.actual)
+                : ''}</span>
+          </div>
+        </div>
+        <div class="cost-chart-figure">
+          <strong class="${usage === null ? 'missing' : tone}">${pct}</strong>
+          <span>${stateLabel}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadDashboardProjectCostChart() {
+  const chart = document.getElementById('projectCostChartList');
+  const count = document.getElementById('costChartCount');
+  const button = document.getElementById('refreshProjectCostChartButton');
+  if (!chart || !count) return;
+
+  const request = ++dashboardCostRequest;
+  if (!dashboardCostRows.length) {
+    count.textContent = 'Loading project expenses...';
+    chart.innerHTML = '<div class="cost-chart-blank">Loading saved estimates and recorded expenses...</div>';
+  }
+  if (button) button.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient.rpc('get_dashboard_project_cost_chart');
+    if (error) throw error;
+    if (request !== dashboardCostRequest) return;
+
+    dashboardCostRows = (Array.isArray(data) ? data : []).map(normalizeDashboardCostRow);
+    renderDashboardProjectCostChart();
+  } catch (error) {
+    if (request !== dashboardCostRequest) return;
+    console.error('Project Cost Chart:', error);
+    if (!dashboardCostRows.length) {
+      count.textContent = 'Project cost data unavailable';
+      chart.replaceChildren();
+      const errorBox = document.createElement('div');
+      errorBox.className = 'cost-chart-blank is-error';
+      errorBox.textContent = 'Unable to load Project Cost Chart. Please refresh or check your access.';
+      chart.appendChild(errorBox);
+    }
+  } finally {
+    if (request === dashboardCostRequest && button) button.disabled = false;
+  }
+}
+
 async function logout() {
 
   await supabaseClient
@@ -620,5 +804,23 @@ document
     logout
   );
 
+
+// Filters only change the presentation; the financial data is never modified.
+document.getElementById('projectCostChartFilter')
+  ?.addEventListener('change', renderDashboardProjectCostChart);
+
+document.getElementById('refreshProjectCostChartButton')
+  ?.addEventListener('click', loadDashboardProjectCostChart);
+
+// Keep amounts current as costs or Project Master estimates are updated.
+window.setInterval(() => {
+  if (!document.hidden) {
+    loadDashboardProjectCostChart();
+  }
+}, 60000);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) loadDashboardProjectCostChart();
+});
 
 loadDashboard();
