@@ -12,7 +12,37 @@ const dateNow=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'}
 const prettyDate=s=>s?new Date(String(s).slice(0,10)+'T00:00:00').toLocaleDateString('en-PH'):'—';
 const badge=s=>'<span class="ls-badge '+esc(s)+'">'+esc(s)+'</span>';
 const btn=(label,action,id,tone='secondary')=>'<button class="ls-btn '+tone+'" type="button" data-ls-action="'+esc(action)+'" data-ls-id="'+esc(id)+'">'+esc(label)+'</button>';
-const proof=url=>/^https:\/\//i.test(url||'')?'<a class="ls-proof" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">View evidence ↗</a>':'No evidence link';
+const proof=url=>{
+ const raw=String(url||'');
+ if(raw.startsWith('private-evidence:')){
+   const path=raw.slice('private-evidence:'.length);
+   return '<button type="button" class="ls-btn secondary" data-ls-proof="'+esc(encodeURIComponent(path))+'">OPEN PRIVATE EVIDENCE ↗</button>';
+ }
+ return /^https:\/\//i.test(raw)
+   ? '<a class="ls-proof" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">View evidence ↗</a>'
+   : 'No evidence link';
+};
+
+async function uploadEvidence(url,file,required=false){
+ const raw=String(url||'').trim();
+ if(file && file.size>0){
+   if(file.size>15728640)throw new Error('Evidence file must be 15 MB or smaller.');
+   const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+   if(!allowed.includes(file.type))throw new Error('Evidence must be a PDF, JPG, PNG or WEBP file.');
+   const user= (await lsDb.auth.getUser()).data?.user;
+   if(!user?.id)throw new Error('Sign in before uploading evidence.');
+   const clean=String(file.name||'attachment').replace(/[^a-z0-9._-]/gi,'_').slice(-90);
+   const path=user.id+'/'+crypto.randomUUID()+'-'+clean;
+   const {error}=await lsDb.storage.from('amanah-lump-evidence')
+     .upload(path,file,{contentType:file.type,upsert:false});
+   if(error)throw new Error('Private evidence upload failed: '+error.message);
+   return 'private-evidence:'+path;
+ }
+ if(raw && !/^https:\/\//i.test(raw))throw new Error('Evidence links must begin with https://');
+ if(required && !raw)throw new Error('Attach a file or supply an HTTPS evidence link.');
+ return raw||null;
+}
+
 const field=(label,name,type='text',opts={})=>{
  const full=opts.full?' full':'';
  const id='lsF_'+name;
@@ -95,9 +125,10 @@ function renderDetail(){
  $('lsContractTotal').textContent=money(s.revised);$('lsEarned').textContent=money(s.earned);
  $('lsPaid').textContent=money(s.paid);$('lsUnpaid').textContent=money(s.unpaid);
  $('lsRetention').textContent=money(s.retention);$('lsAdvance').textContent=money(s.advance);
- $('lsCompliance').textContent=c.contract_type==='DIRECT_LABOR'
+ const compliance=c.contract_type==='DIRECT_LABOR'
   ? 'DIRECT LABOR: Pakyaw payments do not replace employee-level minimum wage, benefits and worker records. Compliance note: '+(c.compliance_notes||'No note recorded')
   : 'SUBCONTRACTOR: Maintain written scope, contractor registration/license where applicable, tax documentation, and payment acknowledgment. '+(c.compliance_notes||'');
+ $('lsCompliance').innerHTML=esc(compliance)+'<div style="margin-top:8px">SIGNED CONTRACT: '+proof(c.document_url)+'</div>';
  $('lsActivate').hidden=!(c.status==='DRAFT'&&ls.permissions.ACTIVATE);
  $('lsClose').hidden=!(c.status==='ACTIVE'&&ls.permissions.CLOSE&&s.certifiedPct>=100);
  $('lsNewBilling').hidden=!(c.status==='ACTIVE'&&ls.permissions.CREATE);
@@ -153,7 +184,8 @@ function beginContract(){
   field('RETENTION (%)','retention','number',{min:0,max:30,step:'.01',value:0})+
   field('SIGNED DATE','signed_on','date',{required:true,value:dateNow()})+
   field('CONTRACT REFERENCE','reference','text')+
-  field('SIGNED DOCUMENT LINK (HTTPS)','document','url',{full:true,help:'Paste a permitted HTTPS link to the signed contract. Do not put confidential files in public links.'})+
+  field('UPLOAD SIGNED CONTRACT (PDF / IMAGE)','document_file','file',{full:true,help:'Private upload up to 15 MB; signed access link used for authorized users.'})+
+  field('OR SIGNED DOCUMENT LINK (HTTPS)','document','url',{full:true,help:'Use a secure HTTPS link only if the file is already stored elsewhere.'})+
   field('COMPLIANCE / LICENSE / WORKER BENEFITS NOTES','compliance','textarea',{full:true,
     help:'Required for direct labor groups. Confirm wage/benefit arrangements and group roster; for subcontractors record licensing and tax checks.'});
  showModal('REGISTER LUMP-SUM CONTRACT','contract',markup,'REGISTER DRAFT');
@@ -170,7 +202,8 @@ function beginBilling(){
     help:'Cumulative engineer-measured completion, not this period alone. Previously certified: '+s.certifiedPct+'%.'})+
   field('ADVANCE RECOVERY (PHP)','recovery','number',{min:0,step:'.01',value:0,help:'Unrecovered paid advance: '+money(Math.max(0,availableAdvance))})+
   field('TAX WITHHELD (PHP)','tax','number',{min:0,step:'.01',value:0,help:'Enter amount confirmed by the accountant; no assumed withholding rate.'})+
-  field('SUPPORTING EVIDENCE URL (HTTPS)','evidence','url',{required:true,full:true,help:'Link to signed accomplishment certificate, measurement, or approved photos.'})+
+  field('UPLOAD ACCOMPLISHMENT EVIDENCE (PDF / IMAGE)','evidence_file','file',{full:true,help:'Private signed access for authorized reviewers. Upload evidence or provide HTTPS link below.'})+
+  field('OR SUPPORTING EVIDENCE URL (HTTPS)','evidence','url',{full:true,help:'Link to certificate, measurement or approved activity photos.'})+
   field('WORK DESCRIPTION','description','textarea',{full:true});
  showModal('PREPARE PROGRESS BILLING','billing',fields,'SUBMIT FOR SITE VERIFICATION');
  $('lsF_pct').addEventListener('input',previewBilling);
@@ -192,7 +225,8 @@ function beginVariation(){
  showModal('REQUEST CONTRACT VARIATION','variation',
   field('DESCRIPTION / ADDITIONAL WORK','description','textarea',{required:true,full:true})+
   field('AMOUNT CHANGE (PHP, NEGATIVE FOR REDUCTION)','delta','number',{required:true,step:'.01'})+
-  field('VARIATION EVIDENCE URL (HTTPS)','evidence','url',{full:true}),
+  field('UPLOAD VARIATION EVIDENCE (PDF / IMAGE)','evidence_file','file',{full:true})+
+  field('OR VARIATION EVIDENCE LINK (HTTPS)','evidence','url',{full:true}),
   'SUBMIT FOR GM DECISION');
 }
 function beginPayment(){
@@ -240,21 +274,24 @@ async function handleForm(e){
  ls.saving=true;$('lsSubmit').disabled=true;$('lsFormError').textContent='';
  try{
   if(ls.mode==='contract'){
+   const documentUrl=await uploadEvidence(v.document,v.document_file,false);
    const id=await rpc('amanah_lump_create',{
     p_project_id:v.project_id,p_contract_type:v.kind,p_name:v.name,p_title:v.title,
     p_scope:v.scope,p_amount:Number(v.amount),p_advance:Number(v.advance||0),
     p_retention:Number(v.retention||0),p_signed_on:v.signed_on,
-    p_reference:v.reference||null,p_compliance:v.compliance||null,p_document_url:v.document||null
+    p_reference:v.reference||null,p_compliance:v.compliance||null,p_document_url:documentUrl
    });ls.selected=id;
   }
   if(ls.mode==='billing'){
+   const evidenceUrl=await uploadEvidence(v.evidence,v.evidence_file,true);
    await rpc('amanah_lump_submit_billing',{
-    p_contract_id:ls.selected,p_milestone:v.milestone,p_pct:Number(v.pct),p_evidence:v.evidence,
+    p_contract_id:ls.selected,p_milestone:v.milestone,p_pct:Number(v.pct),p_evidence:evidenceUrl,
     p_description:v.description||null,p_recovery:Number(v.recovery||0),p_tax:Number(v.tax||0)
    });
   }
   if(ls.mode==='variation'){
-   await rpc('amanah_lump_variation_submit',{p_id:ls.selected,p_desc:v.description,p_delta:Number(v.delta),p_evidence:v.evidence||null});
+   const evidenceUrl=await uploadEvidence(v.evidence,v.evidence_file,false);
+   await rpc('amanah_lump_variation_submit',{p_id:ls.selected,p_desc:v.description,p_delta:Number(v.delta),p_evidence:evidenceUrl});
   }
   if(ls.mode==='payment'){
    await rpc('amanah_lump_record_payment',{
@@ -299,6 +336,20 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('lsModalClose').addEventListener('click',closeModal);
  $('lsCancel').addEventListener('click',closeModal);
  $('lsForm').addEventListener('submit',handleForm);
+ document.addEventListener('click',async e=>{
+   const target=e.target.closest('[data-ls-proof]');
+   if(!target)return;
+   // Open a blank tab synchronously before generating a short-lived signed URL.
+   const tab=window.open('about:blank','_blank');
+   if(tab)tab.opener=null;
+   try{
+     const path=decodeURIComponent(target.dataset.lsProof);
+     const {data,error}=await lsDb.storage.from('amanah-lump-evidence').createSignedUrl(path,300);
+     if(error)throw error;
+     if(tab)tab.location.href=data.signedUrl;
+     else window.location.assign(data.signedUrl);
+   }catch(err){if(tab)tab.close();notify('Unable to open private evidence: '+err.message,true);}
+ });
  $('lsContracts').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
  $('lsBillings').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
  $('lsVariations').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
