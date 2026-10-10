@@ -10,20 +10,32 @@ const table = (heads,rows) => '<table><thead><tr>'+heads.map(x=>'<th>'+esc(x)+'<
  (rows.length ? rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(val(x))+'</td>').join('')+'</tr>').join('') :
  '<tr><td colspan="'+heads.length+'">No entries recorded.</td></tr>')+'</tbody></table>';
 const cash = v => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0));
+// The print document lives in an invisible SAME-PAGE iframe.
+// No window.open(), browser tab, or secondary preview page is created.
+const printFrames=new WeakMap();
 function open(title){
- const win=window.open('','_blank');
- if(!win){window.alert('Please allow pop-ups for AMANAH to print this record.');return null;}
+ const frame=document.createElement('iframe');
+ frame.setAttribute('title','AMANAH A4 printing');
+ frame.setAttribute('aria-hidden','true');
+ frame.style.cssText='position:fixed!important;left:-10000px!important;top:0!important;width:800px!important;height:1120px!important;opacity:0!important;pointer-events:none!important;border:0!important;z-index:-1!important';
+ document.body.appendChild(frame);
+ const win=frame.contentWindow;
+ printFrames.set(win,frame);
  win.document.open();
- win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Preparing print record</title></head><body style="font-family:Arial;padding:32px">Preparing '+esc(title)+' for printing...</body></html>');
+ win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Preparing print record</title></head><body>Preparing '+esc(title)+'...</body></html>');
  win.document.close();
  return win;
 }
+function release(win){
+ const frame=printFrames.get(win);
+ if(!frame)return;
+ printFrames.delete(win);
+ if(frame.isConnected)frame.remove();
+}
 function error(win,err){
- if(!win||win.closed)return;
- const message=err?.message||'Unable to prepare this record.';
- win.document.open();
- win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Print error</title></head><body style="font-family:Arial;padding:24px"><h2>Unable to prepare print record</h2><p>'+esc(message)+'</p><p>Close this window and try again.</p></body></html>');
- win.document.close();
+ if(!win)return;
+ console.error('AMANAH print preparation failed',err);
+ release(win);
 }
 function printPage(win,config){
  if(!win||win.closed)return;
@@ -67,7 +79,6 @@ function printPage(win,config){
  const parts=[
  '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
  '<title>',esc(config.title),' — ',esc(config.number||'AMANAH'),'</title><style>',css,'</style></head><body>',
- '<div class="print-tools"><button id="printRecordNow" type="button">PRINT / SAVE PDF</button><span>A4 document ready to print or save as PDF</span></div>',
  '<main class="shell"><header class="brand"><div><div class="company">AMANAH</div><div class="company-sub">AMANAH CONSTRUCTION SERVICES · OFFICIAL RECORD</div></div>',
  '<div class="status">',esc(config.status||'—'),'</div></header>',
  '<div class="record-name">',esc(config.title),'</div><div class="record-number">',esc(config.number||''),'</div>',
@@ -78,19 +89,37 @@ function printPage(win,config){
  win.document.open();
  win.document.write(parts.join(''));
  win.document.close();
- const printButton=win.document.getElementById('printRecordNow');
- printButton?.addEventListener('click',()=>win.print());
- const images=Array.from(win.document.querySelectorAll('.photo img'));
- const loaded=Promise.all(images.map(img=>{
-  if(img.complete)return Promise.resolve();
-  return new Promise(done=>{
-   img.addEventListener('load',done,{once:true});
-   img.addEventListener('error',done,{once:true});
-  });
+
+ // Wait briefly for photo evidence so it appears in the native browser print preview.
+ // Always release the embedded document AFTER printing (not before the dialog).
+ const imgs=Array.from(win.document.querySelectorAll('.photo img'));
+ const loaded=Promise.all(imgs.map(img=>{
+   if(img.complete)return Promise.resolve();
+   return new Promise(done=>{
+     img.addEventListener('load',done,{once:true});
+     img.addEventListener('error',done,{once:true});
+   });
  }));
- Promise.race([loaded,new Promise(done=>setTimeout(done,5000))]).then(()=>{
-  setTimeout(()=>{try{if(!win.closed){win.focus();win.print();}}catch(e){}},350);
- });
+ let printed=false;
+ const cleanup=()=>release(win);
+ win.addEventListener('afterprint',cleanup,{once:true});
+ // Fallback for browsers that omit the afterprint event; do not interrupt print preview.
+ const fallback=setTimeout(()=>{if(printed)cleanup();},180000);
+ Promise.race([loaded,new Promise(done=>setTimeout(done,4500))]).then(()=>{
+   setTimeout(()=>{
+     if(!printFrames.has(win))return;
+     try{
+       printed=true;
+       win.focus();
+       win.print();  // Opens Chrome/Edge Print dialog IN THIS TAB.
+     }catch(err){
+       clearTimeout(fallback);
+       console.error('AMANAH browser printing failed',err);
+       cleanup();
+       window.alert('Unable to open the print dialog. Please try PRINT again.');
+     }
+   },150);
+ }).catch(err=>{clearTimeout(fallback);error(win,err);});
 }
 window.AmanahRecordPrint={open,error,printPage,fields,section,table,cash,esc};
 })();
