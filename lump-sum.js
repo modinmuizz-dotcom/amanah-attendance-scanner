@@ -183,7 +183,7 @@ function previewBilling(){
  const s=getStats(c),pct=num($('lsF_pct')?.value);
  if(!pct||pct>100){$('lsFormPreview').hidden=true;return;}
  const gross=Math.round((s.revised*pct/100-s.earned)*100)/100;
- const ret=Math.round(gross*num(c.retention_pct))/10000;
+ const ret=Math.round(gross*num(c.retention_pct))/100;
  const rec=num($('lsF_recovery').value),tax=num($('lsF_tax').value);
  $('lsFormPreview').hidden=false;
  $('lsFormPreview').textContent='Current gross '+money(gross)+' · Retention '+money(ret)+' · Advance recovery '+money(rec)+' · Tax '+money(tax)+' · Estimated net payable '+money(gross-ret-rec-tax);
