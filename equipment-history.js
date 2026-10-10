@@ -133,8 +133,7 @@ function printEquipmentHistory(){
   const title=$("modalTitle").textContent.trim()||"Equipment History";
   const subtitle=$("modalSubtitle").textContent.trim();
   const content=$("modalContent").innerHTML;
-  const w=window.open("","_blank","width=1100,height=850");
-  if(!w){showMessage("Please allow pop-ups for AMANAH to print the equipment history.","error");return;}
+  const w=window.AmanahDirectPrint.create("EQUIPMENT HISTORY");
   w.document.open();
   w.document.write(`<!DOCTYPE html>
 <html lang="en">
@@ -185,28 +184,10 @@ th{background:#f1f5f9;text-transform:uppercase;font-size:8px}
   ${content}
   <div class="footer"><span>AMANAH CMS</span><span>Generated ${new Date().toLocaleString("en-PH")}</span></div>
 </div>
-<script>
-(function(){
-  function printNow(){setTimeout(function(){window.print();},300);}
-  window.addEventListener("load",function(){
-    const logo=document.querySelector(".brand-logo");
-    if(!logo){printNow();return;}
-    if(typeof logo.decode==="function"){
-      logo.decode().catch(function(){}).finally(printNow);
-    }else if(logo.complete){
-      printNow();
-    }else{
-      logo.addEventListener("load",printNow,{once:true});
-      logo.addEventListener("error",printNow,{once:true});
-      setTimeout(printNow,1200);
-    }
-  });
-  window.onafterprint=function(){setTimeout(function(){window.close();},250);};
-})();
-</script>
 </body>
 </html>`);
   w.document.close();
+  window.AmanahDirectPrint.finish(w);
 }
 
 function goToRepair(id){if(id)location.href="repair-requests.html?id="+encodeURIComponent(id);}
