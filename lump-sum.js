@@ -271,6 +271,9 @@ async function act(action,id){
 async function handleForm(e){
  e.preventDefault();if(ls.saving)return;
  const v=values(),c=contractById(ls.selected);
+ if(ls.mode==='payment'&&!window.confirm(
+   'Confirm payment of '+money(v.amount)+'? Only record money actually released with a valid payment reference.'
+ ))return;
  ls.saving=true;$('lsSubmit').disabled=true;$('lsFormError').textContent='';
  try{
   if(ls.mode==='contract'){
