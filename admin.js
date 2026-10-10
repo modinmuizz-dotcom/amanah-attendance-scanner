@@ -1402,7 +1402,7 @@ function renderProjects() {
               class="small-button material-estimate-button"
               onclick="openMaterialEstimate('${encodeURIComponent(project.project_id)}')"
             >
-              MATERIAL ESTIMATE
+              PROJECT ESTIMATE
             </button>
 
             <button
@@ -2799,7 +2799,7 @@ async function saveMaterialEstimate() {
 
     showMessage(
       'globalMessage',
-      'BOM / Material Estimate saved successfully for ' +
+      'Project Estimate saved successfully for ' +
         project.project_name +
         '.',
       'success'
@@ -2810,14 +2810,14 @@ async function saveMaterialEstimate() {
     showMessage(
       'globalMessage',
       error.message ||
-        'Unable to save material estimate.',
+        'Unable to save project estimate.',
       'error'
     );
 
   } finally {
 
     button.disabled = false;
-    button.textContent = 'SAVE MATERIAL ESTIMATE';
+    button.textContent = 'SAVE PROJECT ESTIMATE';
 
   }
 }
@@ -2838,7 +2838,7 @@ function printMaterialEstimate() {
 
   if (!card) return;
 
-  const printWindow = window.AmanahDirectPrint.create('PROJECT MATERIAL ESTIMATE');
+  const printWindow = window.AmanahDirectPrint.create('PROJECT ESTIMATE');
 
   const clone =
     card.cloneNode(true);
@@ -2882,7 +2882,7 @@ function printMaterialEstimate() {
     <html>
       <head>
         <meta charset="utf-8">
-        <title>BOM / Material Estimate</title>
+        <title>Project Estimate</title>
         <style>
           @page {
             size: A4 portrait;
