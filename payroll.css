@@ -302,3 +302,36 @@
 .group-labor-total-preview small{display:block;margin-top:5px;color:#64748b;font-size:10px}
 .group-labor-remove{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:900}
 @media(max-width:720px){.payroll-group-summary{align-items:flex-start;width:100%;box-sizing:border-box;margin-top:10px}}
+
+/* Group Labor: project selection is mandatory for project-cost linking. */
+.group-labor-project-field {
+  grid-column:1 / -1;
+}
+.group-labor-project-field select {
+  width:100%;
+  min-height:42px;
+  border:1px solid #93c5fd;
+  border-radius:10px;
+  padding:0 11px;
+  color:#0f172a;
+  font-weight:700;
+  background:#f8fbff;
+  font-size:12px;
+}
+.group-labor-project-field select:focus-visible {
+  outline:2px solid #2563eb;
+  outline-offset:2px;
+}
+.group-labor-project-field select:disabled {
+  cursor:wait;
+  color:#64748b;
+  background:#f1f5f9;
+}
+.group-labor-project-note {
+  color:#64748b;
+  font-size:10px;
+  line-height:1.5;
+}
+@media print {
+  .group-labor-remove {display:none!important;}
+}
