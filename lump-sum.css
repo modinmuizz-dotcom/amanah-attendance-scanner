@@ -1,0 +1,44 @@
+.ls-page{max-width:1450px;padding:30px 0 70px;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.ls-page *{box-sizing:border-box}.ls-hero{background:linear-gradient(120deg,#173d95,#2d6cef);border-radius:20px;padding:28px 30px;color:white;display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:22px;box-shadow:0 14px 35px #1d4ed822}
+.ls-hero small{font-size:10px;font-weight:900;letter-spacing:.14em;color:#bfdbfe}.ls-hero h1{font-size:30px;font-weight:950;letter-spacing:-.04em;margin:8px 0}.ls-hero p{font-size:12px;line-height:1.6;margin:0;color:#dbeafe}
+.ls-back{display:inline-flex;white-space:nowrap;background:white;color:#1e3a8a;padding:12px 15px;text-decoration:none;border-radius:10px;font-size:11px;font-weight:900}
+.ls-panel{background:#fff;border:1px solid #e2e8f0;box-shadow:0 8px 25px #0f172a0b;border-radius:17px;margin-bottom:20px;overflow:hidden}
+.ls-header{padding:21px 23px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #e2e8f0;background:#fbfdff}
+.ls-header h2{font-size:19px;margin:2px 0 5px;font-weight:900}.ls-header p{margin:0;font-size:11px;color:#64748b;line-height:1.5}.ls-header small{font-weight:850;color:#2563eb;font-size:10px}
+.ls-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ls-btn{font-size:11px;border:none;border-radius:9px;padding:11px 13px;font-weight:850;cursor:pointer;white-space:nowrap}.ls-btn.primary{background:#2563eb;color:#fff}.ls-btn.secondary{background:#eaf0f9;color:#1e3a8a}.ls-btn.danger{color:#b91c1c;background:#fee2e2}
+.ls-btn:disabled{opacity:.55;cursor:wait}.ls-btn:focus-visible,a:focus-visible{outline:2px solid #3b82f6;outline-offset:3px}
+.ls-tablewrap{overflow:auto}.ls-page table{border-collapse:collapse;width:100%;min-width:850px}
+.ls-page th{text-transform:uppercase;background:#f8fafc;color:#64748b;font-size:9px;letter-spacing:.06em}
+.ls-page th,.ls-page td{text-align:left;padding:13px 16px;vertical-align:middle;border-bottom:1px solid #edf2f7}
+.ls-page td{font-size:11px;line-height:1.6}.ls-page td strong{font-size:12px}.ls-page td small{display:block;color:#64748b;font-size:10px}
+.ls-page td .ls-btn{padding:8px 10px;font-size:10px;margin:2px}
+.ls-badge{display:inline-flex;border:1px solid #bfdbfe;color:#1d4ed8;background:#eff6ff;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:850;letter-spacing:.03em}
+.ls-badge.APPROVED,.ls-badge.ACTIVE,.ls-badge.CLOSED{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+.ls-badge.REJECTED{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+.ls-badge.SUBMITTED,.ls-badge.VERIFIED{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.ls-metrics{padding:18px 22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ls-metrics>div{border:1px solid #e2e8f0;border-top:3px solid #3b82f6;background:#f8fafc;border-radius:12px;padding:13px;min-width:0}
+.ls-metrics small{font-weight:850;font-size:9px;color:#64748b;letter-spacing:.04em}.ls-metrics strong{display:block;margin-top:6px;font-size:20px;font-weight:900;overflow-wrap:anywhere}
+.ls-subhead{padding:16px 22px;background:#f8fbff;border-block:1px solid #edf2f7;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ls-subhead h3{font-size:13px;margin:0;font-weight:900}.ls-info{margin:0 22px 18px;border:1px solid #dbeafe;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:11px;padding:12px 14px;line-height:1.6}
+.ls-message{padding:14px 18px;border-radius:11px;margin-bottom:16px;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:12px;font-weight:750}
+.ls-message.error{color:#991b1b;background:#fef2f2;border-color:#fecaca}
+.ls-modal{display:none;position:fixed;inset:0;background:#0f172aab;z-index:9999;overflow:auto;padding:3vh 16px;backdrop-filter:blur(3px)}
+.ls-modal.open{display:flex;align-items:flex-start;justify-content:center}
+.ls-dialog{margin:auto 0;max-height:93vh;overflow:auto;width:min(780px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 100px #0f172a70}
+.ls-dialog header{display:flex;justify-content:space-between;align-items:center;padding:20px 22px;border-bottom:1px solid #e2e8f0}
+.ls-dialog header small{font-weight:900;font-size:9px;letter-spacing:.1em;color:#2563eb}.ls-dialog header h2{margin:5px 0 0;font-size:19px}
+.ls-close{border:0;background:#f1f5f9;color:#64748b;border-radius:9px;font-size:24px;width:38px;height:38px;cursor:pointer}
+.ls-formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:20px 22px}
+.ls-field{display:flex;flex-direction:column;gap:6px;min-width:0}.ls-field.full{grid-column:1/-1}
+.ls-field label{font-size:10px;color:#334155;font-weight:850}
+.ls-field input,.ls-field select,.ls-field textarea{width:100%;min-height:39px;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;font-size:12px;font:inherit;color:#0f172a;background:#fff}
+.ls-field textarea{resize:vertical;min-height:70px}.ls-field small{font-size:10px;color:#64748b;line-height:1.5}
+.ls-dialog footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px;border-top:1px solid #e2e8f0}
+.ls-preview{margin:0 22px 18px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;padding:13px;font-size:12px;font-weight:800;color:#1e40af}
+.ls-error{padding:0 22px;font-size:12px;font-weight:700;color:#b91c1c;margin:0 0 10px}
+.ls-page a.ls-proof{font-size:10px;color:#2563eb;text-decoration:underline}
+.ls-page td .ls-action-row{display:flex;gap:4px;flex-wrap:wrap}
+@media(max-width:800px){.ls-hero,.ls-header{flex-direction:column;align-items:flex-start}.ls-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ls-hero{padding:20px}.ls-hero h1{font-size:23px}}
+@media(max-width:540px){.ls-metrics{grid-template-columns:1fr 1fr;padding:10px;gap:7px}.ls-metrics strong{font-size:15px}.ls-formgrid{grid-template-columns:1fr}.ls-field.full{grid-column:auto}.ls-subhead{flex-direction:column;align-items:flex-start}}
+@media print{.ls-hero,.ls-actions,.ls-btn,.ls-modal,.ls-message{display:none!important}.ls-page table{min-width:0}.ls-panel{break-inside:avoid}.ls-page{padding:0}}
