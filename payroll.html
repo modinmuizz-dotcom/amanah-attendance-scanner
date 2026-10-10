@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=6">
+  <link rel="stylesheet" href="payroll.css?v=7">
 </head>
 <body>
   <main class="container payroll-page">
@@ -111,6 +111,7 @@
           <thead>
             <tr>
               <th>GROUP</th>
+              <th>PROJECT</th>
               <th>ACTIVITY / DESCRIPTION</th>
               <th>RATE / METER</th>
               <th>METERS ACCOMPLISHED</th>
@@ -118,7 +119,7 @@
             </tr>
           </thead>
           <tbody id="groupLaborBody">
-            <tr><td colspan="5" class="payroll-empty">No group labor entries added.</td></tr>
+            <tr><td colspan="6" class="payroll-empty">No group labor entries added.</td></tr>
           </tbody>
         </table>
       </div>
@@ -242,13 +243,20 @@
       <div>
         <div class="payroll-kicker">GROUP LABOR PAYROLL</div>
         <h2 id="groupLaborTitle">ADD GROUP LABOR</h2>
-        <p>Enter the labor group, accomplishment rate per meter, and actual meters completed.</p>
+        <p>Choose the project, then enter the group labor rate and accomplished meters. Costs are added to that project's Project Cost Control when payroll is saved.</p>
       </div>
       <button id="groupLaborClose" class="manual-payroll-close" type="button" aria-label="Close">×</button>
     </div>
 
     <div class="manual-payroll-body">
       <div class="manual-payroll-grid">
+        <div class="payroll-field group-labor-project-field">
+          <label for="groupLaborProject">PROJECT <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <select id="groupLaborProject" required aria-required="true" aria-describedby="groupLaborProjectNote">
+            <option value="">Select project</option>
+          </select>
+          <small id="groupLaborProjectNote" class="group-labor-project-note">Required. Saved group labor expenses will be recorded under the selected project.</small>
+        </div>
         <div class="payroll-field">
           <label for="groupLaborName">GROUP NAME</label>
           <input id="groupLaborName" type="text" placeholder="Example: ROAD CREW A">
@@ -285,7 +293,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=9"></script>
+  <script src="payroll.js?v=10"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
