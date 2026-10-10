@@ -182,13 +182,14 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 
 <div class="modal" id="detailModal">
   <div class="dialog">
-    <div class="dialog-head"><h2 id="detailTitle">REPAIR REQUEST</h2><button class="close" id="closeDetail">×</button></div>
+    <div class="dialog-head"><h2 id="detailTitle">REPAIR REQUEST</h2><div style="display:flex;gap:8px;align-items:center"><button class="btn btn-blue" id="printRepairDetail" type="button">PRINT / SAVE PDF</button><button class="close" id="closeDetail" type="button">×</button></div></div>
     <div id="detailContent" style="margin-top:14px"></div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="repair-requests.js?v=26"></script>
+<script src="amanah-record-print.js?v=1"></script>
+<script src="repair-requests.js?v=27"></script>
 <script src="amanah-ui.js?v=6"></script>
 </body>
 </html>
