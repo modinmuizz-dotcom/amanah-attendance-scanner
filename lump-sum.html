@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMANAH Lump-Sum Contracts</title>
+<link rel="stylesheet" href="amanah-ui.css?v=9">
+<link rel="stylesheet" href="lump-sum.css?v=1">
+</head>
+<body>
+<main class="container ls-page">
+  <div class="ls-hero">
+    <div>
+      <small>AMANAH • CONTRACT PAYMENT CONTROL</small>
+      <h1>LUMP-SUM CONTRACTS</h1>
+      <p>Fixed-price direct labor groups and independent subcontractors. Certified progress, approvals, and payment history.</p>
+    </div>
+    <a href="payroll.html" class="ls-back">← BACK TO PAYROLL</a>
+  </div>
+  <div id="lsMessage" class="ls-message" role="alert" hidden></div>
+
+  <section class="ls-panel">
+    <header class="ls-header">
+      <div><h2>CONTRACT REGISTER</h2><p>Agreed fixed amount, assigned project, and recorded contracting party.</p></div>
+      <div class="ls-actions"><button type="button" id="lsRefresh" class="ls-btn secondary">REFRESH</button><button type="button" id="lsNewContract" class="ls-btn primary">+ NEW CONTRACT</button></div>
+    </header>
+    <div class="ls-tablewrap">
+      <table><thead><tr><th>PROJECT</th><th>CONTRACT / PARTY</th><th>TYPE</th><th>CONTRACT PRICE</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="lsContracts"><tr><td colspan="6">Loading contracts...</td></tr></tbody></table>
+    </div>
+  </section>
+
+  <section class="ls-panel" id="lsDetailPanel" hidden>
+    <header class="ls-header">
+      <div><small id="lsSelectedProject">—</small><h2 id="lsSelectedTitle">Contract details</h2><p id="lsSelectedSubtitle">—</p></div>
+      <div class="ls-actions"><span class="ls-badge" id="lsSelectedStatus">—</span><button type="button" id="lsActivate" class="ls-btn primary" hidden>GM: ACTIVATE CONTRACT</button><button type="button" id="lsClose" class="ls-btn primary" hidden>GM: CLOSE CONTRACT</button></div>
+    </header>
+
+    <div class="ls-metrics">
+      <div><small>REVISED CONTRACT</small><strong id="lsContractTotal">₱0.00</strong></div>
+      <div><small>CERTIFIED WORK</small><strong id="lsEarned">₱0.00</strong></div>
+      <div><small>PAID TO DATE</small><strong id="lsPaid">₱0.00</strong></div>
+      <div><small>UNPAID BILLING BALANCE</small><strong id="lsUnpaid">₱0.00</strong></div>
+      <div><small>RETENTION HELD</small><strong id="lsRetention">₱0.00</strong></div>
+      <div><small>ADVANCE OUTSTANDING</small><strong id="lsAdvance">₱0.00</strong></div>
+    </div>
+
+    <div class="ls-info" id="lsCompliance"></div>
+    <div class="ls-subhead"><h3>PROGRESS BILLINGS</h3><button type="button" id="lsNewBilling" class="ls-btn primary" hidden>+ PREPARE BILLING</button></div>
+    <div class="ls-tablewrap">
+      <table><thead><tr><th>MILESTONE / EVIDENCE</th><th>CUMULATIVE</th><th>GROSS EARNED</th><th>DEDUCTIONS</th><th>NET PAYABLE</th><th>STATUS / ACTION</th></tr></thead>
+      <tbody id="lsBillings"><tr><td colspan="6">No billings yet.</td></tr></tbody></table>
+    </div>
+    <div class="ls-subhead"><h3>CONTRACT VARIATIONS</h3><button type="button" id="lsNewVariation" class="ls-btn secondary" hidden>+ VARIATION REQUEST</button></div>
+    <div class="ls-tablewrap">
+      <table><thead><tr><th>DESCRIPTION</th><th>AMOUNT CHANGE</th><th>STATUS</th><th>DECISION</th></tr></thead><tbody id="lsVariations"><tr><td colspan="4">No variation orders.</td></tr></tbody></table>
+    </div>
+    <div class="ls-subhead"><h3>PAYMENTS / ADVANCES / RETENTION</h3><button type="button" id="lsNewPayment" class="ls-btn secondary" hidden>+ RECORD PAYMENT</button></div>
+    <div class="ls-tablewrap">
+      <table><thead><tr><th>DATE</th><th>TYPE</th><th>AMOUNT</th><th>METHOD / REFERENCE</th><th>ACKNOWLEDGMENT</th></tr></thead><tbody id="lsPayments"><tr><td colspan="5">No payments recorded.</td></tr></tbody></table>
+    </div>
+  </section>
+
+  <div id="lsModal" class="ls-modal" aria-hidden="true">
+    <div class="ls-dialog" role="dialog" aria-modal="true" aria-labelledby="lsModalTitle">
+      <header><div><small>AMANAH • CONTROLLED TRANSACTION</small><h2 id="lsModalTitle">Entry</h2></div><button type="button" id="lsModalClose" class="ls-close" aria-label="Close">×</button></header>
+      <form id="lsForm">
+        <div id="lsFormFields" class="ls-formgrid"></div>
+        <div id="lsFormPreview" class="ls-preview" hidden></div>
+        <p id="lsFormError" class="ls-error" role="alert"></p>
+        <footer><button type="button" id="lsCancel" class="ls-btn secondary">CANCEL</button><button type="submit" id="lsSubmit" class="ls-btn primary">SAVE</button></footer>
+      </form>
+    </div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="lump-sum.js?v=1"></script>
+<script src="amanah-ui.js?v=10"></script>
+</body>
+</html>
