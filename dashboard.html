@@ -287,6 +287,67 @@
         flex: 1;
       }
     }
+
+    /* Dashboard: financial PROJECT COST CHART (not construction progress) */
+    .cost-dashboard-panel { margin-bottom: 25px; }
+    .cost-chart-heading h2 { letter-spacing: -.025em; }
+    .cost-chart-heading p { margin: 7px 0 0; font-size: 12px; color: #64748b; line-height: 1.5; }
+    .cost-chart-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .cost-chart-select { min-height:39px; padding:8px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; color:#1e293b; font:inherit; font-size:12px; font-weight:750; max-width:100%; }
+    .cost-chart-toolbar .refresh { min-height:39px; font-size:12px; }
+    .cost-chart-overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:18px 22px 0; }
+    .cost-chart-summary-card { border:1px solid #e2e8f0; border-radius:14px; padding:15px 17px; background:linear-gradient(180deg,#fff 0%,#f8fafc 100%); }
+    .cost-chart-summary-card:nth-child(1) { border-top:3px solid #2563eb; }
+    .cost-chart-summary-card:nth-child(2) { border-top:3px solid #16a34a; }
+    .cost-chart-summary-card:nth-child(3) { border-top:3px solid #f59e0b; }
+    .cost-chart-summary-name { display:block; font-size:10px; color:#64748b; font-weight:900; text-transform:uppercase; letter-spacing:.07em; }
+    .cost-chart-summary-value { display:block; margin-top:7px; font-size:clamp(17px,2vw,22px); font-weight:900; letter-spacing:-.025em; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+    .cost-chart-summary-sub { display:block; margin-top:5px; color:#64748b; font-size:11px; }
+    .cost-chart-body { padding:19px 22px 24px; }
+    .cost-chart-topline { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+    .cost-chart-topline strong { font-size:13px; letter-spacing:.015em; }
+    .cost-chart-legend { display:flex; align-items:center; flex-wrap:wrap; gap:13px; color:#64748b; font-size:11px; font-weight:700; }
+    .cost-chart-legend span { display:inline-flex; align-items:center; gap:6px; }
+    .cost-chart-dot { width:9px; height:9px; border-radius:3px; display:inline-block; }
+    .cost-chart-dot.blue { background:#2563eb; } .cost-chart-dot.amber { background:#f59e0b; } .cost-chart-dot.red { background:#dc2626; }
+    .cost-chart-list { display:flex; flex-direction:column; gap:11px; }
+    .cost-chart-entry { display:grid; grid-template-columns:minmax(190px, 1fr) minmax(250px, 2.2fr) minmax(110px,.65fr); gap:22px; align-items:center; padding:16px 18px; border:1px solid #e2e8f0; border-radius:14px; background:#fff; transition:box-shadow .15s, border-color .15s; }
+    .cost-chart-entry:hover { box-shadow:0 5px 20px rgba(37,99,235,.07); border-color:#bfdbfe; }
+    .cost-chart-project { min-width:0; }
+    .cost-chart-project a { display:block; color:#0f172a; font-size:13px; font-weight:900; text-decoration:none; overflow-wrap:anywhere; line-height:1.35; }
+    .cost-chart-project a:hover { color:#1d4ed8; text-decoration:underline; }
+    .cost-chart-project small { display:block; margin-top:5px; font-size:11px; color:#64748b; line-height:1.35; overflow-wrap:anywhere; }
+    .cost-chart-meter { position:relative; height:16px; background:#edf2f7; border-radius:999px; overflow:hidden; }
+    .cost-chart-fill { height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#2563eb,#38bdf8); transition:width .45s ease; }
+    .cost-chart-fill.warn { background:linear-gradient(90deg,#f59e0b,#f97316); }
+    .cost-chart-fill.over { background:linear-gradient(90deg,#ef4444,#b91c1c); }
+    .cost-chart-line-sub { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; font-size:11px; color:#64748b; font-variant-numeric:tabular-nums; }
+    .cost-chart-figure { text-align:right; font-variant-numeric:tabular-nums; min-width:0; }
+    .cost-chart-figure strong { display:block; font-size:20px; font-weight:900; letter-spacing:-.035em; color:#1d4ed8; white-space:nowrap; }
+    .cost-chart-figure strong.warn { color:#b45309; }
+    .cost-chart-figure strong.over { color:#b91c1c; }
+    .cost-chart-figure strong.missing { color:#64748b; font-size:16px; }
+    .cost-chart-figure span { display:block; margin-top:4px; font-size:10px; font-weight:800; color:#64748b; }
+    .cost-chart-blank { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:13px; padding:28px; text-align:center; color:#64748b; font-size:13px; }
+    .cost-chart-blank.is-error { color:#b91c1c; border-color:#fecaca; background:#fff7f7; }
+    @media (max-width:1000px) {
+      .cost-chart-entry { grid-template-columns: minmax(160px, 1fr) minmax(200px, 1.7fr) 105px; gap:12px; }
+    }
+    @media (max-width:760px) {
+      .cost-chart-overview { grid-template-columns:1fr; padding:14px 16px 0; }
+      .cost-chart-body { padding:16px; }
+      .cost-chart-entry { grid-template-columns:1fr auto; gap:11px; padding:14px; }
+      .cost-chart-track-col { grid-column:1/-1; grid-row:2; }
+      .cost-chart-figure { grid-column:2; grid-row:1; }
+      .cost-chart-project { grid-column:1; grid-row:1; }
+      .cost-chart-figure strong { font-size:19px; }
+      .cost-dashboard-panel .panel-header { align-items:flex-start; flex-direction:column; }
+      .cost-chart-toolbar { width:100%; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      .cost-chart-fill,.cost-chart-entry { transition:none; }
+    }
+
   </style>
   <link rel="stylesheet" href="amanah-ui.css?v=4">
 </head>
@@ -487,6 +548,57 @@
   </section>
 
 
+
+  <section class="panel cost-dashboard-panel" aria-labelledby="projectCostChartTitle">
+    <div class="panel-header">
+      <div class="cost-chart-heading">
+        <h2 id="projectCostChartTitle">PROJECT COST CHART</h2>
+        <p>Project-by-project expenses compared with each saved Project Estimate. Financial usage only, not physical site progress.</p>
+      </div>
+      <div class="cost-chart-toolbar">
+        <label for="projectCostChartFilter" style="font-size:11px;color:#64748b;font-weight:800;">SHOW</label>
+        <select id="projectCostChartFilter" class="cost-chart-select" aria-label="Filter project cost chart">
+          <option value="all">All projects</option>
+          <option value="saved">With project estimate</option>
+          <option value="over">Over estimate</option>
+          <option value="missing">Without estimate</option>
+        </select>
+        <button class="refresh" id="refreshProjectCostChartButton" type="button">REFRESH COSTS</button>
+      </div>
+    </div>
+
+    <div class="cost-chart-overview">
+      <div class="cost-chart-summary-card">
+        <span class="cost-chart-summary-name">Recorded Project Expenses</span>
+        <strong id="costChartTotalExpenses" class="cost-chart-summary-value">—</strong>
+        <span class="cost-chart-summary-sub">Sum of all project cost transactions</span>
+      </div>
+      <div class="cost-chart-summary-card">
+        <span class="cost-chart-summary-name">Saved Project Estimates</span>
+        <strong id="costChartTotalEstimate" class="cost-chart-summary-value">—</strong>
+        <span class="cost-chart-summary-sub">Materials, labor, and other estimate items</span>
+      </div>
+      <div class="cost-chart-summary-card">
+        <span class="cost-chart-summary-name">Projects with Estimates</span>
+        <strong id="costChartCoverage" class="cost-chart-summary-value">—</strong>
+        <span class="cost-chart-summary-sub">Projects with a saved estimate</span>
+      </div>
+    </div>
+    <div class="cost-chart-body">
+      <div class="cost-chart-topline">
+        <strong id="costChartCount">Loading project costs...</strong>
+        <div class="cost-chart-legend" aria-label="Cost usage guide">
+          <span><i class="cost-chart-dot blue" aria-hidden="true"></i>Below 80%</span>
+          <span><i class="cost-chart-dot amber" aria-hidden="true"></i>80–100%</span>
+          <span><i class="cost-chart-dot red" aria-hidden="true"></i>Over 100%</span>
+        </div>
+      </div>
+      <div id="projectCostChartList" class="cost-chart-list" aria-live="polite">
+        <div class="cost-chart-blank">Loading project expense data...</div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel">
 
     <div class="panel-header">
@@ -570,7 +682,7 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="dashboard.js?v=2"></script>
+<script src="dashboard.js?v=3"></script>
 
 <script src="amanah-ui.js?v=7"></script>
 </body>
