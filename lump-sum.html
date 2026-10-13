@@ -19,7 +19,7 @@
   </div>
   <div id="lsMessage" class="ls-message" role="alert" hidden></div>
 
-  <section class="ls-panel">
+  <section class="ls-panel" id="lsContractRegister">
     <header class="ls-header">
       <div><h2>CONTRACT REGISTER</h2><p>Agreed fixed amount, assigned project, and recorded contracting party.</p></div>
       <div class="ls-actions"><button type="button" id="lsRefresh" class="ls-btn secondary">REFRESH</button><button type="button" id="lsNewContract" class="ls-btn primary">+ NEW CONTRACT</button></div>
@@ -32,7 +32,7 @@
   <section class="ls-panel" id="lsDetailPanel" hidden>
     <header class="ls-header">
       <div><small id="lsSelectedProject">—</small><h2 id="lsSelectedTitle">Contract details</h2><p id="lsSelectedSubtitle">—</p></div>
-      <div class="ls-actions"><span class="ls-badge" id="lsSelectedStatus">—</span><button type="button" id="lsActivate" class="ls-btn primary" hidden>SEND FOR APPROVAL</button><button type="button" id="lsClose" class="ls-btn primary" hidden>GM: CLOSE CONTRACT</button></div>
+      <div class="ls-actions"><span class="ls-badge" id="lsSelectedStatus">—</span><button type="button" id="lsActivate" class="ls-btn primary" hidden>SEND FOR APPROVAL</button><button type="button" id="lsClose" class="ls-btn primary" hidden>GM: CLOSE CONTRACT</button><button type="button" id="lsCloseView" class="ls-btn secondary ls-close-view" title="Hide contract details and return to the Contract Register without closing the active contract">✕ CLOSE VIEW</button></div>
     </header>
 
     <div id="lsActivationNotice" class="ls-activation-notice" hidden></div>
@@ -102,7 +102,7 @@
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="lump-sum.js?v=9"></script>
+<script src="lump-sum.js?v=10"></script>
 <script src="amanah-ui.js?v=11"></script>
 </body>
 </html>
