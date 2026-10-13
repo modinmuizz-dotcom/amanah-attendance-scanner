@@ -414,3 +414,6 @@
 /* Second confirmation is presented inside the centered paycheck form. */
 .payroll-claim-confirm{margin:14px 0 0;padding:13px 15px;background:#fffbeb;border:1px solid #fcd34d;border-radius:11px;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
 .payroll-claim-confirm[hidden]{display:none!important}
+
+/* Incomplete legacy Drafts have a header but no valid saved payroll breakdown. */
+.payroll-status.incomplete{display:inline-flex;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:100px;padding:5px 9px;font-size:10px;font-weight:900}
