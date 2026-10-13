@@ -417,3 +417,70 @@
 
 /* Incomplete legacy Drafts have a header but no valid saved payroll breakdown. */
 .payroll-status.incomplete{display:inline-flex;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:100px;padding:5px 9px;font-size:10px;font-weight:900}
+
+/* Draft payroll deletion — compact table button and centered confirmation. */
+.payroll-history-delete{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:34px;
+  margin:3px 0 3px 8px;
+  padding:8px 12px;
+  border:1px solid #fecaca;
+  border-radius:9px;
+  background:#fff1f2;
+  color:#b91c1c;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.02em;
+  cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.payroll-history-delete:hover{background:#ffe4e6;border-color:#fda4af}
+.payroll-history-delete:focus-visible{outline:3px solid #fca5a5;outline-offset:2px}
+.payroll-delete-overlay{
+  position:fixed;
+  inset:0;
+  z-index:12000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(15,23,42,.68);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  padding:16px;
+}
+.payroll-delete-overlay.is-open{display:flex}
+.payroll-delete-dialog{
+  background:#fff;
+  width:min(470px,100%);
+  border-radius:20px;
+  border:1px solid #e2e8f0;
+  box-shadow:0 28px 80px rgba(15,23,42,.32);
+  max-height:calc(100dvh - 32px);
+  overflow:auto;
+}
+.payroll-delete-head{display:flex;align-items:center;justify-content:space-between;padding:23px 25px 0}
+.payroll-delete-icon{display:grid;place-items:center;width:49px;height:49px;background:#fee2e2;border-radius:14px;color:#dc2626;font-size:27px;font-weight:900}
+.payroll-delete-x{border:0;border-radius:9px;background:#f1f5f9;color:#64748b;width:34px;height:34px;font-size:22px;cursor:pointer}
+.payroll-delete-body{padding:15px 25px 23px}
+.payroll-delete-body h2{font-weight:900;letter-spacing:-.025em;color:#0f172a;margin:9px 0;font-size:21px}
+.payroll-delete-body p{line-height:1.65;font-size:12px;color:#475569}
+.payroll-delete-details{font-size:12px;font-weight:850;line-height:1.7;border-radius:11px;padding:13px 14px;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;margin-top:15px;overflow-wrap:anywhere}
+.payroll-delete-body .payroll-delete-note{color:#9f1239;font-size:11px;margin-top:13px}
+.payroll-delete-error{padding:10px 12px;border-radius:9px;background:#fef2f2;color:#be123c!important;font-weight:750}
+.payroll-delete-error[hidden]{display:none!important}
+.payroll-delete-actions{background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;padding:16px 25px 20px}
+.payroll-delete-actions .button{min-height:40px;padding:10px 15px;border-radius:9px;font-size:11px;font-weight:850}
+.payroll-delete-actions .payroll-delete-danger{background:#dc2626;color:white;border:1px solid #dc2626}
+.payroll-delete-actions .payroll-delete-danger:hover{background:#b91c1c;border-color:#b91c1c}
+.payroll-delete-actions .payroll-delete-danger:disabled{opacity:.55;cursor:wait}
+.payroll-delete-actions .button:focus-visible,.payroll-delete-x:focus-visible{outline:3px solid #fca5a5;outline-offset:2px}
+@media(max-width:520px){
+  .payroll-delete-head{padding:18px 18px 0}
+  .payroll-delete-body{padding:15px 18px 18px}
+  .payroll-delete-actions{padding:14px 18px;flex-direction:column}
+  .payroll-delete-actions .button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.payroll-history-delete{transition:none}}
+@media print{.payroll-history-delete,.payroll-delete-overlay{display:none!important}}
