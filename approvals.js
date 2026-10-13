@@ -401,6 +401,51 @@ async function loadLumpSumApprovals(){
  }
 }
 
+
+function lumpBillingRow(title,value){
+ return '<div class="lump-review-row"><span>'+esc(title)+'</span><strong>'+esc(value)+'</strong></div>';
+}
+const lumpPeso=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+function closeLumpBillingReview(){
+ if(lumpBillingSaving)return;
+ ++lumpBillingReviewToken;
+ const modal=document.getElementById('lumpBillingReviewModal');
+ modal.classList.add('hidden');modal.setAttribute('aria-hidden','true');
+ currentLumpBilling=null;
+ if(lumpBillingFocus?.isConnected)lumpBillingFocus.focus();
+ lumpBillingFocus=null;
+}
+function openLumpBillingReview(id){
+ const b=lumpBillingQueue.find(x=>x.id===id);
+ const c=b&&lumpActivationContracts.get(b.contract_id);
+ if(!b||!c){showMsg('Billing not found in pending queue. Refresh to retry.','error');return;}
+ currentLumpBilling=b;lumpBillingFocus=document.activeElement;
+ const token=++lumpBillingReviewToken;
+ document.getElementById('lumpBillingReviewDetails').innerHTML=
+ '<div class="lump-review-summary"><strong>'+esc(b.milestone)+'</strong>'+
+ '<small>'+esc(c.scope_title)+' • '+esc(c.project_id)+' • '+esc(c.contractor_name)+'</small>'+
+ '<div class="lump-review-amount">'+lumpPeso(b.gross_amount)+'</div></div>'+
+ lumpBillingRow('STATUS',b.status==='VERIFIED'?'SITE VERIFIED • GM REVIEW':'AWAIT ENGINEER VERIFICATION')+
+ lumpBillingRow('WORK DESCRIPTION',b.description||'—')+
+ lumpBillingRow('CUMULATIVE COMPLETION',Number(b.cumulative_pct).toFixed(2)+'%')+
+ lumpBillingRow('GROSS EARNED',lumpPeso(b.gross_amount))+
+ lumpBillingRow('RETENTION',lumpPeso(b.retention_amount))+
+ lumpBillingRow('ADVANCE RECOVERY',lumpPeso(b.advance_recovery))+
+ lumpBillingRow('NET PAYABLE',lumpPeso(b.payable_amount))+
+ lumpBillingRow('SUBMITTED',formatDateTime(b.submitted_at))+
+ lumpBillingRow('ENGINEER VERIFIED',b.verified_at?formatDateTime(b.verified_at):'NOT YET VERIFIED')+
+ lumpBillingRow('ENGINEER NOTES',b.verification_notes||'—');
+ document.getElementById('lumpBillingDecisionNotes').value='';
+ document.getElementById('lumpBillingDecisionError').hidden=true;
+ const approve=document.getElementById('approveLumpBilling');
+ approve.disabled=b.status!=='VERIFIED';
+ approve.title=b.status==='VERIFIED'?'Approve certified work':'Await Site Engineer verification';
+ document.getElementById('lumpBillingReviewEvidence').textContent='Loading evidence...';
+ const modal=document.getElementById('lumpBillingReviewModal');
+ modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
+ (b.status==='VERIFIED'?approve:document.getElementById('lumpBillingDecisionNotes')).focus();
+ loadLumpBillingEvidence(b,token);
+}
 function closeLumpActivationReview(){
  if(lumpActivationSaving)return;
  const modal=document.getElementById('lumpContractReviewModal');
