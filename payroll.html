@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=11">
+  <link rel="stylesheet" href="payroll.css?v=12">
 </head>
 <body>
   <main class="container payroll-page">
@@ -154,6 +154,29 @@
         </table>
       </div>
     </section>
+
+    <!-- Draft payroll deletion: confirmation is centered, no browser popup. -->
+    <div id="payrollDeleteModal" class="payroll-delete-overlay" aria-hidden="true">
+      <section class="payroll-delete-dialog" role="dialog" aria-modal="true"
+        aria-labelledby="payrollDeleteTitle" aria-describedby="payrollDeleteDescription">
+        <header class="payroll-delete-head">
+          <div class="payroll-delete-icon" aria-hidden="true">!</div>
+          <button type="button" id="payrollDeleteClose" class="payroll-delete-x" aria-label="Close delete confirmation">×</button>
+        </header>
+        <div class="payroll-delete-body">
+          <div class="payroll-kicker">AMANAH • PAYROLL RECORD CONTROL</div>
+          <h2 id="payrollDeleteTitle">DELETE DRAFT PAYROLL?</h2>
+          <p id="payrollDeleteDescription">This will permanently remove the selected unapproved Draft payroll and all of its saved entries.</p>
+          <div id="payrollDeleteDetails" class="payroll-delete-details"></div>
+          <p class="payroll-delete-note">Pending approval, rejected decisions, approved paychecks and payment records cannot be deleted here.</p>
+          <p id="payrollDeleteError" class="payroll-delete-error" role="alert" hidden></p>
+        </div>
+        <footer class="payroll-delete-actions">
+          <button type="button" id="payrollDeleteCancel" class="button secondary">CANCEL</button>
+          <button type="button" id="payrollDeleteConfirm" class="button payroll-delete-danger">YES, DELETE DRAFT</button>
+        </footer>
+      </section>
+    </div>
 
     <section class="payroll-panel payroll-paycheck-panel" id="paycheckReleasePanel" hidden>
       <div class="payroll-panel-header">
@@ -345,7 +368,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=13"></script>
+  <script src="payroll.js?v=14"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
