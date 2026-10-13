@@ -964,6 +964,20 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.getElementById('lumpApprovalBody').addEventListener('click',event=>{
       const button=event.target.closest('[data-lump-activation-review]');
       if(button)openLumpActivationReview(button.dataset.lumpActivationReview);
+      const billing=event.target.closest('[data-lump-billing-review]');
+      if(billing)openLumpBillingReview(billing.dataset.lumpBillingReview);
+    });
+    document.getElementById('approveLumpBilling').addEventListener('click',()=>decideLumpBilling(true));
+    document.getElementById('rejectLumpBilling').addEventListener('click',()=>decideLumpBilling(false));
+    document.getElementById('cancelLumpBilling').addEventListener('click',closeLumpBillingReview);
+    document.getElementById('closeLumpBillingReview').addEventListener('click',closeLumpBillingReview);
+    document.getElementById('lumpBillingReviewModal').addEventListener('click',e=>{
+      if(e.target.id==='lumpBillingReviewModal')closeLumpBillingReview();
+    });
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'&&!document.getElementById('lumpBillingReviewModal').classList.contains('hidden')){
+        e.preventDefault();closeLumpBillingReview();
+      }
     });
     document.getElementById('approveLumpActivation').addEventListener('click',()=>decideLumpActivation(true));
     document.getElementById('rejectLumpActivation').addEventListener('click',()=>decideLumpActivation(false));
