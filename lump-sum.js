@@ -163,11 +163,11 @@ function renderDetail(){
  const lastRequest=ls.activationRequests.find(r=>r.contract_id===c.id);
  const sendButton=$('lsActivate');
  sendButton.hidden=!(['DRAFT','REJECTED'].includes(c.status)&&ls.permissions.CREATE);
- sendButton.textContent=c.status==='REJECTED'?'RESUBMIT FOR GM APPROVAL':'SEND FOR GM APPROVAL';
+ sendButton.textContent=c.status==='REJECTED'?'RESUBMIT FOR APPROVAL':'SEND FOR APPROVAL';
  const notice=$('lsActivationNotice');
  notice.hidden=false;
  if(c.status==='DRAFT'){
-   notice.textContent='DRAFT — Contract saved but not yet submitted. Click SEND FOR GM APPROVAL to request activation.';
+   notice.textContent='DRAFT — Contract saved but not yet submitted. Click SEND FOR APPROVAL to request activation.';
  }else if(c.status==='PENDING_APPROVAL'){
    notice.textContent='PENDING GM APPROVAL — Submitted'+(lastRequest?.submitted_at?' on '+prettyDate(lastRequest.submitted_at):'')+'. Progress billing will become available only after GM approval.';
  }else if(c.status==='REJECTED'){
@@ -460,12 +460,12 @@ async function runCritical(action){
    return;
  }
  const response=await confirmLumpAction({
-   title:submitting?'Send Contract for GM Approval':'Close Lump-Sum Contract',
+   title:submitting?'Send Contract for Approval':'Close Lump-Sum Contract',
    message:submitting
      ?'Submit this saved contract to the General Manager for review? Activation and progress billing will remain locked until it is approved.'
      :'GM authorization: Close this certified contract and allow retention release once financial conditions are satisfied?',
    context:c.scope_title+' • '+c.contractor_name+' • '+money(revised(c)),
-   confirmLabel:submitting?'SEND FOR GM APPROVAL':'CLOSE CONTRACT',
+   confirmLabel:submitting?'SEND FOR APPROVAL':'CLOSE CONTRACT',
    tone:submitting?'info':'success'
  });
  if(!response.confirmed)return;
