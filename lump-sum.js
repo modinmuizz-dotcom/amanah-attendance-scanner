@@ -145,6 +145,28 @@ function renderContracts(){
   '<td>'+badge(c.status)+'</td>'+
   '<td>'+btn('OPEN CONTRACT','open',c.id,'primary')+'</td></tr>').join('');
 }
+function closeContractView(){
+  // Close only the open details panel. Keep the saved contract and status untouched.
+  const openContractId=ls.selected;
+  ls.selected=null;
+  $('lsDetailPanel').hidden=true;
+
+  // The page can be opened with ?contract= or ?billing=. Remove both so refresh
+  // doesn't reopen this contract after the user has closed the view.
+  const url=new URL(window.location.href);
+  url.searchParams.delete('contract');
+  url.searchParams.delete('billing');
+  window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);
+
+  const register=$('lsContractRegister');
+  if(register){
+    register.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+  }
+  // Restore keyboard focus to the register action for the contract just viewed.
+  const opener=Array.from($('lsContracts').querySelectorAll('[data-ls-action="open"]'))
+    .find(button=>button.dataset.lsId===openContractId);
+  (opener||$('lsRefresh')).focus();
+}
 function renderDetail(){
  const c=contractById(ls.selected);if(!c)return;
  $('lsDetailPanel').hidden=false;
@@ -503,6 +525,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('lsNewPayment').addEventListener('click',beginPayment);
  $('lsActivate').addEventListener('click',()=>runCritical('activate'));
  $('lsClose').addEventListener('click',()=>runCritical('close'));
+ $('lsCloseView').addEventListener('click',closeContractView);
  $('lsModalClose').addEventListener('click',closeModal);
  $('lsCancel').addEventListener('click',closeModal);
  $('lsForm').addEventListener('submit',handleForm);
