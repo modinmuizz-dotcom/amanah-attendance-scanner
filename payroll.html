@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=12">
+  <link rel="stylesheet" href="payroll.css?v=13">
 </head>
 <body>
   <main class="container payroll-page">
@@ -212,8 +212,11 @@
               <input id="paycheckClaimDate" type="date" required></div>
             <div class="payroll-field"><label for="paycheckClaimMethod">PAYMENT METHOD *</label>
               <select id="paycheckClaimMethod" required><option value="CASH">CASH</option><option value="CHECK">CHECK</option><option value="BANK TRANSFER">BANK TRANSFER</option><option value="OTHER">OTHER</option></select></div>
-            <div class="payroll-field"><label for="paycheckClaimReference">CHECK / PAYMENT REFERENCE *</label>
-              <input id="paycheckClaimReference" required placeholder="Unique check no. or payment reference"></div>
+            <div class="payroll-field"><label for="paycheckClaimReference">PAYMENT REFERENCE (AUTO-GENERATED)</label>
+              <input id="paycheckClaimReference" class="payroll-auto-reference" type="text" readonly required aria-describedby="paycheckClaimReferenceHelp" placeholder="Generating payment number..." autocomplete="off">
+              <small id="paycheckClaimReferenceHelp" class="payroll-auto-reference-help">Automatically assigned by AMANAH. For checks or transfers, include the actual check/bank reference in the acknowledgment.</small>
+              <button id="paycheckClaimRetryReference" type="button" class="button secondary payroll-reference-retry" hidden>RETRY GENERATION</button>
+            </div>
           </div>
           <div class="payroll-field" style="margin-top:13px"><label for="paycheckClaimAck">CLAIM ACKNOWLEDGMENT / RECEIPT *</label>
             <textarea id="paycheckClaimAck" rows="2" required placeholder="Receiver acknowledged collection, signed voucher or receipt reference"></textarea></div>
@@ -368,7 +371,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=14"></script>
+  <script src="payroll.js?v=15"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
