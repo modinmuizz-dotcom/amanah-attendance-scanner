@@ -197,3 +197,50 @@
 @media(max-width:600px){.delete-history-header{padding:18px}.delete-history-body{padding:16px}.delete-history-header h2{font-size:17px}}
 .history-decision-banner.cancelled{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
 .history-decision-card.cancelled{background:#fff7ed;border-color:#fed7aa}
+
+
+/* Separate centered GM review for submitted Lump-Sum Contract activation. */
+.lump-contract-review-card{width:min(640px,100%);border-radius:20px}
+.lump-contract-review-card .approval-details{padding:19px 23px}
+.lump-review-summary{
+  padding:15px 17px;
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  border-radius:13px;
+  margin-bottom:13px;
+  display:flex;flex-direction:column;gap:5px;
+}
+.lump-review-summary strong{font-size:15px;color:#0f172a}
+.lump-review-summary small{font-size:11px;color:#64748b}
+.lump-review-amount{font-size:23px;font-weight:900;color:#1d4ed8;font-variant-numeric:tabular-nums}
+.lump-review-row{
+  display:grid;
+  grid-template-columns:155px minmax(0,1fr);
+  align-items:start;
+  gap:12px;
+  padding:10px 5px;
+  border-bottom:1px solid #eef2f7;
+}
+.lump-review-row>span:first-child{
+  color:#64748b;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.03em;
+}
+.lump-review-row>strong,.lump-review-row>span:last-child{
+  overflow-wrap:anywhere;
+  color:#1e293b;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.5;
+}
+.lump-review-evidence{color:#1d4ed8;text-decoration:underline}
+.lump-review-open-contract{display:inline-flex;text-decoration:none;margin-top:15px;align-items:center}
+.lump-review-error{background:#fef2f2;color:#b91c1c;font-size:11px;font-weight:750;padding:11px 12px;border-radius:10px;margin-top:10px}
+.lump-review-error[hidden]{display:none!important}
+#lumpContractReviewModal .modal-actions{gap:9px;flex-wrap:wrap}
+#lumpContractReviewModal .button:disabled{opacity:.6;cursor:wait}
+@media(max-width:600px){
+  .lump-review-row{grid-template-columns:1fr;gap:4px}
+  .lump-contract-review-card .approval-details{padding:14px 16px}
+}
