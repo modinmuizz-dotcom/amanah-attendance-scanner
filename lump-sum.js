@@ -3,6 +3,35 @@ const LS_KEY='sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
 const lsDb=window.supabase.createClient(LS_URL,LS_KEY);
 const ls={projects:[],contracts:[],billings:[],payments:[],variations:[],
  activationRequests:[],permissions:{},selected:null,mode:null,saving:false};
+const LS_PHOTO_MAX=10;
+let lsBillingPhotos=[], lsGalleryGeneration=0;
+function clearBillingPhotoPreviews(){lsBillingPhotos.forEach(p=>URL.revokeObjectURL(p.preview));lsBillingPhotos=[];}
+function renderBillingPhotoPreviews(){
+ const root=$('lsBillingPhotoPreviews');if(!root)return;
+ $('lsBillingPhotoCount').textContent=lsBillingPhotos.length+' / '+LS_PHOTO_MAX+' PHOTOS SELECTED';
+ root.innerHTML=lsBillingPhotos.map(p=>
+  '<div class="ls-photo-preview-card"><img src="'+esc(p.preview)+'" alt="'+esc(p.file.name)+'" loading="lazy">'+
+  '<span title="'+esc(p.file.name)+'">'+esc(p.file.name)+'</span>'+
+  '<button type="button" class="ls-photo-remove" data-ls-photo-remove="'+esc(p.id)+'">REMOVE</button></div>').join('');
+ $('lsAddPhotosButton').disabled=lsBillingPhotos.length>=LS_PHOTO_MAX;
+}
+function addBillingPhotoFiles(files){
+ const incoming=Array.from(files||[]);if(!incoming.length)return;
+ if(incoming.length+lsBillingPhotos.length>LS_PHOTO_MAX)throw new Error('Maximum '+LS_PHOTO_MAX+' pictures per billing.');
+ for(const f of incoming){
+  if(!['image/jpeg','image/png','image/webp'].includes(f.type))throw new Error(f.name+': Only JPG, PNG or WEBP pictures.');
+  if(!f.size||f.size>15728640)throw new Error(f.name+': Picture must be 15 MB or smaller.');
+  if(lsBillingPhotos.some(p=>p.file.name===f.name&&p.file.size===f.size&&p.file.lastModified===f.lastModified))
+   throw new Error(f.name+': Picture already selected.');
+ }
+ for(const f of incoming)lsBillingPhotos.push({id:crypto.randomUUID(),file:f,preview:URL.createObjectURL(f)});
+ $('lsFormError').textContent='';
+ renderBillingPhotoPreviews();
+}
+function removeBillingPhoto(id){
+ const i=lsBillingPhotos.findIndex(p=>p.id===id);if(i<0)return;
+ const [p]=lsBillingPhotos.splice(i,1);URL.revokeObjectURL(p.preview);renderBillingPhotoPreviews();
+}
 
 const $=id=>document.getElementById(id);
 const esc=v=>v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -65,6 +94,7 @@ const field=(label,name,type='text',opts={})=>{
 function notify(t,bad=false){$('lsMessage').hidden=false;$('lsMessage').textContent=t;$('lsMessage').className='ls-message'+(bad?' error':'');}
 function clearNotify(){$('lsMessage').hidden=true;}
 function showModal(title,mode,html,submitLabel='SAVE'){
+ clearBillingPhotoPreviews();
  ls.mode=mode;$('lsModalTitle').textContent=title;$('lsFormFields').innerHTML=html;
  $('lsSubmit').textContent=submitLabel;$('lsFormError').textContent='';
  $('lsFormPreview').hidden=true;
@@ -92,7 +122,7 @@ function clearSelectedAttachment(button){
  input.value='';
  syncSelectedAttachment(input);
 }
-function closeModal(){if(ls.saving)return;$('lsModal').classList.remove('open');$('lsModal').setAttribute('aria-hidden','true');ls.mode=null;}
+function closeModal(){if(ls.saving)return;clearBillingPhotoPreviews();$('lsModal').classList.remove('open');$('lsModal').setAttribute('aria-hidden','true');ls.mode=null;}
 function values(){return Object.fromEntries(new FormData($('lsForm')).entries());}
 async function rpc(fn,args){const {data,error}=await lsDb.rpc(fn,args||{});if(error)throw error;return data;}
 async function loadAll(){
@@ -271,7 +301,13 @@ function beginBilling(){
   field('CUMULATIVE COMPLETION (%)','pct','number',{required:true,min:.001,max:100,step:'.001',
     help:'Cumulative engineer-measured completion, not this period alone. Previously certified: '+s.certifiedPct+'%.'})+
   field('ADVANCE RECOVERY (PHP)','recovery','number',{min:0,step:'.01',value:0,help:'Unrecovered paid advance: '+money(Math.max(0,availableAdvance))})+
-  field('UPLOAD ACCOMPLISHMENT EVIDENCE (PDF / IMAGE)','evidence_file','file',{full:true,help:'Private signed access for authorized reviewers. Upload evidence or provide HTTPS link below.'})+
+  field('UPLOAD ACCOMPLISHMENT EVIDENCE (PDF / IMAGE)','evidence_file','file',{full:true,help:'Main PDF or image. You may add additional pictures below.'})+
+  '<div class="ls-field full ls-extra-photos"><label>ADDITIONAL PHOTO EVIDENCE</label>'+
+  '<div class="ls-add-photos-row"><button type="button" id="lsAddPhotosButton" class="ls-btn primary">+ ADD PHOTO EVIDENCE</button>'+
+  '<span id="lsBillingPhotoCount" class="ls-photo-count" aria-live="polite">0 / 10 PHOTOS SELECTED</span></div>'+
+  '<input id="lsAddPhotoInput" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple hidden>'+
+  '<div id="lsBillingPhotoPreviews" class="ls-photo-previews"></div>'+
+  '<small>Up to 10 pictures (15 MB each). Preview and remove pictures before submitting. All photos are visible to reviewers.</small></div>'+
   field('OR SUPPORTING EVIDENCE URL (HTTPS)','evidence','url',{full:true,help:'Link to certificate, measurement or approved activity photos.'})+
   field('WORK DESCRIPTION','description','textarea',{full:true});
  showModal('PREPARE PROGRESS BILLING','billing',fields,'SUBMIT FOR SITE VERIFICATION');
@@ -532,8 +568,16 @@ document.addEventListener('DOMContentLoaded',()=>{
  // Handle all dynamically generated contract, billing and variation file fields.
  $('lsFormFields').addEventListener('change',e=>{
   if(e.target.matches('input[type="file"][data-ls-attachment]'))syncSelectedAttachment(e.target);
+  if(e.target.id==='lsAddPhotoInput'){
+   try{addBillingPhotoFiles(e.target.files);}
+   catch(error){$('lsFormError').textContent=error.message;}
+   e.target.value='';
+  }
  });
  $('lsFormFields').addEventListener('click',e=>{
+  if(e.target.closest('#lsAddPhotosButton'))$('lsAddPhotoInput')?.click();
+  const remove=e.target.closest('[data-ls-photo-remove]');
+  if(remove)removeBillingPhoto(remove.dataset.lsPhotoRemove);
   const button=e.target.closest('[data-ls-clear-file]');
   if(button)clearSelectedAttachment(button);
  });
