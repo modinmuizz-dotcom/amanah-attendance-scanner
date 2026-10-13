@@ -335,3 +335,59 @@
 @media print {
   .group-labor-remove {display:none!important;}
 }
+
+/* Payroll action bar: buttons and the Lump-Sum link share one consistent design. */
+.payroll-control-actions > .button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  min-height:40px;
+  padding:9px 13px;
+  border:1px solid #cbd5e1;
+  border-radius:9px;
+  background:#eef2f8;
+  color:#1e293b;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.025em;
+  line-height:1.25;
+  white-space:nowrap;
+  text-align:center;
+  text-decoration:none;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.payroll-control-actions > .button.primary{
+  border-color:#2563eb;
+  background:#2563eb;
+  color:white;
+}
+.payroll-control-actions > .button.secondary{
+  border-color:#cbd5e1;
+  background:#eef2f8;
+  color:#1e293b;
+}
+.payroll-control-actions > a.payroll-lump-sum-action:link,
+.payroll-control-actions > a.payroll-lump-sum-action:visited{
+  color:#1e293b;
+  text-decoration:none;
+}
+.payroll-control-actions > .button.secondary:hover{
+  background:#e0e9f5;
+  border-color:#93a9c6;
+}
+.payroll-control-actions > .button.primary:hover{
+  background:#1d4ed8;
+  border-color:#1d4ed8;
+}
+.payroll-control-actions > .button:focus-visible{
+  outline:3px solid #93c5fd;
+  outline-offset:2px;
+}
+@media (max-width:720px){
+  .payroll-control-actions > .button{width:100%;white-space:normal;}
+}
+@media(prefers-reduced-motion:reduce){
+  .payroll-control-actions > .button{transition:none;}
+}
