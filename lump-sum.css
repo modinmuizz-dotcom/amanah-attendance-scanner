@@ -42,3 +42,13 @@
 @media(max-width:800px){.ls-hero,.ls-header{flex-direction:column;align-items:flex-start}.ls-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ls-hero{padding:20px}.ls-hero h1{font-size:23px}}
 @media(max-width:540px){.ls-metrics{grid-template-columns:1fr 1fr;padding:10px;gap:7px}.ls-metrics strong{font-size:15px}.ls-formgrid{grid-template-columns:1fr}.ls-field.full{grid-column:auto}.ls-subhead{flex-direction:column;align-items:flex-start}}
 @media print{.ls-hero,.ls-actions,.ls-btn,.ls-modal,.ls-message{display:none!important}.ls-page table{min-width:0}.ls-panel{break-inside:avoid}.ls-page{padding:0}}
+
+/* Attachment selection controls for signed contracts and photo/PDF evidence */
+.ls-file-controls {display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.ls-file-controls input[type="file"] {flex:1 1 230px;min-width:0;max-width:100%;cursor:pointer}
+.ls-file-remove {display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:9px 13px;flex-shrink:0;border:1px solid #fecaca;border-radius:9px;background:#fff1f2;color:#b91c1c;font-size:11px;font-weight:850;cursor:pointer}
+.ls-file-remove:hover {background:#ffe4e6;border-color:#fda4af}
+.ls-file-remove:focus-visible {outline:2px solid #dc2626;outline-offset:2px}
+.ls-file-remove[hidden],.ls-file-selected[hidden] {display:none!important}
+.ls-file-selected {color:#047857;font-size:10px;font-weight:750;overflow-wrap:anywhere}
+@media(max-width:540px){.ls-file-controls{align-items:stretch}.ls-file-remove{width:100%}}
