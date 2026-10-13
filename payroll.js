@@ -17,6 +17,10 @@ let activePaycheckClaims=[];
 let pendingClaimEntry=null;
 let paycheckClaimBusy=false;
 let paycheckReleaseAwaitingConfirmation=false;
+let payrollHistoryRuns=new Map();
+let selectedDraftForDeletion=null;
+let deletingDraftPayroll=false;
+let payrollDeleteReturnFocus=null;
 
 async function loadGroupLaborProjects(){
   const select=document.getElementById('groupLaborProject');
@@ -743,6 +747,7 @@ async function loadPayrollHistory(){
  addRows(employeeResponse.data,true);
  addRows(groupResponse.data,false);
  const {data:canManage}=await supabaseClient.rpc('amanah_payroll_can_prepare');
+ payrollHistoryRuns=new Map(data.map(run=>[run.payroll_run_id,run]));
  body.innerHTML=data.map(run=>{
    const created=run.created_at?new Date(run.created_at).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'}):'—';
    const status=String(run.status||'DRAFT');
@@ -764,6 +769,12 @@ async function loadPayrollHistory(){
    } else if(status==='PENDING_APPROVAL'){
      action='<span class="payroll-sub">Waiting for Financial Manager</span>';
    }
+   // Only Draft records can be deleted. This also covers incomplete legacy Drafts.
+   if(status==='DRAFT'&&canManage){
+     action+='<button type="button" class="button payroll-history-delete" data-payroll-delete="'+
+       escapeHtml(run.payroll_run_id)+'" aria-label="Delete Draft payroll for '+
+       escapeHtml(dateText(run.period_start))+' to '+escapeHtml(dateText(run.period_end))+'">DELETE</button>';
+   }
    return `<tr>
      <td><strong>${escapeHtml(dateText(run.period_start))}</strong> – ${escapeHtml(dateText(run.period_end))}</td>
      <td>${escapeHtml(run.employee_count)}</td>
@@ -773,6 +784,66 @@ async function loadPayrollHistory(){
      <td>${action}</td>
    </tr>`;
  }).join('');
+}
+
+function openDraftDelete(runId){
+ const run=payrollHistoryRuns.get(runId);
+ if(!run||run.status!=='DRAFT'){
+   showMessage('Only an unapproved Draft payroll can be deleted. Refresh the history.','error');
+   return;
+ }
+ if(deletingDraftPayroll)return;
+ selectedDraftForDeletion=run;
+ payrollDeleteReturnFocus=document.activeElement;
+ const detail=document.getElementById('payrollDeleteDetails');
+ detail.textContent='Payroll period: '+dateText(run.period_start)+' – '+dateText(run.period_end)+
+   ' • Gross amount: '+money(run.total_gross)+
+   ' • Employees: '+Number(run.employee_count||0);
+ const error=document.getElementById('payrollDeleteError');
+ error.hidden=true;
+ error.textContent='';
+ const modal=document.getElementById('payrollDeleteModal');
+ modal.classList.add('is-open');
+ modal.setAttribute('aria-hidden','false');
+ document.getElementById('payrollDeleteCancel').focus();
+}
+function closeDraftDelete(){
+ if(deletingDraftPayroll)return;
+ selectedDraftForDeletion=null;
+ const modal=document.getElementById('payrollDeleteModal');
+ modal.classList.remove('is-open');
+ modal.setAttribute('aria-hidden','true');
+ const focus=payrollDeleteReturnFocus;
+ payrollDeleteReturnFocus=null;
+ if(focus?.isConnected && typeof focus.focus==='function')focus.focus();
+ else document.getElementById('refreshPayrollHistoryButton').focus();
+}
+async function confirmDraftDelete(){
+ if(deletingDraftPayroll||!selectedDraftForDeletion)return;
+ const run=selectedDraftForDeletion;
+ const btn=document.getElementById('payrollDeleteConfirm');
+ const error=document.getElementById('payrollDeleteError');
+ deletingDraftPayroll=true;
+ btn.disabled=true;
+ btn.textContent='DELETING...';
+ error.hidden=true;error.textContent='';
+ try{
+   const response=await supabaseClient.rpc('amanah_payroll_delete_draft',{
+     p_run_id:run.payroll_run_id
+   });
+   if(response.error)throw response.error;
+   deletingDraftPayroll=false;
+   closeDraftDelete();
+   showMessage('Draft payroll permanently deleted. No approved payroll or paycheck was changed.','success');
+   await loadPayrollHistory();
+ }catch(e){
+   error.textContent='Could not delete this Draft: '+(e.message||'Please try again.');
+   error.hidden=false;
+ }finally{
+   deletingDraftPayroll=false;
+   btn.disabled=false;
+   btn.textContent='YES, DELETE DRAFT';
+ }
 }
 
 async function submitHistoricalPayroll(runId){
@@ -950,9 +1021,31 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('payrollHistoryBody').addEventListener('click',event=>{
     const submit=event.target.closest('[data-payroll-submit]');
     const open=event.target.closest('[data-payroll-open]');
+    const remove=event.target.closest('[data-payroll-delete]');
     if(submit)submitHistoricalPayroll(submit.dataset.payrollSubmit);
+    if(remove)openDraftDelete(remove.dataset.payrollDelete);
     if(open)openPaycheckPanel(open.dataset.payrollOpen)
       .catch(error=>showMessage(error.message||'Unable to open paycheck claims.','error'));
+  });
+  document.getElementById('payrollDeleteCancel').addEventListener('click',closeDraftDelete);
+  document.getElementById('payrollDeleteClose').addEventListener('click',closeDraftDelete);
+  document.getElementById('payrollDeleteConfirm').addEventListener('click',confirmDraftDelete);
+  document.getElementById('payrollDeleteModal').addEventListener('click',event=>{
+    if(event.target.id==='payrollDeleteModal')closeDraftDelete();
+  });
+  document.addEventListener('keydown',event=>{
+    const modal=document.getElementById('payrollDeleteModal');
+    if(!modal.classList.contains('is-open'))return;
+    if(event.key==='Escape'){event.preventDefault();closeDraftDelete();}
+    // Keep keyboard focus inside the modal while confirmation is open.
+    if(event.key==='Tab'){
+      const controls=[document.getElementById('payrollDeleteClose'),
+        document.getElementById('payrollDeleteCancel'),
+        document.getElementById('payrollDeleteConfirm')].filter(el=>!el.disabled);
+      const position=controls.indexOf(document.activeElement);
+      if(event.shiftKey&&position<=0){event.preventDefault();controls[controls.length-1]?.focus();}
+      if(!event.shiftKey&&position===controls.length-1){event.preventDefault();controls[0]?.focus();}
+    }
   });
   document.getElementById('closePaycheckPanel').addEventListener('click',closePaycheckPanel);
   document.getElementById('paycheckReleaseBody').addEventListener('click',event=>{
