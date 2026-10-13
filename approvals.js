@@ -374,8 +374,7 @@ async function loadLumpSumApprovals(){
   body.innerHTML=rows.map(r=>{
     const c=r.contract;
     const action=r.kind==='activation'
-      ? '<button class="mini review" type="button" data-lump-activation-review="'+esc(r.requestId)+'">REVIEW REQUEST</button>'+
-        ' <a class="mini" href="'+r.href+'" style="text-decoration:none;display:inline-block">VIEW CONTRACT</a>'
+      ? '<button class="mini review" type="button" data-lump-activation-review="'+esc(r.requestId)+'">REVIEW REQUEST</button>'
       :'<a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a>';
     return '<tr>'+
       '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
