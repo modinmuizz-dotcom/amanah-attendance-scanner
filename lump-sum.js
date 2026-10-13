@@ -51,6 +51,14 @@ const field=(label,name,type='text',opts={})=>{
  let content;
  if(type==='select'){content='<select'+common+'>'+opts.options.map(o=>'<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>').join('')+'</select>';}
  else if(type==='textarea'){content='<textarea'+common+' rows="3" placeholder="'+esc(opts.placeholder||'')+'">'+esc(initial)+'</textarea>';}
+ else if(type==='file'){
+  // Attachments remain unsaved until the form is submitted and can be cleared.
+  content='<div class="ls-file-controls">'+
+    '<input type="file"'+common+
+    'accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" data-ls-attachment>'+
+    '<button type="button" class="ls-file-remove" data-ls-clear-file="'+esc(id)+'" aria-label="Remove selected attachment" hidden>REMOVE ATTACHMENT</button>'+
+    '</div><span class="ls-file-selected" aria-live="polite" hidden></span>';
+ }
  else content='<input type="'+type+'"'+common+' value="'+esc(initial)+'" placeholder="'+esc(opts.placeholder||'')+'">';
  return '<div class="ls-field'+full+'"><label for="'+id+'">'+esc(label)+(opts.required?' *':'')+'</label>'+content+(opts.help?'<small>'+esc(opts.help)+'</small>':'')+'</div>';
 };
@@ -62,6 +70,27 @@ function showModal(title,mode,html,submitLabel='SAVE'){
  $('lsFormPreview').hidden=true;
  $('lsModal').classList.add('open');$('lsModal').setAttribute('aria-hidden','false');
  $('lsFormFields').querySelector('input,select,textarea')?.focus();
+}
+function syncSelectedAttachment(input){
+ if(!input || input.type!=='file')return;
+ const fieldRoot=input.closest('.ls-field');
+ if(!fieldRoot)return;
+ const removeButton=fieldRoot.querySelector('[data-ls-clear-file]');
+ const status=fieldRoot.querySelector('.ls-file-selected');
+ const selectedFile=input.files?.[0]||null;
+ if(removeButton)removeButton.hidden=!selectedFile;
+ if(status){
+  status.hidden=!selectedFile;
+  status.textContent=selectedFile?'Selected: '+selectedFile.name:'';
+ }
+}
+function clearSelectedAttachment(button){
+ if(!button)return;
+ const input=document.getElementById(button.dataset.lsClearFile);
+ if(!input || input.type!=='file')return;
+ // Clearing the native input also prevents upload when this form is submitted.
+ input.value='';
+ syncSelectedAttachment(input);
 }
 function closeModal(){if(ls.saving)return;$('lsModal').classList.remove('open');$('lsModal').setAttribute('aria-hidden','true');ls.mode=null;}
 function values(){return Object.fromEntries(new FormData($('lsForm')).entries());}
@@ -339,6 +368,14 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('lsModalClose').addEventListener('click',closeModal);
  $('lsCancel').addEventListener('click',closeModal);
  $('lsForm').addEventListener('submit',handleForm);
+ // Handle all dynamically generated contract, billing and variation file fields.
+ $('lsFormFields').addEventListener('change',e=>{
+  if(e.target.matches('input[type="file"][data-ls-attachment]'))syncSelectedAttachment(e.target);
+ });
+ $('lsFormFields').addEventListener('click',e=>{
+  const button=e.target.closest('[data-ls-clear-file]');
+  if(button)clearSelectedAttachment(button);
+ });
  document.addEventListener('click',async e=>{
    const target=e.target.closest('[data-ls-proof]');
    if(!target)return;
