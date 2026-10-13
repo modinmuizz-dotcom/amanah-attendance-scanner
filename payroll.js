@@ -922,7 +922,7 @@ async function reloadPaycheckPanel(){
    '</td><td>'+status+'</td><td>'+detail+'</td><td>'+action+'</td></tr>';
  }).join('');
 }
-function openPaycheckClaim(itemId){
+async function openPaycheckClaim(itemId){
  const entry=activePaycheckEntries.find(e=>e.itemId===itemId);
  if(!entry || !activePaycheckRun)return;
  pendingClaimEntry=entry;
@@ -933,15 +933,56 @@ function openPaycheckClaim(itemId){
  }).formatToParts(new Date()).map(p=>[p.type,p.value]));
  document.getElementById('paycheckClaimDate').value=manilaParts.year+'-'+manilaParts.month+'-'+manilaParts.day;
  document.getElementById('paycheckClaimReference').value='';
+ document.getElementById('paycheckClaimReference').readOnly=true;
+ document.getElementById('paycheckClaimRetryReference').hidden=true;
  document.getElementById('paycheckClaimAck').value='';
  document.getElementById('paycheckClaimMethod').value='CASH';
  document.getElementById('paycheckClaimError').textContent='';
  paycheckReleaseAwaitingConfirmation=false;
  document.getElementById('paycheckClaimConfirmNotice').hidden=true;
- document.getElementById('paycheckClaimSubmit').textContent='RECORD PAYMENT RELEASE';
+ document.getElementById('paycheckClaimSubmit').textContent='GENERATING REFERENCE...';
+ document.getElementById('paycheckClaimSubmit').disabled=true;
  const modal=document.getElementById('paycheckClaimModal');
  modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');
  document.getElementById('paycheckClaimRecipient').focus();
+ await generatePaycheckReference(entry);
+}
+async function generatePaycheckReference(entry){
+ if(!entry || !activePaycheckRun || pendingClaimEntry!==entry)return;
+ const input=document.getElementById('paycheckClaimReference');
+ const button=document.getElementById('paycheckClaimSubmit');
+ const retry=document.getElementById('paycheckClaimRetryReference');
+ const errorBox=document.getElementById('paycheckClaimError');
+ input.value='';
+ input.placeholder='Generating secure payment number...';
+ button.disabled=true;
+ button.textContent='GENERATING REFERENCE...';
+ retry.hidden=true;
+ errorBox.textContent='';
+ try{
+   const {data,error}=await supabaseClient.rpc('amanah_payroll_generate_payment_reference',{
+     p_run_id:activePaycheckRun.payroll_run_id,
+     p_item_type:entry.kind,
+     p_item_id:entry.itemId
+   });
+   if(error)throw error;
+   if(!/^PAY-\d{8}-\d{6,}$/.test(String(data||'')))throw new Error('Invalid payment reference returned.');
+   // Ignore a delayed response if the user closed or changed the claim form.
+   if(pendingClaimEntry!==entry ||
+      !document.getElementById('paycheckClaimModal').classList.contains('is-open'))return;
+   input.value=data;
+   button.disabled=false;
+   button.textContent='RECORD PAYMENT RELEASE';
+ }catch(err){
+   if(pendingClaimEntry!==entry ||
+      !document.getElementById('paycheckClaimModal').classList.contains('is-open'))return;
+   input.value='';
+   input.placeholder='Reference unavailable';
+   retry.hidden=false;
+   errorBox.textContent='Unable to generate a payment reference: '+(err.message||'Please try again.');
+   button.disabled=true;
+   button.textContent='REFERENCE REQUIRED';
+ }
 }
 function closePaycheckClaim(){
  if(paycheckClaimBusy)return;
@@ -949,6 +990,7 @@ function closePaycheckClaim(){
  pendingClaimEntry=null;
  document.getElementById('paycheckClaimConfirmNotice').hidden=true;
  document.getElementById('paycheckClaimSubmit').textContent='RECORD PAYMENT RELEASE';
+ document.getElementById('paycheckClaimRetryReference').hidden=true;
  const modal=document.getElementById('paycheckClaimModal');
  modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');
 }
@@ -962,14 +1004,18 @@ async function savePaycheckClaim(event){
  const ref=document.getElementById('paycheckClaimReference').value.trim();
  const ack=document.getElementById('paycheckClaimAck').value.trim();
  if(!recipient||!date||!ref||!ack){
-   document.getElementById('paycheckClaimError').textContent='Complete the recipient, release date, unique reference, and acknowledgment.';
+   document.getElementById('paycheckClaimError').textContent='Complete the recipient, release date and acknowledgment. A server-generated payment reference is required.';
+   return;
+ }
+ if(!/^PAY-\d{8}-\d{6,}$/.test(ref)){
+   document.getElementById('paycheckClaimError').textContent='Payment reference was not generated correctly. Reopen this form.';
    return;
  }
  if(!paycheckReleaseAwaitingConfirmation){
    paycheckReleaseAwaitingConfirmation=true;
    const note=document.getElementById('paycheckClaimConfirmNotice');
    note.textContent='CONFIRM RELEASE: '+money(entry.amount)+' was physically paid to '+recipient+
-      '. Click CONFIRM & RECORD RELEASE to finalize. A duplicate claim will not be allowed.';
+      ' (Reference: '+ref+'). Click CONFIRM & RECORD RELEASE to finalize. A duplicate claim will not be allowed.';
    note.hidden=false;
    document.getElementById('paycheckClaimSubmit').textContent='CONFIRM & RECORD RELEASE';
    return;
@@ -984,7 +1030,7 @@ async function savePaycheckClaim(event){
    });
    if(error)throw error;
    paycheckClaimBusy=false;closePaycheckClaim();
-   showMessage('Paycheck released and receipt recorded successfully.','success');
+   showMessage('Paycheck released successfully. Payment Reference: '+ref+'.','success');
    await reloadPaycheckPanel();
  }catch(error){
    document.getElementById('paycheckClaimError').textContent=error.message||'Unable to record the payment release.';
@@ -1053,6 +1099,9 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(btn)openPaycheckClaim(btn.dataset.payrollClaim);
   });
   document.getElementById('paycheckClaimForm').addEventListener('submit',savePaycheckClaim);
+  document.getElementById('paycheckClaimRetryReference').addEventListener('click',()=>{
+    if(pendingClaimEntry)generatePaycheckReference(pendingClaimEntry);
+  });
   document.getElementById('paycheckClaimForm').addEventListener('input',()=>{
     if(!paycheckReleaseAwaitingConfirmation)return;
     paycheckReleaseAwaitingConfirmation=false;
