@@ -52,3 +52,121 @@
 .ls-file-remove[hidden],.ls-file-selected[hidden] {display:none!important}
 .ls-file-selected {color:#047857;font-size:10px;font-weight:750;overflow-wrap:anywhere}
 @media(max-width:540px){.ls-file-controls{align-items:stretch}.ls-file-remove{width:100%}}
+
+
+/* AMANAH confirmation dialog — centered in the viewport, never a browser alert. */
+.ls-confirm-overlay {
+  position:fixed;
+  inset:0;
+  z-index:11000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:rgba(15,23,42,.66);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  overflow-y:auto;
+}
+.ls-confirm-overlay.is-open {display:flex;}
+.ls-confirm-dialog {
+  flex:0 1 440px;
+  width:100%;
+  max-height:calc(100dvh - 44px);
+  overflow-y:auto;
+  margin:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:20px;
+  box-shadow:0 24px 80px rgba(2,6,23,.29);
+  color:#0f172a;
+  animation:ls-confirm-appear .16s ease-out both;
+}
+@keyframes ls-confirm-appear{
+  from{opacity:0;transform:translateY(10px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.ls-confirm-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:24px 25px 0;
+}
+.ls-confirm-icon {
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  display:grid;
+  place-items:center;
+  font-size:25px;
+  line-height:1;
+  font-weight:900;
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+.ls-confirm-dialog[data-tone="success"] .ls-confirm-icon{background:#dcfce7;color:#15803d;}
+.ls-confirm-dialog[data-tone="danger"] .ls-confirm-icon{background:#fee2e2;color:#b91c1c;}
+.ls-confirm-close {
+  border:0;
+  background:#f1f5f9;
+  border-radius:10px;
+  width:33px;
+  height:33px;
+  color:#64748b;
+  font-size:23px;
+  cursor:pointer;
+}
+.ls-confirm-content {padding:18px 25px 22px;}
+.ls-confirm-eyebrow{
+  color:#64748b;
+  font-size:10px;
+  letter-spacing:.12em;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.ls-confirm-content h2{font-size:21px;font-weight:900;letter-spacing:-.025em;margin:0 0 11px;}
+.ls-confirm-content p#lsConfirmMessage {font-size:13px;line-height:1.65;color:#475569;margin:0;}
+.ls-confirm-context {
+  font-size:12px;
+  line-height:1.55;
+  color:#1e3a8a;
+  background:#eff6ff;
+  border:1px solid #dbeafe;
+  border-radius:11px;
+  padding:12px 13px;
+  margin-top:16px;
+  overflow-wrap:anywhere;
+}
+.ls-confirm-notes{display:flex;flex-direction:column;gap:8px;margin-top:18px;}
+.ls-confirm-notes label {font-size:11px;font-weight:850;color:#334155;}
+.ls-confirm-notes textarea {
+  width:100%;max-width:100%;min-height:83px;resize:vertical;
+  border:1px solid #cbd5e1;border-radius:10px;
+  padding:11px 12px;
+  font:inherit;font-size:12px;color:#0f172a;
+}
+.ls-confirm-notes textarea:focus-visible {outline:2px solid #2563eb;outline-offset:1px;}
+.ls-confirm-error {color:#b91c1c!important;font-size:11px!important;font-weight:750;margin:10px 0 0!important;}
+.ls-confirm-error[hidden],.ls-confirm-context[hidden],.ls-confirm-notes[hidden] {display:none!important;}
+.ls-confirm-footer {
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  padding:16px 25px 22px;
+  background:#f8fafc;
+  border-top:1px solid #e2e8f0;
+}
+.ls-confirm-footer .ls-btn {min-width:110px;min-height:41px;border-radius:10px;}
+.ls-confirm-footer #lsConfirmAccept{background:#2563eb;}
+.ls-confirm-dialog[data-tone="success"] #lsConfirmAccept{background:#16a34a;}
+.ls-confirm-dialog[data-tone="danger"] #lsConfirmAccept{background:#dc2626;}
+.ls-confirm-footer .ls-btn:focus-visible,.ls-confirm-close:focus-visible {outline:3px solid #93c5fd;outline-offset:2px;}
+@media(max-width:520px) {
+  .ls-confirm-overlay{padding:12px;}
+  .ls-confirm-dialog{max-height:calc(100dvh - 24px);border-radius:16px;}
+  .ls-confirm-header{padding:20px 18px 0;}
+  .ls-confirm-content{padding:16px 18px 18px;}
+  .ls-confirm-footer{padding:14px 18px 17px;}
+  .ls-confirm-footer .ls-btn{flex:1;min-width:0;}
+}
+@media(prefers-reduced-motion:reduce){.ls-confirm-dialog{animation:none;}}
