@@ -11,6 +11,7 @@
       ['employees','Master Data','admin.html','user','master_data.employees'],
       ['roles','Roles & Permissions','roles-permissions.html','shield','roles.manage'],
       ['approvals','Approval Center','approvals.html','shield','approvals.view'],
+      ['financePayroll','Payroll Approvals','finance-payroll.html','shield','payroll.approve'],
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar','schedule.view'],
