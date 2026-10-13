@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AMANAH Lump-Sum Contracts</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
-<link rel="stylesheet" href="lump-sum.css?v=2">
+<link rel="stylesheet" href="lump-sum.css?v=3">
 </head>
 <body>
 <main class="container ls-page">
@@ -71,9 +71,36 @@
       </form>
     </div>
   </div>
+
+  <!-- Consistent, centered AMANAH confirmations. Replaces browser confirm/prompt dialogs. -->
+  <div id="lsConfirmOverlay" class="ls-confirm-overlay" aria-hidden="true">
+    <section class="ls-confirm-dialog" role="dialog" aria-modal="true"
+             aria-labelledby="lsConfirmTitle" aria-describedby="lsConfirmMessage">
+      <div class="ls-confirm-header">
+        <div id="lsConfirmIcon" class="ls-confirm-icon" aria-hidden="true">✓</div>
+        <button id="lsConfirmClose" type="button" class="ls-confirm-close"
+                aria-label="Cancel and close confirmation">×</button>
+      </div>
+      <div class="ls-confirm-content">
+        <div class="ls-confirm-eyebrow">AMANAH • ACTION CONFIRMATION</div>
+        <h2 id="lsConfirmTitle">Confirm action</h2>
+        <p id="lsConfirmMessage"></p>
+        <div id="lsConfirmContext" class="ls-confirm-context" hidden></div>
+        <div id="lsConfirmNotesWrap" class="ls-confirm-notes" hidden>
+          <label id="lsConfirmNotesLabel" for="lsConfirmNotes">Remarks</label>
+          <textarea id="lsConfirmNotes" rows="3" placeholder="Enter remarks..."></textarea>
+        </div>
+        <p id="lsConfirmError" class="ls-confirm-error" role="alert" hidden></p>
+      </div>
+      <div class="ls-confirm-footer">
+        <button type="button" id="lsConfirmCancel" class="ls-btn secondary">CANCEL</button>
+        <button type="button" id="lsConfirmAccept" class="ls-btn primary">CONFIRM</button>
+      </div>
+    </section>
+  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="lump-sum.js?v=5"></script>
+<script src="lump-sum.js?v=6"></script>
 <script src="amanah-ui.js?v=11"></script>
 </body>
 </html>
