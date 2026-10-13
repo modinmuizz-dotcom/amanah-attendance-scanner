@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AMANAH Lump-Sum Contracts</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
-<link rel="stylesheet" href="lump-sum.css?v=5">
+<link rel="stylesheet" href="lump-sum.css?v=6">
 </head>
 <body>
 <main class="container ls-page">
@@ -74,6 +74,20 @@
     </div>
   </div>
 
+  <!-- Secure, on-demand gallery for authorized billing reviewers. -->
+  <div id="lsPhotoGallery" class="ls-gallery-overlay" aria-hidden="true">
+    <section class="ls-gallery-dialog" role="dialog" aria-modal="true" aria-labelledby="lsPhotoGalleryTitle">
+      <header class="ls-gallery-header">
+        <div><small>AMANAH • ACCOMPLISHMENT DOCUMENTATION</small>
+          <h2 id="lsPhotoGalleryTitle">PHOTO EVIDENCE</h2>
+          <p>Private photos are shown with short-lived secure viewing links.</p>
+        </div>
+        <button type="button" id="lsPhotoGalleryClose" class="ls-gallery-close" aria-label="Close photo gallery">×</button>
+      </header>
+      <div id="lsPhotoGalleryImages" class="ls-gallery-images" aria-live="polite"></div>
+    </section>
+  </div>
+
   <!-- Consistent, centered AMANAH confirmations. Replaces browser confirm/prompt dialogs. -->
   <div id="lsConfirmOverlay" class="ls-confirm-overlay" aria-hidden="true">
     <section class="ls-confirm-dialog" role="dialog" aria-modal="true"
@@ -102,7 +116,7 @@
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="lump-sum.js?v=10"></script>
+<script src="lump-sum.js?v=11"></script>
 <script src="amanah-ui.js?v=11"></script>
 </body>
 </html>
