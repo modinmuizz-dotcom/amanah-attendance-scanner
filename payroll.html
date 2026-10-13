@@ -194,6 +194,7 @@
           </div>
           <div class="payroll-field" style="margin-top:13px"><label for="paycheckClaimAck">CLAIM ACKNOWLEDGMENT / RECEIPT *</label>
             <textarea id="paycheckClaimAck" rows="2" required placeholder="Receiver acknowledged collection, signed voucher or receipt reference"></textarea></div>
+          <div id="paycheckClaimConfirmNotice" class="payroll-claim-confirm" role="status" hidden></div>
           <p id="paycheckClaimError" class="manual-payroll-error" role="alert"></p>
         </div>
         <div class="manual-payroll-actions">
@@ -344,7 +345,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=11"></script>
+  <script src="payroll.js?v=12"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
