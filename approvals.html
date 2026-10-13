@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>AMANAH Approval Center</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
-<link rel="stylesheet" href="approvals.css?v=7">
+<link rel="stylesheet" href="approvals.css?v=8">
 </head>
 <body>
 <main class="container approvals-page">
@@ -67,9 +67,9 @@
   <section class="approval-panel" id="lsApprovalsPanel">
     <div class="panel-head">
       <div>
-        <div class="approval-kicker">CONSTRUCTION CONTRACT BILLINGS</div>
+        <div class="approval-kicker">CONTRACT ACTIVATION & BILLINGS</div>
         <h2>LUMP-SUM APPROVAL QUEUE</h2>
-        <p>Draft contracts awaiting GM activation, certified progress billings, and variation orders. Engineer verification is required before billing approval.</p>
+        <p>Only contracts submitted for GM activation appear here, together with certified progress billings and variation orders. Unsubmitted drafts are excluded.</p>
       </div>
       <div class="panel-actions">
         <a href="lump-sum.html" class="button secondary" style="text-decoration:none">CONTRACT REGISTER</a>
@@ -162,6 +162,34 @@
   </div>
 </div>
 
+<!-- GM contract activation decisions are separate from normal purchase/activity approvals. -->
+<div id="lumpContractReviewModal" class="approval-modal hidden"
+     role="dialog" aria-modal="true" aria-hidden="true"
+     aria-labelledby="lumpContractReviewTitle">
+  <div class="approval-modal-card lump-contract-review-card">
+    <div class="modal-head">
+      <div>
+        <div class="approval-kicker">GENERAL MANAGER • CONTRACT ACTIVATION</div>
+        <h2 id="lumpContractReviewTitle">REVIEW LUMP-SUM CONTRACT</h2>
+      </div>
+      <button id="closeLumpContractReview" type="button" class="modal-x" aria-label="Close contract review">×</button>
+    </div>
+    <div id="lumpContractReviewDetails" class="approval-details"></div>
+    <div class="decision-box">
+      <label for="lumpContractDecisionNotes">GM REVIEW REMARKS</label>
+      <textarea id="lumpContractDecisionNotes" rows="3"
+                placeholder="Approval conditions, or required reason for rejection..."></textarea>
+      <div class="decision-note">A rejection must include the reason so the contract can be reviewed and resubmitted.</div>
+      <p id="lumpContractDecisionError" class="lump-review-error" hidden role="alert"></p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="rejectLumpActivation" class="button danger">REJECT CONTRACT</button>
+      <button type="button" id="cancelLumpActivation" class="button secondary">CANCEL</button>
+      <button type="button" id="approveLumpActivation" class="button primary">APPROVE & ACTIVATE</button>
+    </div>
+  </div>
+</div>
+
 <div id="historyModal" class="approval-modal hidden" aria-hidden="true">
   <div class="approval-modal-card history-modal-card">
     <div class="modal-head">
@@ -206,7 +234,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="approvals.js?v=21"></script>
+<script src="approvals.js?v=22"></script>
 <script src="amanah-ui.js?v=9"></script>
 </body>
 </html>
