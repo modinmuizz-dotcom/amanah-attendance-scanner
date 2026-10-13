@@ -484,3 +484,26 @@
 }
 @media(prefers-reduced-motion:reduce){.payroll-history-delete{transition:none}}
 @media print{.payroll-history-delete,.payroll-delete-overlay{display:none!important}}
+
+/* Server-generated internal receipt number for approved paycheck releases. */
+.payroll-claim-body .payroll-auto-reference[readonly]{
+  background:#eff6ff;
+  border:1px solid #93c5fd;
+  color:#1d4ed8;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.045em;
+  font-variant-numeric:tabular-nums;
+  cursor:default;
+  width:100%;
+  box-sizing:border-box;
+}
+.payroll-auto-reference-help{
+  display:block;
+  color:#64748b;
+  font-size:10px;
+  line-height:1.5;
+  margin-top:6px;
+}
+.payroll-reference-retry{font-size:10px!important;margin-top:8px;min-height:30px}
+.payroll-reference-retry[hidden]{display:none!important}
