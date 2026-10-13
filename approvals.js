@@ -477,6 +477,39 @@ function openLumpBillingReview(id){
  (b.status==='VERIFIED'?approve:document.getElementById('lumpBillingDecisionNotes')).focus();
  loadLumpBillingEvidence(b,token);
 }
+
+async function decideLumpBilling(approve){
+ if(lumpBillingSaving||!currentLumpBilling)return;
+ const b=currentLumpBilling;
+ const err=document.getElementById('lumpBillingDecisionError');
+ const notes=document.getElementById('lumpBillingDecisionNotes').value.trim();
+ err.textContent='';err.hidden=true;
+ if(approve&&b.status!=='VERIFIED'){
+  err.textContent='Site Engineer verification is required first.';err.hidden=false;return;
+ }
+ if(!approve&&!notes){
+  err.textContent='Please enter a reason for rejection.';err.hidden=false;
+  document.getElementById('lumpBillingDecisionNotes').focus();return;
+ }
+ const ids=['approveLumpBilling','rejectLumpBilling','cancelLumpBilling','closeLumpBillingReview'];
+ lumpBillingSaving=true;
+ ids.forEach(id=>document.getElementById(id).disabled=true);
+ try{
+  const {error}=await supabaseClient.rpc('amanah_lump_decide',{
+   p_id:b.id,p_approve:approve,p_notes:notes||null
+  });
+  if(error)throw error;
+  lumpBillingSaving=false;closeLumpBillingReview();
+  showMsg(approve?'Progress Billing approved by GM.':'Progress Billing rejected with recorded remarks.','success');
+  await loadLumpSumApprovals();
+ }catch(e){
+  err.textContent=e.message||'Unable to process the billing decision.';
+  err.hidden=false;
+ }finally{
+  lumpBillingSaving=false;
+  ids.forEach(id=>document.getElementById(id).disabled=false);
+ }
+}
 function closeLumpActivationReview(){
  if(lumpActivationSaving)return;
  const modal=document.getElementById('lumpContractReviewModal');
