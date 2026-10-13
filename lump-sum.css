@@ -189,3 +189,7 @@
 .ls-activation-notice.active{color:#15803d;background:#ecfdf5;border-color:#bbf7d0;}
 .ls-activation-notice.closed{color:#475569;background:#f1f5f9;border-color:#cbd5e1;}
 .ls-activation-notice[hidden]{display:none!important}
+
+/* Pending submission is distinct from a saved Draft. */
+.ls-badge.PENDING_APPROVAL{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.ls-badge.DRAFT{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
