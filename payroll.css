@@ -410,3 +410,7 @@
 .payroll-paycheck-panel[hidden],.payroll-claim-overlay:not(.is-open){display:none!important}
 @media(max-width:620px){.payroll-claim-body{padding:15px}.payroll-claim-overlay .manual-payroll-actions{flex-direction:column}.payroll-claim-overlay .manual-payroll-actions .button{width:100%}}
 @media print{.payroll-paycheck-panel,.payroll-claim-overlay{display:none!important}}
+
+/* Second confirmation is presented inside the centered paycheck form. */
+.payroll-claim-confirm{margin:14px 0 0;padding:13px 15px;background:#fffbeb;border:1px solid #fcd34d;border-radius:11px;color:#92400e;font-size:12px;font-weight:800;line-height:1.6}
+.payroll-claim-confirm[hidden]{display:none!important}
