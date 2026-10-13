@@ -650,113 +650,81 @@ async function calculatePayroll(){
 }
 
 async function savePayroll(){
-  clearMessage();
-  if(payrollSaving)return;
-  if(payrollSaved){
-    showMessage('This payroll has already been saved. Calculate a new payroll for another run.','error');
-    return;
-  }
-  if(!calculatedPeriod||(!payrollRows.length&&!groupLaborRows.length)){showMessage('Add employee payroll or group labor before saving.','error');return;}
-  if(groupLaborRows.some(row=>!row.projectId||!payrollProjects.some(p=>p.project_id===row.projectId))){
-    showMessage('Every group labor item must have a valid selected project before saving.','error');
-    return;
-  }
-  payrollSaving=true;
-  const button=document.getElementById('savePayrollButton');
-  button.disabled=true;
-  button.textContent='SAVING...';
-
-  let createdPayrollRunId=null;
-  try{
-    const totalGross=
-      payrollRows.reduce((sum,r)=>sum+grossFor(r),0)+
-      groupLaborRows.reduce((sum,r)=>sum+groupLaborGross(r),0);
-    const {data:run,error:runError}=await supabaseClient.from('payroll_runs').insert({
-      period_start:calculatedPeriod.start,
-      period_end:calculatedPeriod.end,
-      status:'DRAFT',
-      total_gross:Number(totalGross.toFixed(2)),
-      employee_count:payrollRows.length
-    }).select('payroll_run_id').single();
-
-    if(runError)throw runError;
-    createdPayrollRunId=run.payroll_run_id;
-
-    const items=payrollRows.map(row=>({
-      payroll_run_id:run.payroll_run_id,
-      employee_id:row.employeeId,
-      employee_name:row.employeeName,
-      department:row.department,
-      rate_type:row.rateType,
-      rate:Number(row.rate.toFixed(2)),
-      attendance_days:Number(row.attendanceDays.toFixed(2)),
-      full_days:Number(row.fullDays.toFixed(2)),
-      half_days:Number(row.halfDays.toFixed(2)),
-      total_hours:Number(row.hours.toFixed(2)),
-      gross_pay:Number(grossFor(row).toFixed(2)),
-      attendance_ids:row.attendanceIds
-    }));
-
-    if(items.length){
-      const {error:itemError}=await supabaseClient.from('payroll_items').insert(items);
-      if(itemError)throw itemError;
-    }
-
-    if(groupLaborRows.length){
-      const groupItems=groupLaborRows.map(row=>({
-        payroll_run_id:run.payroll_run_id,
-        project_id:row.projectId,
-        group_name:row.groupName,
-        activity_description:row.activity,
-        rate_per_meter:Number(row.ratePerMeter.toFixed(2)),
-        meters_accomplished:Number(row.metersAccomplished.toFixed(2)),
-        gross_pay:Number(groupLaborGross(row).toFixed(2))
-      }));
-
-      const {error:groupError}=await supabaseClient
-        .from('payroll_group_items')
-        .insert(groupItems);
-
-      if(groupError)throw groupError;
-    }
-
-    // Payroll must be complete before submission so Finance never approves
-    // a partial employee/group labor register.
-    payrollSaved=true;
-    renderGroupLabor();
-    const {error:approvalError}=await supabaseClient.rpc('amanah_payroll_submit',{
-      p_run_id:run.payroll_run_id
-    });
-    if(approvalError)throw new Error(
-      'Payroll was saved as DRAFT, but submission failed: '+approvalError.message+
-      '. Use SEND FOR APPROVAL in Payroll History to retry.'
-    );
-
-    showMessage(
-      'Payroll saved and SENT FOR APPROVAL. The Financial Manager must approve it before anyone can claim a paycheck.',
-      'success'
-    );
-    await loadPayrollHistory();
-  }catch(error){
-    // If a Payroll Run was already created, do not silently create a second
-    // run from the same click. The saved Draft can be retried from History.
-    if(createdPayrollRunId)payrollSaved=true;
-    showMessage(error.message||'Unable to save payroll.','error');
-    await loadPayrollHistory().catch(()=>{});
-  }finally{
-    payrollSaving=false;
-    button.textContent=payrollSaved?'PAYROLL SAVED':'SAVE PAYROLL';
-    updateSummary();
-  }
+ clearMessage();
+ if(payrollSaving)return;
+ if(payrollSaved){
+   showMessage('This payroll was already submitted. Calculate a new payroll before saving another run.','error');
+   return;
+ }
+ if(!calculatedPeriod||(!payrollRows.length&&!groupLaborRows.length)){
+   showMessage('Add employee payroll or group labor before saving.','error');return;
+ }
+ if(groupLaborRows.some(row=>!row.projectId||!payrollProjects.some(p=>p.project_id===row.projectId))){
+   showMessage('Select a valid project for every Group Labor entry.','error');
+   return;
+ }
+ const button=document.getElementById('savePayrollButton');
+ payrollSaving=true;
+ button.disabled=true;
+ button.textContent='SAVING & SUBMITTING...';
+ try{
+   const items=payrollRows.map(row=>({
+     employee_id:row.employeeId,
+     employee_name:row.employeeName,
+     department:row.department,
+     rate_type:row.rateType,
+     rate:Number(row.rate.toFixed(2)),
+     attendance_days:Number(row.attendanceDays.toFixed(2)),
+     full_days:Number(row.fullDays.toFixed(2)),
+     half_days:Number(row.halfDays.toFixed(2)),
+     total_hours:Number(row.hours.toFixed(2)),
+     gross_pay:Number(grossFor(row).toFixed(2)),
+     attendance_ids:row.attendanceIds||[]
+   }));
+   const groups=groupLaborRows.map(row=>({
+     project_id:row.projectId,
+     group_name:row.groupName,
+     activity_description:row.activity,
+     rate_per_meter:Number(row.ratePerMeter.toFixed(2)),
+     meters_accomplished:Number(row.metersAccomplished.toFixed(2)),
+     gross_pay:Number(groupLaborGross(row).toFixed(2))
+   }));
+   // A single PostgreSQL transaction persists the run AND every payroll line.
+   // An insert, validation or submission failure rolls back EVERYTHING.
+   const {data:runId,error}=await supabaseClient.rpc('amanah_payroll_create_and_submit',{
+     p_period_start:calculatedPeriod.start,
+     p_period_end:calculatedPeriod.end,
+     p_employee_items:items,
+     p_group_items:groups
+   });
+   if(error)throw error;
+   if(!runId)throw new Error('No payroll reference returned from the server.');
+   payrollSaved=true;
+   renderGroupLabor();
+   showMessage('Payroll successfully saved and SENT FOR APPROVAL. View the pending request in the Financial Manager Payroll Approval Center.','success');
+   await loadPayrollHistory().catch(e=>console.error('Payroll submitted, but history refresh failed:',e));
+ }catch(error){
+   // Atomic operation: no new Draft header is left behind when saving fails.
+   showMessage('Payroll was NOT submitted. '+(error.message||'Please review the entries and try again.'),'error');
+ }finally{
+   payrollSaving=false;
+   button.textContent=payrollSaved?'SENT FOR APPROVAL':'SAVE PAYROLL';
+   updateSummary();
+ }
 }
-
 
 async function loadPayrollHistory(){
  const body=document.getElementById('payrollHistoryBody');
- const {data,error}=await supabaseClient.from('payroll_runs')
-   .select('payroll_run_id,period_start,period_end,status,total_gross,employee_count,created_at,review_notes,submitted_at')
-   .order('created_at',{ascending:false}).limit(50);
- if(error){
+ const [runsResponse,employeeResponse,groupResponse]=await Promise.all([
+   supabaseClient.from('payroll_runs')
+     .select('payroll_run_id,period_start,period_end,status,total_gross,employee_count,created_at,review_notes,submitted_at')
+     .order('created_at',{ascending:false}).limit(50),
+   supabaseClient.from('payroll_items').select('payroll_run_id,gross_pay'),
+   supabaseClient.from('payroll_group_items').select('payroll_run_id,gross_pay')
+ ]);
+ const {data,error}=runsResponse;
+ if(error||employeeResponse.error||groupResponse.error){
+   showMessage('Unable to verify saved payroll entries: '+(error||employeeResponse.error||groupResponse.error).message,'error');
    body.innerHTML='<tr><td colspan="6" class="payroll-empty">Unable to load payroll history.</td></tr>';
    return;
  }
@@ -764,13 +732,30 @@ async function loadPayrollHistory(){
    body.innerHTML='<tr><td colspan="6" class="payroll-empty">No payroll runs found.</td></tr>';
    return;
  }
+ const recorded=new Map();
+ const addRows=(rows,employee)=>{for(const line of rows||[]){
+   const entry=recorded.get(line.payroll_run_id)||{employeeCount:0,total:0,lineCount:0};
+   entry.total+=Number(line.gross_pay)||0;
+   entry.lineCount++;
+   if(employee)entry.employeeCount++;
+   recorded.set(line.payroll_run_id,entry);
+ }};
+ addRows(employeeResponse.data,true);
+ addRows(groupResponse.data,false);
  const {data:canManage}=await supabaseClient.rpc('amanah_payroll_can_prepare');
  body.innerHTML=data.map(run=>{
    const created=run.created_at?new Date(run.created_at).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'}):'—';
    const status=String(run.status||'DRAFT');
-   const cls=status.toLowerCase();
+   const lines=recorded.get(run.payroll_run_id)||{employeeCount:0,total:0,lineCount:0};
+   const complete=lines.lineCount>0&&lines.total>0&&
+       lines.employeeCount===Number(run.employee_count)&&
+       Math.abs(lines.total-Number(run.total_gross))<=0.011;
+   const displayStatus=status==='DRAFT'&&!complete?'INCOMPLETE DRAFT':status.replaceAll('_',' ');
+   const cls=status==='DRAFT'&&!complete?'incomplete':status.toLowerCase();
    let action='';
-   if(status==='DRAFT'&&canManage){
+   if(status==='DRAFT'&&!complete){
+     action='<span class="payroll-sub">Missing payroll entries. Recalculate and save a NEW payroll.</span>';
+   } else if(status==='DRAFT'&&canManage){
      action='<button class="button secondary payroll-history-action" type="button" data-payroll-submit="'+escapeHtml(run.payroll_run_id)+'">SEND FOR APPROVAL</button>';
    } else if(status==='APPROVED'){
      action='<button class="button primary payroll-history-action" type="button" data-payroll-open="'+escapeHtml(run.payroll_run_id)+'">VIEW PAYCHECKS</button>';
@@ -783,7 +768,7 @@ async function loadPayrollHistory(){
      <td><strong>${escapeHtml(dateText(run.period_start))}</strong> – ${escapeHtml(dateText(run.period_end))}</td>
      <td>${escapeHtml(run.employee_count)}</td>
      <td class="payroll-gross">${money(run.total_gross)}</td>
-     <td><span class="payroll-status ${cls}">${escapeHtml(status.replaceAll('_',' '))}</span>${run.review_notes?'<small class="payroll-sub">Finance: '+escapeHtml(run.review_notes)+'</small>':''}</td>
+     <td><span class="payroll-status ${cls}">${escapeHtml(displayStatus)}</span>${run.review_notes?'<small class="payroll-sub">Finance: '+escapeHtml(run.review_notes)+'</small>':''}</td>
      <td>${escapeHtml(created)}</td>
      <td>${action}</td>
    </tr>`;
