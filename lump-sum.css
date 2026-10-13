@@ -229,3 +229,6 @@
 .ls-gallery-close:focus-visible,.ls-gallery-photo:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
 @media(max-width:540px){.ls-gallery-overlay{padding:9px}.ls-gallery-dialog{max-height:calc(100dvh - 18px)}.ls-gallery-header{padding:16px}.ls-gallery-images{padding:15px;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ls-gallery-photo img{height:112px}.ls-photo-previews{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{.ls-gallery-overlay,.ls-photo-remove,.ls-add-photos-row{display:none!important}}
+
+/* Verified billings await GM decision in the Approval Center only. */
+.ls-gm-queue-note{display:inline-block;margin:4px 0;padding:7px 9px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;color:#92400e;font-size:10px;line-height:1.45;font-weight:850}
