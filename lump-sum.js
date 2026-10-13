@@ -247,8 +247,9 @@ function renderBillings(c){
   const primary=photos.includes(b.evidence_url)?'':proof(b.evidence_url);
   let actions='';
   if(b.status==='SUBMITTED'&&ls.permissions.VERIFY)actions+=btn('VERIFY','verify',b.id,'primary');
-  if(b.status==='VERIFIED'&&ls.permissions.APPROVE)actions+=btn('GM APPROVE','approve',b.id,'primary')+btn('REJECT','reject',b.id,'danger');
-  if(b.status==='SUBMITTED'&&ls.permissions.APPROVE)actions+=btn('REJECT','reject',b.id,'danger');
+  // Site verification stays with the Engineer. GM decisions are performed
+  // exclusively from the separate Approval Center, never from this module.
+  if(b.status==='VERIFIED')actions+='<span class="ls-gm-queue-note">AWAITING GM DECISION IN APPROVAL CENTER</span>';
   return '<tr><td><strong>'+esc(b.milestone)+'</strong><small>'+esc(b.description||'')+'</small>'+primary+gallery+'</td>'+
   '<td><strong>'+num(b.cumulative_pct).toFixed(2)+'%</strong></td>'+
   '<td><strong>'+money(b.gross_amount)+'</strong></td>'+
@@ -486,8 +487,7 @@ async function decide(action,id){
  try{
   const remarks=response.notes||null;
   if(verify)await rpc('amanah_lump_verify',{p_id:id,p_notes:remarks});
-  if(action==='approve'||action==='reject')
-   await rpc('amanah_lump_decide',{p_id:id,p_approve:action==='approve',p_notes:remarks});
+  // GM billing decisions are handled only by approvals.js in the Approval Center.
   if(variationAction)
    await rpc('amanah_lump_variation_decide',{p_id:id,p_approve:action==='variationApprove',p_notes:remarks});
   notify('Decision recorded successfully.');
@@ -496,7 +496,7 @@ async function decide(action,id){
 }
 async function act(action,id){
  if(action==='open'){ls.selected=id;history.replaceState(null,'','?contract='+encodeURIComponent(id));return renderDetail();}
- if(action==='verify'||action==='approve'||action==='reject'||action==='variationApprove'||action==='variationReject')return decide(action,id);
+ if(action==='verify'||action==='variationApprove'||action==='variationReject')return decide(action,id);
 }
 async function handleForm(e){
  e.preventDefault();if(ls.saving)return;
