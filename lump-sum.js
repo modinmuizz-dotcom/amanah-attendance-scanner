@@ -276,19 +276,108 @@ function beginPayment(){
  $('lsF_kind').addEventListener('change',()=>{$('lsF_billing').disabled=$('lsF_kind').value!=='BILLING'});
  $('lsF_kind').dispatchEvent(new Event('change'));
 }
+
+let lsConfirmationOpen=false;
+function confirmLumpAction(opts={}){
+ if(lsConfirmationOpen)return Promise.resolve({confirmed:false,notes:''});
+ lsConfirmationOpen=true;
+ const overlay=$('lsConfirmOverlay'), dialog=overlay.querySelector('.ls-confirm-dialog');
+ const close=$('lsConfirmClose'), cancel=$('lsConfirmCancel'), accept=$('lsConfirmAccept');
+ const textarea=$('lsConfirmNotes'), notesWrap=$('lsConfirmNotesWrap'), error=$('lsConfirmError');
+ const previousFocus=document.activeElement, withNotes=Boolean(opts.notesLabel);
+ dialog.dataset.tone=opts.tone||'info';
+ $('lsConfirmIcon').textContent=opts.tone==='danger'?'!':'✓';
+ $('lsConfirmTitle').textContent=opts.title||'Confirm action';
+ $('lsConfirmMessage').textContent=opts.message||'Please confirm your action.';
+ $('lsConfirmContext').hidden=!opts.context;
+ $('lsConfirmContext').textContent=opts.context||'';
+ notesWrap.hidden=!withNotes;
+ $('lsConfirmNotesLabel').textContent=opts.notesLabel||'Remarks';
+ textarea.value='';
+ textarea.placeholder=opts.notesRequired?'Enter the required reason...':'Optional remarks...';
+ textarea.required=!!opts.notesRequired;
+ error.hidden=true;error.textContent='';
+ accept.textContent=opts.confirmLabel||'CONFIRM';
+ overlay.classList.add('is-open');
+ overlay.setAttribute('aria-hidden','false');
+ (withNotes?textarea:accept).focus();
+ return new Promise(resolve=>{
+  let finished=false;
+  const finish=confirmed=>{
+   if(finished)return;
+   finished=true;
+   const notes=confirmed&&withNotes?textarea.value.trim():'';
+   overlay.removeEventListener('click',backdropClick);
+   cancel.removeEventListener('click',onCancel);
+   close.removeEventListener('click',onCancel);
+   accept.removeEventListener('click',onAccept);
+   document.removeEventListener('keydown',onKeys);
+   overlay.classList.remove('is-open');
+   overlay.setAttribute('aria-hidden','true');
+   lsConfirmationOpen=false;
+   if(previousFocus?.focus)previousFocus.focus();
+   resolve({confirmed,notes});
+  };
+  const onCancel=()=>finish(false);
+  const onAccept=()=>{
+   if(opts.notesRequired&&!textarea.value.trim()){
+    error.textContent='Please enter the reason before proceeding.';
+    error.hidden=false;
+    textarea.focus();
+    return;
+   }
+   finish(true);
+  };
+  const backdropClick=event=>{if(event.target===overlay)finish(false);};
+  const onKeys=event=>{
+   if(event.key==='Escape'){event.preventDefault();finish(false);}
+   if(event.key==='Tab'){
+    const controls=[close,...(withNotes?[textarea]:[]),cancel,accept];
+    const index=controls.indexOf(document.activeElement);
+    if(event.shiftKey&&index<=0){event.preventDefault();accept.focus();}
+    else if(!event.shiftKey&&index===controls.length-1){event.preventDefault();close.focus();}
+   }
+  };
+  overlay.addEventListener('click',backdropClick);
+  cancel.addEventListener('click',onCancel);
+  close.addEventListener('click',onCancel);
+  accept.addEventListener('click',onAccept);
+  document.addEventListener('keydown',onKeys);
+ });
+}
+
 async function decide(action,id){
- const remarks=(action==='verify')?prompt('Engineer verification notes (optional):',''):
-    prompt(action.toLowerCase().includes('reject')?'Reason for rejection (required):':'GM decision notes (optional):','');
- if(remarks===null)return;
- const rejection=action.toLowerCase().includes('reject');
- if(rejection&&!String(remarks).trim())return notify('A rejection reason is required.',true);
- if(!confirm(action==='approve'?'Approve verified certified work and post project expense?':action==='variationApprove'?'Approve contract amount variation?':'Confirm '+action+'?'))return;
+ const reject=action==='reject'||action==='variationReject';
+ const verify=action==='verify';
+ const variationAction=action.startsWith('variation');
+ const billing=variationAction?null:ls.billings.find(b=>b.id===id);
+ const variation=variationAction?ls.variations.find(v=>v.id===id):null;
+ const contract=contractById(variationAction?variation?.contract_id:billing?.contract_id);
+ const title=verify?'Verify Site Accomplishment':reject?
+  'Reject '+(variationAction?'Variation Order':'Progress Billing'):
+  variationAction?'Approve Variation Order':'Approve Progress Billing';
+ const message=verify
+  ?'Confirm the accomplished work and supporting evidence have been verified by the Site Engineer.'
+  :reject?'This will reject the request. Please provide a reason for the approval record.'
+  :variationAction?'Approve the variation and update the revised contract value?'
+  :'Approve this verified billing and post its earned cost to Project Cost Control?';
+ const context=(contract?.scope_title||'Lump-Sum Contract')+
+   (billing?' • '+billing.milestone+' • '+money(billing.gross_amount):'')+
+   (variation?' • '+variation.description+' • '+money(variation.amount_delta):'');
+ const response=await confirmLumpAction({
+   title,message,context,tone:reject?'danger':verify?'info':'success',
+   confirmLabel:reject?'REJECT REQUEST':verify?'VERIFY WORK':'APPROVE REQUEST',
+   notesLabel:reject?'REJECTION REASON (REQUIRED)':verify?'ENGINEER NOTES (OPTIONAL)':'GM NOTES (OPTIONAL)',
+   notesRequired:reject
+ });
+ if(!response.confirmed)return;
  try{
-  if(action==='verify')await rpc('amanah_lump_verify',{p_id:id,p_notes:remarks||null});
+  const remarks=response.notes||null;
+  if(verify)await rpc('amanah_lump_verify',{p_id:id,p_notes:remarks});
   if(action==='approve'||action==='reject')
-    await rpc('amanah_lump_decide',{p_id:id,p_approve:action==='approve',p_notes:remarks||null});
-  if(action==='variationApprove'||action==='variationReject')
-    await rpc('amanah_lump_variation_decide',{p_id:id,p_approve:action==='variationApprove',p_notes:remarks||null});
+   await rpc('amanah_lump_decide',{p_id:id,p_approve:action==='approve',p_notes:remarks});
+  if(variationAction)
+   await rpc('amanah_lump_variation_decide',{p_id:id,p_approve:action==='variationApprove',p_notes:remarks});
   notify('Decision recorded successfully.');
   await loadAll();
  }catch(e){notify(e.message||'Unable to record decision.',true);}
@@ -300,9 +389,15 @@ async function act(action,id){
 async function handleForm(e){
  e.preventDefault();if(ls.saving)return;
  const v=values(),c=contractById(ls.selected);
- if(ls.mode==='payment'&&!window.confirm(
-   'Confirm payment of '+money(v.amount)+'? Only record money actually released with a valid payment reference.'
- ))return;
+ if(ls.mode==='payment'){
+  const response=await confirmLumpAction({
+   title:'Confirm Payment Release',
+   message:'Confirm this money was actually released. Recording the payment will update the contract ledger.',
+   context:money(v.amount)+' • '+(v.kind||'PAYMENT')+' • Reference: '+(v.reference||'Not provided'),
+   confirmLabel:'RECORD PAYMENT',tone:'success'
+  });
+  if(!response.confirmed)return;
+ }
  ls.saving=true;$('lsSubmit').disabled=true;$('lsFormError').textContent='';
  try{
   if(ls.mode==='contract'){
@@ -340,11 +435,25 @@ async function handleForm(e){
 }
 async function runCritical(action){
  const c=contractById(ls.selected);if(!c)return;
- if(!confirm(action==='activate'?'GM approval: Activate this contract for certified billing?':'GM approval: Close certified 100% contract and allow retention release?'))return;
+ const activate=action==='activate';
+ const response=await confirmLumpAction({
+   title:activate?'Activate Lump-Sum Contract':'Close Lump-Sum Contract',
+   message:activate
+    ?'GM authorization: Activate this contract for certified progress billing?'
+    :'GM authorization: Close this certified contract and allow retention release once financial conditions are satisfied?',
+   context:c.scope_title+' • '+c.contractor_name+' • '+money(revised(c)),
+   confirmLabel:activate?'ACTIVATE CONTRACT':'CLOSE CONTRACT',
+   tone:'success'
+ });
+ if(!response.confirmed)return;
+ const button=$(activate?'lsActivate':'lsClose');
+ if(button)button.disabled=true;
  try{
-  await rpc(action==='activate'?'amanah_lump_activate':'amanah_lump_close',{p_id:c.id});
-  notify('Contract status updated.');await loadAll();
- }catch(e){notify(e.message,true);}
+  await rpc(activate?'amanah_lump_activate':'amanah_lump_close',{p_id:c.id});
+  notify(activate?'Contract activated successfully.':'Contract closed successfully.');
+  await loadAll();
+ }catch(e){notify(e.message||'Unable to update contract status.',true);}
+ finally{if(button)button.disabled=false;}
 }
 async function boot(){
  const {data:{session}}=await lsDb.auth.getSession();
