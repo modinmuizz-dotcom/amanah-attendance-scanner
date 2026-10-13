@@ -241,11 +241,15 @@ function renderBillings(c){
  if(!bs.length){body.innerHTML='<tr><td colspan="6">No progress billings submitted.</td></tr>';return;}
  body.innerHTML=bs.map(b=>{
   const d=num(b.retention_amount)+num(b.advance_recovery)+num(b.tax_withheld);
+  const photos=Array.isArray(b.evidence_photos)?b.evidence_photos:[];
+  const gallery=photos.length?
+    '<button type="button" class="ls-btn ls-view-gallery" data-ls-view-photos="'+esc(b.id)+'">VIEW PHOTOS ('+photos.length+')</button>':'';
+  const primary=photos.includes(b.evidence_url)?'':proof(b.evidence_url);
   let actions='';
   if(b.status==='SUBMITTED'&&ls.permissions.VERIFY)actions+=btn('VERIFY','verify',b.id,'primary');
   if(b.status==='VERIFIED'&&ls.permissions.APPROVE)actions+=btn('GM APPROVE','approve',b.id,'primary')+btn('REJECT','reject',b.id,'danger');
   if(b.status==='SUBMITTED'&&ls.permissions.APPROVE)actions+=btn('REJECT','reject',b.id,'danger');
-  return '<tr><td><strong>'+esc(b.milestone)+'</strong><small>'+esc(b.description||'')+'</small>'+proof(b.evidence_url)+'</td>'+
+  return '<tr><td><strong>'+esc(b.milestone)+'</strong><small>'+esc(b.description||'')+'</small>'+primary+gallery+'</td>'+
   '<td><strong>'+num(b.cumulative_pct).toFixed(2)+'%</strong></td>'+
   '<td><strong>'+money(b.gross_amount)+'</strong></td>'+
   '<td>'+money(d)+'<small>Retention '+money(b.retention_amount)+' • Advance '+money(b.advance_recovery)+(num(b.tax_withheld)>0?' • Historical tax '+money(b.tax_withheld):'')+'</small></td>'+
@@ -485,10 +489,12 @@ async function handleForm(e){
    });ls.selected=id;
   }
   if(ls.mode==='billing'){
-   const evidenceUrl=await uploadEvidence(v.evidence,v.evidence_file,true);
-   await rpc('amanah_lump_submit_billing',{
+   const evidenceUrl=await uploadEvidence(v.evidence,v.evidence_file,lsBillingPhotos.length===0);
+   const photoEvidence=[];
+   for(const photo of lsBillingPhotos)photoEvidence.push(await uploadEvidence('',photo.file,true));
+   await rpc('amanah_lump_submit_billing_with_photos',{
     p_contract_id:ls.selected,p_milestone:v.milestone,p_pct:Number(v.pct),p_evidence:evidenceUrl,
-    p_description:v.description||null,p_recovery:Number(v.recovery||0),p_tax:0
+    p_description:v.description||null,p_recovery:Number(v.recovery||0),p_tax:0,p_photos:photoEvidence
    });
   }
   if(ls.mode==='variation'){
@@ -503,7 +509,7 @@ async function handleForm(e){
    });
   }
   $('lsModal').classList.remove('open');$('lsModal').setAttribute('aria-hidden','true');
-  ls.mode=null;notify('Saved successfully. Ledger and status refreshed.');
+  clearBillingPhotoPreviews();ls.mode=null;notify('Saved successfully. Ledger and photo evidence refreshed.');
   await loadAll();
  }catch(err){$('lsFormError').textContent=err.message||'Unable to save record.';}
  finally{ls.saving=false;$('lsSubmit').disabled=false;}
