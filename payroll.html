@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <title>AMANAH Payroll</title>
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="payroll.css?v=8">
+  <link rel="stylesheet" href="payroll.css?v=9">
 </head>
 <body>
   <main class="container payroll-page">
@@ -16,7 +16,7 @@
       <div>
         <div class="payroll-kicker">WORKFORCE COMPENSATION</div>
         <h2>PAYROLL PERIOD</h2>
-        <p>Select the payroll period. AMANAH will use completed attendance records within the selected dates.</p>
+        <p>Select the payroll period. AMANAH will use completed attendance records within the selected dates. Saved payroll requires Financial Manager approval before paychecks can be released.</p>
       </div>
 
       <div class="payroll-period-controls">
@@ -39,6 +39,7 @@
           <button id="manualPayrollButton" class="button secondary" type="button">MANUAL PAYROLL</button>
           <button id="groupLaborButton" class="button secondary" type="button">GROUP LABOR</button>
           <a href="lump-sum.html" class="button secondary payroll-lump-sum-action">LUMP-SUM CONTRACTS</a>
+          <a href="finance-payroll.html" class="button secondary payroll-lump-sum-action">PAYROLL APPROVALS</a>
         </div>
       </div>
     </section>
@@ -144,15 +145,64 @@
               <th>GROSS PAYROLL</th>
               <th>STATUS</th>
               <th>CREATED</th>
+              <th>ACTION</th>
             </tr>
           </thead>
           <tbody id="payrollHistoryBody">
-            <tr><td colspan="5" class="payroll-empty">No payroll runs found.</td></tr>
+            <tr><td colspan="6" class="payroll-empty">No payroll runs found.</td></tr>
           </tbody>
         </table>
       </div>
     </section>
-  
+
+    <section class="payroll-panel payroll-paycheck-panel" id="paycheckReleasePanel" hidden>
+      <div class="payroll-panel-header">
+        <div>
+          <div class="payroll-kicker">FINANCE-APPROVED DISBURSEMENTS</div>
+          <h2 id="paycheckReleaseTitle">PAYCHECK CLAIM REGISTER</h2>
+          <p>Paychecks are released only after Financial Manager approval. Record each employee's or labor group's actual collection, payment reference, and acknowledgment.</p>
+        </div>
+        <button id="closePaycheckPanel" class="button secondary" type="button">CLOSE VIEW</button>
+      </div>
+      <div id="paycheckReleaseStatus" class="payroll-claim-banner"></div>
+      <div class="payroll-table-wrap">
+        <table class="payroll-table payroll-check-table">
+          <thead><tr><th>RECIPIENT</th><th>TYPE</th><th>AMOUNT</th><th>STATUS</th><th>PAYMENT DETAILS</th><th>ACTION</th></tr></thead>
+          <tbody id="paycheckReleaseBody"><tr><td colspan="6" class="payroll-empty">Select an approved payroll from History.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <div id="paycheckClaimModal" class="payroll-claim-overlay" aria-hidden="true">
+      <form id="paycheckClaimForm" class="payroll-claim-card" aria-labelledby="paycheckClaimTitle">
+        <div class="manual-payroll-header">
+          <div><div class="payroll-kicker">PAYCHECK DISBURSEMENT RECEIPT</div>
+            <h2 id="paycheckClaimTitle">RECORD PAYCHECK CLAIM</h2>
+            <p>Record money actually handed to the recipient. This does not transfer funds automatically.</p></div>
+          <button id="paycheckClaimClose" type="button" class="manual-payroll-close" aria-label="Close">×</button>
+        </div>
+        <div class="payroll-claim-body">
+          <div class="payroll-claim-payee" id="paycheckClaimPayee"></div>
+          <div class="manual-payroll-grid two">
+            <div class="payroll-field"><label for="paycheckClaimRecipient">PERSON RECEIVING PAYMENT *</label>
+              <input id="paycheckClaimRecipient" required placeholder="Employee or authorized receiver"></div>
+            <div class="payroll-field"><label for="paycheckClaimDate">ACTUAL RELEASE DATE *</label>
+              <input id="paycheckClaimDate" type="date" required></div>
+            <div class="payroll-field"><label for="paycheckClaimMethod">PAYMENT METHOD *</label>
+              <select id="paycheckClaimMethod" required><option value="CASH">CASH</option><option value="CHECK">CHECK</option><option value="BANK TRANSFER">BANK TRANSFER</option><option value="OTHER">OTHER</option></select></div>
+            <div class="payroll-field"><label for="paycheckClaimReference">CHECK / PAYMENT REFERENCE *</label>
+              <input id="paycheckClaimReference" required placeholder="Unique check no. or payment reference"></div>
+          </div>
+          <div class="payroll-field" style="margin-top:13px"><label for="paycheckClaimAck">CLAIM ACKNOWLEDGMENT / RECEIPT *</label>
+            <textarea id="paycheckClaimAck" rows="2" required placeholder="Receiver acknowledged collection, signed voucher or receipt reference"></textarea></div>
+          <p id="paycheckClaimError" class="manual-payroll-error" role="alert"></p>
+        </div>
+        <div class="manual-payroll-actions">
+          <button type="button" class="button secondary" id="paycheckClaimCancel">CANCEL</button>
+          <button type="submit" class="button primary" id="paycheckClaimSubmit">RECORD PAYMENT RELEASE</button>
+        </div>
+      </form>
+    </div>
+
 <div id="manualPayrollModal" class="manual-payroll-modal" aria-hidden="true">
   <div class="manual-payroll-backdrop"></div>
   <div class="manual-payroll-card" role="dialog" aria-modal="true" aria-labelledby="manualPayrollTitle">
@@ -294,7 +344,7 @@
 </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="payroll.js?v=10"></script>
+  <script src="payroll.js?v=11"></script>
   <script src="amanah-ui.js?v=7"></script>
 </body>
 </html>
