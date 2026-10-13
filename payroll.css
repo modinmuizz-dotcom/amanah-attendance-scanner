@@ -391,3 +391,22 @@
 @media(prefers-reduced-motion:reduce){
   .payroll-control-actions > .button{transition:none;}
 }
+
+
+/* Payroll approval status and paycheck claim register */
+.payroll-status.pending_approval{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.payroll-status.approved,.payroll-status.claimed{background:#ecfdf5;color:#15803d;border-color:#bbf7d0}
+.payroll-status.rejected{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.payroll-history-action{font-size:10px!important;padding:8px 11px!important;min-height:34px!important;white-space:nowrap}
+.payroll-claim-banner{margin:16px 20px;padding:13px 16px;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:12px;color:#166534;font-size:11px;font-weight:750;line-height:1.6}
+.payroll-check-table{min-width:890px}
+.payroll-claim-overlay{display:none;position:fixed;inset:0;z-index:11500;background:rgba(15,23,42,.65);backdrop-filter:blur(4px);padding:18px;align-items:center;justify-content:center}
+.payroll-claim-overlay.is-open{display:flex}
+.payroll-claim-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;width:min(690px,100%);max-height:calc(100dvh - 36px);overflow:auto;box-shadow:0 28px 80px #0f172a55}
+.payroll-claim-body{padding:19px 24px}
+.payroll-claim-payee{margin-bottom:16px;padding:14px;border-radius:11px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-weight:850;font-size:13px}
+.payroll-claim-body .payroll-field textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;font:inherit;padding:11px;font-size:12px;resize:vertical;box-sizing:border-box;min-height:75px}
+.payroll-claim-overlay .manual-payroll-actions{display:flex}
+.payroll-paycheck-panel[hidden],.payroll-claim-overlay:not(.is-open){display:none!important}
+@media(max-width:620px){.payroll-claim-body{padding:15px}.payroll-claim-overlay .manual-payroll-actions{flex-direction:column}.payroll-claim-overlay .manual-payroll-actions .button{width:100%}}
+@media print{.payroll-paycheck-panel,.payroll-claim-overlay{display:none!important}}
