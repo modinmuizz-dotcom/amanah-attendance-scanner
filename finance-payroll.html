@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMANAH Financial Manager • Payroll Approvals</title>
+<link rel="stylesheet" href="amanah-ui.css?v=9">
+<link rel="stylesheet" href="finance-payroll.css?v=1">
+</head>
+<body>
+<main class="container fp-page">
+ <header class="fp-hero">
+   <div><div class="fp-kicker">FINANCIAL MANAGEMENT • PAYROLL CONTROL</div><h1>PAYROLL APPROVAL CENTER</h1>
+   <p>Review saved payrolls, approve paycheck eligibility, and keep a traceable decision record.</p></div>
+   <a class="fp-btn fp-back" href="payroll.html">← BACK TO PAYROLL</a>
+ </header>
+ <div id="fpMessage" class="fp-message" role="status" hidden></div>
+ <section class="fp-metrics" aria-label="Payroll approval summary">
+  <div><small>AWAITING APPROVAL</small><strong id="fpPendingCount">—</strong></div>
+  <div><small>PENDING TOTAL</small><strong id="fpPendingAmount">—</strong></div>
+  <div><small>APPROVED FOR RELEASE</small><strong id="fpApprovedCount">—</strong></div>
+  <div><small>REJECTED</small><strong id="fpRejectedCount">—</strong></div>
+ </section>
+ <section class="fp-panel">
+  <div class="fp-panel-head"><div><span class="fp-label">FINANCIAL MANAGER REVIEW</span><h2>PENDING PAYROLL APPROVALS</h2>
+   <p>Each payroll must be approved before employee and Group Labor paychecks can be released.</p></div>
+   <button type="button" id="fpRefresh" class="fp-btn primary">REFRESH</button>
+  </div>
+  <div class="fp-tablewrap"><table>
+   <thead><tr><th>PAYROLL PERIOD</th><th>EMPLOYEES</th><th>GROSS PAYROLL</th><th>SUBMITTED</th><th>STATUS</th><th>ACTION</th></tr></thead>
+   <tbody id="fpPendingBody"><tr><td colspan="6" class="fp-empty">Loading requests...</td></tr></tbody>
+  </table></div>
+ </section>
+ <section class="fp-panel">
+  <div class="fp-panel-head"><div><span class="fp-label">FINANCE AUDIT TRAIL</span><h2>APPROVAL DECISIONS</h2>
+   <p>Approved and rejected payrolls, including the review remarks and decision time.</p></div>
+  </div>
+  <div class="fp-tablewrap"><table>
+   <thead><tr><th>PERIOD</th><th>DECISION</th><th>TOTAL</th><th>REVIEWED</th><th>REMARKS</th><th>PAYCHECKS</th></tr></thead>
+   <tbody id="fpDecisionsBody"><tr><td colspan="6" class="fp-empty">Loading decisions...</td></tr></tbody>
+  </table></div>
+ </section>
+ <div id="fpReviewModal" class="fp-overlay" aria-hidden="true">
+  <div class="fp-dialog" role="dialog" aria-modal="true" aria-labelledby="fpReviewTitle">
+   <div class="fp-dialog-head"><div><span class="fp-label">FINANCIAL MANAGER AUTHORIZATION</span><h2 id="fpReviewTitle">REVIEW PAYROLL</h2></div>
+    <button type="button" id="fpCloseReview" aria-label="Close payroll review" class="fp-close">×</button></div>
+   <div class="fp-dialog-content">
+    <div id="fpReviewSummary" class="fp-summary"></div>
+    <h3>EMPLOYEE PAYROLL</h3><div id="fpEmployeeRows" class="fp-review-list"></div>
+    <h3>GROUP LABOR PAYROLL</h3><div id="fpGroupRows" class="fp-review-list"></div>
+    <div class="fp-review-remarks"><label for="fpRemarks">FINANCIAL MANAGER REMARKS</label>
+      <textarea id="fpRemarks" rows="3" placeholder="Approval notes, or reason for rejection..."></textarea>
+      <small>A reason is required when rejecting a payroll.</small></div>
+    <p id="fpReviewError" class="fp-error" role="alert" hidden></p>
+   </div>
+   <div class="fp-dialog-actions">
+    <button type="button" id="fpReject" class="fp-btn danger">REJECT PAYROLL</button>
+    <button type="button" id="fpCancel" class="fp-btn secondary">CANCEL</button>
+    <button type="button" id="fpApprove" class="fp-btn primary">APPROVE FOR PAYCHECK RELEASE</button>
+   </div>
+  </div>
+ </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="finance-payroll.js?v=1"></script>
+<script src="amanah-ui.js?v=11"></script>
+</body>
+</html>
