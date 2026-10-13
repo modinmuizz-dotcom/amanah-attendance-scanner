@@ -2,7 +2,7 @@ const LS_URL='https://bafmycjninxomufhkjvy.supabase.co';
 const LS_KEY='sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
 const lsDb=window.supabase.createClient(LS_URL,LS_KEY);
 const ls={projects:[],contracts:[],billings:[],payments:[],variations:[],
- permissions:{},selected:null,mode:null,saving:false};
+ activationRequests:[],permissions:{},selected:null,mode:null,saving:false};
 
 const $=id=>document.getElementById(id);
 const esc=v=>v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -96,16 +96,18 @@ function closeModal(){if(ls.saving)return;$('lsModal').classList.remove('open');
 function values(){return Object.fromEntries(new FormData($('lsForm')).entries());}
 async function rpc(fn,args){const {data,error}=await lsDb.rpc(fn,args||{});if(error)throw error;return data;}
 async function loadAll(){
- const [projects,contracts,billings,payments,variations]=await Promise.all([
+ const [projects,contracts,billings,payments,variations,activations]=await Promise.all([
   lsDb.from('projects').select('project_id,project_name,status').order('project_name'),
   lsDb.from('amanah_lump_contracts').select('*').order('created_at',{ascending:false}),
   lsDb.from('amanah_lump_billings').select('*').order('submitted_at',{ascending:false}),
   lsDb.from('amanah_lump_payments').select('*').order('created_at',{ascending:false}),
-  lsDb.from('amanah_lump_variations').select('*').order('submitted_at',{ascending:false})
+  lsDb.from('amanah_lump_variations').select('*').order('submitted_at',{ascending:false}),
+  lsDb.from('amanah_lump_activation_requests').select('*').order('submitted_at',{ascending:false})
  ]);
- for(const x of [projects,contracts,billings,payments,variations])if(x.error)throw x.error;
+ for(const x of [projects,contracts,billings,payments,variations,activations])if(x.error)throw x.error;
  ls.projects=projects.data||[];ls.contracts=contracts.data||[];ls.billings=billings.data||[];
  ls.payments=payments.data||[];ls.variations=variations.data||[];
+ ls.activationRequests=activations.data||[];
  renderContracts();
  const params=new URLSearchParams(location.search);
  const preferred=params.get('contract')||ls.selected;
@@ -158,7 +160,24 @@ function renderDetail(){
   ? 'DIRECT LABOR: Pakyaw payments do not replace employee-level minimum wage, benefits and worker records. Compliance note: '+(c.compliance_notes||'No note recorded')
   : 'SUBCONTRACTOR: Maintain written scope, contractor registration/license where applicable, tax documentation, and payment acknowledgment. '+(c.compliance_notes||'');
  $('lsCompliance').innerHTML=esc(compliance)+'<div style="margin-top:8px">SIGNED CONTRACT: '+proof(c.document_url)+'</div>';
- $('lsActivate').hidden=!(c.status==='DRAFT'&&ls.permissions.ACTIVATE);
+ const lastRequest=ls.activationRequests.find(r=>r.contract_id===c.id);
+ const sendButton=$('lsActivate');
+ sendButton.hidden=!(['DRAFT','REJECTED'].includes(c.status)&&ls.permissions.CREATE);
+ sendButton.textContent=c.status==='REJECTED'?'RESUBMIT FOR GM APPROVAL':'SEND FOR GM APPROVAL';
+ const notice=$('lsActivationNotice');
+ notice.hidden=false;
+ if(c.status==='DRAFT'){
+   notice.textContent='DRAFT — Contract saved but not yet submitted. Click SEND FOR GM APPROVAL to request activation.';
+ }else if(c.status==='PENDING_APPROVAL'){
+   notice.textContent='PENDING GM APPROVAL — Submitted'+(lastRequest?.submitted_at?' on '+prettyDate(lastRequest.submitted_at):'')+'. Progress billing will become available only after GM approval.';
+ }else if(c.status==='REJECTED'){
+   notice.textContent='GM REJECTED — '+(lastRequest?.decision_notes||'Please review the contract details before resubmission.');
+ }else if(c.status==='ACTIVE'){
+   notice.textContent='ACTIVE — Contract approved by the General Manager. Progress billings are enabled.';
+ }else{
+   notice.textContent='CLOSED — Contract billing has been completed and closed.';
+ }
+ notice.className='ls-activation-notice '+String(c.status).toLowerCase();
  $('lsClose').hidden=!(c.status==='ACTIVE'&&ls.permissions.CLOSE&&s.certifiedPct>=100);
  $('lsNewBilling').hidden=!(c.status==='ACTIVE'&&ls.permissions.CREATE);
  $('lsNewVariation').hidden=!(c.status==='ACTIVE'&&ls.permissions.CREATE);
@@ -435,25 +454,37 @@ async function handleForm(e){
 }
 async function runCritical(action){
  const c=contractById(ls.selected);if(!c)return;
- const activate=action==='activate';
+ const submitting=action==='activate';
+ if(submitting&&!['DRAFT','REJECTED'].includes(c.status)){
+   notify('This contract cannot be submitted in its current status.',true);
+   return;
+ }
  const response=await confirmLumpAction({
-   title:activate?'Activate Lump-Sum Contract':'Close Lump-Sum Contract',
-   message:activate
-    ?'GM authorization: Activate this contract for certified progress billing?'
-    :'GM authorization: Close this certified contract and allow retention release once financial conditions are satisfied?',
+   title:submitting?'Send Contract for GM Approval':'Close Lump-Sum Contract',
+   message:submitting
+     ?'Submit this saved contract to the General Manager for review? Activation and progress billing will remain locked until it is approved.'
+     :'GM authorization: Close this certified contract and allow retention release once financial conditions are satisfied?',
    context:c.scope_title+' • '+c.contractor_name+' • '+money(revised(c)),
-   confirmLabel:activate?'ACTIVATE CONTRACT':'CLOSE CONTRACT',
-   tone:'success'
+   confirmLabel:submitting?'SEND FOR GM APPROVAL':'CLOSE CONTRACT',
+   tone:submitting?'info':'success'
  });
  if(!response.confirmed)return;
- const button=$(activate?'lsActivate':'lsClose');
+ const button=$(submitting?'lsActivate':'lsClose');
  if(button)button.disabled=true;
  try{
-  await rpc(activate?'amanah_lump_activate':'amanah_lump_close',{p_id:c.id});
-  notify(activate?'Contract activated successfully.':'Contract closed successfully.');
-  await loadAll();
- }catch(e){notify(e.message||'Unable to update contract status.',true);}
- finally{if(button)button.disabled=false;}
+   if(submitting){
+     await rpc('amanah_lump_submit_activation',{p_contract_id:c.id});
+     notify('Contract submitted to the GM Approval Center. Awaiting approval before activation.');
+   }else{
+     await rpc('amanah_lump_close',{p_id:c.id});
+     notify('Contract closed successfully.');
+   }
+   await loadAll();
+ }catch(e){
+   notify(e.message||'Unable to update contract status.',true);
+ }finally{
+   if(button)button.disabled=false;
+ }
 }
 async function boot(){
  const {data:{session}}=await lsDb.auth.getSession();
