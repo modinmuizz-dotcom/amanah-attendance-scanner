@@ -196,7 +196,7 @@ function renderBillings(c){
   return '<tr><td><strong>'+esc(b.milestone)+'</strong><small>'+esc(b.description||'')+'</small>'+proof(b.evidence_url)+'</td>'+
   '<td><strong>'+num(b.cumulative_pct).toFixed(2)+'%</strong></td>'+
   '<td><strong>'+money(b.gross_amount)+'</strong></td>'+
-  '<td>'+money(d)+'<small>Retention '+money(b.retention_amount)+' • Advance '+money(b.advance_recovery)+' • Tax '+money(b.tax_withheld)+'</small></td>'+
+  '<td>'+money(d)+'<small>Retention '+money(b.retention_amount)+' • Advance '+money(b.advance_recovery)+(num(b.tax_withheld)>0?' • Historical tax '+money(b.tax_withheld):'')+'</small></td>'+
   '<td><strong>'+money(b.payable_amount)+'</strong></td>'+
   '<td>'+badge(b.status)+'<div class="ls-action-row">'+actions+'</div>'+
   (b.decision_notes?'<small>Decision: '+esc(b.decision_notes)+'</small>':'')+'</td></tr>';
@@ -249,14 +249,12 @@ function beginBilling(){
   field('CUMULATIVE COMPLETION (%)','pct','number',{required:true,min:.001,max:100,step:'.001',
     help:'Cumulative engineer-measured completion, not this period alone. Previously certified: '+s.certifiedPct+'%.'})+
   field('ADVANCE RECOVERY (PHP)','recovery','number',{min:0,step:'.01',value:0,help:'Unrecovered paid advance: '+money(Math.max(0,availableAdvance))})+
-  field('TAX WITHHELD (PHP)','tax','number',{min:0,step:'.01',value:0,help:'Enter amount confirmed by the accountant; no assumed withholding rate.'})+
   field('UPLOAD ACCOMPLISHMENT EVIDENCE (PDF / IMAGE)','evidence_file','file',{full:true,help:'Private signed access for authorized reviewers. Upload evidence or provide HTTPS link below.'})+
   field('OR SUPPORTING EVIDENCE URL (HTTPS)','evidence','url',{full:true,help:'Link to certificate, measurement or approved activity photos.'})+
   field('WORK DESCRIPTION','description','textarea',{full:true});
  showModal('PREPARE PROGRESS BILLING','billing',fields,'SUBMIT FOR SITE VERIFICATION');
  $('lsF_pct').addEventListener('input',previewBilling);
  $('lsF_recovery').addEventListener('input',previewBilling);
- $('lsF_tax').addEventListener('input',previewBilling);
  previewBilling();
 }
 function previewBilling(){
@@ -265,9 +263,9 @@ function previewBilling(){
  if(!pct||pct>100){$('lsFormPreview').hidden=true;return;}
  const gross=Math.round((s.revised*pct/100-s.earned)*100)/100;
  const ret=Math.round(gross*num(c.retention_pct))/100;
- const rec=num($('lsF_recovery').value),tax=num($('lsF_tax').value);
+ const rec=num($('lsF_recovery').value);
  $('lsFormPreview').hidden=false;
- $('lsFormPreview').textContent='Current gross '+money(gross)+' · Retention '+money(ret)+' · Advance recovery '+money(rec)+' · Tax '+money(tax)+' · Estimated net payable '+money(gross-ret-rec-tax);
+ $('lsFormPreview').textContent='Current gross '+money(gross)+' · Retention '+money(ret)+' · Advance recovery '+money(rec)+' · Estimated net payable '+money(gross-ret-rec);
 }
 function beginVariation(){
  showModal('REQUEST CONTRACT VARIATION','variation',
@@ -432,7 +430,7 @@ async function handleForm(e){
    const evidenceUrl=await uploadEvidence(v.evidence,v.evidence_file,true);
    await rpc('amanah_lump_submit_billing',{
     p_contract_id:ls.selected,p_milestone:v.milestone,p_pct:Number(v.pct),p_evidence:evidenceUrl,
-    p_description:v.description||null,p_recovery:Number(v.recovery||0),p_tax:Number(v.tax||0)
+    p_description:v.description||null,p_recovery:Number(v.recovery||0),p_tax:0
    });
   }
   if(ls.mode==='variation'){
