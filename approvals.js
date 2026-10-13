@@ -7,6 +7,11 @@ let currentApproval=null;
 let approvalHistory=[];
 let currentHistoryRecord=null;
 let lumpSumPendingCount=0;
+let lumpActivationQueue=[];
+let lumpActivationContracts=new Map();
+let currentLumpActivation=null;
+let lumpActivationSaving=false;
+let lumpActivationFocus=null;
 
 function esc(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function formatDateTime(v){if(!v)return '—';return new Date(v).toLocaleString();}
@@ -300,75 +305,183 @@ async function requireAccess(){
   return true;
 }
 
+
 async function loadLumpSumApprovals(){
-  const body=document.getElementById('lumpApprovalBody');
-  if(!body)return;
-  try{
-    const [billings,contracts,variations]=await Promise.all([
-      supabaseClient.from('amanah_lump_billings')
-        .select('id,contract_id,milestone,gross_amount,status,submitted_at')
-        .in('status',['SUBMITTED','VERIFIED']).order('submitted_at',{ascending:false}),
-      supabaseClient.from('amanah_lump_contracts')
-        .select('id,project_id,scope_title,contractor_name,original_amount,status,created_at'),
-      supabaseClient.from('amanah_lump_variations')
-        .select('id,contract_id,description,amount_delta,status,submitted_at')
-        .eq('status','SUBMITTED').order('submitted_at',{ascending:false})
-    ]);
-    for(const v of [billings,contracts,variations])if(v.error)throw v.error;
-    const byId=new Map((contracts.data||[]).map(c=>[c.id,c]));
-    const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const rows=[];
-    (contracts.data||[]).filter(c=>c.status==='DRAFT').forEach(c=>rows.push({
-      type:'CONTRACT ACTIVATION',contract:c,
-      title:c.scope_title,amount:money(c.original_amount),
-      status:'AWAIT GM',date:c.created_at,
-      href:'lump-sum.html?contract='+encodeURIComponent(c.id),
+ const body=document.getElementById('lumpApprovalBody');
+ if(!body)return;
+ try{
+  const [billings,contracts,variations,activations]=await Promise.all([
+    supabaseClient.from('amanah_lump_billings')
+      .select('id,contract_id,milestone,gross_amount,status,submitted_at')
+      .in('status',['SUBMITTED','VERIFIED']).order('submitted_at',{ascending:false}),
+    supabaseClient.from('amanah_lump_contracts')
+      .select('id,project_id,scope_title,scope_description,contractor_name,contract_type,original_amount,retention_pct,advance_limit,signed_on,contract_reference,document_url,compliance_notes,status,created_at'),
+    supabaseClient.from('amanah_lump_variations')
+      .select('id,contract_id,description,amount_delta,status,submitted_at')
+      .eq('status','SUBMITTED').order('submitted_at',{ascending:false}),
+    supabaseClient.from('amanah_lump_activation_requests')
+      .select('id,contract_id,submitted_at,submitted_by,status')
+      .eq('status','PENDING').order('submitted_at',{ascending:false})
+  ]);
+  for(const v of [billings,contracts,variations,activations])if(v.error)throw v.error;
+
+  lumpActivationContracts=new Map((contracts.data||[]).map(c=>[c.id,c]));
+  lumpActivationQueue=(activations.data||[]).filter(r=>
+    lumpActivationContracts.get(r.contract_id)?.status==='PENDING_APPROVAL'
+  );
+  const peso=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const rows=[];
+  // Only explicitly submitted contracts can reach GM's review queue.
+  lumpActivationQueue.forEach(request=>{
+    const contract=lumpActivationContracts.get(request.contract_id);
+    rows.push({
+      kind:'activation',requestId:request.id,contract:contract,
+      type:'CONTRACT ACTIVATION',title:contract.scope_title,
+      amount:peso(contract.original_amount),status:'PENDING GM',
+      date:request.submitted_at,
+      href:'lump-sum.html?contract='+encodeURIComponent(contract.id),
+      action:'REVIEW REQUEST'
+    });
+  });
+  (billings.data||[]).forEach(b=>{
+    const c=lumpActivationContracts.get(b.contract_id)||{};
+    rows.push({
+      kind:'billing',contract:c,type:'PROGRESS BILLING',
+      title:b.milestone,amount:peso(b.gross_amount),status:b.status,
+      date:b.submitted_at,
+      href:'lump-sum.html?billing='+encodeURIComponent(b.id),
+      action:b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER'
+    });
+  });
+  (variations.data||[]).forEach(v=>{
+    const c=lumpActivationContracts.get(v.contract_id)||{};
+    rows.push({
+      kind:'variation',contract:c,type:'VARIATION ORDER',
+      title:v.description,amount:peso(v.amount_delta),
+      status:'AWAIT GM',date:v.submitted_at,
+      href:'lump-sum.html?contract='+encodeURIComponent(v.contract_id),
       action:'GM REVIEW'
-    }));
-    (billings.data||[]).forEach(b=>{
-      const c=byId.get(b.contract_id)||{};
-      rows.push({
-        type:'PROGRESS BILLING',contract:c,
-        title:b.milestone,amount:money(b.gross_amount),
-        status:b.status,date:b.submitted_at,
-        href:'lump-sum.html?billing='+encodeURIComponent(b.id),
-        action:b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER'
-      });
     });
-    (variations.data||[]).forEach(v=>{
-      const c=byId.get(v.contract_id)||{};
-      rows.push({
-        type:'VARIATION ORDER',contract:c,
-        title:v.description,amount:money(v.amount_delta),
-        status:'AWAIT GM',date:v.submitted_at,
-        href:'lump-sum.html?contract='+encodeURIComponent(v.contract_id),
-        action:'GM REVIEW'
-      });
-    });
-    rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-    lumpSumPendingCount=rows.length;
-    document.getElementById('pendingCount').textContent=approvals.length+lumpSumPendingCount;
-    if(!rows.length){
-      body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum contract actions.</td></tr>';
-      return;
-    }
-    body.innerHTML=rows.map(r=>{
-      const c=r.contract;
-      return '<tr>'+
-        '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
-        '<td><strong>'+esc(r.type)+'</strong><span class="request-sub">'+esc(r.title)+'</span></td>'+
-        '<td><strong>'+esc(r.amount)+'</strong></td>'+
-        '<td><span class="pending-chip">'+esc(r.status)+'</span></td>'+
-        '<td><a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a></td>'+
-      '</tr>';
-    }).join('');
-  }catch(error){
-    console.error(error);
-    lumpSumPendingCount=0;
-    document.getElementById('pendingCount').textContent=approvals.length;
-    body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum requests. Check access and refresh.</td></tr>';
+  });
+  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  lumpSumPendingCount=rows.length;
+  document.getElementById('pendingCount').textContent=approvals.length+lumpSumPendingCount;
+
+  if(!rows.length){
+    body.innerHTML='<tr><td colspan="5" class="empty">No pending lump-sum contract actions. Unsubmitted drafts are not listed.</td></tr>';
+    return;
   }
+  body.innerHTML=rows.map(r=>{
+    const c=r.contract;
+    const action=r.kind==='activation'
+      ? '<button class="mini review" type="button" data-lump-activation-review="'+esc(r.requestId)+'">REVIEW REQUEST</button>'+
+        ' <a class="mini" href="'+r.href+'" style="text-decoration:none;display:inline-block">VIEW CONTRACT</a>'
+      :'<a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a>';
+    return '<tr>'+
+      '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
+      '<td><strong>'+esc(r.type)+'</strong><span class="request-sub">'+esc(r.title)+'</span></td>'+
+      '<td><strong>'+esc(r.amount)+'</strong></td>'+
+      '<td><span class="pending-chip">'+esc(r.status)+'</span></td>'+
+      '<td>'+action+'</td></tr>';
+  }).join('');
+ }catch(error){
+  console.error('Unable to load lump-sum approvals:',error);
+  lumpActivationQueue=[];
+  lumpSumPendingCount=0;
+  document.getElementById('pendingCount').textContent=approvals.length;
+  body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum requests. Check access and refresh.</td></tr>';
+ }
 }
+
+function closeLumpActivationReview(){
+ if(lumpActivationSaving)return;
+ const modal=document.getElementById('lumpContractReviewModal');
+ modal.classList.add('hidden');
+ modal.setAttribute('aria-hidden','true');
+ currentLumpActivation=null;
+ if(lumpActivationFocus?.focus)lumpActivationFocus.focus();
+ lumpActivationFocus=null;
+}
+async function openLumpActivationReview(requestId){
+ const request=lumpActivationQueue.find(r=>r.id===requestId);
+ const c=request&&lumpActivationContracts.get(request.contract_id);
+ if(!c || !request)return showMsg('This pending contract request is no longer available. Refresh the queue.','error');
+ currentLumpActivation=request;
+ lumpActivationFocus=document.activeElement;
+ const modal=document.getElementById('lumpContractReviewModal');
+ document.getElementById('lumpContractDecisionNotes').value='';
+ document.getElementById('lumpContractDecisionError').hidden=true;
+ document.getElementById('lumpContractDecisionError').textContent='';
+ const fmt=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const details=document.getElementById('lumpContractReviewDetails');
+ details.innerHTML=
+   '<div class="lump-review-summary">'+
+     '<strong>'+esc(c.scope_title)+'</strong>'+
+     '<small>'+esc(c.project_id)+' • '+esc(c.contractor_name)+'</small>'+
+     '<div class="lump-review-amount">'+fmt(c.original_amount)+'</div>'+
+   '</div>'+
+   '<div class="lump-review-row"><span>CONTRACT TYPE</span><strong>'+esc(c.contract_type==='DIRECT_LABOR'?'DIRECT LABOR / PAKYAW':'INDEPENDENT SUBCONTRACTOR')+'</strong></div>'+
+   '<div class="lump-review-row"><span>CONTRACTED SCOPE</span><strong>'+esc(c.scope_description||'—')+'</strong></div>'+
+   '<div class="lump-review-row"><span>RETENTION</span><strong>'+esc(c.retention_pct)+'%</strong></div>'+
+   '<div class="lump-review-row"><span>ADVANCE LIMIT</span><strong>'+fmt(c.advance_limit)+'</strong></div>'+
+   '<div class="lump-review-row"><span>REFERENCE</span><strong>'+esc(c.contract_reference||'—')+'</strong></div>'+
+   '<div class="lump-review-row"><span>WAGE / LICENSE COMPLIANCE</span><strong>'+esc(c.compliance_notes||'Not provided')+'</strong></div>'+
+   '<div class="lump-review-row"><span>SUBMITTED</span><strong>'+esc(formatDateTime(request.submitted_at))+'</strong></div>'+
+   '<div class="lump-review-row"><span>SIGNED CONTRACT</span><span id="lumpActivationEvidence">Checking attachment...</span></div>'+
+   '<a class="button secondary lump-review-open-contract" href="lump-sum.html?contract='+encodeURIComponent(c.id)+'">OPEN FULL CONTRACT</a>';
+ modal.classList.remove('hidden');
+ modal.setAttribute('aria-hidden','false');
+ document.getElementById('approveLumpActivation').focus();
+ const holder=document.getElementById('lumpActivationEvidence');
+ const raw=String(c.document_url||'');
+ if(!raw){holder.textContent='Not attached';return;}
+ let url=raw;
+ try{
+  if(raw.startsWith('private-evidence:')){
+   const {data,error}=await supabaseClient.storage
+     .from('amanah-lump-evidence')
+     .createSignedUrl(raw.slice('private-evidence:'.length),300);
+   if(error)throw error;
+   url=data.signedUrl;
+  }
+  if(!/^https:\/\//i.test(url))throw Error('Invalid evidence link');
+  if(currentLumpActivation?.id!==requestId)return;
+  holder.innerHTML='<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" class="lump-review-evidence">VIEW SIGNED CONTRACT ↗</a>';
+ }catch(e){if(currentLumpActivation?.id===requestId)holder.textContent='Unable to open signed contract: '+e.message;}
+}
+async function decideLumpActivation(approve){
+ if(lumpActivationSaving||!currentLumpActivation)return;
+ const remarks=document.getElementById('lumpContractDecisionNotes').value.trim();
+ const error=document.getElementById('lumpContractDecisionError');
+ if(!approve&&!remarks){
+   error.hidden=false;
+   error.textContent='Please provide the reason for rejecting this contract.';
+   document.getElementById('lumpContractDecisionNotes').focus();
+   return;
+ }
+ const contractId=currentLumpActivation.contract_id;
+ const buttons=['approveLumpActivation','rejectLumpActivation','cancelLumpActivation'];
+ lumpActivationSaving=true;
+ buttons.forEach(id=>document.getElementById(id).disabled=true);
+ error.hidden=true;error.textContent='';
+ try{
+  const {error:rpcError}=await supabaseClient.rpc('amanah_lump_decide_activation',{
+    p_contract_id:contractId,p_approve:approve,p_notes:remarks||null
+  });
+  if(rpcError)throw rpcError;
+  lumpActivationSaving=false;
+  closeLumpActivationReview();
+  showMsg(approve?'Contract approved and activated successfully.':'Contract rejected; the reason is available for revision and resubmission.','success');
+  await loadLumpSumApprovals();
+ }catch(e){
+  console.error('GM contract activation decision failed:',e);
+  error.hidden=false;error.textContent=e.message||'Unable to process this activation request.';
+ }finally{
+  lumpActivationSaving=false;
+  buttons.forEach(id=>document.getElementById(id).disabled=false);
+ }
+}
+
 async function loadApprovals(){
   const type=document.getElementById('typeFilter').value;
   let q=supabaseClient.from('amanah_approval_requests').select('*').eq('status','PENDING').order('submitted_at',{ascending:false});
@@ -731,6 +844,23 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(!(await requireAccess()))return;
     document.getElementById('refreshApprovals').addEventListener('click',loadApprovals);
     document.getElementById('refreshLumpApprovals').addEventListener('click',loadLumpSumApprovals);
+    document.getElementById('lumpApprovalBody').addEventListener('click',event=>{
+      const button=event.target.closest('[data-lump-activation-review]');
+      if(button)openLumpActivationReview(button.dataset.lumpActivationReview);
+    });
+    document.getElementById('approveLumpActivation').addEventListener('click',()=>decideLumpActivation(true));
+    document.getElementById('rejectLumpActivation').addEventListener('click',()=>decideLumpActivation(false));
+    document.getElementById('cancelLumpActivation').addEventListener('click',closeLumpActivationReview);
+    document.getElementById('closeLumpContractReview').addEventListener('click',closeLumpActivationReview);
+    document.getElementById('lumpContractReviewModal').addEventListener('click',event=>{
+      if(event.target.id==='lumpContractReviewModal')closeLumpActivationReview();
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape' &&
+        !document.getElementById('lumpContractReviewModal').classList.contains('hidden')){
+        event.preventDefault();closeLumpActivationReview();
+      }
+    });
     document.getElementById('typeFilter').addEventListener('change',loadApprovals);
     document.getElementById('refreshHistory').addEventListener('click',loadHistory);
     document.getElementById('historyTypeFilter').addEventListener('change',loadHistory);
