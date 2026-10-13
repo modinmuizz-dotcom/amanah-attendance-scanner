@@ -11,6 +11,11 @@ let groupLaborRows=[];
 let payrollProjects=[];
 let payrollSaved=false;
 let payrollSaving=false;
+let activePaycheckRun=null;
+let activePaycheckEntries=[];
+let activePaycheckClaims=[];
+let pendingClaimEntry=null;
+let paycheckClaimBusy=false;
 
 async function loadGroupLaborProjects(){
   const select=document.getElementById('groupLaborProject');
@@ -660,6 +665,7 @@ async function savePayroll(){
   button.disabled=true;
   button.textContent='SAVING...';
 
+  let createdPayrollRunId=null;
   try{
     const totalGross=
       payrollRows.reduce((sum,r)=>sum+grossFor(r),0)+
@@ -673,6 +679,7 @@ async function savePayroll(){
     }).select('payroll_run_id').single();
 
     if(runError)throw runError;
+    createdPayrollRunId=run.payroll_run_id;
 
     const items=payrollRows.map(row=>({
       payroll_run_id:run.payroll_run_id,
@@ -712,15 +719,29 @@ async function savePayroll(){
       if(groupError)throw groupError;
     }
 
+    // Payroll must be complete before submission so Finance never approves
+    // a partial employee/group labor register.
     payrollSaved=true;
     renderGroupLabor();
+    const {error:approvalError}=await supabaseClient.rpc('amanah_payroll_submit',{
+      p_run_id:run.payroll_run_id
+    });
+    if(approvalError)throw new Error(
+      'Payroll was saved as DRAFT, but submission failed: '+approvalError.message+
+      '. Use SEND FOR APPROVAL in Payroll History to retry.'
+    );
+
     showMessage(
-      'Payroll saved successfully. Group Labor expenses were added automatically to their selected projects in Project Cost Control.',
+      'Payroll saved and SENT FOR APPROVAL. The Financial Manager must approve it before anyone can claim a paycheck.',
       'success'
     );
     await loadPayrollHistory();
   }catch(error){
+    // If a Payroll Run was already created, do not silently create a second
+    // run from the same click. The saved Draft can be retried from History.
+    if(createdPayrollRunId)payrollSaved=true;
     showMessage(error.message||'Unable to save payroll.','error');
+    await loadPayrollHistory().catch(()=>{});
   }finally{
     payrollSaving=false;
     button.textContent=payrollSaved?'PAYROLL SAVED':'SAVE PAYROLL';
@@ -728,30 +749,172 @@ async function savePayroll(){
   }
 }
 
+
 async function loadPayrollHistory(){
-  const body=document.getElementById('payrollHistoryBody');
-  const {data,error}=await supabaseClient.from('payroll_runs').select('period_start,period_end,status,total_gross,employee_count,created_at').order('created_at',{ascending:false}).limit(50);
-  if(error){
-    body.innerHTML='<tr><td colspan="5" class="payroll-empty">Unable to load payroll history.</td></tr>';
-    return;
-  }
+ const body=document.getElementById('payrollHistoryBody');
+ const {data,error}=await supabaseClient.from('payroll_runs')
+   .select('payroll_run_id,period_start,period_end,status,total_gross,employee_count,created_at,review_notes,submitted_at')
+   .order('created_at',{ascending:false}).limit(50);
+ if(error){
+   body.innerHTML='<tr><td colspan="6" class="payroll-empty">Unable to load payroll history.</td></tr>';
+   return;
+ }
+ if(!data?.length){
+   body.innerHTML='<tr><td colspan="6" class="payroll-empty">No payroll runs found.</td></tr>';
+   return;
+ }
+ const {data:canManage}=await supabaseClient.rpc('amanah_payroll_can_prepare');
+ body.innerHTML=data.map(run=>{
+   const created=run.created_at?new Date(run.created_at).toLocaleString('en-PH',{dateStyle:'medium',timeStyle:'short'}):'—';
+   const status=String(run.status||'DRAFT');
+   const cls=status.toLowerCase();
+   let action='';
+   if(status==='DRAFT'&&canManage){
+     action='<button class="button secondary payroll-history-action" type="button" data-payroll-submit="'+escapeHtml(run.payroll_run_id)+'">SEND FOR APPROVAL</button>';
+   } else if(status==='APPROVED'){
+     action='<button class="button primary payroll-history-action" type="button" data-payroll-open="'+escapeHtml(run.payroll_run_id)+'">VIEW PAYCHECKS</button>';
+   } else if(status==='REJECTED'){
+     action='<span class="payroll-sub">Prepare a corrected new run</span>';
+   } else if(status==='PENDING_APPROVAL'){
+     action='<span class="payroll-sub">Waiting for Financial Manager</span>';
+   }
+   return `<tr>
+     <td><strong>${escapeHtml(dateText(run.period_start))}</strong> – ${escapeHtml(dateText(run.period_end))}</td>
+     <td>${escapeHtml(run.employee_count)}</td>
+     <td class="payroll-gross">${money(run.total_gross)}</td>
+     <td><span class="payroll-status ${cls}">${escapeHtml(status.replaceAll('_',' '))}</span>${run.review_notes?'<small class="payroll-sub">Finance: '+escapeHtml(run.review_notes)+'</small>':''}</td>
+     <td>${escapeHtml(created)}</td>
+     <td>${action}</td>
+   </tr>`;
+ }).join('');
+}
 
-  if(!data?.length){
-    body.innerHTML='<tr><td colspan="5" class="payroll-empty">No payroll runs found.</td></tr>';
-    return;
-  }
+async function submitHistoricalPayroll(runId){
+ const button=document.querySelector('[data-payroll-submit="'+CSS.escape(runId)+'"]');
+ if(button)button.disabled=true;
+ try{
+   const {error}=await supabaseClient.rpc('amanah_payroll_submit',{p_run_id:runId});
+   if(error)throw error;
+   showMessage('Draft payroll submitted successfully. Await Financial Manager approval before releasing paychecks.','success');
+   await loadPayrollHistory();
+ }catch(error){
+   showMessage(error.message||'Unable to submit saved Draft payroll.','error');
+   if(button)button.disabled=false;
+ }
+}
 
-  body.innerHTML=data.map(run=>{
-    const created=run.created_at?new Date(run.created_at).toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
-    const cls=String(run.status).toLowerCase();
-    return `<tr>
-      <td><strong>${escapeHtml(dateText(run.period_start))}</strong> – ${escapeHtml(dateText(run.period_end))}</td>
-      <td>${escapeHtml(run.employee_count)}</td>
-      <td class="payroll-gross">${money(run.total_gross)}</td>
-      <td><span class="payroll-status ${cls}">${escapeHtml(run.status)}</span></td>
-      <td>${escapeHtml(created)}</td>
-    </tr>`;
-  }).join('');
+function closePaycheckPanel(){
+ activePaycheckRun=null;
+ activePaycheckEntries=[];
+ activePaycheckClaims=[];
+ document.getElementById('paycheckReleasePanel').hidden=true;
+}
+async function openPaycheckPanel(runId){
+ const runResp=await supabaseClient.from('payroll_runs')
+   .select('payroll_run_id,period_start,period_end,status,total_gross')
+   .eq('payroll_run_id',runId).single();
+ if(runResp.error)throw runResp.error;
+ if(runResp.data.status!=='APPROVED'){
+   throw new Error('Paycheck release is unavailable. Only Financial Manager-approved payroll may be claimed.');
+ }
+ activePaycheckRun=runResp.data;
+ document.getElementById('paycheckReleasePanel').hidden=false;
+ document.getElementById('paycheckReleaseTitle').textContent=
+   'PAYCHECK CLAIM REGISTER • '+dateText(runResp.data.period_start)+' – '+dateText(runResp.data.period_end);
+ await reloadPaycheckPanel();
+ document.getElementById('paycheckReleasePanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function reloadPaycheckPanel(){
+ if(!activePaycheckRun)return;
+ const id=activePaycheckRun.payroll_run_id;
+ const [employees,groups,claims,access]=await Promise.all([
+   supabaseClient.from('payroll_items')
+     .select('payroll_item_id,payroll_run_id,employee_name,gross_pay').eq('payroll_run_id',id),
+   supabaseClient.from('payroll_group_items')
+     .select('payroll_group_item_id,payroll_run_id,group_name,project_id,gross_pay').eq('payroll_run_id',id),
+   supabaseClient.from('payroll_paycheck_claims')
+     .select('payroll_item_id,payroll_group_item_id,recipient_name,amount,released_on,payment_method,payment_reference,acknowledgment,created_at').eq('payroll_run_id',id),
+   supabaseClient.rpc('amanah_payroll_can_release')
+ ]);
+ for(const r of [employees,groups,claims,access])if(r.error)throw r.error;
+ const canRelease=access.data===true;
+ activePaycheckEntries=[
+   ...(employees.data||[]).map(e=>({kind:'EMPLOYEE',itemId:e.payroll_item_id,name:e.employee_name,amount:e.gross_pay})),
+   ...(groups.data||[]).map(g=>({kind:'GROUP',itemId:g.payroll_group_item_id,name:g.group_name,projectId:g.project_id,amount:g.gross_pay}))
+ ];
+ activePaycheckClaims=claims.data||[];
+ const claimed=activePaycheckClaims.length,total=activePaycheckEntries.length;
+ const totalPaid=activePaycheckClaims.reduce((s,c)=>s+Number(c.amount||0),0);
+ document.getElementById('paycheckReleaseStatus').textContent=
+   'APPROVED FOR CLAIM • '+claimed+' of '+total+' payments released • Paid '+money(totalPaid)+
+   ' of '+money(activePaycheckRun.total_gross)+
+   '. Approved does not mean paid: each release requires acknowledgment and reference.';
+ const host=document.getElementById('paycheckReleaseBody');
+ if(!total){host.innerHTML='<tr><td colspan="6" class="payroll-empty">No employee or Group Labor paychecks found.</td></tr>';return;}
+ host.innerHTML=activePaycheckEntries.map(e=>{
+   const c=activePaycheckClaims.find(x=>
+     e.kind==='EMPLOYEE'?x.payroll_item_id===e.itemId:x.payroll_group_item_id===e.itemId
+   );
+   const status=c?'<span class="payroll-status claimed">CLAIMED / PAID</span>':'<span class="payroll-status approved">READY FOR CLAIM</span>';
+   const detail=c?escapeHtml(c.recipient_name)+' • '+escapeHtml(c.payment_method)+' • '+escapeHtml(c.payment_reference)+'<span class="payroll-sub">'+escapeHtml(c.released_on)+' • '+escapeHtml(c.acknowledgment)+'</span>':'Not yet released';
+   const action=!c&&canRelease
+     ? '<button class="button primary payroll-history-action" type="button" data-payroll-claim="'+escapeHtml(e.itemId)+'">RELEASE PAYCHECK</button>'
+     : c?'<span class="payroll-sub">Payment recorded</span>':'<span class="payroll-sub">Authorized cashier required</span>';
+   return '<tr><td><strong>'+escapeHtml(e.name)+'</strong>'+ (e.projectId?'<span class="payroll-sub">Project: '+escapeHtml(e.projectId)+'</span>':'')+
+   '</td><td>'+escapeHtml(e.kind==='GROUP'?'GROUP LABOR':'EMPLOYEE')+'</td><td class="payroll-gross">'+money(e.amount)+
+   '</td><td>'+status+'</td><td>'+detail+'</td><td>'+action+'</td></tr>';
+ }).join('');
+}
+function openPaycheckClaim(itemId){
+ const entry=activePaycheckEntries.find(e=>e.itemId===itemId);
+ if(!entry || !activePaycheckRun)return;
+ pendingClaimEntry=entry;
+ document.getElementById('paycheckClaimPayee').textContent=entry.name+' • '+money(entry.amount)+' • '+entry.kind;
+ document.getElementById('paycheckClaimRecipient').value=entry.name;
+ document.getElementById('paycheckClaimDate').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ document.getElementById('paycheckClaimReference').value='';
+ document.getElementById('paycheckClaimAck').value='';
+ document.getElementById('paycheckClaimMethod').value='CASH';
+ document.getElementById('paycheckClaimError').textContent='';
+ const modal=document.getElementById('paycheckClaimModal');
+ modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');
+ document.getElementById('paycheckClaimRecipient').focus();
+}
+function closePaycheckClaim(){
+ if(paycheckClaimBusy)return;
+ pendingClaimEntry=null;
+ const modal=document.getElementById('paycheckClaimModal');
+ modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');
+}
+async function savePaycheckClaim(event){
+ event.preventDefault();
+ if(paycheckClaimBusy||!pendingClaimEntry||!activePaycheckRun)return;
+ const entry=pendingClaimEntry;
+ const recipient=document.getElementById('paycheckClaimRecipient').value.trim();
+ const date=document.getElementById('paycheckClaimDate').value;
+ const method=document.getElementById('paycheckClaimMethod').value;
+ const ref=document.getElementById('paycheckClaimReference').value.trim();
+ const ack=document.getElementById('paycheckClaimAck').value.trim();
+ if(!recipient||!date||!ref||!ack){
+   document.getElementById('paycheckClaimError').textContent='Complete the recipient, release date, unique reference, and acknowledgment.';
+   return;
+ }
+ if(!window.confirm('Confirm '+money(entry.amount)+' was ACTUALLY released to '+recipient+'? This creates a permanent receipt and cannot be claimed twice.'))return;
+ paycheckClaimBusy=true;
+ const btn=document.getElementById('paycheckClaimSubmit');
+ btn.disabled=true;
+ try{
+   const {error}=await supabaseClient.rpc('amanah_payroll_record_claim',{
+     p_run_id:activePaycheckRun.payroll_run_id,p_item_type:entry.kind,p_item_id:entry.itemId,
+     p_recipient:recipient,p_payment_method:method,p_reference:ref,p_ack:ack,p_paid_on:date
+   });
+   if(error)throw error;
+   paycheckClaimBusy=false;closePaycheckClaim();
+   showMessage('Paycheck released and receipt recorded successfully.','success');
+   await reloadPaycheckPanel();
+ }catch(error){
+   document.getElementById('paycheckClaimError').textContent=error.message||'Unable to record the payment release.';
+ }finally{paycheckClaimBusy=false;btn.disabled=false;}
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -781,6 +944,24 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('savePayrollButton').addEventListener('click',savePayroll);
   document.getElementById('printPayrollButton').addEventListener('click',printPayroll);
   document.getElementById('refreshPayrollHistoryButton').addEventListener('click',loadPayrollHistory);
+  document.getElementById('payrollHistoryBody').addEventListener('click',event=>{
+    const submit=event.target.closest('[data-payroll-submit]');
+    const open=event.target.closest('[data-payroll-open]');
+    if(submit)submitHistoricalPayroll(submit.dataset.payrollSubmit);
+    if(open)openPaycheckPanel(open.dataset.payrollOpen)
+      .catch(error=>showMessage(error.message||'Unable to open paycheck claims.','error'));
+  });
+  document.getElementById('closePaycheckPanel').addEventListener('click',closePaycheckPanel);
+  document.getElementById('paycheckReleaseBody').addEventListener('click',event=>{
+    const btn=event.target.closest('[data-payroll-claim]');
+    if(btn)openPaycheckClaim(btn.dataset.payrollClaim);
+  });
+  document.getElementById('paycheckClaimForm').addEventListener('submit',savePaycheckClaim);
+  document.getElementById('paycheckClaimCancel').addEventListener('click',closePaycheckClaim);
+  document.getElementById('paycheckClaimClose').addEventListener('click',closePaycheckClaim);
+  document.getElementById('paycheckClaimModal').addEventListener('click',event=>{
+    if(event.target.id==='paycheckClaimModal')closePaycheckClaim();
+  });
   document.getElementById('payrollEmployeeFilter').addEventListener('change',()=>{
     calculatedPeriod=null;
     payrollRows=[];
