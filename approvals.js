@@ -402,6 +402,37 @@ async function loadLumpSumApprovals(){
 }
 
 
+
+async function loadLumpBillingEvidence(b,token){
+ const container=document.getElementById('lumpBillingReviewEvidence');
+ const images=Array.isArray(b.evidence_photos)?b.evidence_photos:[];
+ const resources=images.map((reference,i)=>({reference,label:'PHOTO '+(i+1),photo:true}));
+ if(b.evidence_url&&!images.includes(b.evidence_url))
+   resources.unshift({reference:b.evidence_url,label:'MAIN SUPPORTING DOCUMENT',photo:false});
+ if(!resources.length){container.textContent='No supporting evidence attached.';return;}
+ const cards=await Promise.all(resources.map(async item=>{
+  try{
+   let url=String(item.reference||'');
+   if(url.startsWith('private-evidence:')){
+    const path=url.slice('private-evidence:'.length);
+    const {data,error}=await supabaseClient.storage
+      .from('amanah-lump-evidence').createSignedUrl(path,300);
+    if(error)throw error;
+    url=data.signedUrl;
+   }
+   if(!/^https:\/\//i.test(url))throw Error('Invalid evidence link');
+   const visual=item.photo?
+    '<img src="'+esc(url)+'" alt="'+esc(item.label)+'" loading="lazy">':
+    '<span class="lump-billing-evidence-document">OPEN FILE ↗</span>';
+   return '<a class="lump-billing-evidence-item" href="'+esc(url)+
+    '" target="_blank" rel="noopener noreferrer">'+visual+
+    '<span>'+esc(item.label)+' • VIEW ↗</span></a>';
+  }catch(e){return '<div class="lump-billing-evidence-error">'+
+    esc(item.label)+': '+esc(e.message)+'</div>';}
+ }));
+ if(token!==lumpBillingReviewToken||currentLumpBilling?.id!==b.id)return;
+ container.innerHTML=cards.join('');
+}
 function lumpBillingRow(title,value){
  return '<div class="lump-review-row"><span>'+esc(title)+'</span><strong>'+esc(value)+'</strong></div>';
 }
