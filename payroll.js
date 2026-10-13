@@ -913,7 +913,7 @@ async function reloadPaycheckPanel(){
      e.kind==='EMPLOYEE'?x.payroll_item_id===e.itemId:x.payroll_group_item_id===e.itemId
    );
    const status=c?'<span class="payroll-status claimed">CLAIMED / PAID</span>':'<span class="payroll-status approved">READY FOR CLAIM</span>';
-   const detail=c?escapeHtml(c.recipient_name)+' • '+escapeHtml(c.payment_method)+' • '+escapeHtml(c.payment_reference)+'<span class="payroll-sub">'+escapeHtml(c.released_on)+' • '+escapeHtml(c.acknowledgment)+'</span>':'Not yet released';
+   const detail=c?escapeHtml(c.recipient_name)+' • '+escapeHtml(c.payment_method)+' • '+escapeHtml(c.payment_reference)+'<span class="payroll-sub">'+escapeHtml(c.released_on)+(c.acknowledgment?' • '+escapeHtml(c.acknowledgment):'')+'</span>':'Not yet released';
    const action=!c&&canRelease
      ? '<button class="button primary payroll-history-action" type="button" data-payroll-claim="'+escapeHtml(e.itemId)+'">RELEASE PAYCHECK</button>'
      : c?'<span class="payroll-sub">Payment recorded</span>':'<span class="payroll-sub">Authorized cashier required</span>';
@@ -1003,8 +1003,8 @@ async function savePaycheckClaim(event){
  const method=document.getElementById('paycheckClaimMethod').value;
  const ref=document.getElementById('paycheckClaimReference').value.trim();
  const ack=document.getElementById('paycheckClaimAck').value.trim();
- if(!recipient||!date||!ref||!ack){
-   document.getElementById('paycheckClaimError').textContent='Complete the recipient, release date and acknowledgment. A server-generated payment reference is required.';
+ if(!recipient||!date||!ref){
+   document.getElementById('paycheckClaimError').textContent='Complete the recipient and release date. A server-generated payment reference is required.';
    return;
  }
  if(!/^PAY-\d{8}-\d{6,}$/.test(ref)){
@@ -1026,7 +1026,7 @@ async function savePaycheckClaim(event){
  try{
    const {error}=await supabaseClient.rpc('amanah_payroll_record_claim',{
      p_run_id:activePaycheckRun.payroll_run_id,p_item_type:entry.kind,p_item_id:entry.itemId,
-     p_recipient:recipient,p_payment_method:method,p_reference:ref,p_ack:ack,p_paid_on:date
+     p_recipient:recipient,p_payment_method:method,p_reference:ref,p_ack:ack||null,p_paid_on:date
    });
    if(error)throw error;
    paycheckClaimBusy=false;closePaycheckClaim();
