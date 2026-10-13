@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>AMANAH Approval Center</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
-<link rel="stylesheet" href="approvals.css?v=8">
+<link rel="stylesheet" href="approvals.css?v=9">
 </head>
 <body>
 <main class="container approvals-page">
@@ -190,6 +190,40 @@
   </div>
 </div>
 
+<!-- GM reviews Progress Billing here, without navigating back to Lump-Sum Contracts. -->
+<div id="lumpBillingReviewModal" class="approval-modal hidden"
+     role="dialog" aria-modal="true" aria-hidden="true"
+     aria-labelledby="lumpBillingReviewTitle">
+  <div class="approval-modal-card lump-billing-review-card">
+    <div class="modal-head">
+      <div>
+        <div class="approval-kicker">GENERAL MANAGER • PROGRESS BILLING APPROVAL</div>
+        <h2 id="lumpBillingReviewTitle">REVIEW PROGRESS BILLING</h2>
+      </div>
+      <button id="closeLumpBillingReview" type="button" class="modal-x"
+              aria-label="Close Progress Billing review">×</button>
+    </div>
+    <div id="lumpBillingReviewDetails" class="approval-details"></div>
+    <div class="lump-billing-evidence-section">
+      <h3>SUPPORTING PHOTO EVIDENCE</h3>
+      <p>Review the accomplishment photographs and supporting documents before deciding.</p>
+      <div id="lumpBillingReviewEvidence" class="lump-billing-evidence-gallery" aria-live="polite"></div>
+    </div>
+    <div class="decision-box">
+      <label for="lumpBillingDecisionNotes">GM REVIEW REMARKS</label>
+      <textarea id="lumpBillingDecisionNotes" rows="3"
+                placeholder="Approval conditions or required reason for rejection..."></textarea>
+      <div class="decision-note">A rejection requires a reason. A billing must be Site Engineer-verified before GM approval.</div>
+      <p id="lumpBillingDecisionError" class="lump-review-error" role="alert" hidden></p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="rejectLumpBilling" class="button danger">REJECT BILLING</button>
+      <button type="button" id="cancelLumpBilling" class="button secondary">CANCEL</button>
+      <button type="button" id="approveLumpBilling" class="button primary">APPROVE BILLING</button>
+    </div>
+  </div>
+</div>
+
 <div id="historyModal" class="approval-modal hidden" aria-hidden="true">
   <div class="approval-modal-card history-modal-card">
     <div class="modal-head">
@@ -234,7 +268,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="approvals.js?v=23"></script>
+<script src="approvals.js?v=24"></script>
 <script src="amanah-ui.js?v=9"></script>
 </body>
 </html>
