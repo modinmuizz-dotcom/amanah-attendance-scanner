@@ -425,6 +425,39 @@ function confirmLumpAction(opts={}){
  });
 }
 
+
+async function openBillingGallery(billingId){
+ const billing=ls.billings.find(b=>b.id===billingId);
+ const photos=Array.isArray(billing?.evidence_photos)?billing.evidence_photos:[];
+ if(!photos.length)return notify('No photo evidence is available for this billing.',true);
+ const current=++lsGalleryGeneration,overlay=$('lsPhotoGallery');
+ $('lsPhotoGalleryTitle').textContent='PHOTO EVIDENCE • '+billing.milestone;
+ const root=$('lsPhotoGalleryImages');
+ root.textContent='Loading secure photo previews...';
+ overlay.classList.add('is-open');overlay.setAttribute('aria-hidden','false');
+ $('lsPhotoGalleryClose').focus();
+ const results=await Promise.all(photos.map(async(reference,index)=>{
+  if(typeof reference!=='string'||!reference.startsWith('private-evidence:')){
+    return {error:'Invalid private image reference',index};
+  }
+  const path=reference.slice('private-evidence:'.length);
+  const {data,error}=await lsDb.storage.from('amanah-lump-evidence').createSignedUrl(path,300);
+  return error?{error:error.message,index}:{url:data.signedUrl,index};
+ })).catch(e=>photos.map((_,index)=>({error:e.message||'Unable to load photo',index})));
+ if(current!==lsGalleryGeneration)return;
+ root.innerHTML=results.map(item=>item.error?
+  '<div class="ls-gallery-error">Photo '+(item.index+1)+': '+esc(item.error)+'</div>':
+  '<a class="ls-gallery-photo" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">'+
+  '<img src="'+esc(item.url)+'" alt="Billing photo evidence '+(item.index+1)+'" loading="lazy">'+
+  '<span>PHOTO '+(item.index+1)+' • OPEN FULL IMAGE ↗</span></a>').join('');
+}
+function closeBillingGallery(){
+ lsGalleryGeneration++;
+ const dialog=$('lsPhotoGallery');
+ dialog.classList.remove('is-open');dialog.setAttribute('aria-hidden','true');
+ $('lsPhotoGalleryImages').textContent='';
+}
+
 async function decide(action,id){
  const reject=action==='reject'||action==='variationReject';
  const verify=action==='verify';
@@ -602,7 +635,19 @@ document.addEventListener('DOMContentLoaded',()=>{
    }catch(err){if(tab)tab.close();notify('Unable to open private evidence: '+err.message,true);}
  });
  $('lsContracts').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
- $('lsBillings').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
+ $('lsBillings').addEventListener('click',e=>{
+  const viewer=e.target.closest('[data-ls-view-photos]');
+  if(viewer){openBillingGallery(viewer.dataset.lsViewPhotos);return;}
+  const action=e.target.closest('[data-ls-action]');
+  if(action)act(action.dataset.lsAction,action.dataset.lsId);
+ });
+ $('lsPhotoGalleryClose').addEventListener('click',closeBillingGallery);
+ $('lsPhotoGallery').addEventListener('click',e=>{
+  if(e.target.id==='lsPhotoGallery')closeBillingGallery();
+ });
+ document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('lsPhotoGallery').classList.contains('is-open'))closeBillingGallery();
+ });
  $('lsVariations').addEventListener('click',e=>{const el=e.target.closest('[data-ls-action]');if(el)act(el.dataset.lsAction,el.dataset.lsId)});
  boot();
 });
