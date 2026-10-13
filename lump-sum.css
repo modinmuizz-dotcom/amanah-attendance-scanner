@@ -170,3 +170,22 @@
   .ls-confirm-footer .ls-btn{flex:1;min-width:0;}
 }
 @media(prefers-reduced-motion:reduce){.ls-confirm-dialog{animation:none;}}
+
+
+/* Contract activation workflow: clear action-ready and GM decision statuses. */
+.ls-activation-notice{
+  margin:17px 22px 0;
+  border:1px solid #bfdbfe;
+  border-radius:12px;
+  background:#eff6ff;
+  padding:12px 15px;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.55;
+}
+.ls-activation-notice.pending_approval{color:#92400e;background:#fffbeb;border-color:#fde68a;}
+.ls-activation-notice.rejected{color:#b91c1c;background:#fef2f2;border-color:#fecaca;}
+.ls-activation-notice.active{color:#15803d;background:#ecfdf5;border-color:#bbf7d0;}
+.ls-activation-notice.closed{color:#475569;background:#f1f5f9;border-color:#cbd5e1;}
+.ls-activation-notice[hidden]{display:none!important}
