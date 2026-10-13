@@ -16,6 +16,7 @@ let activePaycheckEntries=[];
 let activePaycheckClaims=[];
 let pendingClaimEntry=null;
 let paycheckClaimBusy=false;
+let paycheckReleaseAwaitingConfirmation=false;
 
 async function loadGroupLaborProjects(){
   const select=document.getElementById('groupLaborProject');
@@ -871,18 +872,27 @@ function openPaycheckClaim(itemId){
  pendingClaimEntry=entry;
  document.getElementById('paycheckClaimPayee').textContent=entry.name+' • '+money(entry.amount)+' • '+entry.kind;
  document.getElementById('paycheckClaimRecipient').value=entry.name;
- document.getElementById('paycheckClaimDate').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const manilaParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
+   timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'
+ }).formatToParts(new Date()).map(p=>[p.type,p.value]));
+ document.getElementById('paycheckClaimDate').value=manilaParts.year+'-'+manilaParts.month+'-'+manilaParts.day;
  document.getElementById('paycheckClaimReference').value='';
  document.getElementById('paycheckClaimAck').value='';
  document.getElementById('paycheckClaimMethod').value='CASH';
  document.getElementById('paycheckClaimError').textContent='';
+ paycheckReleaseAwaitingConfirmation=false;
+ document.getElementById('paycheckClaimConfirmNotice').hidden=true;
+ document.getElementById('paycheckClaimSubmit').textContent='RECORD PAYMENT RELEASE';
  const modal=document.getElementById('paycheckClaimModal');
  modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');
  document.getElementById('paycheckClaimRecipient').focus();
 }
 function closePaycheckClaim(){
  if(paycheckClaimBusy)return;
+ paycheckReleaseAwaitingConfirmation=false;
  pendingClaimEntry=null;
+ document.getElementById('paycheckClaimConfirmNotice').hidden=true;
+ document.getElementById('paycheckClaimSubmit').textContent='RECORD PAYMENT RELEASE';
  const modal=document.getElementById('paycheckClaimModal');
  modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');
 }
@@ -899,7 +909,15 @@ async function savePaycheckClaim(event){
    document.getElementById('paycheckClaimError').textContent='Complete the recipient, release date, unique reference, and acknowledgment.';
    return;
  }
- if(!window.confirm('Confirm '+money(entry.amount)+' was ACTUALLY released to '+recipient+'? This creates a permanent receipt and cannot be claimed twice.'))return;
+ if(!paycheckReleaseAwaitingConfirmation){
+   paycheckReleaseAwaitingConfirmation=true;
+   const note=document.getElementById('paycheckClaimConfirmNotice');
+   note.textContent='CONFIRM RELEASE: '+money(entry.amount)+' was physically paid to '+recipient+
+      '. Click CONFIRM & RECORD RELEASE to finalize. A duplicate claim will not be allowed.';
+   note.hidden=false;
+   document.getElementById('paycheckClaimSubmit').textContent='CONFIRM & RECORD RELEASE';
+   return;
+ }
  paycheckClaimBusy=true;
  const btn=document.getElementById('paycheckClaimSubmit');
  btn.disabled=true;
@@ -957,6 +975,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(btn)openPaycheckClaim(btn.dataset.payrollClaim);
   });
   document.getElementById('paycheckClaimForm').addEventListener('submit',savePaycheckClaim);
+  document.getElementById('paycheckClaimForm').addEventListener('input',()=>{
+    if(!paycheckReleaseAwaitingConfirmation)return;
+    paycheckReleaseAwaitingConfirmation=false;
+    document.getElementById('paycheckClaimConfirmNotice').hidden=true;
+    document.getElementById('paycheckClaimSubmit').textContent='RECORD PAYMENT RELEASE';
+  });
   document.getElementById('paycheckClaimCancel').addEventListener('click',closePaycheckClaim);
   document.getElementById('paycheckClaimClose').addEventListener('click',closePaycheckClaim);
   document.getElementById('paycheckClaimModal').addEventListener('click',event=>{
