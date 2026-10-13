@@ -12,6 +12,11 @@ let lumpActivationContracts=new Map();
 let currentLumpActivation=null;
 let lumpActivationSaving=false;
 let lumpActivationFocus=null;
+let lumpBillingQueue=[];
+let currentLumpBilling=null;
+let lumpBillingSaving=false;
+let lumpBillingFocus=null;
+let lumpBillingReviewToken=0;
 
 function esc(v){return v==null?'':String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");}
 function formatDateTime(v){if(!v)return '—';return new Date(v).toLocaleString();}
@@ -312,7 +317,7 @@ async function loadLumpSumApprovals(){
  try{
   const [billings,contracts,variations,activations]=await Promise.all([
     supabaseClient.from('amanah_lump_billings')
-      .select('id,contract_id,milestone,gross_amount,status,submitted_at')
+      .select('*')
       .in('status',['SUBMITTED','VERIFIED']).order('submitted_at',{ascending:false}),
     supabaseClient.from('amanah_lump_contracts')
       .select('id,project_id,scope_title,scope_description,contractor_name,contract_type,original_amount,retention_pct,advance_limit,signed_on,contract_reference,document_url,compliance_notes,status,created_at'),
@@ -326,6 +331,7 @@ async function loadLumpSumApprovals(){
   for(const v of [billings,contracts,variations,activations])if(v.error)throw v.error;
 
   lumpActivationContracts=new Map((contracts.data||[]).map(c=>[c.id,c]));
+   lumpBillingQueue=billings.data||[];
   lumpActivationQueue=(activations.data||[]).filter(r=>
     lumpActivationContracts.get(r.contract_id)?.status==='PENDING_APPROVAL'
   );
@@ -346,11 +352,11 @@ async function loadLumpSumApprovals(){
   (billings.data||[]).forEach(b=>{
     const c=lumpActivationContracts.get(b.contract_id)||{};
     rows.push({
-      kind:'billing',contract:c,type:'PROGRESS BILLING',
-      title:b.milestone,amount:peso(b.gross_amount),status:b.status,
+      kind:'billing',requestId:b.id,contract:c,type:'PROGRESS BILLING',
+      title:b.milestone,amount:peso(b.gross_amount),
+      status:b.status==='VERIFIED'?'VERIFIED • GM ACTION':'AWAIT SITE VERIFICATION',
       date:b.submitted_at,
-      href:'lump-sum.html?billing='+encodeURIComponent(b.id),
-      action:b.status==='VERIFIED'?'GM REVIEW':'AWAIT ENGINEER'
+      action:b.status==='VERIFIED'?'GM REVIEW':'VIEW BILLING'
     });
   });
   (variations.data||[]).forEach(v=>{
@@ -375,7 +381,9 @@ async function loadLumpSumApprovals(){
     const c=r.contract;
     const action=r.kind==='activation'
       ? '<button class="mini review" type="button" data-lump-activation-review="'+esc(r.requestId)+'">REVIEW REQUEST</button>'
-      :'<a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a>';
+      :r.kind==='billing'
+        ? '<button class="mini review" type="button" data-lump-billing-review="'+esc(r.requestId)+'">'+esc(r.action)+'</button>'
+        :'<a class="mini review" href="'+r.href+'" style="text-decoration:none;display:inline-block">'+esc(r.action)+'</a>';
     return '<tr>'+
       '<td><strong>'+esc(c.scope_title||'Lump-sum contract')+'</strong><span class="request-sub">'+esc(c.project_id||'')+' • '+esc(c.contractor_name||'')+'</span></td>'+
       '<td><strong>'+esc(r.type)+'</strong><span class="request-sub">'+esc(r.title)+'</span></td>'+
@@ -386,6 +394,7 @@ async function loadLumpSumApprovals(){
  }catch(error){
   console.error('Unable to load lump-sum approvals:',error);
   lumpActivationQueue=[];
+   lumpBillingQueue=[];
   lumpSumPendingCount=0;
   document.getElementById('pendingCount').textContent=approvals.length;
   body.innerHTML='<tr><td colspan="5" class="empty">Unable to load lump-sum requests. Check access and refresh.</td></tr>';
