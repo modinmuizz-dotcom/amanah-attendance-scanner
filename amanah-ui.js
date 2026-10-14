@@ -84,6 +84,21 @@
     style.href='amanah-ui.css?v=6';
     document.head.appendChild(style);
 
+    // Shared settings appear on every signed-in management page.
+    if(!document.getElementById('amanahSettingsStyles')){
+      const settingsStyle=document.createElement('link');
+      settingsStyle.id='amanahSettingsStyles';
+      settingsStyle.rel='stylesheet';
+      settingsStyle.href='amanah-settings.css?v=1';
+      document.head.appendChild(settingsStyle);
+    }
+    if(!document.getElementById('amanahSettingsScript')){
+      const settingsScript=document.createElement('script');
+      settingsScript.id='amanahSettingsScript';
+      settingsScript.src='amanah-settings.js?v=1';
+      document.head.appendChild(settingsScript);
+    }
+
     const oldHeaders=[...document.querySelectorAll('body > header, body > .topbar, body > .top-header, #adminApp > header.topbar')];
     oldHeaders.forEach(el=>{ if(el && !el.id?.startsWith('amanah')) el.style.setProperty('display','none','important'); });
 
@@ -178,7 +193,7 @@
         }).join('')).join('')+
       '</nav>'+
       '<div class="amanah-side-bottom"><div class="amanah-status-row"><span class="amanah-status-dot"></span>Local system online</div>'+
-      '<div class="amanah-user-card"><div class="amanah-avatar">A</div><div><div class="amanah-user-name" id="amanahCurrentUserName">AMANAH USER</div><div class="amanah-user-role" id="amanahCurrentUserRole">AUTHENTICATED</div></div><div class="amanah-user-gear">⚙</div></div>'+
+      '<div class="amanah-user-card"><div class="amanah-avatar">A</div><div><div class="amanah-user-name" id="amanahCurrentUserName">AMANAH USER</div><div class="amanah-user-role" id="amanahCurrentUserRole">AUTHENTICATED</div></div><button class="amanah-user-gear" id="amanahSettingsGear" type="button" title="Account & Settings" aria-label="Open account and appearance settings" aria-haspopup="dialog">⚙</button></div>'+
       '<button class="amanah-sidebar-logout" id="amanahSidebarLogout" type="button">LOG OUT</button></div>';
 
     const topbar=document.createElement('header');
@@ -325,6 +340,7 @@
       document.getElementById(id)?.remove();
     });
     document.body.classList.remove('amanah-common-active','amanah-sidebar-open');
+    document.dispatchEvent(new Event('amanah:shell-removed'));
   }
 
   function start(){
