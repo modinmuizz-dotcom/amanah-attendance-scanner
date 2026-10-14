@@ -478,7 +478,9 @@ function renderTransactions() {
         </td>
 
         <td>
-          ${String(item.reference_id || "").startsWith("LUMP-SUM:PAYMENT:")
+          ${String(item.reference_id || "").startsWith("PO-MATERIAL-RECEIVED:")
+            ? '<span class="type-badge" title="Received project material cost, posted by Purchasing. Managed in the Purchase Order ledger.">RECEIVED MATERIAL</span>'
+            : String(item.reference_id || "").startsWith("LUMP-SUM:PAYMENT:")
             ? '<span class="type-badge" title="Recorded payment managed by the Lump-Sum Contract ledger. This project cost cannot be deleted here.">PAID CONTRACT</span>'
             : String(item.reference_id || "").startsWith("GROUP-LABOR:") || String(item.reference_id || "").startsWith("PAYROLL-EMPLOYEE:")
               ? '<span class="type-badge" title="Linked to an actual paid payroll release. Managed from Payroll.">PAID PAYROLL</span>'
