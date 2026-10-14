@@ -180,7 +180,7 @@ html[data-amanah-mode="dark"] body.amanah-common-active :is(
   .schedule-wrap .panel,.page>.panel,.page>.card,
   .project-picker,.pm-container .project-picker,
   .metric,.breakdown-card,.detail-card,
-  .filters,.summary-card,.hero-chip,.hero-card,.modal,
+  .filters,.summary-card,.hero-chip,.hero-card,
   .equipment-summary:not(.has),.items-toolbar,
   .detail-hero,.report-toolbar
 ) {
@@ -286,6 +286,32 @@ html[data-amanah-mode="dark"] body.amanah-common-active .reports-container table
 }
 html[data-amanah-mode="dark"] body.amanah-common-active .reports-container table th {
   background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+
+/* Repair Request modals are overlay backdrops (the dialog is a child).
+   Keep the overlay transparent and the contained dialog dark/readable. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  #requestModal.modal,#approvalConfirmModal.modal,
+  #deleteConfirmModal.modal,#detailModal.modal
+):has(> .dialog) {
+  background:rgba(2,7,17,.73) !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  #requestModal,#approvalConfirmModal,#deleteConfirmModal,#detailModal
+) > .dialog {
+  background:var(--am-module-card) !important;
+  border:1px solid var(--am-module-border) !important;
+  color:var(--am-module-text) !important;
+  box-shadow:0 24px 75px rgba(0,0,0,.42) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  #requestModal,#approvalConfirmModal,#deleteConfirmModal,#detailModal
+) .dialog-head {
+  background:var(--am-module-elevated) !important;
+  border-color:var(--am-module-border) !important;
+  color:var(--am-module-text) !important;
 }
 
 /* Neutral reusable form controls. Excludes datepicker/map widgets, status pills,
