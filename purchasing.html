@@ -104,6 +104,25 @@
   }
 }
 </style>
+
+<style id="amanah-received-material-cost-style">
+@media screen {
+  .po-received-cost-panel{margin:14px 0 0;padding:14px 16px;border-radius:11px;border:1px solid #aec9e6;background:#f0f6fc;color:#223650;font-size:11px;line-height:1.5}
+  .po-received-cost-heading{font-weight:900;font-size:11px;letter-spacing:.07em;margin-bottom:9px}
+  .po-received-cost-description{color:inherit}
+  .po-received-cost-summary{display:flex;gap:12px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #bdd1e4}
+  .po-received-cost-row{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #d3e2ef;padding:8px 0}
+  .po-received-cost-row strong{font-variant-numeric:tabular-nums;text-align:right}
+  .po-received-cost-hint{margin:10px 0 0;font-size:10px;color:#465e7e}
+  #detailPostMaterialCostButton:not([disabled]){background:#0a9b71;color:#fff;border:1px solid #0c815f}
+  #detailPostMaterialCostButton[disabled]{opacity:.7;cursor:not-allowed}
+  html[data-amanah-mode="dark"] .po-received-cost-panel{background:#1b2e46!important;color:#e4eeff!important;border-color:#486383!important}
+  html[data-amanah-mode="dark"] .po-received-cost-row,html[data-amanah-mode="dark"] .po-received-cost-summary{border-color:#405771!important}
+  html[data-amanah-mode="dark"] .po-received-cost-hint{color:#c4d4e7!important}
+  html[data-amanah-mode="dark"] .po-received-cost-row strong{color:#f4f8ff!important}
+}
+@media print{.po-received-cost-panel,#detailPostMaterialCostButton{display:none!important}}
+</style>
 </head>
 <body>
 <main class="page">
@@ -203,7 +222,7 @@
   <div class="modal">
     <div class="modal-head"><h3 id="detailTitle">PURCHASE REQUEST DETAILS</h3><button class="modal-x" id="closeDetail" type="button">×</button></div>
     <div class="form-section" id="detailBody"></div>
-    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn blue" id="detailPickupButton" type="button" style="display:none">REQUEST MATERIALS PICKUP</button><button class="btn green" id="detailDeliverButton" type="button" style="display:none">DELIVER TO SITE</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
+    <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn blue" id="detailPickupButton" type="button" style="display:none">REQUEST MATERIALS PICKUP</button><button class="btn green" id="detailDeliverButton" type="button" style="display:none">DELIVER TO SITE</button><button class="btn green" id="detailPostMaterialCostButton" type="button" style="display:none" disabled>POST RECEIVED COST</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
   </div>
 </div>
 
@@ -493,7 +512,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="purchasing.js?v=52"></script>
+<script src="purchasing.js?v=53"></script>
 <script src="amanah-ui.js?v=38"></script>
 </body>
 </html>
