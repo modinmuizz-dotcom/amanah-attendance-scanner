@@ -1,4 +1,4 @@
-/* AMANAH account and appearance settings. Client-side preferences are device-specific. */
+/* AMANAH per-account appearance & security settings (Supabase Auth). */
 (function () {
   'use strict';
   if (window.__AMANAH_SETTINGS_READY__) return;
@@ -10,7 +10,7 @@
   const METADATA_KEY = 'amanah_appearance_v1';
   const SUPABASE_URL = 'https://bafmycjninxomufhkjvy.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
-  const defaultPreferences = () => ({ theme: 'blue', compact: false });
+  const defaultPreferences = () => ({ theme: 'blue', mode: 'light', compact: false });
   let preferences = defaultPreferences();
   let currentUserId = null;
   let authClient = null;
@@ -24,7 +24,7 @@
   function normalizePreferences(raw) {
     if (!raw || typeof raw !== 'object') return null;
     if (raw.theme !== 'blue' && raw.theme !== 'gold') return null;
-    return { theme: raw.theme, compact: raw.compact === true };
+    return { theme: raw.theme, mode: raw.mode === 'dark' ? 'dark' : 'light', compact: raw.compact === true };
   }
 
   function readAccountCache(userId) {
@@ -99,10 +99,16 @@
 
   function applyPreferences() {
     document.documentElement.setAttribute('data-amanah-theme', preferences.theme);
+    document.documentElement.setAttribute('data-amanah-mode', preferences.mode === 'dark' ? 'dark' : 'light');
     document.documentElement.setAttribute('data-amanah-density', preferences.compact ? 'compact' : 'comfortable');
     if (!overlay) return;
     overlay.querySelectorAll('[data-amanah-theme-choice]').forEach(button => {
       const active = button.dataset.amanahThemeChoice === preferences.theme;
+      button.setAttribute('aria-pressed', String(active));
+      button.classList.toggle('is-selected', active);
+    });
+    overlay.querySelectorAll('[data-amanah-mode-choice]').forEach(button => {
+      const active = button.dataset.amanahModeChoice === preferences.mode;
       button.setAttribute('aria-pressed', String(active));
       button.classList.toggle('is-selected', active);
     });
@@ -122,7 +128,7 @@
     applyPreferences();
     writeAccountCache(accountId, snapshot);
     setAppearanceMessage('Saving to your personal AMANAH account…');
-    // Queue rapid theme/compact changes so the latest account preference wins.
+    // Queue rapid palette/mode/compact changes so the latest user preference wins.
     writes = writes.catch(() => {}).then(async () => {
       if (currentUserId !== accountId || sessionRevision !== version) return;
       const client = getClient();
@@ -185,13 +191,27 @@
       '      </div>',
       '    </div>',
       '    <div class="amanah-settings-section"><h3>Appearance</h3>',
-      '      <p class="amanah-settings-help">Your theme is personal to your login and follows you across AMANAH modules and devices.</p>',
+      '      <p class="amanah-settings-help">Choose your colors and workspace brightness. Saved privately to your AMANAH login and synchronized across devices.</p>',
+      '      <div class="amanah-settings-subheading">COLOR PALETTE</div>',
       '      <div class="amanah-settings-themes" role="group" aria-label="Color theme">',
       '        <button type="button" class="amanah-settings-theme" data-amanah-theme-choice="blue" aria-pressed="true">',
       '          <span class="amanah-settings-swatch is-blue"></span><span><strong>Classic Blue</strong><small>Current AMANAH design</small></span>',
       '        </button>',
       '        <button type="button" class="amanah-settings-theme" data-amanah-theme-choice="gold" aria-pressed="false">',
       '          <span class="amanah-settings-swatch is-gold"></span><span><strong>AMANAH Gold</strong><small>Gold, black &amp; white</small></span>',
+      '        </button>',
+      '      </div>',
+      '      <div class="amanah-settings-subheading amanah-settings-mode-heading">WORKSPACE MODE</div>',
+      '      <div class="amanah-settings-modes" role="group" aria-label="Workspace mode">',
+      '        <button type="button" class="amanah-settings-mode-card" data-amanah-mode-choice="light" aria-pressed="true">',
+      '          <span class="amanah-mode-preview is-light" aria-hidden="true"><span class="amanah-preview-sidebar"></span><span class="amanah-preview-window"><i></i><i></i><b></b></span></span>',
+      '          <span class="amanah-mode-caption"><strong><span aria-hidden="true">☀</span> Light Mode</strong><small>Clean, bright workspace</small></span>',
+      '          <span class="amanah-mode-check" aria-hidden="true">✓</span>',
+      '        </button>',
+      '        <button type="button" class="amanah-settings-mode-card" data-amanah-mode-choice="dark" aria-pressed="false">',
+      '          <span class="amanah-mode-preview is-dark" aria-hidden="true"><span class="amanah-preview-sidebar"></span><span class="amanah-preview-window"><i></i><i></i><b></b></span></span>',
+      '          <span class="amanah-mode-caption"><strong><span aria-hidden="true">☾</span> Dark Mode</strong><small>Soft contrast for low light</small></span>',
+      '          <span class="amanah-mode-check" aria-hidden="true">✓</span>',
       '        </button>',
       '      </div>',
       '      <label class="amanah-settings-toggle" for="amanahCompactMode">',
@@ -222,6 +242,12 @@
       if (choice) {
         if (!currentUserId) return setAppearanceMessage('Sign in before changing your theme.', true);
         preferences.theme = choice.dataset.amanahThemeChoice;
+        savePreferences();
+      }
+      const modeChoice = event.target.closest('[data-amanah-mode-choice]');
+      if (modeChoice) {
+        if (!currentUserId) return setAppearanceMessage('Sign in before changing workspace mode.', true);
+        preferences.mode = modeChoice.dataset.amanahModeChoice === 'dark' ? 'dark' : 'light';
         savePreferences();
       }
     });
