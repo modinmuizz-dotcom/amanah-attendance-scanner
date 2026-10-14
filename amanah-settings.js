@@ -11,8 +11,13 @@
   const SUPABASE_URL = 'https://bafmycjninxomufhkjvy.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
   const defaultPreferences = () => ({ theme: 'blue', mode: 'light', compact: false });
-  let preferences = defaultPreferences();
-  let currentUserId = null;
+  // The early bootstrap already selected this login's appearance.
+  // Don't reset to Light Mode while Supabase confirms the session.
+  const boot = window.__AMANAH_THEME_BOOT;
+  let preferences = boot?.userId
+    ? (normalizePreferences(boot.preferences) || defaultPreferences())
+    : defaultPreferences();
+  let currentUserId = boot?.userId || null;
   let authClient = null;
   let overlay = null;
   let previouslyFocused = null;
@@ -53,8 +58,8 @@
     editRevision++;
     // Use the signed-in user's session metadata immediately to avoid a
     // Light Mode flash before the fresh account preferences finish loading.
-    preferences = normalizePreferences(user?.user_metadata?.[METADATA_KEY]) ||
-      readAccountCache(userId) || defaultPreferences();
+    preferences = readAccountCache(userId) ||
+      normalizePreferences(user?.user_metadata?.[METADATA_KEY]) || defaultPreferences();
     if (userId) writeAccountCache(userId, preferences);
     applyPreferences();
     setAppearanceMessage('');
@@ -399,7 +404,7 @@
   }
 
   window.AMANAH_SETTINGS = { refreshCurrentUser };
-  applyPreferences();  // Safe default while the account identity is being resolved.
+  applyPreferences();  // Retain the authenticated account first-paint appearance.
   watchAuthentication();
   refreshCurrentUser();
 })();
