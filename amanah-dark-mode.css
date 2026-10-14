@@ -1,0 +1,407 @@
+/*
+ * AMANAH DARK WORKSPACE
+ * Independent of Classic Blue / AMANAH Gold palette. No database migration.
+ * Scoped to management pages and settings modal, never printouts, leaflet maps,
+ * evidence photographs, approval-state colors, or the public QR scanner.
+ */
+@media screen {
+html[data-amanah-mode="dark"] {
+  color-scheme:dark;
+  --am-night-bg:#0a1120;
+  --am-night-surface:#152031;
+  --am-night-surface-2:#1b293c;
+  --am-night-surface-3:#233348;
+  --am-night-sidebar:#0b1424;
+  --am-night-border:#34445c;
+  --am-night-text:#eaf1fc;
+  --am-night-muted:#b2c1d4;
+  --am-night-dim:#95a8bf;
+  --am-night-shadow:0 12px 35px rgba(0,0,0,.23);
+  --amanah-bg:#0a1120 !important;
+  --amanah-line:#34445c !important;
+  --amanah-text:#eaf1fc !important;
+  --amanah-muted:#b2c1d4 !important;
+  --gray-bg:#0a1120;
+  --border:#34445c;
+  --bg:#0a1120;
+  --card:#152031;
+  --text:#eaf1fc;
+  --muted:#b2c1d4;
+  --shadow:0 12px 35px rgba(0,0,0,.22);
+  --gray100:#1b293c;
+  --gray200:#34445c;
+  --gray300:#4a5e78;
+  --gray50:#1b293c;
+  --gray500:#b2c1d4;
+  --gray700:#eaf1fc;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active,
+html[data-amanah-mode="dark"] body.amanah-common-active :is(.page,.container,.app),
+html[data-amanah-mode="dark"] :is(.main-shell,.app-shell) {
+  background:var(--am-night-bg) !important;
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active {
+  background-image:radial-gradient(ellipse at 100% 0%,rgba(59,105,166,.075),transparent 48%) !important;
+}
+/* Beautiful restrained dark navigation, consistent with both accent palettes. */
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar) {
+  background:linear-gradient(180deg,#0c1627 0%,#09101d 100%) !important;
+  border-color:#24344b !important;
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-nav-section,.nav-section){color:#a1b3cc !important}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-nav-item,.nav-item):not(.active){color:#cfdaea !important}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-user-card,.user-card){
+  background:rgba(255,255,255,.05) !important;border-color:#2b3c54 !important;
+}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-side-search,.sidebar-search){
+  background:#18253a !important;border-color:#3a4a62 !important;color:#fff !important;
+}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-side-search,.sidebar-search)::placeholder{color:#a8b7cb}
+html[data-amanah-mode="dark"] :is(#amanahSidebar,.sidebar)
+:is(.amanah-sidebar-logout,.sidebar-logout){
+  background:#e3eaf4 !important;color:#152235 !important;
+}
+/* The shared topbar and Equipment History standalone topbar */
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar){
+  background:#131e2d !important;color:var(--am-night-text) !important;
+  border-color:#2d3e54 !important;
+  box-shadow:0 4px 20px rgba(0,0,0,.13) !important;
+}
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar)
+:is(.amanah-breadcrumb,.breadcrumb){color:#a6bad1 !important}
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar)
+:is(.amanah-breadcrumb strong,.breadcrumb strong){color:#eff5ff !important}
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar)
+:is(.amanah-top-right,.topbar-right){color:#d7e4f4}
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar)
+:is(.amanah-icon-btn,.icon-btn,.amanah-local-ai,.local-ai){color:#bed0e2 !important}
+html[data-amanah-mode="dark"] :is(#amanahTopbar,.main-shell>.topbar)
+:is(.amanah-top-avatar,.top-avatar){background:#304361 !important;color:#fff !important}
+/* Entire card hierarchy: consistent surface levels, borders, elevated dialogs. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .section-card,.card,.panel,.approval-panel,.rp-panel,.rp-intro,.rp-role-card,
+  .payroll-panel,.payroll-control-card,.payroll-summary-card,.rp-summary-card,
+  .metric,.metrics>div,.summary-card,.report-card,.report-toolbar,.fp-panel,
+  .fp-metrics>div,.ls-panel,.ls-metrics>div,.activity-summary-card,
+  .form-card,.detail-card,.detail-box,.photo-card,.photo-frame,
+  .equipment-box,.schedule-badge,.hero-chip,.summary-panel,.filter-panel,
+  .settings-card,.approval-card,.form-section,
+  .maintenance-card,.report-section,.workflow-panel,.tab-panel,
+  .history-panel,.project-card,.equipment-card
+),
+html[data-amanah-mode="dark"] .main-shell :is(.card,.metric,.detail-card,.detail-item,.modal-section) {
+  background:var(--am-night-surface) !important;
+  color:var(--am-night-text) !important;
+  border-color:var(--am-night-border) !important;
+  box-shadow:var(--am-night-shadow);
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .panel-head,.panel-header,.section-header,.ls-header,.rp-panel-header,
+  .payroll-panel-header,.fp-panel-head,.report-head,.approval-panel-header,
+  .table-header,.table-toolbar,.toolbar,.equipment-tools,.tab-header
+) {
+  background:var(--am-night-surface-2) !important;
+  color:var(--am-night-text) !important;
+  border-color:var(--am-night-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .ls-metrics>div,.fp-summary,.review-summary,.rp-selected-user,
+  .manual-payroll-entry-panel,.material-estimate-info,.ls-info,
+  .ls-preview,.payroll-group-summary,.road-structure-box,
+  .detail-grid>.detail-card,.approval-summary-card,.review-card
+) {
+  background:var(--am-night-surface-2) !important;
+  border-color:var(--am-night-border) !important;
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .detail-item,.field-readonly,.manual-payroll-readonly,.material-estimate-project,
+  .ls-confirm-context,.ls-extra-photos,.summary-item,.mini-card,.work-summary,
+  .rp-permission-group-header,.dropdown-menu,.dropdown-panel
+) {
+  background:var(--am-night-surface-3) !important;
+  border-color:var(--am-night-border) !important;
+  color:var(--am-night-text) !important;
+}
+/* Calendar, purchasing, and master data include their own inline color tokens. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .schedule-page,.purchasing-page,.project-page,.attendance-page,
+  .report-page,.dashboard-page,.ls-page,.fp-page,.rp-page,.payroll-page
+){color:var(--am-night-text) !important}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .tabs,.tab-list,.subtabs,.filter-tabs,.form-grid,.schedule-grid
+):not(.form-grid):not(.schedule-grid){
+  background:transparent !important;border-color:var(--am-night-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .tabs .tab,.tabs .tab-button,.tab-button,.filter-tab,.rp-tab,.subtab,
+  .view-tab,.mode-tab
+):not(.active){
+  background:var(--am-night-surface-2) !important;
+  color:var(--am-night-muted) !important;
+  border-color:var(--am-night-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .tabs .tab.active,.tabs .tab-button.active,.tab-button.active,.filter-tab.active
+){
+  background:var(--am-night-surface-3) !important;
+  color:var(--am-night-text) !important;
+  border-color:var(--amanah-polish-accent,#3b82f6) !important;
+}
+/* Table containers, cells and zebra/hover backgrounds */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  table,.table,.table-wrapper,.table-wrap,.ls-tablewrap,.rp-table-wrap
+){background:transparent;color:var(--am-night-text)}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(table,.table) :is(th,td),
+html[data-amanah-mode="dark"] .main-shell table :is(th,td){
+  border-color:var(--am-night-border) !important;
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(table,.table) thead th,
+html[data-amanah-mode="dark"] .main-shell table thead th{
+  background:var(--am-night-surface-2) !important;
+  color:#bacadd !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(table,.table) tbody td,
+html[data-amanah-mode="dark"] .main-shell table tbody td{background:transparent !important}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(table,.table) tbody tr:hover td,
+html[data-amanah-mode="dark"] .main-shell table tbody tr:hover td{
+  background:rgba(115,143,178,.11) !important;
+}
+/* General headings and ordinary readout values (not status badges or map legends). */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .section-card,.card,.panel,.approval-panel,.rp-panel,.fp-panel,.ls-panel,
+  .payroll-panel,.payroll-control-card,.report-card,.summary-card,
+  .metric,.detail-box,.modal-card,.dialog,.fp-dialog,.ls-dialog
+) :is(h1,h2,h3,h4),
+html[data-amanah-mode="dark"] .main-shell :is(.card,.modal,.detail-card) :is(h1,h2,h3,h4){
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .metric strong,.fp-metrics strong,.ls-metrics strong,.rp-summary-card strong,
+  .payroll-summary-card strong,.summary-card strong,.request-title,
+  .rp-role-name,.detail-value,.detail-text,.money,.manual-payroll-header h2,
+  .approval-panel .panel-head h2,.ls-header h2,.rp-panel-header h2,
+  .payroll-panel-header h2,.fp-panel-head h2,.payroll-gross,
+  .report-card strong,.form-heading h2
+),
+html[data-amanah-mode="dark"] .main-shell :is(.metric-value,.detail-item div,.money){
+  color:var(--am-night-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .muted,.helper,.field label,.filter label,.rp-field label,.ls-field label,
+  .payroll-field label,.report-head p,.section-header p,.ls-header p,
+  .rp-panel-header p,.fp-panel-head p,.panel-head p,
+  .metric span,.metric small,.fp-metrics small,.ls-metrics small,
+  .rp-summary-card span,.payroll-summary-card span,.request-sub,.table-subtitle,
+  .form-help,.subtitle,.note,.caption
+):not(.success):not(.error):not(.danger){
+  color:var(--am-night-muted) !important;
+}
+/* Modal dialogs, including dynamic JS-inserted purchasing and repair forms */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .modal,.modal-card,.modal-content,.dialog,.dialog-card,
+  .ls-dialog,.fp-dialog,.rp-dialog,.approval-modal,.confirm-modal,
+  .modal-panel,.drawer,.drawer-content,.review-modal,.confirmation-dialog,
+  .pop-up,.popover,.dropdown-list,.popup-panel,.menu-popover
+),
+html[data-amanah-mode="dark"] .main-shell :is(.modal,.modal-card,.dialog){
+  background:var(--am-night-surface) !important;
+  color:var(--am-night-text) !important;
+  border-color:var(--am-night-border) !important;
+  box-shadow:0 24px 80px rgba(0,0,0,.46) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .modal-head,.modal-header,.dialog-header,.ls-dialog header,.fp-dialog-header,
+  .review-header,.drawer-header,.confirm-header,.modal-footer,.dialog-footer,
+  .form-actions,.modal-actions,.ls-dialog footer,.fp-dialog-footer
+){
+  background:var(--am-night-surface-2) !important;
+  border-color:var(--am-night-border) !important;
+  color:var(--am-night-text) !important;
+}
+/* Every form control stays readable, without touching checkboxes/file uploads/map UI. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="range"]),
+  select,textarea,.input,.select,.textarea,.search-input
+):not(.amanah-side-search),
+html[data-amanah-mode="dark"] .main-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea){
+  background:var(--am-night-surface-2) !important;
+  color:var(--am-night-text) !important;
+  border-color:#4a5e78 !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active
+:is(input,textarea)::placeholder,
+html[data-amanah-mode="dark"] .main-shell :is(input,textarea)::placeholder{color:#9dafc4 !important}
+html[data-amanah-mode="dark"] body.amanah-common-active
+:is(input,select,textarea):focus,
+html[data-amanah-mode="dark"] .main-shell :is(input,select,textarea):focus{
+  border-color:var(--amanah-polish-accent,#3b82f6) !important;
+  box-shadow:0 0 0 3px var(--amanah-polish-focus,rgba(37,99,235,.24)) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active option,
+html[data-amanah-mode="dark"] .main-shell option{
+  background:#18253a;color:#eaf1fc;
+}
+/* Neutral buttons are night surfaces; primary buttons retain brand gold/blue.
+   Approve, reject, danger, warning and status buttons are intentionally excluded. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .button.secondary,.btn-secondary,.btn-gray,.btn-light,.ls-btn.secondary,
+  .fp-btn.secondary,.mini.view,.mini.review,.rp-small-button:not(.primary),
+  .close-button,.modal-x,.ls-back,.fp-back,.btn-outline
+):not(.danger):not(.success):not(.approve):not(.reject),
+html[data-amanah-mode="dark"] .main-shell :is(.btn-secondary,.close,.btn-gray){
+  background:var(--am-night-surface-3) !important;
+  color:var(--am-night-text) !important;
+  border:1px solid var(--am-night-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .button.secondary,.btn-secondary,.btn-gray,.btn-light,.ls-btn.secondary,
+  .fp-btn.secondary,.mini.view,.mini.review,.ls-back,.fp-back
+):not(.danger):not(.success):not(.approve):not(.reject):hover{
+  background:#30425d !important;
+  border-color:var(--amanah-polish-accent,#3b82f6) !important;
+}
+/* Notice: informational panels are tinted night-blue/gold, status colors untouched. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .report-description,.ls-info,.ls-preview,.fp-summary,.rp-security-badge,
+  .review-summary,.submission-note,.manual-payroll-entry-panel,
+  .project-location-info,.road-structure-box,.material-estimate-info
+) {
+  background:var(--am-night-surface-2) !important;
+  color:var(--am-night-text) !important;
+  border-color:#466083 !important;
+}
+/* Hero + badge must remain readable in blue or gold. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .hero,.amanah-common-page-hero,.approval-hero,.fp-hero,.ls-hero
+){
+  background:linear-gradient(115deg,#17263f 0%,#183865 56%,#275b99 100%) !important;
+  color:#fff !important;
+  border:1px solid rgba(125,163,217,.2) !important;
+  box-shadow:0 13px 32px rgba(0,0,0,.21) !important;
+}
+html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active :is(
+  .hero,.amanah-common-page-hero,.approval-hero,.fp-hero,.ls-hero
+){
+  background:linear-gradient(112deg,#181d29 0%,#42361c 60%,#76571e 100%) !important;
+  border-color:rgba(212,175,55,.2) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active
+:is(.hero,.amanah-common-page-hero,.approval-hero,.fp-hero,.ls-hero)
+:is(h1,h2,p,.kicker,small){color:#f7faff !important}
+html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active
+:is(.hero,.amanah-common-page-hero,.approval-hero,.fp-hero,.ls-hero)
+:is(p,.kicker,small){color:#f6e7c2 !important}
+html[data-amanah-mode="dark"] body.amanah-common-active
+:is(.hero-card,.amanah-common-page-hero .hero-card,.hero-badge,.hero-chip) {
+  background:#24344c !important;color:#eff5ff !important;border:1px solid #46607d !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active
+:is(.hero-card,.hero-badge,.hero-chip) :is(strong,small){
+  color:#f3f7ff !important;
+}
+/* Equipment History has a standalone structure. */
+html[data-amanah-mode="dark"] .main-shell .page {color:var(--am-night-text)}
+html[data-amanah-mode="dark"] .main-shell :is(.hero,.modal-head,.section-head){color:var(--am-night-text)}
+html[data-amanah-mode="dark"] .main-shell .hero{
+  background:linear-gradient(115deg,#17263f,#244d83) !important;color:#fff !important;
+}
+html[data-amanah-mode="dark"][data-amanah-theme="gold"] .main-shell .hero{
+  background:linear-gradient(115deg,#181d29,#6c5422) !important;
+}
+html[data-amanah-mode="dark"] .main-shell .hero :is(h1,p,.kicker){color:#fff !important}
+html[data-amanah-mode="dark"] .main-shell :is(.modal,.detail-card,.detail-item) :is(h2,h3,strong){color:var(--am-night-text) !important}
+/* Scrollbar, select dropdown and contrast tweaks. */
+html[data-amanah-mode="dark"] body.amanah-common-active,
+html[data-amanah-mode="dark"] .main-shell,
+html[data-amanah-mode="dark"] .amanah-settings-content {
+  scrollbar-color:#475b79 #182337;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active ::selection,
+html[data-amanah-mode="dark"] .main-shell ::selection{
+  background:var(--amanah-polish-accent,#3b82f6);color:#0c1525;
+}
+
+/* Settings modal is a first-class themed window, not a bright white interruption. */
+html[data-amanah-mode="dark"] .amanah-settings-backdrop {
+  background:rgba(1,5,14,.78);
+}
+html[data-amanah-mode="dark"] .amanah-settings-dialog{
+  background:#151f2f !important;color:#eaf1fc !important;
+  border:1px solid #3c516c !important;
+  box-shadow:0 32px 98px rgba(0,0,0,.65) !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-heading{
+  background:linear-gradient(120deg,#172338,#263952) !important;
+  border-bottom:1px solid #425571 !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-heading :is(h2,p){color:#f0f5ff !important}
+html[data-amanah-mode="dark"] .amanah-settings-section{border-color:#374b64 !important}
+html[data-amanah-mode="dark"] .amanah-settings-section h3,
+html[data-amanah-mode="dark"] .amanah-settings-toggle strong,
+html[data-amanah-mode="dark"] .amanah-settings-profile strong,
+html[data-amanah-mode="dark"] .amanah-settings-theme strong,
+html[data-amanah-mode="dark"] .amanah-mode-caption strong,
+html[data-amanah-mode="dark"] #amanahChangePasswordForm label{
+  color:#ecf3ff !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-subheading,
+html[data-amanah-mode="dark"] .amanah-settings-help,
+html[data-amanah-mode="dark"] .amanah-settings-profile span,
+html[data-amanah-mode="dark"] .amanah-settings-toggle small,
+html[data-amanah-mode="dark"] .amanah-settings-theme small,
+html[data-amanah-mode="dark"] .amanah-mode-caption small{
+  color:#b2c2d9 !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-profile{
+  background:#1c2b3f !important;border-color:#40516a !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-profile>div{border-color:#34465d !important}
+html[data-amanah-mode="dark"] :is(.amanah-settings-theme,.amanah-settings-mode-card){
+  background:#19283c !important;color:#edf3ff !important;
+  border-color:#405573 !important;
+}
+html[data-amanah-mode="dark"] :is(.amanah-settings-theme,.amanah-settings-mode-card).is-selected{
+  background:#27354a !important;border-color:var(--amanah-polish-accent,#3b82f6) !important;
+}
+html[data-amanah-mode="dark"] :is(.amanah-settings-theme,.amanah-settings-mode-card):hover{
+  border-color:var(--amanah-polish-accent,#3b82f6) !important;
+  box-shadow:0 7px 22px rgba(0,0,0,.2) !important;
+}
+html[data-amanah-mode="dark"] #amanahChangePasswordForm input {
+  background:#19283c !important;
+  color:#f0f5ff !important;
+  border-color:#48617b !important;
+}
+html[data-amanah-mode="dark"] #amanahChangePasswordForm input::placeholder{color:#9eafc5}
+html[data-amanah-mode="dark"] .amanah-settings-footer {
+  background:#18263a !important;border-color:#3b4e68 !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-footer span{color:#b3c4d9 !important}
+html[data-amanah-mode="dark"] .amanah-settings-footer button {
+  background:#283950 !important;color:#ecf3ff !important;border-color:#506681 !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-message:not(.is-error) {
+  background:#153b31 !important;color:#abf5d0 !important;border-color:#29684f !important;
+}
+html[data-amanah-mode="dark"] .amanah-settings-message.is-error {
+  background:#4a2530 !important;color:#ffd3da !important;border-color:#905365 !important;
+}
+html[data-amanah-mode="dark"] #amanahPasswordSave{
+  background:var(--amanah-polish-accent,#3b82f6) !important;
+  color:var(--amanah-polish-on-accent,#fff) !important;
+}
+html[data-amanah-mode="dark"] :is(.amanah-settings-dialog,.amanah-settings-footer)
+button:focus-visible{
+  outline:2px solid var(--amanah-polish-accent,#3b82f6) !important;
+  outline-offset:2px;
+}
+} /* end screen-only dark mode */
