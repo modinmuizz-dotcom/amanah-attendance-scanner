@@ -405,3 +405,359 @@ button:focus-visible{
   outline-offset:2px;
 }
 } /* end screen-only dark mode */
+
+
+/* =====================================================================
+ * AMANAH DARK CONTRAST REFINEMENT — 2026-10-14
+ * Applied only on screen + only for the signed-in user's Dark Mode.
+ * Preserve the meaning of colored statuses, legends and progress bars.
+ * ===================================================================== */
+@media screen {
+  html[data-amanah-mode="dark"] {
+    --am-night-bg:#090f1c;
+    --am-night-surface:#162235;
+    --am-night-surface-2:#1d2b3f;
+    --am-night-surface-3:#253750;
+    --am-night-border:#3b506c;
+    --am-night-text:#f0f5ff;
+    --am-night-muted:#c0cce0;
+    --am-night-dim:#aebed4;
+  }
+
+  /* DASHBOARD: dark panels and bright, distinct statistic values */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(.cards > .card,.dashboard-dual-charts > .panel,.cost-dashboard-panel,.project-progress-future,main.container > .panel) {
+    background:#162235 !important;
+    background-image:none !important;
+    color:#f0f5ff !important;
+    border:1px solid #38506c !important;
+    box-shadow:0 12px 28px rgba(0,0,0,.18) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.heading h1,.panel-header h2,.cost-chart-heading h2) {
+    color:#f5f8ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.heading p,.cost-chart-heading p,.project-progress-future .panel-header p) {
+    color:#c0cde1 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card {
+    background:linear-gradient(145deg,#17263b 0%,#132033 100%) !important;
+    border-color:#3a4e69 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-label {
+    color:#c2d0e4 !important;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:.025em;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-value {
+    color:#fff !important;
+    font-weight:900;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 15px rgba(159,188,245,.17);
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-blue {border-left:5px solid #5590ff !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-green {border-left:5px solid #37c9a1 !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-orange {border-left:5px solid #f6a450 !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cards .card-red {border-left:5px solid #f77d8e !important;}
+  html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active .cards .card-value {
+    text-shadow:0 0 15px rgba(212,175,55,.20);
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.dashboard-dual-charts .panel-header,.cost-dashboard-panel .panel-header,main.container > .panel > .panel-header) {
+    background:#1b2a40 !important;
+    color:#f0f5ff !important;
+    border-bottom:1px solid #3b506b !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-toolbar label {
+    color:#c7d4e5 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.cost-chart-toolbar .refresh,main.container > .panel .refresh) {
+    background:#263a56 !important;
+    border:1px solid #46607f !important;
+    color:#f0f5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.cost-chart-toolbar .refresh,main.container > .panel .refresh):hover {
+    background:#304965 !important;
+    border-color:var(--amanah-polish-accent,#5590ff) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-select {
+    background:#17273d !important;
+    border-color:#516989 !important;
+    color:#f2f7ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-overview {
+    background:#162235 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-card {
+    background:linear-gradient(165deg,#263750,#1e2f45) !important;
+    border:1px solid #4b6380 !important;
+    box-shadow:0 4px 13px rgba(0,0,0,.09) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-card:nth-child(1) {border-top:3px solid #5590ff !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-card:nth-child(2) {border-top:3px solid #2ec5a2 !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-card:nth-child(3) {border-top:3px solid #ffbf63 !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-name {
+    color:#bed0e5 !important;
+    font-weight:900;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-summary-value {
+    color:#fff !important;
+    font-weight:900;
+    text-shadow:0 0 12px rgba(138,180,255,.13);
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.cost-chart-summary-sub,.cost-chart-legend,.cost-chart-project small,.cost-chart-figure span,.cost-chart-line-sub) {
+    color:#bfccdf !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-body {
+    background:#162235 !important;
+    color:#f0f5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-topline strong {
+    color:#f5f8ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-entry {
+    background:#203149 !important;
+    border:1px solid #3c5270 !important;
+    color:#f0f5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-entry:hover {
+    border-color:#729ac6 !important;
+    background:#253a56 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-project a {
+    color:#edf4ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-project a:hover {
+    color:#a4c7ff !important;
+  }
+  html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active .cost-chart-project a:hover {
+    color:#f2d887 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-meter {
+    background:#344962 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-figure strong:not(.warn):not(.over):not(.missing) {
+    color:#94baff !important;
+  }
+  html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active .cost-chart-figure strong:not(.warn):not(.over):not(.missing) {
+    color:#f0d177 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-figure strong.missing {
+    color:#c5d4e8 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .cost-chart-blank {
+    background:#203049 !important;
+    border:1px dashed #4b6483 !important;
+    color:#c6d3e4 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .project-progress-future-body {
+    background:linear-gradient(150deg,#18263b,#101d2f) !important;
+    color:#f0f5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .project-progress-future-icon {
+    background:#243750 !important;
+    border:1px dashed #6483a9 !important;
+    opacity:1 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .project-progress-future-body h3 {
+    color:#edf3ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .project-progress-future-body p {
+    color:#c4d2e5 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .project-progress-future-body span {
+    color:#acbfd6 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active main.container > .panel :is(table,thead,tbody,.table-wrap) {
+    background:#162235 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active main.container > .panel th {
+    background:#25374e !important;
+    color:#c6d6eb !important;
+    border-color:#3e5371 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active main.container > .panel td {
+    background:#18283b !important;
+    color:#edf3ff !important;
+    border-color:#344d68 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active main.container > .panel tbody tr:hover td {
+    background:#253d57 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active main.container > .panel td.empty {
+    color:#bccbde !important;
+  }
+
+  /* PAYROLL: forms open as true dark dialogs, rather than white cards with dark inputs. */
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-card,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-overlay .payroll-claim-card,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-delete-overlay .payroll-delete-dialog {
+    background:#162236 !important;
+    color:#f1f5ff !important;
+    border:1px solid #425775 !important;
+    box-shadow:0 25px 75px rgba(0,0,0,.48) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-header,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-delete-head,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-overlay .manual-payroll-header {
+    background:#20324a !important;
+    border-bottom:1px solid #405875 !important;
+    color:#eff5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-header h2,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-delete-body h2,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-card h2 {
+    color:#fff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(.manual-payroll-header p,.payroll-delete-body p,.payroll-claim-card p) {
+    color:#c6d4e7 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .payroll-kicker {
+    color:var(--amanah-polish-accent,#8fbcff) !important;
+    font-weight:900 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .payroll-field label,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-card .payroll-field label {
+    color:#c9d7ea !important;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.045em;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-body {
+    background:#162236 !important;
+    color:#eff5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-readonly {
+    background:#23354e !important;
+    color:#f5f8ff !important;
+    border:1px solid #506783 !important;
+    font-weight:850;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+    background:#1e3048 !important;
+    color:#f4f7ff !important;
+    border:1px solid #59708e !important;
+    caret-color:#f5f8ff;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(input,textarea)::placeholder {
+    color:#afc1d9 !important;
+    opacity:1;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(input,select,textarea):focus {
+    outline:none;
+    border-color:var(--amanah-polish-accent,#8fbcff) !important;
+    box-shadow:0 0 0 3px var(--amanah-polish-focus,rgba(100,150,240,.3)) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(option,optgroup) {
+    background:#1e3048 !important;
+    color:#f4f7ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(.manual-payroll-entry-panel,.payroll-group-summary,.payroll-delete-details) {
+    background:#21354d !important;
+    border-color:#47607d !important;
+    color:#f2f6ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(.manual-entry-caption,.payroll-group-summary span) {
+    color:#a8c7f9 !important;
+  }
+  html[data-amanah-mode="dark"][data-amanah-theme="gold"] body.amanah-common-active .manual-payroll-card :is(.manual-entry-caption,.payroll-group-summary span) {
+    color:#f0d27c !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card :is(.payroll-group-summary strong,.group-labor-project-note) {
+    color:#e8f1ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .manual-payroll-preview {
+    background:#123c34 !important;
+    border:1px solid #307d67 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .manual-payroll-preview span,
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .manual-payroll-preview small {
+    color:#b8f4df !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .manual-payroll-preview strong {
+    color:#d2ffed !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-actions,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-card .manual-payroll-actions,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-delete-actions {
+    background:#1b2c43 !important;
+    border-top:1px solid #3d536f !important;
+    color:#f4f7ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-close,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-delete-x {
+    background:#30435d !important;
+    border-radius:8px;
+    color:#f1f5ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-modal .manual-payroll-close:hover {
+    background:#3c536f !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .button.secondary,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-card .button.secondary {
+    background:#2a3b54 !important;
+    color:#f0f5ff !important;
+    border:1px solid #4c6585 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .manual-payroll-card .button.primary,
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-claim-card .button.primary {
+    background:var(--amanah-polish-accent,#3479f6) !important;
+    color:var(--amanah-polish-on-accent,#fff) !important;
+    border:1px solid transparent !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page :is(.payroll-control-card,.payroll-panel,.payroll-summary-card) {
+    background:#162235 !important;
+    color:#edf4ff !important;
+    border-color:#405570 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page :is(.payroll-control-card h2,.payroll-panel-header h2,.payroll-summary-card strong,.payroll-gross,.payroll-table td strong) {
+    color:#f3f7ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page :is(.payroll-control-card p,.payroll-panel-header p,.payroll-summary-card span,.payroll-table td .payroll-sub) {
+    color:#bbcbe0 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page .payroll-panel-header {
+    background:#1d2b40 !important;
+    border-color:#3a506d !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page .payroll-table th {
+    background:#263850 !important;
+    color:#c5d6e9 !important;
+    border-color:#415875 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page .payroll-table td {
+    color:#eff4ff !important;
+    border-color:#3c536e !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .payroll-page .payroll-table .payroll-input {
+    background:#253750 !important;
+    color:#f4f8ff !important;
+    border-color:#536e8e !important;
+  }
+
+  /* Shared light-only accents inside non-dashboard management pages. */
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(
+    .card-header,.cost-summary-card,.dashboard-card,.report-summary-card,
+    .estimate-card,.estimate-summary,.form-panel,.form-group-card,
+    .modal-body,.modal-content,.dialog-content,.details-card,
+    .purchase-summary,.supplier-card,.purchase-request-card,
+    .project-summary-card,.activity-summary,.maintenance-summary,
+    .workflow-card,.review-card,.financial-summary,.finance-stat,
+    .empty-state-card,.summary-box,.information-panel
+  ):not(.success):not(.error):not(.warning) {
+    background:#1b2b41 !important;
+    color:#edf4ff !important;
+    border-color:#3f5674 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(
+    .modal-card,.dialog-card,.purchase-modal-card,.review-modal-card,
+    .supplier-modal-card,.approval-dialog,.form-modal-card
+  ) :is(h2,h3,h4) {
+    color:#f3f7ff !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(
+    .modal-card,.dialog-card,.purchase-modal-card,.review-modal-card,
+    .supplier-modal-card,.approval-dialog,.form-modal-card
+  ) :is(label,.muted,.hint,.help-text) {
+    color:#c6d3e7 !important;
+  }
+} /* end contrast refinement */
