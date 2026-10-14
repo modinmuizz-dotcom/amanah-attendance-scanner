@@ -125,8 +125,8 @@
 
   async function fillAccount() {
     const node = ensureOverlay();
-    node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || 'Not assigned';
-    node.querySelector('#amanahSettingsName').textContent = document.getElementById('amanahCurrentUserName')?.textContent || 'AMANAH User';
+    node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || document.querySelector('.sidebar .user-role')?.textContent || 'Not assigned';
+    node.querySelector('#amanahSettingsName').textContent = document.getElementById('amanahCurrentUserName')?.textContent || document.querySelector('.sidebar .user-name')?.textContent || 'AMANAH User';
     node.querySelector('#amanahSettingsEmail').textContent = 'Checking session…';
     const client = getClient();
     if (!client || !client.auth) {
@@ -142,8 +142,8 @@
       node.querySelector('#amanahSettingsEmail').textContent = email;
       node.querySelector('#amanahSettingsName').textContent =
         user?.user_metadata?.full_name || user?.user_metadata?.name ||
-        document.getElementById('amanahCurrentUserName')?.textContent || email.split('@')[0];
-      node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || 'Not assigned';
+        document.getElementById('amanahCurrentUserName')?.textContent || document.querySelector('.sidebar .user-name')?.textContent || email.split('@')[0];
+      node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || document.querySelector('.sidebar .user-role')?.textContent || 'Not assigned';
     } catch (_) {
       if (!node.hidden) node.querySelector('#amanahSettingsEmail').textContent = 'Unable to load account';
     }
