@@ -102,7 +102,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=1';
+      settingsScript.src='amanah-settings.js?v=2';
       document.head.appendChild(settingsScript);
     }
 
