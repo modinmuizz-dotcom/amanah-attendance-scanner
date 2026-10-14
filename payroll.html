@@ -242,7 +242,7 @@
       <div>
         <div class="payroll-kicker">MANUAL PAYROLL ENTRY</div>
         <h2 id="manualPayrollTitle">ADD EMPLOYEE TO PAYROLL</h2>
-        <p>This entry is for employees who do not use the AMANAH attendance scanner.</p>
+        <p>Manual payroll for employees without attendance scans. Select a project if these wages should be charged to a specific construction site after payment.</p>
       </div>
       <button id="manualPayrollClose" class="manual-payroll-close" type="button" aria-label="Close">×</button>
     </div>
@@ -274,6 +274,13 @@
         <div class="payroll-field">
           <label>RATE</label>
           <div id="manualPayrollRate" class="manual-payroll-readonly">₱0.00</div>
+        </div>
+        <div class="payroll-field" style="grid-column:1/-1">
+          <label for="manualPayrollProject">CHARGE PAID LABOR TO PROJECT (OPTIONAL)</label>
+          <select id="manualPayrollProject" aria-describedby="manualPayrollProjectHelp">
+            <option value="">No project — Office / General Overhead</option>
+          </select>
+          <small id="manualPayrollProjectHelp" class="group-labor-project-note">A selected project's labor cost is recorded only when this employee's paycheck is actually released. Leave blank for overhead employees.</small>
         </div>
       </div>
 
@@ -326,7 +333,7 @@
       <div>
         <div class="payroll-kicker">GROUP LABOR PAYROLL</div>
         <h2 id="groupLaborTitle">ADD GROUP LABOR</h2>
-        <p>Choose the project, then enter the group labor rate and accomplished meters. Costs are added to that project's Project Cost Control when payroll is saved.</p>
+        <p>Choose the project, then enter the group labor rate and accomplished meters. The cost is posted to the chosen project's Project Cost only after this Group Labor paycheck is actually released.</p>
       </div>
       <button id="groupLaborClose" class="manual-payroll-close" type="button" aria-label="Close">×</button>
     </div>
@@ -338,7 +345,7 @@
           <select id="groupLaborProject" required aria-required="true" aria-describedby="groupLaborProjectNote">
             <option value="">Select project</option>
           </select>
-          <small id="groupLaborProjectNote" class="group-labor-project-note">Required. Saved group labor expenses will be recorded under the selected project.</small>
+          <small id="groupLaborProjectNote" class="group-labor-project-note">Required. Group Labor is charged to this project after the approved paycheck is paid, not when payroll is saved.</small>
         </div>
         <div class="payroll-field">
           <label for="groupLaborName">GROUP NAME</label>
@@ -378,7 +385,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="amanah-direct-print.js?v=2"></script>
   <script src="amanah-payroll-print.js?v=2"></script>
-  <script src="payroll.js?v=18"></script>
+  <script src="payroll.js?v=19"></script>
   <script src="amanah-ui.js?v=38"></script>
 </body>
 </html>
