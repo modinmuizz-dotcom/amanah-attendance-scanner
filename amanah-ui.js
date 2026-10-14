@@ -113,7 +113,7 @@
       const darkStyle=document.createElement('link');
       darkStyle.id='amanahDarkModeStyle';
       darkStyle.rel='stylesheet';
-      darkStyle.href='amanah-dark-mode.css?v=2';
+      darkStyle.href='amanah-dark-mode.css?v=3';
       document.head.appendChild(darkStyle);
     }
     if(!document.getElementById('amanahSettingsScript')){
