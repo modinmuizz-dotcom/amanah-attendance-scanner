@@ -125,6 +125,32 @@
 }
 @media print{.po-received-cost-panel,#detailPostMaterialCostButton{display:none!important}}
 </style>
+
+<style id="amanah-po-finalize-style">
+@media screen{
+ .po-finalize-modal{width:min(740px,96vw);max-height:calc(100vh - 32px);overflow:auto}
+ .po-finalize-secondary{color:#71859e;font-size:11px;font-weight:650;margin-top:5px}
+ .po-finalize-warning{padding:14px 16px;background:#fff8e4;border:1px solid #f0c56a;border-left:4px solid #c48a23;border-radius:12px;color:#584017;font-size:12px;line-height:1.55}
+ .po-finalize-warning strong{font-size:11px;letter-spacing:.08em}
+ .po-finalize-warning p{margin:8px 0 0}
+ .po-finalize-file{margin-top:18px}
+ .po-finalize-file-preview{margin-top:11px;padding:12px;border:1px dashed #adc1d8;border-radius:10px;background:#f3f8fe;font-size:12px;color:#243c5d}
+ .po-finalize-file-preview img{display:block;max-width:100%;max-height:190px;object-fit:contain;border-radius:8px;margin-top:8px}
+ .po-finalize-confirm{display:flex;align-items:flex-start;gap:9px;padding:15px 0;font-size:11px;color:#344861;line-height:1.5}
+ .po-finalize-confirm input{width:17px;height:17px;flex-shrink:0;margin-top:1px}
+ .po-finalize-error{padding:10px 12px;color:#9a2424;background:#fff0ef;border:1px solid #f1b5b5;border-radius:9px;font-size:11px}
+ .po-locked-evidence{padding:13px 14px;margin-top:12px;border:1px solid #76b6a5;border-radius:11px;background:#eaf9f4;color:#154a39;font-size:12px;line-height:1.5}
+ .po-locked-evidence strong{display:block;margin-bottom:6px}
+ .po-locked-evidence button{margin-top:9px}
+ html[data-amanah-mode="dark"] .po-finalize-warning{background:#352d1d!important;color:#f0dbac!important;border-color:#977840!important}
+ html[data-amanah-mode="dark"] .po-finalize-file-preview{background:#1d3048!important;color:#e8f2ff!important;border-color:#486584!important}
+ html[data-amanah-mode="dark"] .po-finalize-confirm{color:#d3e1f0!important}
+ html[data-amanah-mode="dark"] .po-locked-evidence{background:#183a35!important;color:#daf9ed!important;border-color:#3d796a!important}
+ html[data-amanah-mode="dark"] .po-finalize-secondary{color:#c5d4e9!important}
+ html[data-amanah-mode="dark"] .po-finalize-error{background:#432629!important;color:#ffe2dc!important;border-color:#9a5151!important}
+}
+@media print{#poFinalizeReceiptModal,.po-locked-evidence{display:none!important}}
+</style>
 </head>
 <body>
 <main class="page">
@@ -225,6 +251,41 @@
     <div class="modal-head"><h3 id="detailTitle">PURCHASE REQUEST DETAILS</h3><button class="modal-x" id="closeDetail" type="button">×</button></div>
     <div class="form-section" id="detailBody"></div>
     <div class="modal-actions"><button class="btn gray" id="closeDetailButton" type="button">CLOSE</button><button class="btn blue" id="detailEditButton" type="button" style="display:none">EDIT PURCHASE ORDER</button><button class="btn blue" id="detailPrintButton" type="button" style="display:none">PRINT / SAVE PDF</button><button class="btn blue" id="detailPickupButton" type="button" style="display:none">REQUEST MATERIALS PICKUP</button><button class="btn green" id="detailDeliverButton" type="button" style="display:none">DELIVER TO SITE</button><button class="btn green" id="detailPostMaterialCostButton" type="button" style="display:none" disabled>POST RECEIVED COST</button><button class="btn green" id="detailPrimaryAction" type="button"></button></div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="poFinalizeReceiptModal" role="dialog" aria-modal="true" aria-labelledby="poFinalizeTitle" style="display:none;z-index:40010">
+  <div class="modal po-finalize-modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="poFinalizeTitle">FINALIZE PURCHASE ORDER • RECEIPT REQUIRED</h3>
+        <div id="poFinalizeNumber" class="po-finalize-secondary"></div>
+      </div>
+      <button class="modal-x" type="button" id="poFinalizeClose" aria-label="Close">×</button>
+    </div>
+    <div class="form-section">
+      <div class="po-finalize-warning">
+        <strong>PERMANENT FINALIZATION</strong>
+        <p>Only RECEIVED, priced material quantities will be posted to Project Cost. After the posting succeeds and your receipt is attached, this Purchase Order will be CLOSED and locked: EDIT, MANAGE SUPPLY, DELIVER TO SITE, DELETE, and any further receiving will not be allowed.</p>
+        <p id="poFinalizeUnreceived"></p>
+      </div>
+      <div class="field po-finalize-file">
+        <label for="poFinalizeReceipt">PAYMENT RECEIPT / MATERIAL RECEIPT PHOTO EVIDENCE <span style="color:#e45a5a">*</span></label>
+        <input type="file" id="poFinalizeReceipt" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+        <div class="po-finalize-secondary">JPG, PNG, WEBP or PDF • maximum 10 MB • private attachment retained in the Purchase Order</div>
+        <div id="poFinalizeFilePreview" class="po-finalize-file-preview">No receipt selected</div>
+      </div>
+      <label class="po-finalize-confirm">
+        <input type="checkbox" id="poFinalizeAcknowledge">
+        <span>I confirm that the receipt is genuine, and I understand this PO cannot be edited or managed after finalization. Any unreceived quantities will remain unposted.</span>
+      </label>
+      <div id="poFinalizeError" class="po-finalize-error" style="display:none" role="alert"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn gray" id="poFinalizeCancel" type="button">CANCEL</button>
+      <button class="btn green" id="poFinalizeSubmit" type="button" disabled>ATTACH RECEIPT &amp; FINALIZE PO</button>
+    </div>
   </div>
 </div>
 
@@ -515,7 +576,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="purchasing.js?v=54"></script>
+<script src="purchasing.js?v=55"></script>
 <script src="amanah-ui.js?v=38"></script>
 </body>
 </html>
