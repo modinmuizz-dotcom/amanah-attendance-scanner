@@ -371,6 +371,10 @@ async function logout() {
 
 function showLoginScreen() {
 
+  // An expired session can land on this login screen from another section.
+  // Remove the first-paint guard only when the login view is actually ready.
+  window.__AMANAH_THEME_BOOT?.reveal?.();
+
   document
     .getElementById('loginScreen')
     .classList.remove('hidden');
