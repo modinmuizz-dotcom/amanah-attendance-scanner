@@ -504,7 +504,7 @@ async function handleForm(e){
  if(ls.mode==='payment'){
   const response=await confirmLumpAction({
    title:'Confirm Payment Release',
-   message:'Confirm this money was actually released. Recording the payment will update the contract ledger.',
+   message:'Confirm this amount was ACTUALLY PAID. Recording it will update the contract payment ledger and post exactly the paid amount to Project Cost. Unpaid certified billings remain excluded.',
    context:money(v.amount)+' • '+(v.kind||'PAYMENT')+' • Reference: '+(v.reference||'Not provided'),
    confirmLabel:'RECORD PAYMENT',tone:'success'
   });
@@ -542,7 +542,10 @@ async function handleForm(e){
    });
   }
   $('lsModal').classList.remove('open');$('lsModal').setAttribute('aria-hidden','true');
-  clearBillingPhotoPreviews();ls.mode=null;notify('Saved successfully. Ledger and photo evidence refreshed.');
+  clearBillingPhotoPreviews();const wasPayment=ls.mode==='payment';ls.mode=null;
+  notify(wasPayment
+    ? 'Payment recorded. The paid amount has been added once to the assigned project\'s actual Lump-Sum labor cost.'
+    : 'Saved successfully. Unpaid progress billings are not added to Project Cost.');
   await loadAll();
  }catch(err){$('lsFormError').textContent=err.message||'Unable to save record.';}
  finally{ls.saving=false;$('lsSubmit').disabled=false;}
