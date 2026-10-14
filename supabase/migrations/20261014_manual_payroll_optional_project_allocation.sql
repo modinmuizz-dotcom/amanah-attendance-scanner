@@ -218,6 +218,6 @@ begin
  -- a failure here rolls back the entire run, preventing orphan DRAFT headers.
  perform public.amanah_payroll_submit(v_run);
  return v_run;
-end $function$
+end $function$;
 
 COMMIT;
