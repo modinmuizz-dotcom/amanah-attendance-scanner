@@ -92,6 +92,13 @@
       settingsStyle.href='amanah-settings.css?v=1';
       document.head.appendChild(settingsStyle);
     }
+    if(!document.getElementById('amanahGlobalTheme')){
+      const globalTheme=document.createElement('link');
+      globalTheme.id='amanahGlobalTheme';
+      globalTheme.rel='stylesheet';
+      globalTheme.href='amanah-global-theme.css?v=2';
+      document.head.appendChild(globalTheme);
+    }
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
