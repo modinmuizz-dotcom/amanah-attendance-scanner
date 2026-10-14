@@ -344,3 +344,102 @@ html[data-amanah-mode="dark"] body.amanah-common-active :is(
   box-shadow:0 0 0 3px var(--amanah-polish-focus,rgba(96,156,255,.25)) !important;
 }
 } /* end screen-only module dark mode */
+
+
+/* ========================================================================
+ *  DARK-MODE TRANSACTION HOVER — ALL MANAGEMENT MODULES (2026-10-14)
+ *  Consistent low-glare rows. Never lighten a dark row to white.
+ *  Targets row/cell surfaces only: colored approval/status chips, actions,
+ *  progress bars, and chart legends keep their semantic color.
+ *  Screen-only: printed documents are unaffected.
+ * ======================================================================== */
+@media screen {
+  html[data-amanah-mode="dark"] {
+    --amanah-table-hover-bg:#253a52;
+    --amanah-table-hover-fg:#f3f8ff;
+    --amanah-table-hover-muted:#c4d5e8;
+  }
+
+  /* Table rows are sometimes independently painted by the original modules,
+     so recolor both the row and its cells to prevent a pale row showing through
+     transparent cells. Include focus-within for keyboard-accessible navigation. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(table,.table) tbody tr:is(:hover,:focus-within):not(
+    .row-error,.row-warning,.row-danger,.row-success,.row-rejected
+  ),
+  html[data-amanah-mode="dark"] .main-shell table tbody tr:is(:hover,:focus-within):not(
+    .row-error,.row-warning,.row-danger,.row-success,.row-rejected
+  ) {
+    background:#253a52 !important;
+    background-color:var(--amanah-table-hover-bg) !important;
+    color:var(--amanah-table-hover-fg) !important;
+  }
+
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(table,.table) tbody tr:is(:hover,:focus-within):not(
+    .row-error,.row-warning,.row-danger,.row-success,.row-rejected
+  ) > :is(td,th),
+  html[data-amanah-mode="dark"] .main-shell table tbody tr:is(:hover,:focus-within):not(
+    .row-error,.row-warning,.row-danger,.row-success,.row-rejected
+  ) > :is(td,th) {
+    background:#253a52 !important;
+    background-color:var(--amanah-table-hover-bg) !important;
+    color:var(--amanah-table-hover-fg) !important;
+    border-bottom-color:#46607b !important;
+  }
+
+  /* Keep a gentle, consistent indication of which record is focused. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(table,.table) tbody tr:is(:hover,:focus-within) > td:first-child,
+  html[data-amanah-mode="dark"] .main-shell table tbody tr:is(:hover,:focus-within) > td:first-child {
+    box-shadow:inset 3px 0 var(--amanah-polish-accent,#79a9ff);
+  }
+
+  /* Titles and small metadata must remain legible above the darker hover. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(table,.table) tbody tr:is(:hover,:focus-within)
+  :is(.request-title,.requester strong,.cost-chart-project strong,.payroll-employee-name,
+      .history-request-title,.activity-site-name,.employee-name,.project-name) {
+    color:var(--amanah-table-hover-fg) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(table,.table) tbody tr:is(:hover,:focus-within)
+  :is(.request-sub,.requester span,.payroll-sub,.table-subtitle,.history-request-sub,
+      .activity-site-sub,.employee-sub,.project-sub,.muted,.sub) {
+    color:var(--amanah-table-hover-muted) !important;
+  }
+
+  /* Dark-mode non-table transaction rows / selectable list surfaces. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(.transaction-row,.history-row,.approval-row,.payroll-history-row,
+      .purchase-row,.record-row,.request-row,.list-row,.data-row):is(:hover,:focus-within):not(
+      .row-error,.row-warning,.row-danger,.row-success,.row-rejected
+  ) {
+    background:var(--amanah-table-hover-bg) !important;
+    color:var(--amanah-table-hover-fg) !important;
+    border-color:#46607b !important;
+  }
+
+  /* Approval Center's decision counters were still black on dark navy. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(.approval-history-panel .history-summary strong,
+      .approval-metrics .metric strong,
+      .history-summary>div strong) {
+    color:#f3f8ff !important;
+    text-shadow:none !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(.approval-history-panel .history-summary span,
+      .approval-metrics .metric span,
+      .history-summary>div span) {
+    color:#bfcfe4 !important;
+  }
+
+  /* In dark mode all neutral hover surfaces should be subdued. Keep
+     approval/rejection chips and destructive buttons' colors unchanged. */
+  html[data-amanah-mode="dark"] body.amanah-common-active
+  :is(.approval-table,.history-table,.rp-table,.pm-table,.payroll-table,
+      .activity-site-table,.ls-table,.fp-table) tbody tr:is(:hover,:focus-within) {
+    transition:background-color .16s ease, color .16s ease;
+  }
+}
