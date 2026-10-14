@@ -222,6 +222,11 @@ function bind(){
  document.getElementById("detailPickupButton").addEventListener("click",openBulkPickupModal);
  document.getElementById("detailDeliverButton").addEventListener("click",openDeliverSiteModal);
  document.getElementById("detailPostMaterialCostButton").addEventListener("click",postReceivedMaterialsProjectCost);
+ document.getElementById("poFinalizeClose").addEventListener("click",closePoFinalizeReceipt);
+ document.getElementById("poFinalizeCancel").addEventListener("click",closePoFinalizeReceipt);
+ document.getElementById("poFinalizeReceipt").addEventListener("change",updatePoFinalizeReceipt);
+ document.getElementById("poFinalizeAcknowledge").addEventListener("change",updatePoFinalizeReceipt);
+ document.getElementById("poFinalizeSubmit").addEventListener("click",submitPoReceiptFinalization);
  document.getElementById("closeBulkPickup").addEventListener("click",closeBulkPickupModal);
  document.getElementById("cancelBulkPickup").addEventListener("click",closeBulkPickupModal);
  document.getElementById("submitBulkPickup").addEventListener("click",submitBulkPickup);
@@ -1775,37 +1780,148 @@ async function refreshReceivedMaterialPostingPreview(poId){
  }
 }
 
+
+let poFinalizing=false;
+let poFinalizeObjectUrl=null;
+function showPoFinalizeError(text){
+ const box=document.getElementById("poFinalizeError");
+ box.textContent=text;box.style.display="block";
+}
+function updatePoFinalizeReceipt(){
+ const file=document.getElementById("poFinalizeReceipt").files?.[0];
+ const output=document.getElementById("poFinalizeFilePreview");
+ if(poFinalizeObjectUrl){URL.revokeObjectURL(poFinalizeObjectUrl);poFinalizeObjectUrl=null;}
+ output.textContent=file?file.name+" • "+(file.size/1024/1024).toFixed(2)+" MB":"No receipt selected";
+ const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
+ if(file && (!allowed.includes(file.type)||file.size<=0||file.size>10485760)){
+   showPoFinalizeError("Use a JPG, PNG, WEBP or PDF receipt smaller than 10 MB.");
+ }else{
+   document.getElementById("poFinalizeError").style.display="none";
+   if(file && file.type.startsWith("image/")){
+     poFinalizeObjectUrl=URL.createObjectURL(file);
+     const img=document.createElement("img");img.src=poFinalizeObjectUrl;img.alt="Receipt image preview";
+     output.appendChild(img);
+   }
+ }
+ document.getElementById("poFinalizeSubmit").disabled=poFinalizing||
+   !file||file.size<=0||file.size>10485760||!allowed.includes(file.type)||
+   !document.getElementById("poFinalizeAcknowledge").checked;
+}
+function closePoFinalizeReceipt(){
+ if(poFinalizing)return;
+ document.getElementById("poFinalizeReceiptModal").style.display="none";
+ if(poFinalizeObjectUrl){URL.revokeObjectURL(poFinalizeObjectUrl);poFinalizeObjectUrl=null;}
+ document.getElementById("poFinalizeReceipt").value="";
+ document.getElementById("poFinalizeAcknowledge").checked=false;
+}
 async function postReceivedMaterialsProjectCost(){
+ if(!state.activeOrderId||!state.access.canManage)return;
+ const o=state.orders.find(x=>x.purchase_order_id===state.activeOrderId);
+ if(!o || ["CLOSED","CANCELLED"].includes(o.status))return;
+ const rows=state.orderItems.filter(i=>i.purchase_order_id===o.purchase_order_id);
+ const ordered=rows.reduce((n,i)=>n+Number(i.quantity||0),0);
+ const received=rows.reduce((n,i)=>n+Number(i.received_quantity||0),0);
+ const partial=rows.filter(i=>Number(i.quantity||0)>Number(i.received_quantity||0));
+ document.getElementById("poFinalizeNumber").textContent=o.po_no+" • "+o.project_name;
+ document.getElementById("poFinalizeUnreceived").textContent=partial.length
+   ? "WARNING: "+partial.length+" material line(s) are not fully received. Finalizing now permanently ends further receiving for this PO. Only the received quantity will be charged."
+   : "All ordered materials have been received. The received and priced amounts will now be posted.";
+ document.getElementById("poFinalizeReceipt").value="";
+ document.getElementById("poFinalizeAcknowledge").checked=false;
+ document.getElementById("poFinalizeError").style.display="none";
+ updatePoFinalizeReceipt();
+ document.getElementById("poFinalizeReceiptModal").style.display="flex";
+}
+async function submitPoReceiptFinalization(){
+ if(poFinalizing)return;
  const poId=state.activeOrderId;
- if(!poId||!state.access.canManage)return;
- const button=document.getElementById("detailPostMaterialCostButton");
- if(button.disabled)return;
- const po=state.orders.find(row=>row.purchase_order_id===poId);
- const choice=await showConfirm("POST RECEIVED MATERIALS TO PROJECT COST",
-   "Confirm posting only RECEIVED and PRICED material quantities for "+(po?.po_no||"this PO")+
-   ". This creates permanent, auditable Project Cost entries. Future partial receipts can be posted separately.",
-   "POST TO PROJECT COST");
- if(!choice||state.activeOrderId!==poId)return;
- button.disabled=true;
- button.textContent="POSTING RECEIVED COST…";
+ const o=state.orders.find(x=>x.purchase_order_id===poId);
+ const file=document.getElementById("poFinalizeReceipt").files?.[0];
+ if(!o || !state.access.canManage || !poId || !file){
+   return showPoFinalizeError("Select a receipt and confirm the irreversible PO finalization.");
+ }
+ const types={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","application/pdf":"pdf"};
+ if(!types[file.type]||file.size<=0||file.size>10485760){
+   return showPoFinalizeError("Attach a valid JPG, PNG, WEBP or PDF up to 10 MB.");
+ }
+ if(!document.getElementById("poFinalizeAcknowledge").checked){
+   return showPoFinalizeError("Confirm the finalization acknowledgment first.");
+ }
+ const submit=document.getElementById("poFinalizeSubmit");
+ poFinalizing=true;submit.disabled=true;submit.textContent="UPLOADING RECEIPT…";
+ let path=null,completed=false;
  try{
-   const {data,error}=await supabaseClient.rpc("amanah_post_received_materials_project_cost",{
-     p_purchase_order_id:poId
+   const {data:{user},error:authError}=await supabaseClient.auth.getUser();
+   if(authError)throw authError;
+   if(!user?.id)throw new Error("Sign in again before uploading a receipt.");
+   path=poId+"/"+user.id+"/"+crypto.randomUUID()+"."+types[file.type];
+   const {error:uploadError}=await supabaseClient.storage.from("amanah-po-receipts")
+     .upload(path,file,{contentType:file.type,upsert:false,cacheControl:"3600"});
+   if(uploadError)throw uploadError;
+   submit.textContent="POSTING COST & LOCKING PO…";
+   const {data,error}=await supabaseClient.rpc("amanah_finalize_po_received_cost_with_receipt",{
+     p_purchase_order_id:poId,p_receipt_path:path,p_receipt_filename:file.name
    });
    if(error)throw error;
+   completed=true;
+   poFinalizing=false;
+   closePoFinalizeReceipt();
    await Promise.all([loadOrders(),loadRequests()]);
    renderAll();
    await openPODetails(poId);
-   msg(Number(data?.posted_lines||0)>0
-     ?(data.po_no||"Purchase Order")+": "+money(data.posted_amount)+" received material cost posted successfully. Repeating this action will not duplicate previously posted quantities."
-     :"No new received and priced materials remain to post.","ok");
+   msg(o.po_no+" FINALIZED — "+money(data?.posted_total)+" of received material cost recorded. Receipt attached; edits and supply management permanently locked.","ok");
  }catch(error){
-   console.error("Unable to post received project material costs",error);
-   msg("Could not post received materials: "+(error?.message||"Please retry."),"err");
-   await refreshReceivedMaterialPostingPreview(poId);
+   console.error("PO receipt finalization failed",error);
+   // On failure remove only a newly uploaded, unfinalized object; storage
+   // policy refuses deletion if the object was already linked to a final PO.
+   if(path&&!completed){
+     try{await supabaseClient.storage.from("amanah-po-receipts").remove([path]);}catch(_){}
+   }
+   showPoFinalizeError(error.message||"Unable to finalize this Purchase Order.");
+ }finally{
+   poFinalizing=false;submit.disabled=false;
+   submit.textContent="ATTACH RECEIPT & FINALIZE PO";
+   updatePoFinalizeReceipt();
  }
 }
-
+async function openPoPrivateReceipt(path){
+ // Open a placeholder in direct user interaction to avoid popup blockers.
+ const tab=window.open("about:blank","_blank");
+ if(tab)tab.opener=null;
+ try{
+   const {data,error}=await supabaseClient.storage.from("amanah-po-receipts")
+     .createSignedUrl(path,300);
+   if(error)throw error;
+   if(tab)tab.location.href=data.signedUrl;
+   else window.location.href=data.signedUrl;
+ }catch(error){
+   if(tab)tab.close();
+   msg("Unable to open private PO receipt: "+error.message,"err");
+ }
+}
+async function showPoFinalizationRecord(poId){
+ const {data,error}=await supabaseClient.from("amanah_po_cost_finalizations")
+   .select("purchase_order_id,receipt_path,receipt_filename,finalized_at,posted_total,remaining_unreceived_quantity")
+   .eq("purchase_order_id",poId).maybeSingle();
+ if(error){console.warn("Unable to verify PO finalization:",error);return;}
+ if(state.activeOrderId!==poId||!data)return;
+ const root=document.getElementById("poReceivedCostSection");
+ if(!root)return;
+ root.innerHTML='<div class="po-locked-evidence">'+
+   '<strong>FINALIZED • RECEIPT ATTACHED • READ ONLY</strong>'+
+   '<span>Actual received-material cost posted: '+money(data.posted_total)+
+   '. Finalized: '+esc(new Date(data.finalized_at).toLocaleString("en-PH"))+
+   '. Receipt: '+esc(data.receipt_filename)+'.</span>'+
+   '<button class="btn blue" type="button" id="poViewPrivateReceipt">VIEW RECEIPT / PHOTO EVIDENCE</button>'+
+   '<div class="po-finalize-secondary">This Purchase Order cannot be edited, deleted, or managed after cost finalization.</div></div>';
+ document.getElementById("poViewPrivateReceipt").addEventListener("click",()=>openPoPrivateReceipt(data.receipt_path));
+ for(const id of ["detailEditButton","detailPickupButton","detailDeliverButton","detailPostMaterialCostButton"]){
+   document.getElementById(id).style.display="none";
+ }
+ // Remove stale Manage Supply controls from the detail row, including when
+ // another browser finalized the order before the current page refreshed.
+ root.parentElement.querySelectorAll("[data-supply-item]").forEach(button=>button.remove());
+}
 async function deletePurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
  const confirmed=await showConfirm("DELETE PURCHASE ORDER","This will permanently delete "+o.po_no+" and its order lines. The linked Purchase Request will be returned to APPROVED.","DELETE PURCHASE ORDER",true);
