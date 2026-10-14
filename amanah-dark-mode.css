@@ -207,12 +207,12 @@ html[data-amanah-mode="dark"] body.amanah-common-active :is(
 }
 /* Modal dialogs, including dynamic JS-inserted purchasing and repair forms */
 html[data-amanah-mode="dark"] body.amanah-common-active :is(
-  .modal,.modal-card,.modal-content,.dialog,.dialog-card,
+  .modal-backdrop > .modal,.modal-card,.modal-content,.dialog,.dialog-card,
   .ls-dialog,.fp-dialog,.rp-dialog,.approval-modal,.confirm-modal,
   .modal-panel,.drawer,.drawer-content,.review-modal,.confirmation-dialog,
   .pop-up,.popover,.dropdown-list,.popup-panel,.menu-popover
 ),
-html[data-amanah-mode="dark"] .main-shell :is(.modal,.modal-card,.dialog){
+html[data-amanah-mode="dark"] .main-shell :is(.modal-backdrop > .modal,.modal-card,.dialog){
   background:var(--am-night-surface) !important;
   color:var(--am-night-text) !important;
   border-color:var(--am-night-border) !important;
