@@ -313,6 +313,13 @@ function populateManualPayrollEmployees(){
 function openManualPayrollModal(){
   clearMessage();
   populateManualPayrollEmployees();
+  const projectSelect=document.getElementById('manualPayrollProject');
+  projectSelect.innerHTML='<option value="">No project — Office / General Overhead</option>'+
+    payrollProjects.map(project=>
+      '<option value="'+escapeHtml(project.project_id)+'">'+
+      escapeHtml(project.project_name||project.project_id)+' — '+escapeHtml(project.project_id)+'</option>'
+    ).join('');
+  projectSelect.value='';
   document.getElementById('manualPayrollEmployee').value='';
   document.getElementById('manualFullDays').value='0';
   document.getElementById('manualHalfDays').value='0';
@@ -377,6 +384,12 @@ function addManualPayrollEntry(){
     return;
   }
 
+  const chosenProject=document.getElementById('manualPayrollProject').value;
+  if(chosenProject && !payrollProjects.some(p=>p.project_id===chosenProject)){
+    error.textContent='Please select a valid active project, or leave it blank for office overhead.';
+    return;
+  }
+
   const row={
     employeeId:employee.employee_id,
     employeeName:employee.employee_name||'—',
@@ -388,6 +401,7 @@ function addManualPayrollEntry(){
     halfDays,
     hours:0,
     attendanceIds:[],
+    projectId:chosenProject||null,
     source:'MANUAL'
   };
 
@@ -404,7 +418,8 @@ function addManualPayrollEntry(){
   closeManualPayrollModal();
 
   showMessage(
-    row.employeeName+' was added to the payroll register manually.',
+    row.employeeName+' was added to the payroll register manually. '+
+      (chosenProject?'Project expense will post only after paycheck release.':'No project cost will be posted for this office/overhead entry.'),
     'success'
   );
 }
@@ -737,7 +752,8 @@ async function savePayroll(){
      half_days:Number(row.halfDays.toFixed(2)),
      total_hours:Number(row.hours.toFixed(2)),
      gross_pay:Number(grossFor(row).toFixed(2)),
-     attendance_ids:row.attendanceIds||[]
+     attendance_ids:row.attendanceIds||[],
+     project_id:row.projectId||null
    }));
    const groups=groupLaborRows.map(row=>({
      project_id:row.projectId,
@@ -1084,7 +1100,8 @@ async function savePaycheckClaim(event){
    });
    if(error)throw error;
    paycheckClaimBusy=false;closePaycheckClaim();
-   showMessage('Paycheck released successfully. Payment Reference: '+ref+'.','success');
+   showMessage('Paycheck released successfully. Payment Reference: '+ref+
+     '. Linked project labor costs have been posted automatically. Unassigned office/overhead pay remains outside Project Cost.','success');
    await reloadPaycheckPanel();
  }catch(error){
    document.getElementById('paycheckClaimError').textContent=error.message||'Unable to record the payment release.';
