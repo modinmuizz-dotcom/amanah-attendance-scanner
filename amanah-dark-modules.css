@@ -1,0 +1,320 @@
+/*
+ AMANAH Construction Services — Dark Mode module-wide contrast completion
+ Covers the web management workspace. Scoped to a signed-in personal dark-mode
+ choice; does NOT recolor semantic approvals, map progress, photos, or printouts.
+*/
+@media screen {
+html[data-amanah-mode="dark"] {
+  --am-module-bg:#090f1c;
+  --am-module-card:#162235;
+  --am-module-elevated:#1e3048;
+  --am-module-table:#25384f;
+  --am-module-border:#405674;
+  --am-module-text:#f1f6ff;
+  --am-module-secondary:#c5d3e6;
+  --am-module-accent:var(--amanah-polish-accent,#78aaff);
+}
+
+/* All module wrappers inherit dark ink, but embedded leaflet maps and photos remain untouched. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  main.container,main.page,main.reports-container,main.schedule-wrap,
+  main.pm-container,main.activity-site-page,main.rp-page,main.approvals-page,
+  main.fp-page,main.ls-page,main.payroll-page
+) { color:var(--am-module-text) !important; }
+
+/* Screen headings/secondary text that were hardcoded for white canvas. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .page-heading h1,.page-heading h2,.section-header h2,
+  .panel-head h2,.panel-header h2,.rp-panel-header h2,
+  .rp-intro h2,.rp-modal-header h2,.fp-panel-head h2,.fp-dialog h3,
+  .ls-header h2,.ls-gallery-header h2,.activity-panel-header h2,
+  .activity-summary-heading h2,.report-head h2,.modal-head h2,
+  .modal-header h2,.modal-title,.toolbar h2,.card-header h2,
+  .pm-card h2,.pm-title h1,.detail-box h3,.confirm-title
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .page-heading p,.section-header p,.rp-intro p,.rp-panel-header p,
+  .fp-panel-head p,.ls-header p,.ls-gallery-header p,
+  .activity-summary-heading p,.activity-panel-header p,
+  .report-head p,.card-subtitle,.pm-title p,.pm-card-subtitle,
+  .toolbar p,.confirm-subtitle,.confirm-message,.group-labor-project-note
+) { color:var(--am-module-secondary) !important; }
+
+/* Master Data: project types, cost estimates and staff forms. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .project-type-card,.project-detail-section,.road-shouldering-panel,
+  .material-estimate-table-wrap,.material-estimate-modal-card,
+  .material-estimate-panel,.material-estimate-summary,.section-card
+) {
+  background:var(--am-module-card) !important;
+  border-color:var(--am-module-border) !important;
+  color:var(--am-module-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .project-type-card:hover {
+  background:var(--am-module-elevated) !important;
+  border-color:var(--am-module-accent) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .project-type-card strong,.project-detail-section h3,.material-estimate-table tfoot th
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .project-type-card span,.project-detail-section p
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .material-estimate-table thead th,.material-estimate-table tfoot th
+) { background:var(--am-module-table) !important; color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .project-calculated input {
+  background:#12382e !important;color:#c3f9e1 !important;border-color:#34775c !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .material-estimate-qty-input,.material-estimate-description,.material-estimate-unit-price-input
+) { background:var(--am-module-elevated) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+
+/* Roles & Permissions */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .rp-intro,.rp-panel,.rp-summary-card,.rp-role-card,.rp-role-card.system,
+  .rp-modal-card,.rp-selected-user,.rp-permission-group-header,.rp-permission-item
+) { background:var(--am-module-card) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .rp-panel-header,.rp-modal-header,.rp-modal-footer
+) { background:var(--am-module-elevated) !important;border-color:var(--am-module-border) !important;color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .rp-summary-card strong,.rp-role-card h3,.rp-permission-item strong,.rp-permission-group-header
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .rp-summary-card span,.rp-role-meta,.rp-selected-user span,.rp-field label
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .rp-table th {
+  background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .rp-table td {
+  background:var(--am-module-card) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important;
+}
+
+/* General Manager Approval Center: cards, review dialog and decision details.
+   Never recolor approve/reject/cancel statuses or priority accents. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .approval-panel,.approval-modal-card,.review-summary,.history-summary,
+  .history-summary>div,.delete-record-summary
+) { background:var(--am-module-card) !important;border-color:var(--am-module-border) !important;color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .panel-head,.modal-head,.modal-actions
+) { background:var(--am-module-elevated) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .approval-modal-card
+  .detail-card:not(.detail-card-accent-urgent):not(.detail-card-accent-high) {
+  background:var(--am-module-elevated) !important;border-color:var(--am-module-border) !important;color:var(--am-module-text) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .review-summary-main h3,.review-section-title strong,.detail-value,.delete-record-summary strong
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .review-summary-main p,.review-section-title small,.detail-label,.history-summary span
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .approval-table th {
+  background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .modal-x {
+  background:#293c55 !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .modal-x:hover {
+  background:#36506e !important;
+}
+
+/* Financial Manager Payroll Approval Center */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .fp-panel,.fp-dialog,.fp-metrics>div,.fp-summary,.fp-review-list>div
+) { background:var(--am-module-card) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .fp-panel-head,.fp-dialog-head,.fp-dialog-actions
+) { background:var(--am-module-elevated) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .fp-metrics strong,.fp-summary strong,.fp-dialog h3
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .fp-metrics small,.fp-review-remarks label,.fp-panel-head p
+) { color:var(--am-module-secondary) !important; }
+
+/* Lump-sum contracts and photo evidence */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .ls-panel,.ls-confirm-dialog,.ls-gallery-dialog,.ls-photo-preview-card,
+  .ls-subhead,.ls-metrics>div,.ls-confirm-content
+) { background:var(--am-module-card) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .ls-header,.ls-gallery-header,.ls-dialog header,.ls-dialog footer,.ls-confirm-footer
+) { background:var(--am-module-elevated) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .ls-photo-preview-card span,.ls-gallery-header h2,.ls-confirm-dialog h2,
+  .ls-metrics strong,.ls-dialog h2
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .ls-field label,.ls-field small,.ls-metrics small,.ls-header p,.ls-gallery-header p
+) { color:var(--am-module-secondary) !important; }
+
+/* Site Activities: photo cards and full-width attendance/activity tables. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .activity-summary-card,.activity-site-filter-card,.activity-site-panel,
+  .activity-evidence-card,.activity-photo-card
+) { background:var(--am-module-card) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .activity-panel-header {
+  background:var(--am-module-elevated) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .activity-summary-card strong,.activity-site-table td strong,.activity-evidence-header h2
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .activity-summary-card span,.activity-field label,.activity-site-table td small,
+  .activity-evidence-header p,.activity-photo-label
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .activity-site-table th {
+  background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .activity-photo-label {
+  background:var(--am-module-elevated) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .activity-site-table tbody tr:hover {
+  background:#273c57 !important;
+}
+
+/* Activity Calendar, purchasing, suppliers and project cost shared UI */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .schedule-wrap .panel,.page>.panel,.page>.card,
+  .project-picker,.pm-container .project-picker,
+  .metric,.breakdown-card,.detail-card,
+  .filters,.summary-card,.hero-chip,.hero-card,.modal,
+  .equipment-summary:not(.has),.items-toolbar,
+  .detail-hero,.report-toolbar
+) {
+  background:var(--am-module-card) !important;
+  color:var(--am-module-text) !important;
+  border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .schedule-wrap .panel-head,.page .panel-head,.items-toolbar,
+  .page .modal-head,.page .modal-actions,.page .modal-header,.page .modal-footer,
+  .page .filters,.report-head
+) { background:var(--am-module-elevated) !important;border-color:var(--am-module-border) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .metric-value,.metric strong,.detail-hero strong,.detail-card strong,
+  .detail-box strong,.hero-card-value,.pm-hero-card-value
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .metric-label,.metric small,.detail-hero-sub,.detail-card label,
+  .hero-card-label,.pm-hero-card-label,.detail-box h3,.filter label,
+  .field label,.project-picker label,.picker-label,.section-label
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .page .table thead th,.schedule-wrap .table thead th,.page table thead th
+) { background:var(--am-module-table) !important;color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .page .table tbody tr:hover td,.schedule-wrap .table tbody tr:hover td
+) { background:#273a54 !important; }
+
+/* Project Monitoring: the project chooser, activity forms and results.
+   Status colors for Planned/In Progress/Done/Canceled remain unchanged. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .pm-card,.pm-hero-card,.pm-container .project-picker,
+  .pm-equipment-option,.pm-equipment-summary,.activity-intro
+) { background:var(--am-module-card) !important;border-color:var(--am-module-border) !important;color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .pm-card h2,.pm-title h1,.pm-hero-card-value
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .pm-card-subtitle,.pm-title p,.pm-field label,.pm-hero-card-label,
+  .pm-section-tag,.pm-equipment-summary span
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .pm-table thead th {
+  background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .pm-table tbody tr:hover {
+  background:#253954 !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .pm-field :is(#currentProgress,#projectStatus) {
+  background:#1f3651 !important;color:#eaf3ff !important;border-color:#4c698b !important;
+}
+
+/* Attendance: filters, KPI values and confirmation dialogs */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .filters,.summary-card,.delete-modal-card,.delete-modal-header,.delete-modal-actions
+) { background:var(--am-module-card) !important;border-color:var(--am-module-border) !important;color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .summary-label,.field label,.delete-modal-header p,.delete-modal-body p
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .summary-value,.delete-modal-header h3
+) { color:var(--am-module-text) !important; }
+
+/* Maintenance, Repairs and Equipment History detail view cards */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .confirm-modal,.confirm-details,.detail-box,.inline-photo-card,.photo-card
+) {
+  background:var(--am-module-card) !important;
+  color:var(--am-module-text) !important;
+  border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .confirm-title,.confirm-details strong,.inline-photo-label,.inline-photo-card div,.detail-box h3
+) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .confirm-subtitle,.confirm-details span,.toolbar p,.photo-card span
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .confirm-cancel {
+  background:var(--am-module-elevated) !important;color:var(--am-module-text) !important;border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] .main-shell :is(.card,.metric,.modal,.detail-card,.detail-item) {
+  background:var(--am-module-card) !important;
+  border-color:var(--am-module-border) !important;
+  color:var(--am-module-text) !important;
+}
+html[data-amanah-mode="dark"] .main-shell :is(.card,.metric,.detail-card,.detail-item)
+:is(h2,h3,strong) { color:var(--am-module-text) !important; }
+html[data-amanah-mode="dark"] .main-shell .field label {color:var(--am-module-secondary) !important;}
+
+/* Reports: screen dashboard is dark; printed reports are untouched. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .reports-container .report-card,.reports-container .summary-card,
+  .reports-container .report-toolbar,.report-description,.reports-container .report-head
+) {
+  background:var(--am-module-card) !important;
+  color:var(--am-module-text) !important;
+  border-color:var(--am-module-border) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .report-meta,.report-head p,.summary-label
+) { color:var(--am-module-secondary) !important; }
+html[data-amanah-mode="dark"] body.amanah-common-active .reports-container table {
+  background:var(--am-module-card) !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active .reports-container table th {
+  background:var(--am-module-table) !important;color:var(--am-module-secondary) !important;
+}
+
+/* Neutral reusable form controls. Excludes datepicker/map widgets, status pills,
+   colored success/warning/error elements and photo content. */
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .field select,.field textarea,
+  .filter input,.filter select,.rp-field input,.rp-field select,.rp-field textarea,
+  .ls-field input,.ls-field select,.ls-field textarea,
+  .activity-field input,.activity-field select,
+  .pm-field input,.pm-field select,.pm-field textarea,
+  .project-picker select,.cost-chart-select
+) {
+  background:#1e3048 !important;
+  color:#f3f7ff !important;
+  border-color:#59718f !important;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+ .field input,.rp-field input,.ls-field input,.pm-field input,
+ .activity-field input,.filter input
+)::placeholder {
+  color:#adbed4 !important;opacity:1;
+}
+html[data-amanah-mode="dark"] body.amanah-common-active :is(
+  .field input,.field select,.field textarea,
+  .rp-field input,.rp-field select,.rp-field textarea,
+  .ls-field input,.ls-field select,.ls-field textarea
+):focus-visible {
+  border-color:var(--am-module-accent) !important;
+  box-shadow:0 0 0 3px var(--amanah-polish-focus,rgba(96,156,255,.25)) !important;
+}
+} /* end screen-only module dark mode */
