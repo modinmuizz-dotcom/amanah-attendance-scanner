@@ -34,6 +34,76 @@
 <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
 <link id="amanahDarkModeStyle" rel="stylesheet" href="amanah-dark-mode.css?v=3">
 <link id="amanahDarkModulesStyle" rel="stylesheet" href="amanah-dark-modules.css?v=3">
+
+<style id="amanah-po-price-contrast">
+/* Purchase Order price readout: dark-mode values must remain clearly legible.
+   Scoped to the PO editor; Light Mode and print layouts are unaffected. */
+@media screen {
+  #poModal .item-total {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:3px;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    overflow-wrap:anywhere;
+    font-size:12px;
+    font-weight:900;
+    line-height:1.25;
+    min-height:44px;
+    font-variant-numeric:tabular-nums;
+  }
+  #poModal .item-total::before {
+    content:"LINE TOTAL";
+    display:block;
+    font-size:9px;
+    font-weight:850;
+    letter-spacing:.04em;
+    color:#475569;
+  }
+  #poModal .item-row {
+    grid-template-columns:minmax(145px,1.45fr) minmax(125px,1.25fr)
+      minmax(72px,.55fr) minmax(68px,.5fr)
+      minmax(100px,.8fr) minmax(125px,1fr);
+  }
+  #poModal .total-box strong {
+    font-variant-numeric:tabular-nums;
+    font-size:20px;
+  }
+  html[data-amanah-mode="dark"] #poModal .item-total {
+    background:#233751 !important;
+    color:#f3f8ff !important;
+    border:1px solid #546d8d !important;
+    box-shadow:none !important;
+  }
+  html[data-amanah-mode="dark"] #poModal .item-total::before {
+    color:#c6d6e9 !important;
+  }
+  html[data-amanah-mode="dark"] #poModal .item-total span {
+    color:#c6d6e9 !important;
+  }
+  html[data-amanah-mode="dark"] #poModal .total-box,
+  html[data-amanah-mode="dark"] #poModal .total-box span {
+    color:#cbd8eb !important;
+  }
+  html[data-amanah-mode="dark"] #poModal .total-box strong {
+    color:#fff !important;
+    text-shadow:none !important;
+  }
+  @media(max-width:1050px) {
+    #poModal .item-row {
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+  }
+  @media(max-width:700px) {
+    #poModal .item-row {
+      grid-template-columns:1fr;
+    }
+  }
+}
+</style>
 </head>
 <body>
 <main class="page">
@@ -423,7 +493,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="amanah-direct-print.js?v=1"></script>
-<script src="purchasing.js?v=49"></script>
+<script src="purchasing.js?v=50"></script>
 <script src="amanah-ui.js?v=38"></script>
 </body>
 </html>
