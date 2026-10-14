@@ -1691,14 +1691,11 @@ async function refreshReceivedMaterialPostingPreview(poId){
    if(error)throw error;
    if(state.activeOrderId!==poId || document.getElementById("detailTitle")?.dataset.type!=="PO")return;
    const rows=Array.isArray(data?.items)?data.items:[];
-   const totalReceived=rows.reduce((sum,item)=>sum+Number(item.received_quantity||0),0);
-   const postedValue=rows.reduce((sum,item)=>sum+Number(item.posted_quantity||0)*Number(item.unit_price||0),0);
    const eligible=rows.filter(item=>Number(item.unposted_received_quantity)>0 && Number(item.unit_price)>0);
    const pendingUnpriced=rows.filter(item=>Number(item.unposted_received_quantity)>0 &&
       !(Number(item.unit_price)>0));
    const readyTotal=eligible.reduce((sum,item)=>sum+
       Number(item.unposted_amount||0),0);
-   const postedQty=rows.reduce((sum,item)=>sum+Number(item.posted_quantity||0),0);
    if(!data?.eligible_project_materials){
      output.textContent="Cost posting is available only for active PROJECT MATERIALS orders. Maintenance and Repair Materials follow their separate cost processes.";
      action.style.display="none";return;
@@ -1716,8 +1713,8 @@ async function refreshReceivedMaterialPostingPreview(poId){
    ).join("");
    output.innerHTML=
      '<div class="po-received-cost-summary">'+
-       '<span>Received total: <strong>'+esc(totalReceived.toFixed(3))+'</strong></span>'+
-       '<span>Previously posted quantity: <strong>'+esc(postedQty.toFixed(3))+'</strong></span>'+
+       '<span>Received material lines: <strong>'+rows.filter(item=>Number(item.received_quantity)>0).length+'</strong></span>'+
+       '<span>Lines with prior postings: <strong>'+rows.filter(item=>Number(item.posted_quantity)>0).length+'</strong></span>'+
        '<span>Ready to post: <strong>'+money(readyTotal)+'</strong></span>'+
      '</div>'+detail+
      '<p class="po-received-cost-hint">'+(
@@ -1766,8 +1763,6 @@ async function postReceivedMaterialsProjectCost(){
    console.error("Unable to post received project material costs",error);
    msg("Could not post received materials: "+(error?.message||"Please retry."),"err");
    await refreshReceivedMaterialPostingPreview(poId);
- }finally{
-   button.disabled=true;
  }
 }
 
