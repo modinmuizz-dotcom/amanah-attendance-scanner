@@ -1148,8 +1148,9 @@ async function saveSupplyStatus(){
        supply_status:status,
        supply_status_locked:true,
        supply_status_locked_at:new Date().toISOString(),
+       // line_total is GENERATED ALWAYS by PostgreSQL (quantity * unit_price).
+       // Never send it in INSERT or UPDATE payloads.
        unit_price:unitPrice,
-       line_total:unitPrice===null?null:Number((Number(item.quantity||0)*unitPrice).toFixed(2)),
        confirmed_quantity:confirmed,
        ready_for_pickup_quantity:0,
        expected_availability_date:availability,
@@ -1273,10 +1274,48 @@ async function savePurchaseOrder(){
   let poId=state.editingOrderId,poNo="";
   const payload={project_id:d.r.project_id,project_name:d.r.project_name,project_location:d.r.project_location||null,requester_employee_id:d.r.requester_employee_id||null,requester_name:d.r.requester_name||null,purchase_type:normalizePurchaseType(d.r.purchase_type),supplier_id:supplierId,supplier_name:supplier.supplier_name,supplier_contact:contact||null,supplier_address:address||null,po_date:poDate,expected_delivery_date:delivery||null,subtotal:total,tax_amount:0,other_charges:0,grand_total:total,payment_terms:payment||null,delivery_terms:deliveryTerms||null,remarks:remarks||null};
   if(editing){
-    const {data:savedOrder,error}=await supabaseClient.from("purchase_orders")
-      .update(payload).eq("purchase_order_id",poId).select("purchase_order_id").single();
-    if(error)throw error;
-    if(!savedOrder)throw new Error("The purchase order could not be updated.");
+    // Save PO and all existing line items in ONE PostgreSQL transaction.
+    // The old sequential PATCH approach left a ₱25,000 header with a NULL
+    // item price whenever the line_total GENERATED column rejected writes.
+    const atomicItems=d.items.map((it,i)=>({
+      purchase_order_item_id:it.purchase_order_item_id,
+      line_no:i+1,
+      material_name:String(it.material_name).trim(),
+      specifications:String(it.specifications||"").trim()||null,
+      quantity:Number(it.quantity),
+      unit:String(it.unit).trim(),
+      unit_price:it.unit_price===""||it.unit_price===null||it.unit_price===undefined
+        ?null:Number(Number(it.unit_price).toFixed(2))
+    }));
+    if(atomicItems.some(it=>!it.purchase_order_item_id)){
+      throw new Error("The Purchase Order items changed. Refresh this order before editing.");
+    }
+    const {data:result,error:atomicError}=await supabaseClient.rpc(
+      "amanah_save_purchase_order_details",{
+        p_purchase_order_id:poId,
+        p_header:{
+          supplier_id:supplierId,
+          supplier_contact:contact||null,
+          supplier_address:address||null,
+          po_date:poDate,
+          expected_delivery_date:delivery||null,
+          payment_terms:payment||null,
+          delivery_terms:deliveryTerms||null,
+          remarks:remarks||null
+        },
+        p_items:atomicItems
+      }
+    );
+    if(atomicError)throw atomicError;
+    if(!result || Number(result.saved_items)!==atomicItems.length ||
+        Math.abs(Number(result.subtotal)-total)>0.01){
+      throw new Error("The stored Purchase Order total could not be verified. Refresh and review the order.");
+    }
+    closePoModal();
+    await Promise.all([loadRequests(),loadOrders()]);
+    renderAll();
+    msg((result.po_no||"Purchase Order")+" saved successfully — unit prices and totals confirmed.","ok");
+    return;
   }else{
     payload.purchase_request_id=d.r.purchase_request_id;
     payload.purchase_request_no=d.r.request_no;
@@ -1298,8 +1337,8 @@ async function savePurchaseOrder(){
       specifications:String(it.specifications||"").trim()||null,
       quantity:Number(it.quantity),
       unit:String(it.unit).trim(),
+      // Database-generated: line_total automatically follows quantity × unit_price.
       unit_price:unitPrice,
-      line_total:unitPrice===null?null:Number((Number(it.quantity)*unitPrice).toFixed(2)),
       // Keep the original row identity: supplier confirmations, deliveries,
       // pickup requests and history must never disappear when editing the price.
       ...(editing && it.purchase_order_item_id ? {purchase_order_item_id:it.purchase_order_item_id} : {})
