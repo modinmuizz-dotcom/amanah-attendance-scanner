@@ -507,3 +507,138 @@
 }
 .payroll-reference-retry{font-size:10px!important;margin-top:8px;min-height:30px}
 .payroll-reference-retry[hidden]{display:none!important}
+
+
+/* ============================================================
+   AMANAH PAYROLL — CLEAN A4 PRINT (2026-10-14)
+   The management shell adds a 56px top inset, 238px left inset,
+   hero and 100vh minimum height on screen. In print those caused
+   the browser to paginate a mostly blank second sheet.
+   Scope printing to the actual register; preserve natural
+   pagination when payroll rows genuinely extend beyond one page.
+   ============================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  html[data-amanah-theme],
+  html[data-amanah-mode],
+  body,
+  body.amanah-common-active {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    background-image: none !important;
+    color: #111827 !important;
+  }
+
+  /* Print the payroll document, not navigation or dynamic overlays. */
+  body > :not(main.payroll-page):not(script):not(style),
+  body.amanah-common-active > :not(main.payroll-page):not(script):not(style) {
+    display: none !important;
+  }
+
+  body > main.payroll-page,
+  body.amanah-common-active > main.container.payroll-page {
+    display: block !important;
+    position: static !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Only the company header, totals and live payroll tables are printed. */
+  main.payroll-page > :not(.payroll-print-header):not(.payroll-summary-grid):not(.payroll-panel),
+  main.payroll-page > .payroll-history-panel,
+  main.payroll-page .payroll-action-buttons,
+  main.payroll-page .payroll-print-action,
+  main.payroll-page #savePayrollButton {
+    display: none !important;
+  }
+
+  main.payroll-page > .payroll-print-header,
+  main.payroll-page > .payroll-summary-grid,
+  main.payroll-page > .payroll-panel:not(.payroll-history-panel) {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  main.payroll-page > .payroll-panel:not(.payroll-history-panel) {
+    display: block !important;
+    overflow: visible !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  main.payroll-page .payroll-table-wrap {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-width: 0 !important;
+  }
+
+  main.payroll-page .payroll-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  main.payroll-page :is(.payroll-print-header, .payroll-summary-card, .payroll-panel-header) {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  main.payroll-page .payroll-panel-header {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  main.payroll-page .payroll-table thead {
+    display: table-header-group !important;
+  }
+
+  main.payroll-page .payroll-table tbody tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Do not create a second page just to print an empty section wrapper. */
+  main.payroll-page #groupLaborPanel {
+    break-before: auto !important;
+    page-break-before: auto !important;
+    margin: 0 !important;
+  }
+
+  main.payroll-page *,
+  main.payroll-page *::before,
+  main.payroll-page *::after {
+    animation: none !important;
+    transition: none !important;
+    text-shadow: none !important;
+  }
+}
