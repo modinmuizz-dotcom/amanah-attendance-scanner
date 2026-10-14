@@ -1254,33 +1254,104 @@ async function savePurchaseOrder(){
    document.getElementById("poDelivery")?.focus();
    return;
  }
+ if(!d.items.length)return showPOValidation("The Purchase Order must have at least one order item.");
  for(const it of d.items){
-   if(!it.material_name.trim())return msg("Every PO line needs a material name.","err");
-   if(!(Number(it.quantity)>0))return msg("Every PO line needs a quantity greater than zero.","err");
-   if(it.unit_price!=="" && it.unit_price!==null && it.unit_price!==undefined && Number(it.unit_price)<0) return msg("Unit price cannot be negative.","err");
+   if(!String(it.material_name||"").trim())return showPOValidation("Every PO line needs a material name.");
+   if(!(Number(it.quantity)>0)||!Number.isFinite(Number(it.quantity)))return showPOValidation("Every PO line needs a valid quantity greater than zero.");
+   if(!String(it.unit||"").trim())return showPOValidation("Every PO line needs a unit.");
+   if(it.unit_price!=="" && it.unit_price!==null && it.unit_price!==undefined &&
+       (!Number.isFinite(Number(it.unit_price))||Number(it.unit_price)<0))
+     return showPOValidation("Unit price must be blank or a valid amount of zero or more.");
  }
- const total=d.items.reduce((n,x)=>n+(x.unit_price===""||x.unit_price===null||x.unit_price===undefined ? 0 : Number(x.quantity||0)*Number(x.unit_price||0)),0);
+ const total=Number(d.items.reduce((n,x)=>n+
+   (x.unit_price===""||x.unit_price===null||x.unit_price===undefined
+     ? 0 : Number(x.quantity)*Number(x.unit_price)),0).toFixed(2));
+ if(!Number.isFinite(total))return showPOValidation("Please check the unit prices and quantities before saving.");
  const btn=document.getElementById("savePo");btn.disabled=true;btn.textContent=editing?"SAVING CHANGES...":"SAVING...";
  try{
   let poId=state.editingOrderId,poNo="";
-  const payload={project_id:d.r.project_id,project_name:d.r.project_name,project_location:d.r.project_location||null,requester_employee_id:d.r.requester_employee_id||null,requester_name:d.r.requester_name||null,purchase_type:d.normalizePurchaseType(r.purchase_type),supplier_id:supplierId,supplier_name:supplier.supplier_name,supplier_contact:contact||null,supplier_address:address||null,po_date:poDate,expected_delivery_date:delivery||null,subtotal:total,tax_amount:0,other_charges:0,grand_total:total,payment_terms:payment||null,delivery_terms:deliveryTerms||null,remarks:remarks||null};
-  if(editing){const {error}=await supabaseClient.from("purchase_orders").update(payload).eq("purchase_order_id",poId);if(error)throw error;const {error:delErr}=await supabaseClient.from("purchase_order_items").delete().eq("purchase_order_id",poId);if(delErr)throw delErr;}
-  else{payload.purchase_request_id=d.r.purchase_request_id;payload.purchase_request_no=d.r.request_no;payload.status="DRAFT";const {data,error}=await supabaseClient.from("purchase_orders").insert(payload).select("purchase_order_id,po_no").single();if(error)throw error;poId=data.purchase_order_id;poNo=data.po_no;}
-  const items=d.items.map((it,i)=>({
-    purchase_order_id:poId,
-    line_no:i+1,
-    purchase_request_item_id:it.purchase_request_item_id||null,
-    material_name:it.material_name.trim(),
-    specifications:it.specifications?.trim()||null,
-    quantity:Number(it.quantity),
-    unit:it.unit.trim(),
-    unit_price:(it.unit_price===""||it.unit_price===null||it.unit_price===undefined)?null:Number(it.unit_price),
-    supply_status:"PENDING SUPPLIER CONFIRMATION",
-    confirmed_quantity:0,
-    received_quantity:0,
-    substitute_status:"NONE"
-  }));
-  const {error:ierr}=await supabaseClient.from("purchase_order_items").insert(items);if(ierr)throw ierr;
+  const payload={project_id:d.r.project_id,project_name:d.r.project_name,project_location:d.r.project_location||null,requester_employee_id:d.r.requester_employee_id||null,requester_name:d.r.requester_name||null,purchase_type:normalizePurchaseType(d.r.purchase_type),supplier_id:supplierId,supplier_name:supplier.supplier_name,supplier_contact:contact||null,supplier_address:address||null,po_date:poDate,expected_delivery_date:delivery||null,subtotal:total,tax_amount:0,other_charges:0,grand_total:total,payment_terms:payment||null,delivery_terms:deliveryTerms||null,remarks:remarks||null};
+  if(editing){
+    const {data:savedOrder,error}=await supabaseClient.from("purchase_orders")
+      .update(payload).eq("purchase_order_id",poId).select("purchase_order_id").single();
+    if(error)throw error;
+    if(!savedOrder)throw new Error("The purchase order could not be updated.");
+  }else{
+    payload.purchase_request_id=d.r.purchase_request_id;
+    payload.purchase_request_no=d.r.request_no;
+    payload.status="DRAFT";
+    const {data,error}=await supabaseClient.from("purchase_orders")
+      .insert(payload).select("purchase_order_id,po_no").single();
+    if(error)throw error;
+    poId=data.purchase_order_id;poNo=data.po_no;
+  }
+
+  const items=d.items.map((it,i)=>{
+    const unitPrice=(it.unit_price===""||it.unit_price===null||it.unit_price===undefined)
+      ? null:Number(Number(it.unit_price).toFixed(2));
+    return {
+      purchase_order_id:poId,
+      line_no:i+1,
+      purchase_request_item_id:it.purchase_request_item_id||null,
+      material_name:String(it.material_name).trim(),
+      specifications:String(it.specifications||"").trim()||null,
+      quantity:Number(it.quantity),
+      unit:String(it.unit).trim(),
+      unit_price:unitPrice,
+      line_total:unitPrice===null?null:Number((Number(it.quantity)*unitPrice).toFixed(2)),
+      // Keep the original row identity: supplier confirmations, deliveries,
+      // pickup requests and history must never disappear when editing the price.
+      ...(editing && it.purchase_order_item_id ? {purchase_order_item_id:it.purchase_order_item_id} : {})
+    };
+  });
+
+  if(editing){
+    const existingIds=new Set(state.orderItems
+      .filter(x=>x.purchase_order_id===poId).map(x=>x.purchase_order_item_id));
+    for(const row of items){
+      if(row.purchase_order_item_id){
+        if(!existingIds.has(row.purchase_order_item_id))
+          throw new Error("An order item was changed by another user. Refresh the PO and retry.");
+        const {purchase_order_item_id,purchase_order_id,purchase_request_item_id,...editable}=row;
+        const {data:updated,error}=await supabaseClient.from("purchase_order_items")
+          .update(editable)
+          .eq("purchase_order_item_id",purchase_order_item_id)
+          .eq("purchase_order_id",poId)
+          .select("purchase_order_item_id").single();
+        if(error)throw error;
+        if(!updated)throw new Error("An order item could not be updated.");
+      }else{
+        const {error}=await supabaseClient.from("purchase_order_items")
+          .insert({...row,supply_status:"PENDING SUPPLIER CONFIRMATION",
+            confirmed_quantity:0,received_quantity:0,substitute_status:"NONE"});
+        if(error)throw error;
+      }
+    }
+  }else{
+    const {error:ierr}=await supabaseClient.from("purchase_order_items")
+      .insert(items.map(row=>({...row,supply_status:"PENDING SUPPLIER CONFIRMATION",
+        confirmed_quantity:0,received_quantity:0,substitute_status:"NONE"})));
+    if(ierr)throw ierr;
+  }
+
+  // Confirm all edited prices actually persisted before showing success.
+  const {data:savedLines,error:verifyError}=await supabaseClient
+    .from("purchase_order_items")
+    .select("purchase_order_item_id,line_no,quantity,unit_price,line_total")
+    .eq("purchase_order_id",poId).order("line_no");
+  if(verifyError)throw verifyError;
+  if(savedLines?.length!==items.length ||
+      items.some((expected,i)=>{
+        const found=savedLines[i];
+        return !found ||
+          Number(found.line_no)!==expected.line_no ||
+          (expected.unit_price===null ? found.unit_price!==null :
+            Math.abs(Number(found.unit_price)-expected.unit_price)>0.001) ||
+          (expected.line_total===null ? found.line_total!==null :
+            Math.abs(Number(found.line_total)-expected.line_total)>0.01);
+      })){
+    throw new Error("The Purchase Order items or prices were not confirmed as saved. Please refresh and review before proceeding.");
+  }
   const {error:poStatusError}=await supabaseClient.rpc("amanah_refresh_purchase_order_status",{p_purchase_order_id:poId});
   if(poStatusError)throw poStatusError;
 
