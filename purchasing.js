@@ -231,6 +231,7 @@ function bind(){
  document.getElementById("closePo").addEventListener("click",closePoModal);
  document.getElementById("cancelPo").addEventListener("click",closePoModal);
  document.getElementById("savePo").addEventListener("click",savePurchaseOrder);document.getElementById("poSupplier").addEventListener("change",applySelectedSupplier);document.getElementById("closeSupply").addEventListener("click",closeSupplyModal);document.getElementById("cancelSupply").addEventListener("click",closeSupplyModal);document.getElementById("saveSupply").addEventListener("click",saveSupplyStatus);
+ document.getElementById("saveSupplyUnitPrice").addEventListener("click",saveLockedSupplyUnitPrice);
  document.getElementById("supplyStatus").addEventListener("change",()=>{
    const status=document.getElementById("supplyStatus").value;
    const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
@@ -994,6 +995,13 @@ async function openSupplyModal(itemId){
  alt.textContent="SOURCE ALTERNATIVE ("+sourceRemaining.toLocaleString("en-PH",{maximumFractionDigits:3})+" "+(item.unit||"")+")";
 
  document.getElementById("saveSupply").style.display=statusLocked?"none":"inline-block";
+ const priceButton=document.getElementById("saveSupplyUnitPrice");
+ priceButton.style.display=statusLocked&&state.access.canManage&&!["CANCELLED","CLOSED"].includes(order.status)?"inline-block":"none";
+ priceButton.textContent="SAVE UNIT PRICE";
+ const priceInfo=document.getElementById("supplyStatusHelp");
+ if(statusLocked&&priceInfo){
+   priceInfo.innerHTML+='<br><strong>UNIT PRICE CAN STILL BE SAVED:</strong> Enter the confirmed price below and select SAVE UNIT PRICE. This does not change supplier or received quantities. Previously posted costs keep their original price.';
+ }
  document.getElementById("supplyModal").style.display="flex";
 }
 
@@ -1098,6 +1106,38 @@ function closeSupplyModal(){
  document.getElementById("supplyModal").style.display="none";
  state.supplyItemId=null;
  clearSupplyValidation();
+}
+
+async function saveLockedSupplyUnitPrice(){
+ const item=state.orderItems.find(x=>x.purchase_order_item_id===state.supplyItemId);
+ if(!item || !state.access.canManage)return;
+ const raw=document.getElementById("supplyUnitPrice").value;
+ const price=Number(raw);
+ if(!raw.trim() || !Number.isFinite(price) || price<=0){
+   return showSupplyValidation("Enter a Unit Price greater than zero before saving.");
+ }
+ const button=document.getElementById("saveSupplyUnitPrice");
+ button.disabled=true;
+ button.textContent="SAVING PRICE…";
+ try{
+   const {data,error}=await supabaseClient.rpc("amanah_save_po_item_unit_price",{
+     p_purchase_order_item_id:item.purchase_order_item_id,
+     p_unit_price:price
+   });
+   if(error)throw error;
+   closeSupplyModal();
+   await Promise.all([loadOrders(),loadRequests()]);
+   renderAll();
+   await openPODetails(item.purchase_order_id);
+   msg("Unit Price "+money(data?.unit_price)+" saved for "+item.material_name+
+     ". Received and priced quantities can now be posted using POST TO PROJECT COST.","ok");
+ }catch(error){
+   console.error("Saving Unit Price failed",error);
+   showSupplyValidation(error?.message||"Unit Price was not saved. Try again.");
+ }finally{
+   button.disabled=false;
+   button.textContent="SAVE UNIT PRICE";
+ }
 }
 
 async function saveSupplyStatus(){
