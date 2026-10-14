@@ -478,9 +478,11 @@ function renderTransactions() {
         </td>
 
         <td>
-          ${String(item.reference_id || "").startsWith("GROUP-LABOR:")
-            ? '<span style="display:inline-block;padding:7px 10px;border-radius:9px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:800;" title="Managed automatically by the associated Group Labor Payroll record">PAYROLL LINKED</span>'
-            : `<button
+          ${String(item.reference_id || "").startsWith("LUMP-SUM:PAYMENT:")
+            ? '<span class="type-badge" title="Recorded payment managed by the Lump-Sum Contract ledger. This project cost cannot be deleted here.">PAID CONTRACT</span>'
+            : String(item.reference_id || "").startsWith("GROUP-LABOR:") || String(item.reference_id || "").startsWith("PAYROLL-EMPLOYEE:")
+              ? '<span class="type-badge" title="Linked to an actual paid payroll release. Managed from Payroll.">PAID PAYROLL</span>'
+              : `<button
                   class="btn-danger"
                   style="min-height:34px;padding:7px 10px;font-size:10px;"
                   type="button"
