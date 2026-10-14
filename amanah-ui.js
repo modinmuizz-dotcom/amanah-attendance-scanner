@@ -116,6 +116,15 @@
       darkStyle.href='amanah-dark-mode.css?v=3';
       document.head.appendChild(darkStyle);
     }
+    // Screens inherit an additional module-specific dark contrast layer.
+    // This is theme-scoped and never affects print or Light Mode.
+    if(!document.getElementById('amanahDarkModulesStyle')){
+      const moduleStyle=document.createElement('link');
+      moduleStyle.id='amanahDarkModulesStyle';
+      moduleStyle.rel='stylesheet';
+      moduleStyle.href='amanah-dark-modules.css?v=1';
+      document.head.appendChild(moduleStyle);
+    }
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
