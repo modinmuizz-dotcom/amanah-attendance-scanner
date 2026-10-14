@@ -4,19 +4,98 @@
   if (window.__AMANAH_SETTINGS_READY__) return;
   window.__AMANAH_SETTINGS_READY__ = true;
 
-  const PREFERENCES_KEY = 'amanah_ui_preferences_v1';
+  // Preferences are owned by Supabase Auth user ID, never by the whole browser.
+  // Do not migrate the old browser-wide key: it could belong to another user.
+  const ACCOUNT_CACHE_PREFIX = 'amanah_ui_preferences_user_v2:';
+  const METADATA_KEY = 'amanah_appearance_v1';
   const SUPABASE_URL = 'https://bafmycjninxomufhkjvy.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
-  let preferences = { theme: 'blue', compact: false };
+  const defaultPreferences = () => ({ theme: 'blue', compact: false });
+  let preferences = defaultPreferences();
+  let currentUserId = null;
   let authClient = null;
   let overlay = null;
   let previouslyFocused = null;
+  let sessionRevision = 0;
+  let editRevision = 0;
+  let refreshRevision = 0;
+  let writes = Promise.resolve();
 
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY) || '{}');
-    if (saved.theme === 'gold' || saved.theme === 'blue') preferences.theme = saved.theme;
-    preferences.compact = saved.compact === true;
-  } catch (_) { /* Storage may be disabled. Defaults remain usable. */ }
+  function normalizePreferences(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (raw.theme !== 'blue' && raw.theme !== 'gold') return null;
+    return { theme: raw.theme, compact: raw.compact === true };
+  }
+
+  function readAccountCache(userId) {
+    if (!userId) return null;
+    try {
+      return normalizePreferences(JSON.parse(window.localStorage.getItem(ACCOUNT_CACHE_PREFIX + userId) || 'null'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeAccountCache(userId, value) {
+    if (!userId) return;
+    try {
+      window.localStorage.setItem(ACCOUNT_CACHE_PREFIX + userId, JSON.stringify(value));
+    } catch (_) {
+      // Server-side account settings still work when local storage is unavailable.
+    }
+  }
+
+  function useAccount(user) {
+    const userId = user && typeof user.id === 'string' ? user.id : null;
+    if (userId === currentUserId) return;
+    currentUserId = userId;
+    sessionRevision++;
+    editRevision++;
+    preferences = readAccountCache(userId) || defaultPreferences();
+    applyPreferences();
+    setAppearanceMessage('');
+  }
+
+  function setAppearanceMessage(message, error) {
+    if (!overlay) return;
+    const node = overlay.querySelector('#amanahAppearanceMessage');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle('is-error', !!error);
+    node.hidden = !message;
+  }
+
+  // Loads account-specific preferences from Supabase Auth metadata. A per-user
+  // cache lets the same account render offline without leaking settings to others.
+  async function refreshCurrentUser() {
+    const client = getClient();
+    if (!client?.auth) {
+      useAccount(null);
+      return;
+    }
+    const request = ++refreshRevision;
+    try {
+      const { data, error } = await client.auth.getSession();
+      if (request !== refreshRevision) return;
+      if (error) throw error;
+      useAccount(data?.session?.user || null);
+      if (!currentUserId) return;
+      const expectedId = currentUserId;
+      const expectedEdits = editRevision;
+      const { data: fresh, error: freshError } = await client.auth.getUser();
+      if (request !== refreshRevision || expectedId !== currentUserId || expectedEdits !== editRevision) return;
+      if (freshError || fresh?.user?.id !== expectedId) return;
+      const serverPrefs = normalizePreferences(fresh.user.user_metadata?.[METADATA_KEY]);
+      if (serverPrefs) {
+        preferences = serverPrefs;
+        writeAccountCache(expectedId, preferences);
+        applyPreferences();
+      }
+    } catch (error) {
+      // Never reuse the last account's theme when authentication fails.
+      if (request === refreshRevision) console.warn('AMANAH personal theme refresh:', error);
+    }
+  }
 
   function applyPreferences() {
     document.documentElement.setAttribute('data-amanah-theme', preferences.theme);
@@ -32,10 +111,40 @@
   }
 
   function savePreferences() {
+    if (!currentUserId) {
+      setAppearanceMessage('Sign in to change your personal appearance settings.', true);
+      return;
+    }
+    const accountId = currentUserId;
+    const version = sessionRevision;
+    const snapshot = { ...preferences };
+    editRevision++;
     applyPreferences();
-    try {
-      window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
-    } catch (_) { /* Preference still applies to the current page. */ }
+    writeAccountCache(accountId, snapshot);
+    setAppearanceMessage('Saving to your personal AMANAH account…');
+    // Queue rapid theme/compact changes so the latest account preference wins.
+    writes = writes.catch(() => {}).then(async () => {
+      if (currentUserId !== accountId || sessionRevision !== version) return;
+      const client = getClient();
+      if (!client?.auth) throw new Error('Authentication unavailable');
+      const { data, error: identityError } = await client.auth.getUser();
+      if (identityError || data?.user?.id !== accountId) {
+        throw new Error('Your login has changed. Please sign in again.');
+      }
+      if (currentUserId !== accountId || sessionRevision !== version) return;
+      const { error } = await client.auth.updateUser({
+        data: { [METADATA_KEY]: snapshot }
+      });
+      if (error) throw error;
+      if (currentUserId === accountId && sessionRevision === version) {
+        setAppearanceMessage('Saved for your account only.');
+      }
+    }).catch(error => {
+      if (currentUserId === accountId && sessionRevision === version) {
+        setAppearanceMessage('Applied here, but not synced to your account: ' +
+          (error?.message || 'Please try again.'), true);
+      }
+    });
   }
 
   function getClient() {
@@ -76,7 +185,7 @@
       '      </div>',
       '    </div>',
       '    <div class="amanah-settings-section"><h3>Appearance</h3>',
-      '      <p class="amanah-settings-help">Choose your display theme. Your choice is saved only in this browser.</p>',
+      '      <p class="amanah-settings-help">Your theme is personal to your login and follows you across AMANAH modules and devices.</p>',
       '      <div class="amanah-settings-themes" role="group" aria-label="Color theme">',
       '        <button type="button" class="amanah-settings-theme" data-amanah-theme-choice="blue" aria-pressed="true">',
       '          <span class="amanah-settings-swatch is-blue"></span><span><strong>Classic Blue</strong><small>Current AMANAH design</small></span>',
@@ -89,6 +198,7 @@
       '        <span><strong>Compact tables</strong><small>Use less vertical space in management tables</small></span>',
       '        <input id="amanahCompactMode" type="checkbox">',
       '      </label>',
+      '      <div id="amanahAppearanceMessage" class="amanah-settings-message" role="status" aria-live="polite" hidden></div>',
       '    </div>',
       '    <div class="amanah-settings-section"><h3>Change Password</h3>',
       '      <p class="amanah-settings-help">Updates the password for your signed-in AMANAH account.</p>',
@@ -110,11 +220,16 @@
       if (event.target === overlay || event.target.closest('[data-amanah-settings-close]')) closeSettings();
       const choice = event.target.closest('[data-amanah-theme-choice]');
       if (choice) {
+        if (!currentUserId) return setAppearanceMessage('Sign in before changing your theme.', true);
         preferences.theme = choice.dataset.amanahThemeChoice;
         savePreferences();
       }
     });
     overlay.querySelector('#amanahCompactMode').addEventListener('change', event => {
+      if (!currentUserId) {
+        event.target.checked = preferences.compact;
+        return setAppearanceMessage('Sign in before changing your display density.', true);
+      }
       preferences.compact = event.target.checked;
       savePreferences();
     });
@@ -186,7 +301,7 @@
     setMessage('', false);
     applyPreferences();
     node.querySelector('.amanah-settings-close').focus();
-    fillAccount();
+    refreshCurrentUser().then(fillAccount);
   }
 
   function closeSettings() {
@@ -226,6 +341,35 @@
     }
   });
 
-  document.addEventListener('amanah:shell-removed', closeSettings);
-  applyPreferences();
+  document.addEventListener('amanah:shell-removed', () => {
+    ++refreshRevision;
+    closeSettings();
+    useAccount(null);
+  });
+  document.addEventListener('amanah:shell-ready', refreshCurrentUser);
+
+  // Supabase broadcasts sign-in/sign-out changes across browser tabs. Keep the
+  // currently rendered theme scoped to the authenticated account, including on
+  // shared computers where different employees sign in sequentially.
+  function watchAuthentication() {
+    const client = getClient();
+    if (!client?.auth?.onAuthStateChange) return;
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        ++refreshRevision;
+        useAccount(null);
+        closeSettings();
+      } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') &&
+                 session?.user?.id !== currentUserId) {
+        useAccount(session?.user || null);
+        // Avoid awaited Supabase calls inside its auth event callback.
+        Promise.resolve().then(refreshCurrentUser);
+      }
+    });
+  }
+
+  window.AMANAH_SETTINGS = { refreshCurrentUser };
+  applyPreferences();  // Safe default while the account identity is being resolved.
+  watchAuthentication();
+  refreshCurrentUser();
 })();
