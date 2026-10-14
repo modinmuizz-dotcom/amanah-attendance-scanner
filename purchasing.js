@@ -784,7 +784,7 @@ function openPOModal(requestId){
 async function openPOEdit(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
  if(["RECEIVED","CLOSED","CANCELLED"].includes(o.status))return msg("This Purchase Order cannot be edited in its current status.","err");
- state.editingOrderId=id;const req=state.requests.find(x=>x.purchase_request_id===o.purchase_request_id)||{request_no:o.purchase_request_no,project_id:o.project_id,project_name:o.project_name,project_location:o.project_location,requester_employee_id:o.requester_employee_id,requester_name:o.requester_name,purchase_type:normalizePurchaseType(o.purchase_type)};
+ state.editingOrderId=id;const req=state.requests.find(x=>x.purchase_request_id===o.purchase_request_id)||{request_no:o.purchase_request_no,project_id:o.project_id,project_name:o.project_name,project_location:o.project_location,requester_employee_id:o.requester_employee_id,requester_name:o.requester_name,purchase_request_id:o.purchase_request_id,request_no:o.purchase_request_no,purchase_type:normalizePurchaseType(o.purchase_type)};
  state.poDraftRequest={
   r:req,
   items:state.orderItems
@@ -1149,6 +1149,7 @@ async function saveSupplyStatus(){
        supply_status_locked:true,
        supply_status_locked_at:new Date().toISOString(),
        unit_price:unitPrice,
+       line_total:unitPrice===null?null:Number((Number(item.quantity||0)*unitPrice).toFixed(2)),
        confirmed_quantity:confirmed,
        ready_for_pickup_quantity:0,
        expected_availability_date:availability,
@@ -1359,7 +1360,11 @@ async function savePurchaseOrder(){
   if(requestStatusError)throw requestStatusError;
   const existing=state.orders.find(x=>x.purchase_order_id===poId);const savedNo=editing?(existing?.po_no||"Purchase Order"):poNo;
   closePoModal();msg(savedNo+" "+(editing?"updated successfully.":"created successfully."));await Promise.all([loadRequests(),loadOrders()]);renderAll();if(!editing)switchTab("orders");
- }catch(err){console.error(err);msg((editing?"Could not update purchase order: ":"Could not create purchase order: ")+err.message,"err");}
+ }catch(err){
+   console.error("Purchase Order save failed:",err);
+   showPOValidation((editing?"Could not update Purchase Order: ":"Could not create Purchase Order: ")+
+     (err?.message||"Please check your connection and try again."));
+ }
  finally{btn.disabled=false;btn.textContent="SAVE PURCHASE ORDER";}
 }
 function eligiblePickupItems(orderId){
