@@ -232,3 +232,29 @@
 
 /* Verified billings await GM decision in the Approval Center only. */
 .ls-gm-queue-note{display:inline-block;margin:4px 0;padding:7px 9px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;color:#92400e;font-size:10px;line-height:1.45;font-weight:850}
+
+/* Certified work is not project expense until an actual payment is recorded. */
+.ls-accounting-note{
+  margin:0 22px 18px;
+  padding:12px 15px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  border:1px solid #bfd1eb;
+  border-left:4px solid #4181e3;
+  border-radius:10px;
+  background:#f2f6fc;
+  color:#263d60;
+  font-size:11px;
+  line-height:1.55;
+}
+.ls-accounting-note strong{font-size:10px;letter-spacing:.055em;color:#234b86;}
+.ls-accounting-note span{color:inherit;}
+html[data-amanah-mode="dark"] .ls-accounting-note{
+  background:#1b2e46!important;
+  color:#c5d6ec!important;
+  border-color:#425e80!important;
+  border-left-color:var(--amanah-polish-accent,#6c9df7)!important;
+}
+html[data-amanah-mode="dark"] .ls-accounting-note strong{color:#eef4ff!important;}
+@media print{.ls-accounting-note{display:none!important;}}
