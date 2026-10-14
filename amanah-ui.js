@@ -122,7 +122,7 @@
       const moduleStyle=document.createElement('link');
       moduleStyle.id='amanahDarkModulesStyle';
       moduleStyle.rel='stylesheet';
-      moduleStyle.href='amanah-dark-modules.css?v=1';
+      moduleStyle.href='amanah-dark-modules.css?v=2';
       document.head.appendChild(moduleStyle);
     }
     if(!document.getElementById('amanahSettingsScript')){
