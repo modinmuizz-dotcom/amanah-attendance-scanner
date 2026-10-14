@@ -59,6 +59,8 @@
 
   function getCurrentKey(){
     const file=(location.pathname.split('/').pop()||'dashboard.html').toLowerCase();
+    if(file==='finance-payroll.html') return 'financePayroll';
+    if(file==='lump-sum.html') return 'lumpContracts';
     if(file==='equipment-history.html') return 'history';
     if(file==='equipment-maintenance.html') return 'maintenance';
     if(file==='repair-requests.html') return 'repairs';
@@ -98,6 +100,14 @@
       globalTheme.rel='stylesheet';
       globalTheme.href='amanah-global-theme.css?v=2';
       document.head.appendChild(globalTheme);
+    }
+    // Theme-aware visual refinements load after the shared theme palette.
+    if(!document.getElementById('amanahInteractionsStyle')){
+      const interactionsStyle=document.createElement('link');
+      interactionsStyle.id='amanahInteractionsStyle';
+      interactionsStyle.rel='stylesheet';
+      interactionsStyle.href='amanah-interactions.css?v=1';
+      document.head.appendChild(interactionsStyle);
     }
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
