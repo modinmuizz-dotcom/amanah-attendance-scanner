@@ -643,3 +643,19 @@
     text-shadow: none !important;
   }
 }
+
+
+/* Fallback for browsers' File > Print command. The primary PRINT PAYROLL
+   button always uses the dedicated, isolated A4 statement instead. */
+@media print {
+  .payroll-paycheck-panel,
+  #paycheckClaimModal,
+  #payrollDeleteModal,
+  .payroll-claim-overlay {
+    display:none !important;
+  }
+  html[data-payroll-print-scope="individual"] #groupLaborPanel,
+  html[data-payroll-has-groups="no"] #groupLaborPanel {
+    display:none !important;
+  }
+}
