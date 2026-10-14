@@ -1875,10 +1875,22 @@ async function submitPoReceiptFinalization(){
    completed=true;
    poFinalizing=false;
    closePoFinalizeReceipt();
-   await Promise.all([loadOrders(),loadRequests()]);
-   renderAll();
-   await openPODetails(poId);
-   msg(o.po_no+" FINALIZED — "+money(data?.posted_total)+" of received material cost recorded. Receipt attached; edits and supply management permanently locked.","ok");
+   // Database commit is authoritative; don't show a false failure if
+   // reloading a list fails after the irreversible finalization succeeded.
+   msg(o.po_no+" FINALIZED — "+money(data?.posted_total)+
+      " of received material cost recorded. Receipt attached; edits and supply management permanently locked.","ok");
+   try{
+     await Promise.all([loadOrders(),loadRequests()]);
+     renderAll();
+     await openPODetails(poId);
+   }catch(refreshError){
+     console.warn("PO finalized successfully but refresh was interrupted",refreshError);
+     // The server has already sealed this PO. Reloading shows final status.
+     const local=state.orders.find(row=>row.purchase_order_id===poId);
+     if(local)local.status="CLOSED";
+     renderAll();
+     msg("Purchase Order was finalized successfully. Refresh this page to view its private receipt.","ok");
+   }
  }catch(error){
    console.error("PO receipt finalization failed",error);
    // On failure remove only a newly uploaded, unfinalized object; storage
