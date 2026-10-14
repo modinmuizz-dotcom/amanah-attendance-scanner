@@ -583,12 +583,23 @@ function printPayroll(){
     return;
   }
 
-  // Snapshot approved payroll calculations, not browser screen elements.
-  // Every computer prints the same standalone, fixed A4 register.
-  const selected = calculatedPeriod.employeeId
-    ? payrollRows.find(row => String(row.employeeId) === String(calculatedPeriod.employeeId))
+  // Employee-specific prints must match the last calculated payroll filter.
+  // This prevents accidentally printing someone else's payroll after changing
+  // the selector without recalculating the period.
+  const employeeId=String(calculatedPeriod.employeeId||'');
+  if(employeeId!==String(selectedPayrollEmployeeId()||'')){
+    showMessage('The employee selection has changed. Please calculate the payroll again before printing.','error');
+    return;
+  }
+  const selected=employeeId
+    ? payrollRows.find(row=>String(row.employeeId)===employeeId)
     : null;
+  if(employeeId&&!selected){
+    showMessage('No payroll entry was found for the selected employee. Please calculate payroll again.','error');
+    return;
+  }
   const snapshot = {
+    employeeId,
     period: dateText(calculatedPeriod.start)+' – '+dateText(calculatedPeriod.end),
     employeeLabel: selected?.employeeName || (calculatedPeriod.employeeId || 'ALL EMPLOYEES'),
     generated: new Date().toLocaleString('en-PH',{
@@ -596,7 +607,7 @@ function printPayroll(){
       year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',
       hour12:true
     }),
-    employees:payrollRows.map(row=>({
+    employees:(employeeId ? [selected] : payrollRows).map(row=>({
       employeeId:row.employeeId,
       employeeName:row.employeeName,
       department:row.department,
@@ -608,7 +619,7 @@ function printPayroll(){
       hours:row.hours,
       gross:grossFor(row)
     })),
-    groups:groupLaborRows.map(row=>({
+    groups:(employeeId ? [] : groupLaborRows).map(row=>({
       groupName:row.groupName,
       projectId:row.projectId,
       projectName:row.projectName || row.projectId,
@@ -642,7 +653,9 @@ function updateSummary(){
   document.getElementById('payrollGross').textContent=money(gross);
   const hasPayrollRows=payrollRows.length||groupLaborRows.length;
   document.getElementById('savePayrollButton').disabled=!hasPayrollRows||!calculatedPeriod||payrollSaved||payrollSaving;
-  document.getElementById('printPayrollButton').disabled=!hasPayrollRows||!calculatedPeriod;
+  const printButton=document.getElementById('printPayrollButton');
+  printButton.disabled=!hasPayrollRows||!calculatedPeriod;
+  printButton.textContent=calculatedPeriod?.employeeId ? 'PRINT EMPLOYEE PAYROLL' : 'PRINT PAYROLL REGISTER';
 
 }
 
