@@ -110,7 +110,7 @@
       const interactionsStyle=document.createElement('link');
       interactionsStyle.id='amanahInteractionsStyle';
       interactionsStyle.rel='stylesheet';
-      interactionsStyle.href='amanah-interactions.css?v=1';
+      interactionsStyle.href='amanah-interactions.css?v=2';
       document.head.appendChild(interactionsStyle);
     }
     if(!document.getElementById('amanahDarkModeStyle')){
@@ -126,7 +126,7 @@
       const moduleStyle=document.createElement('link');
       moduleStyle.id='amanahDarkModulesStyle';
       moduleStyle.rel='stylesheet';
-      moduleStyle.href='amanah-dark-modules.css?v=2';
+      moduleStyle.href='amanah-dark-modules.css?v=3';
       document.head.appendChild(moduleStyle);
     }
     if(!document.getElementById('amanahSettingsScript')){
