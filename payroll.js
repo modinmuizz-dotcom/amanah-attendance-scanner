@@ -656,6 +656,8 @@ function updateSummary(){
   const printButton=document.getElementById('printPayrollButton');
   printButton.disabled=!hasPayrollRows||!calculatedPeriod;
   printButton.textContent=calculatedPeriod?.employeeId ? 'PRINT EMPLOYEE PAYROLL' : 'PRINT PAYROLL REGISTER';
+  document.documentElement.dataset.payrollPrintScope=calculatedPeriod?.employeeId ? 'individual' : 'register';
+  document.documentElement.dataset.payrollHasGroups=groupLaborRows.length ? 'yes' : 'no';
 
 }
 
@@ -1115,6 +1117,16 @@ document.addEventListener('DOMContentLoaded',async()=>{
   });
   document.getElementById('savePayrollButton').addEventListener('click',savePayroll);
   document.getElementById('printPayrollButton').addEventListener('click',printPayroll);
+  // Ctrl+P / Cmd+P should use the same isolated payroll printer instead of
+  // accidentally printing the whole application screen.
+  document.addEventListener('keydown',event=>{
+    if((event.ctrlKey||event.metaKey) && !event.altKey &&
+        String(event.key).toLowerCase()==='p'){
+      event.preventDefault();
+      event.stopPropagation();
+      printPayroll();
+    }
+  },true);
   document.getElementById('refreshPayrollHistoryButton').addEventListener('click',loadPayrollHistory);
   document.getElementById('payrollHistoryBody').addEventListener('click',event=>{
     const submit=event.target.closest('[data-payroll-submit]');
