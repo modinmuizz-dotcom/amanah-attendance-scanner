@@ -102,7 +102,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=2';
+      settingsScript.src='amanah-settings.js?v=3';
       document.head.appendChild(settingsScript);
     }
 
@@ -226,6 +226,10 @@
       const q=search.value.trim().toLowerCase();
       sidebar.querySelectorAll('.amanah-nav-item').forEach(item=>item.style.display=(!q||item.textContent.toLowerCase().includes(q))?'flex':'none');
     });
+
+    // A fresh workspace may be entered without reloading this shared script
+    // (notably from admin.html after signing in as another employee).
+    document.dispatchEvent(new Event('amanah:shell-ready'));
 
     document.getElementById('amanahSidebarLogout')?.addEventListener('click',async()=>{
       const isAdmin=/admin\.html$/i.test(location.pathname);
