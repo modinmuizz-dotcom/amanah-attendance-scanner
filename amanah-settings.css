@@ -1,0 +1,138 @@
+/* AMANAH account settings – shared by management pages. */
+body.amanah-settings-open { overflow: hidden !important; }
+#amanahSidebar .amanah-user-gear {
+  margin-left:auto; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid transparent; border-radius:8px; color:#cbd5e1;
+  font-size:18px; line-height:1; cursor:pointer; transition:background .15s, color .15s;
+}
+#amanahSidebar .amanah-user-gear:hover,
+#amanahSidebar .amanah-user-gear:focus-visible {
+  background:rgba(255,255,255,.12); color:#fff; border-color:rgba(255,255,255,.15);
+}
+#amanahSidebar .amanah-user-gear:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+
+.amanah-settings-backdrop {
+  position:fixed; inset:0; z-index:2147482000;
+  display:flex; justify-content:center; align-items:center; padding:20px;
+  background:rgba(5,12,26,.68); backdrop-filter:blur(4px); box-sizing:border-box;
+}
+.amanah-settings-backdrop[hidden] { display:none !important; }
+.amanah-settings-backdrop, .amanah-settings-backdrop * { box-sizing:border-box; }
+.amanah-settings-dialog {
+  width:min(640px,100%); max-height:min(820px,92vh); display:flex; flex-direction:column;
+  color:#111827; background:#fff; border:1px solid #dbe2ee; border-radius:17px;
+  box-shadow:0 28px 90px rgba(0,0,0,.3); overflow:hidden; font-family:Arial,Helvetica,sans-serif;
+}
+.amanah-settings-heading {
+  display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
+  padding:23px 26px 20px; background:linear-gradient(125deg,#111827,#24354f); color:#fff;
+}
+.amanah-settings-kicker { color:#c1d2ee; font-weight:900; letter-spacing:1.4px; font-size:10px; margin-bottom:9px; }
+.amanah-settings-heading h2 { font-size:23px; font-weight:900; margin:0; color:#fff; line-height:1.2; }
+.amanah-settings-heading p { color:#d3ddeb; font-size:12px; margin:8px 0 0; line-height:1.4; }
+.amanah-settings-close {
+  display:flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px;
+  background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.22);
+  border-radius:9px; cursor:pointer; font-size:24px; line-height:1;
+}
+.amanah-settings-close:hover { background:rgba(255,255,255,.24); }
+.amanah-settings-content { padding:5px 26px 12px; overflow-y:auto; overscroll-behavior:contain; }
+.amanah-settings-section { padding:19px 0; border-bottom:1px solid #e5eaf2; }
+.amanah-settings-section:last-child { border-bottom:0; }
+.amanah-settings-section h3 { font-size:13px; margin:0 0 13px; font-weight:900; color:#182333; text-transform:uppercase; letter-spacing:.3px; }
+.amanah-settings-help { font-size:12px; line-height:1.55; color:#64748b; margin:0 0 12px; }
+.amanah-settings-profile { background:#f6f8fc; border:1px solid #e3e8f0; border-radius:10px; padding:5px 14px; }
+.amanah-settings-profile > div { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:11px 0; border-bottom:1px solid #e7eaf1; }
+.amanah-settings-profile > div:last-child { border-bottom:0; }
+.amanah-settings-profile span { font-size:11px; font-weight:700; color:#64748b; }
+.amanah-settings-profile strong { font-size:12px; font-weight:800; text-align:right; overflow-wrap:anywhere; }
+.amanah-settings-themes { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.amanah-settings-theme {
+  display:flex; align-items:center; gap:10px; text-align:left; border:2px solid #e4e9f2; border-radius:10px;
+  background:#fff; padding:12px; cursor:pointer; color:#19263b; min-height:74px;
+}
+.amanah-settings-theme:hover { border-color:#94a3b8; }
+.amanah-settings-theme.is-selected { border-color:#2563eb; background:#eff6ff; }
+.amanah-settings-theme strong, .amanah-settings-theme small { display:block; }
+.amanah-settings-theme strong { font-size:12px; font-weight:900; }
+.amanah-settings-theme small { font-size:10px; line-height:1.4; margin-top:5px; color:#64748b; }
+.amanah-settings-swatch { width:29px; height:34px; flex:none; border-radius:7px; border:1px solid #cbd5e1; }
+.amanah-settings-swatch.is-blue { background:linear-gradient(130deg,#111827 0 43%,#2563eb 43% 74%,#fff 74%); }
+.amanah-settings-swatch.is-gold { background:linear-gradient(130deg,#111827 0 43%,#d4af37 43% 74%,#fff 74%); }
+.amanah-settings-toggle { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:15px; cursor:pointer; }
+.amanah-settings-toggle strong,.amanah-settings-toggle small { display:block; }
+.amanah-settings-toggle strong { font-size:12px; color:#182333; }
+.amanah-settings-toggle small { font-size:11px; color:#64748b; margin-top:4px; line-height:1.4; }
+.amanah-settings-toggle input { width:18px; height:18px; flex:none; accent-color:#2563eb; cursor:pointer; }
+#amanahChangePasswordForm { display:grid; gap:8px; }
+#amanahChangePasswordForm label { font-size:11px; font-weight:800; color:#334155; margin-top:3px; }
+#amanahChangePasswordForm input {
+  width:100%; border-radius:8px; border:1px solid #cbd5e1; padding:11px 12px;
+  font-size:13px; background:#fff; color:#0f172a; outline:none;
+}
+#amanahChangePasswordForm input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.amanah-settings-form-actions { display:flex; justify-content:flex-end; margin-top:4px; }
+#amanahPasswordSave {
+  border:0; border-radius:8px; padding:11px 14px; background:#2563eb; color:white;
+  font-size:11px; font-weight:900; cursor:pointer; min-height:37px;
+}
+#amanahPasswordSave:disabled { opacity:.65; cursor:wait; }
+.amanah-settings-message { padding:10px 12px; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;
+  border-radius:8px; font-size:12px; line-height:1.45; margin-top:12px; }
+.amanah-settings-message.is-error { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.amanah-settings-message[hidden] { display:none !important; }
+.amanah-settings-footer { display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border-top:1px solid #e5eaf2; background:#f8fafc; padding:13px 26px; }
+.amanah-settings-footer span { color:#64748b; font-size:11px; }
+.amanah-settings-footer button { cursor:pointer; border-radius:8px; border:1px solid #cbd5e1; color:#1e293b;
+  background:white; min-height:35px; padding:8px 15px; font-size:11px; font-weight:900; }
+.amanah-settings-dialog button:focus-visible, .amanah-settings-dialog input:focus-visible {
+  outline:2px solid #2563eb; outline-offset:2px;
+}
+@media(max-width:600px) {
+  .amanah-settings-backdrop { padding:9px; }
+  .amanah-settings-dialog { max-height:95vh; }
+  .amanah-settings-heading { padding:18px; }
+  .amanah-settings-heading h2 { font-size:20px; }
+  .amanah-settings-content { padding:0 17px 8px; }
+  .amanah-settings-themes { grid-template-columns:1fr; }
+  .amanah-settings-footer { padding:12px 17px; }
+}
+
+/* Appearance: Classic Blue remains the existing unmodified default. */
+html[data-amanah-theme="gold"] {
+  --amanah-blue:#b88a25;
+  --blue:#b88a25;
+  --primary-color:#b88a25;
+}
+html[data-amanah-theme="gold"] #amanahSidebar .amanah-nav-item.active {
+  background:#d4af37 !important; color:#111827 !important;
+  box-shadow:0 4px 14px rgba(212,175,55,.22) !important;
+}
+html[data-amanah-theme="gold"] #amanahSidebar .amanah-nav-item.active svg { stroke:#111827; }
+html[data-amanah-theme="gold"] body.amanah-common-active .hero,
+html[data-amanah-theme="gold"] body.amanah-common-active .amanah-common-page-hero,
+html[data-amanah-theme="gold"] body.amanah-common-active .ls-hero {
+  background:linear-gradient(115deg,#111827 0%,#493c22 56%,#816522 100%) !important;
+  box-shadow:0 10px 28px rgba(91,70,25,.16) !important;
+}
+html[data-amanah-theme="gold"] body.amanah-common-active .hero .kicker,
+html[data-amanah-theme="gold"] body.amanah-common-active .amanah-common-page-hero .kicker,
+html[data-amanah-theme="gold"] body.amanah-common-active .ls-hero small { color:#f5df9e !important; }
+html[data-amanah-theme="gold"] body.amanah-common-active .hero p,
+html[data-amanah-theme="gold"] body.amanah-common-active .amanah-common-page-hero p,
+html[data-amanah-theme="gold"] body.amanah-common-active .ls-hero p { color:#f7ecd0 !important; }
+html[data-amanah-theme="gold"] body.amanah-common-active .ls-btn.primary,
+html[data-amanah-theme="gold"] body.amanah-common-active .button.primary,
+html[data-amanah-theme="gold"] body.amanah-common-active button.primary,
+html[data-amanah-theme="gold"] body.amanah-common-active .btn-primary,
+html[data-amanah-theme="gold"] body.amanah-common-active .primary-button {
+  background:#d4af37 !important; border-color:#d4af37 !important; color:#111827 !important;
+}
+html[data-amanah-theme="gold"] .amanah-settings-theme.is-selected { border-color:#b88a25; background:#fffbeb; }
+html[data-amanah-theme="gold"] .amanah-settings-toggle input { accent-color:#b88a25; }
+html[data-amanah-theme="gold"] #amanahPasswordSave { background:#b88a25; color:#fff; }
+html[data-amanah-density="compact"] body.amanah-common-active table th,
+html[data-amanah-density="compact"] body.amanah-common-active table td { padding:7px 10px !important; }
+html[data-amanah-density="compact"] body.amanah-common-active .ls-panel,
+html[data-amanah-density="compact"] body.amanah-common-active .section-card { margin-bottom:12px !important; }
