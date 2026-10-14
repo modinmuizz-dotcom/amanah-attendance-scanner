@@ -583,9 +583,48 @@ function printPayroll(){
     return;
   }
 
-  updatePrintHeader();
-  document.title='AMANAH Payroll Register';
-  window.print();
+  // Snapshot approved payroll calculations, not browser screen elements.
+  // Every computer prints the same standalone, fixed A4 register.
+  const selected = calculatedPeriod.employeeId
+    ? payrollRows.find(row => String(row.employeeId) === String(calculatedPeriod.employeeId))
+    : null;
+  const snapshot = {
+    period: dateText(calculatedPeriod.start)+' – '+dateText(calculatedPeriod.end),
+    employeeLabel: selected?.employeeName || (calculatedPeriod.employeeId || 'ALL EMPLOYEES'),
+    generated: new Date().toLocaleString('en-PH',{
+      timeZone:'Asia/Manila',
+      year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',
+      hour12:true
+    }),
+    employees:payrollRows.map(row=>({
+      employeeId:row.employeeId,
+      employeeName:row.employeeName,
+      department:row.department,
+      rateType:row.rateType,
+      rate:row.rate,
+      attendanceDays:row.attendanceDays,
+      fullDays:row.fullDays,
+      halfDays:row.halfDays,
+      hours:row.hours,
+      gross:grossFor(row)
+    })),
+    groups:groupLaborRows.map(row=>({
+      groupName:row.groupName,
+      projectId:row.projectId,
+      projectName:row.projectName || row.projectId,
+      activity:row.activity,
+      ratePerMeter:row.ratePerMeter,
+      metersAccomplished:row.metersAccomplished,
+      gross:groupLaborGross(row)
+    }))
+  };
+
+  try{
+    window.AmanahPayrollPrint.print(snapshot);
+  }catch(error){
+    console.error('AMANAH Payroll print error:',error);
+    showMessage('Payroll printing could not start. Refresh and try again. '+(error?.message||''),'error');
+  }
 }
 
 function updateSummary(){
