@@ -51,7 +51,11 @@
     currentUserId = userId;
     sessionRevision++;
     editRevision++;
-    preferences = readAccountCache(userId) || defaultPreferences();
+    // Use the signed-in user's session metadata immediately to avoid a
+    // Light Mode flash before the fresh account preferences finish loading.
+    preferences = normalizePreferences(user?.user_metadata?.[METADATA_KEY]) ||
+      readAccountCache(userId) || defaultPreferences();
+    if (userId) writeAccountCache(userId, preferences);
     applyPreferences();
     setAppearanceMessage('');
   }
