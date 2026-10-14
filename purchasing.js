@@ -1933,9 +1933,26 @@ async function showPoFinalizationRecord(poId){
    '<span>Actual received-material cost posted: '+money(data.posted_total)+
    '. Finalized: '+esc(new Date(data.finalized_at).toLocaleString("en-PH"))+
    '. Receipt: '+esc(data.receipt_filename)+'.</span>'+
+   '<div id="poLockedReceiptThumbnail" class="po-locked-thumbnail"></div>'+
    '<button class="btn blue" type="button" id="poViewPrivateReceipt">VIEW RECEIPT / PHOTO EVIDENCE</button>'+
    '<div class="po-finalize-secondary">This Purchase Order cannot be edited, deleted, or managed after cost finalization.</div></div>';
  document.getElementById("poViewPrivateReceipt").addEventListener("click",()=>openPoPrivateReceipt(data.receipt_path));
+ if(/\.(?:png|jpg|jpeg|webp)$/i.test(data.receipt_path)){
+   // Short-lived authenticated thumbnail, attached to PO Details. Storage
+   // remains PRIVATE and never uses a permanently public receipt URL.
+   const {data:preview,error:previewError}=await supabaseClient.storage
+     .from("amanah-po-receipts").createSignedUrl(data.receipt_path,300);
+   if(!previewError && preview?.signedUrl && state.activeOrderId===poId){
+     const slot=document.getElementById("poLockedReceiptThumbnail");
+     if(slot){
+       const img=document.createElement("img");
+       img.src=preview.signedUrl;
+       img.alt="Attached purchase order receipt evidence";
+       img.loading="lazy";
+       slot.appendChild(img);
+     }
+   }
+ }
  for(const id of ["detailEditButton","detailPickupButton","detailDeliverButton","detailPostMaterialCostButton"]){
    document.getElementById(id).style.display="none";
  }
