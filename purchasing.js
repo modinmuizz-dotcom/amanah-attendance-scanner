@@ -593,7 +593,8 @@ function renderOrders(){
    const unavailable=items.filter(x=>["UNAVAILABLE","BACKORDERED"].includes(String(x.supply_status||"").toUpperCase())).length;
    const pending=items.filter(x=>String(x.supply_status||"").toUpperCase()==="PENDING SUPPLIER CONFIRMATION").length;
    const supplySummary=unavailable?unavailable+" ITEM(S) NEED SUPPLIER ACTION":pending?pending+" ITEM(S) PENDING":"SUPPLY TRACKED";
-   return '<tr><td><strong>'+esc(o.po_no)+'</strong></td><td>'+esc(fmtDate(o.po_date))+'</td><td>'+esc(o.purchase_request_no||"—")+'</td><td><strong>'+esc(o.project_name)+'</strong><br><small style="color:#64748b">'+esc(o.project_location||"")+'</small></td><td>'+esc(o.requester_name||"—")+'</td><td>'+esc(o.supplier_name)+'</td><td>'+esc(fmtDate(o.expected_delivery_date))+'</td><td>'+money(o.grand_total)+'</td><td>'+statusBadge(o.status)+'<br><small style="color:#64748b">'+esc(supplySummary)+'</small></td><td><div class="row-actions"><button class="mini blue" data-po-view="'+esc(o.purchase_order_id)+'">VIEW</button><button class="mini edit" data-po-edit="'+esc(o.purchase_order_id)+'">EDIT</button><button class="mini print" data-po-print="'+esc(o.purchase_order_id)+'">PRINT</button><button class="mini delete" data-po-delete="'+esc(o.purchase_order_id)+'">DELETE</button></div></td></tr>';
+   const isLocked=["CLOSED","CANCELLED"].includes(String(o.status||"").toUpperCase());
+   return '<tr><td><strong>'+esc(o.po_no)+'</strong></td><td>'+esc(fmtDate(o.po_date))+'</td><td>'+esc(o.purchase_request_no||"—")+'</td><td><strong>'+esc(o.project_name)+'</strong><br><small style="color:#64748b">'+esc(o.project_location||"")+'</small></td><td>'+esc(o.requester_name||"—")+'</td><td>'+esc(o.supplier_name)+'</td><td>'+esc(fmtDate(o.expected_delivery_date))+'</td><td>'+money(o.grand_total)+'</td><td>'+statusBadge(o.status)+'<br><small style="color:#64748b">'+esc(supplySummary)+'</small></td><td><div class="row-actions"><button class="mini blue" data-po-view="'+esc(o.purchase_order_id)+'">VIEW</button>'+(!isLocked?'<button class="mini edit" data-po-edit="'+esc(o.purchase_order_id)+'">EDIT</button>':'')+'<button class="mini print" data-po-print="'+esc(o.purchase_order_id)+'">PRINT</button>'+(!isLocked?'<button class="mini delete" data-po-delete="'+esc(o.purchase_order_id)+'">DELETE</button>':'')+'</div></td></tr>';
  }).join(""):'<tr><td colspan="10" class="empty">No purchase orders found.</td></tr>';
  document.querySelectorAll("[data-po-view]").forEach(b=>b.addEventListener("click",()=>openPODetails(b.dataset.poView)));
  document.querySelectorAll("[data-po-edit]").forEach(b=>b.addEventListener("click",()=>openPOEdit(b.dataset.poEdit)));
@@ -941,6 +942,9 @@ async function openSupplyModal(itemId){
  if(!item)return;
  const order=state.orders.find(x=>x.purchase_order_id===item.purchase_order_id);
  if(!order)return;
+ if(["CLOSED","CANCELLED"].includes(order.status)){
+   return msg("This Purchase Order is finalized and locked. Manage Supply is disabled.","err");
+ }
 
  state.supplyItemId=itemId;
  clearSupplyValidation();
@@ -1674,7 +1678,7 @@ async function openPODetails(id){
      '<td>'+esc(i.delivery_reference||"—")+'</td>'+
      '<td>'+money(i.unit_price)+'</td>'+
      '<td>'+money(i.line_total)+'</td>'+
-     '<td><button type="button" class="mini blue" data-supply-item="'+esc(i.purchase_order_item_id)+'">MANAGE SUPPLY</button></td>'+
+     '<td>'+(!["CLOSED","CANCELLED"].includes(o.status)?'<button type="button" class="mini blue" data-supply-item="'+esc(i.purchase_order_item_id)+'">MANAGE SUPPLY</button>':'<span class="badge b-received">LOCKED</span>')+'</td>'+
    '</tr>';
  }).join("");
 
@@ -1721,7 +1725,14 @@ async function openPODetails(id){
  postButton.disabled=true;
  postButton.textContent="CHECKING RECEIVED COSTS…";
  document.getElementById("detailModal").style.display="flex";
- await refreshReceivedMaterialPostingPreview(id);
+ if(o.status==="CLOSED"){
+   document.getElementById("detailPostMaterialCostButton").style.display="none";
+   document.getElementById("detailPickupButton").style.display="none";
+   document.getElementById("detailDeliverButton").style.display="none";
+   await showPoFinalizationRecord(id);
+ }else{
+   await refreshReceivedMaterialPostingPreview(id);
+ }
 }
 
 async function refreshReceivedMaterialPostingPreview(poId){
@@ -1819,8 +1830,6 @@ async function postReceivedMaterialsProjectCost(){
  const o=state.orders.find(x=>x.purchase_order_id===state.activeOrderId);
  if(!o || ["CLOSED","CANCELLED"].includes(o.status))return;
  const rows=state.orderItems.filter(i=>i.purchase_order_id===o.purchase_order_id);
- const ordered=rows.reduce((n,i)=>n+Number(i.quantity||0),0);
- const received=rows.reduce((n,i)=>n+Number(i.received_quantity||0),0);
  const partial=rows.filter(i=>Number(i.quantity||0)>Number(i.received_quantity||0));
  document.getElementById("poFinalizeNumber").textContent=o.po_no+" • "+o.project_name;
  document.getElementById("poFinalizeUnreceived").textContent=partial.length
@@ -1924,6 +1933,9 @@ async function showPoFinalizationRecord(poId){
 }
 async function deletePurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
+ if(["CLOSED","CANCELLED"].includes(o.status)){
+   return msg("This Purchase Order is closed and cannot be deleted.","err");
+ }
  const confirmed=await showConfirm("DELETE PURCHASE ORDER","This will permanently delete "+o.po_no+" and its order lines. The linked Purchase Request will be returned to APPROVED.","DELETE PURCHASE ORDER",true);
  if(!confirmed)return;
  const {data,error}=await supabaseClient.from("purchase_orders").delete().eq("purchase_order_id",id).select("purchase_order_id").maybeSingle();
