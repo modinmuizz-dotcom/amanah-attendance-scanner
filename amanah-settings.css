@@ -136,3 +136,133 @@ html[data-amanah-density="compact"] body.amanah-common-active table th,
 html[data-amanah-density="compact"] body.amanah-common-active table td { padding:7px 10px !important; }
 html[data-amanah-density="compact"] body.amanah-common-active .ls-panel,
 html[data-amanah-density="compact"] body.amanah-common-active .section-card { margin-bottom:12px !important; }
+
+
+/* Modern two-step appearance picker: independent brand palette and brightness. */
+.amanah-settings-subheading {
+  margin:17px 0 10px;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:1.1px;
+  color:#52647b;
+}
+.amanah-settings-mode-heading { margin-top:22px; }
+.amanah-settings-modes {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.amanah-settings-mode-card {
+  position:relative;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  padding:10px;
+  background:#fff;
+  color:#26364b;
+  border:2px solid #e5eaf3;
+  border-radius:13px;
+  text-align:left;
+  cursor:pointer;
+  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+}
+.amanah-settings-mode-card:hover {
+  transform:translateY(-2px);
+  border-color:#94a3b8;
+  box-shadow:0 8px 20px rgba(15,23,42,.09);
+}
+.amanah-settings-mode-card:focus-visible {
+  outline:2px solid var(--amanah-polish-accent,#2563eb);
+  outline-offset:2px;
+}
+.amanah-settings-mode-card.is-selected {
+  border-color:var(--amanah-polish-accent,#2563eb);
+  background:color-mix(in srgb, var(--amanah-polish-accent,#2563eb) 5%, #fff);
+  box-shadow:0 0 0 1px var(--amanah-polish-focus,rgba(37,99,235,.25));
+}
+.amanah-mode-preview {
+  width:100%;
+  height:72px;
+  display:flex;
+  overflow:hidden;
+  border-radius:9px;
+  border:1px solid rgba(112,126,147,.26);
+}
+.amanah-mode-preview.is-light{background:#eef2f8}
+.amanah-mode-preview.is-dark{background:#0b1220}
+.amanah-preview-sidebar {
+  display:block;
+  flex:0 0 24%;
+  background:#131f32;
+  position:relative;
+}
+.amanah-preview-sidebar::before {
+  content:"";
+  position:absolute;
+  left:20%;right:12%;top:24px;height:8px;
+  border-radius:3px;
+  background:var(--amanah-polish-accent,#2563eb);
+}
+.amanah-preview-window{
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  gap:6px;
+  padding:11px 10px;
+}
+.amanah-mode-preview.is-light .amanah-preview-window{background:#f5f7fb}
+.amanah-mode-preview.is-dark .amanah-preview-window{background:#121d2c}
+.amanah-preview-window i {
+  display:block;
+  width:90%;
+  height:9px;
+  flex:none;
+  border-radius:4px;
+}
+.amanah-preview-window i:nth-child(2){width:64%;height:7px}
+.amanah-mode-preview.is-light .amanah-preview-window i{background:#fff}
+.amanah-mode-preview.is-dark .amanah-preview-window i{background:#33445c}
+.amanah-preview-window b {
+  width:100%;
+  flex:1;
+  border-radius:4px;
+  background:var(--amanah-polish-accent,#2563eb);
+  opacity:.65;
+}
+.amanah-mode-caption strong,.amanah-mode-caption small{display:block}
+.amanah-mode-caption strong{font-size:12px;font-weight:900}
+.amanah-mode-caption strong span{display:inline-block;margin-right:3px;font-size:15px}
+.amanah-mode-caption small{margin-top:4px;color:#73829a;font-size:10px;line-height:1.4}
+.amanah-mode-check {
+  position:absolute;
+  top:17px;
+  right:17px;
+  background:var(--amanah-polish-accent,#2563eb);
+  color:var(--amanah-polish-on-accent,#fff);
+  border-radius:999px;
+  width:20px;
+  height:20px;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+  opacity:0;
+  transform:scale(.75);
+  transition:opacity .2s ease,transform .2s ease;
+}
+.amanah-settings-mode-card.is-selected .amanah-mode-check {opacity:1;transform:scale(1)}
+.amanah-settings-dialog{box-shadow:0 30px 95px rgba(1,6,20,.42)}
+.amanah-settings-theme{transition:border-color .2s ease,background-color .2s ease,transform .2s ease,box-shadow .2s ease}
+.amanah-settings-theme:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(15,23,42,.075)}
+.amanah-settings-mode-card:active,.amanah-settings-theme:active{transform:scale(.99)}
+@media(max-width:440px){
+  .amanah-settings-modes{gap:8px}
+  .amanah-settings-mode-card{padding:7px}
+  .amanah-mode-preview{height:57px}
+  .amanah-mode-caption strong{font-size:11px}
+  .amanah-mode-caption small{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .amanah-settings-mode-card,.amanah-settings-theme,.amanah-mode-check{transition:none}
+  .amanah-settings-mode-card:hover,.amanah-settings-theme:hover{transform:none}
+}
