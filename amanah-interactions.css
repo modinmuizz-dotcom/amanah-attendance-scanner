@@ -1,0 +1,332 @@
+/*
+ * AMANAH UI Refinement 2026
+ * Built for shared web management modules + standalone Equipment History.
+ * Appearance comes solely from the signed-in user's data-amanah-theme attribute.
+ * Does not modify business logic, permissions, statuses, maps, or printed reports.
+ */
+:root {
+  --amanah-polish-accent: #2563eb;
+  --amanah-polish-accent-hover: #1d4ed8;
+  --amanah-polish-accent-deep: #1943a8;
+  --amanah-polish-on-accent: #ffffff;
+  --amanah-polish-focus: rgba(37, 99, 235, .32);
+  --amanah-polish-glow: rgba(37, 99, 235, .23);
+  --amanah-polish-nav-hover: rgba(96, 165, 250, .12);
+  --amanah-polish-icon-hover: rgba(255,255,255,.095);
+  --amanah-polish-soft: #eff6ff;
+  --amanah-polish-ink: #1e40af;
+  --amanah-polish-ease: cubic-bezier(.2,.75,.2,1);
+}
+html[data-amanah-theme="gold"] {
+  --amanah-polish-accent: #d4af37;
+  --amanah-polish-accent-hover: #e7c75d;
+  --amanah-polish-accent-deep: #ab8429;
+  --amanah-polish-on-accent: #111827;
+  --amanah-polish-focus: rgba(180,134,36,.35);
+  --amanah-polish-glow: rgba(180,134,36,.19);
+  --amanah-polish-nav-hover: rgba(212,175,55,.14);
+  --amanah-polish-icon-hover: rgba(212,175,55,.13);
+  --amanah-polish-soft: #fff8e7;
+  --amanah-polish-ink: #765718;
+}
+
+/* Main navigation — the link remains the whole interactive target. */
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item) {
+  position:relative;
+  display:flex;
+  align-items:center;
+  text-decoration:none !important;
+  min-height:39px;
+  border:1px solid transparent;
+  border-radius:10px;
+  transition:
+    background-color .21s var(--amanah-polish-ease),
+    border-color .21s var(--amanah-polish-ease),
+    box-shadow .21s var(--amanah-polish-ease),
+    color .21s ease,
+    transform .21s var(--amanah-polish-ease);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item)::before {
+  content:"";
+  position:absolute;
+  left:0;
+  top:8px;
+  bottom:8px;
+  width:3px;
+  border-radius:3px;
+  background:var(--amanah-polish-accent);
+  opacity:0;
+  transform:scaleY(.4);
+  transition:opacity .2s ease,transform .22s var(--amanah-polish-ease);
+  pointer-events:none;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-icon,.nav-icon) {
+  flex:0 0 22px;
+  width:22px;
+  height:24px;
+  border-radius:7px;
+  transition:transform .21s var(--amanah-polish-ease), background-color .21s ease;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-icon,.nav-icon) svg {
+  transition:stroke .2s ease,transform .21s var(--amanah-polish-ease);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-chevron,.nav-chevron) {
+  transition:transform .21s var(--amanah-polish-ease), opacity .21s ease;
+}
+@media (hover:hover) {
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):not(.active):hover {
+    background:var(--amanah-polish-nav-hover) !important;
+    border-color:rgba(255,255,255,.085);
+    color:#fff !important;
+    transform:translateX(3px);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);
+  }
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):not(.active):hover::before {
+    opacity:.85;
+    transform:scaleY(1);
+  }
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):hover :is(.amanah-nav-icon,.nav-icon) {
+    transform:scale(1.08);
+    background:var(--amanah-polish-icon-hover);
+  }
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):hover :is(.amanah-nav-chevron,.nav-chevron) {
+    opacity:1;
+    transform:translateX(2px);
+  }
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item).active {
+  background:var(--amanah-polish-accent) !important;
+  color:var(--amanah-polish-on-accent) !important;
+  box-shadow:0 5px 15px var(--amanah-polish-glow) !important;
+  border-color:rgba(255,255,255,.12);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item).active::before {
+  background:var(--amanah-polish-on-accent);
+  opacity:.8;
+  transform:scaleY(1);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item).active svg {
+  stroke:currentColor !important;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):focus-visible {
+  outline:2px solid #ffffff !important;
+  outline-offset:2px;
+  background:var(--amanah-polish-nav-hover);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-nav-section,.nav-section) {
+  font-weight:900;
+  letter-spacing:1.1px;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-side-search,.sidebar-search) {
+  transition:border-color .21s ease,background-color .21s ease,box-shadow .21s ease;
+  border-radius:10px;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-side-search,.sidebar-search):focus {
+  outline:0;
+  border-color:var(--amanah-polish-accent);
+  background:rgba(255,255,255,.105);
+  box-shadow:0 0 0 3px var(--amanah-polish-focus);
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-side-search,.sidebar-search):focus::placeholder {
+  color:#cbd5e1;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-user-card,.user-card) {
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.045);
+  border-radius:11px;
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-user-gear,.user-gear) {
+  transition:background-color .2s ease, color .2s ease,transform .2s ease;
+}
+@media (hover:hover) {
+  :is(#amanahSidebar,.sidebar) :is(.amanah-user-gear,.user-gear):hover {
+    background:var(--amanah-polish-nav-hover) !important;
+    color:#fff !important;
+    transform:rotate(17deg);
+  }
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-sidebar-logout,.sidebar-logout) {
+  transition:background-color .2s ease,transform .2s var(--amanah-polish-ease),box-shadow .2s ease;
+  border-radius:9px;
+}
+@media (hover:hover) {
+  :is(#amanahSidebar,.sidebar) :is(.amanah-sidebar-logout,.sidebar-logout):hover {
+    background:var(--amanah-polish-soft) !important;
+    color:var(--amanah-polish-ink) !important;
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,0,0,.13);
+  }
+}
+:is(#amanahSidebar,.sidebar) :is(.amanah-sidebar-logout,.sidebar-logout):active {transform:translateY(0);}
+:is(#amanahSidebar,.sidebar) :is(.amanah-sidebar-logout,.sidebar-logout):focus-visible,
+:is(#amanahSidebar,.sidebar) :is(.amanah-user-gear,.user-gear):focus-visible {
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
+/* Topbar: smoother icon affordances without turning them into new actions. */
+:is(#amanahTopbar,.topbar) :is(.amanah-icon-btn,.icon-btn) {
+  transition:background-color .2s ease,color .2s ease,transform .2s ease;
+  border-radius:9px;
+}
+@media (hover:hover) {
+  :is(#amanahTopbar,.topbar) :is(.amanah-icon-btn,.icon-btn):hover {
+    background:var(--amanah-polish-soft);
+    color:var(--amanah-polish-ink);
+    transform:translateY(-1px);
+  }
+}
+
+/*
+ * Buttons use their existing semantic colors. This layer adds interactive
+ * depth and harmonizes primary actions with each user's selected theme.
+ */
+body.amanah-common-active :is(button,.button,.btn,.ls-btn,.fp-btn,.rp-small-button,.mini,.btn-action,.activity-evidence-button,.activity-refresh-button),
+.main-shell :is(button,.btn,.repair-link) {
+  transition:
+    background-color .18s ease,
+    background-image .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    box-shadow .2s var(--amanah-polish-ease),
+    transform .19s var(--amanah-polish-ease),
+    filter .19s ease;
+}
+body.amanah-common-active :is(
+  .button.primary,.btn-primary,.primary-button,
+  .ls-btn.primary,.fp-btn.primary,.rp-small-button.primary,
+  .btn-blue,.btn.blue,.mini.blue,.mini.edit,.btn-action.btn-edit,
+  .activity-evidence-button,.activity-refresh-button
+):not(:disabled):not([aria-disabled="true"]):not(.danger):not(.reject):not(.delete-button) {
+  border-radius:9px;
+  background-color:var(--amanah-polish-accent) !important;
+  color:var(--amanah-polish-on-accent) !important;
+  border-color:transparent;
+  box-shadow:0 3px 9px var(--amanah-polish-glow);
+}
+/* Avoid restyling the status color or label of explicit approve/reject controls. */
+@media (hover:hover) {
+  body.amanah-common-active :is(
+    .button.primary,.btn-primary,.primary-button,.ls-btn.primary,.fp-btn.primary,
+    .rp-small-button.primary,.btn-blue,.btn.blue,.mini.blue,.mini.edit,
+    .btn-action.btn-edit,.activity-evidence-button,.activity-refresh-button
+  ):not(:disabled):not([aria-disabled="true"]):not(.danger):not(.reject):not(.delete-button):hover {
+    background-color:var(--amanah-polish-accent-hover) !important;
+    color:var(--amanah-polish-on-accent) !important;
+    transform:translateY(-2px);
+    box-shadow:0 8px 19px var(--amanah-polish-glow);
+    filter:saturate(1.06);
+  }
+  body.amanah-common-active :is(
+    .button.secondary,.ls-btn.secondary,.fp-btn.secondary,.button.outline,
+    .btn-secondary,.mini.review,.mini.view,.rp-small-button:not(.primary),
+    .ls-back,.fp-back
+  ):not(:disabled):not([aria-disabled="true"]):hover {
+    box-shadow:0 5px 13px rgba(15,23,42,.09);
+    transform:translateY(-1px);
+    border-color:var(--amanah-polish-accent) !important;
+  }
+  body.amanah-common-active :is(.button.danger,.btn-danger,.ls-btn.danger,.fp-btn.danger,.mini.reject)
+    :not(:disabled):hover {
+    filter:brightness(.96);
+    transform:translateY(-1px);
+    box-shadow:0 5px 12px rgba(220,38,38,.16);
+  }
+  .main-shell :is(.btn,.repair-link):not(:disabled):hover {
+    transform:translateY(-1px);
+    box-shadow:0 5px 14px rgba(15,23,42,.12);
+  }
+}
+body.amanah-common-active :is(
+  button,.button,.btn,.ls-btn,.fp-btn,.rp-small-button,.mini,.btn-action
+):not(:disabled):not([aria-disabled="true"]):active,
+.main-shell :is(button,.btn):not(:disabled):active {
+  transform:translateY(0) scale(.985);
+  box-shadow:0 1px 4px rgba(15,23,42,.1);
+}
+body.amanah-common-active :is(
+  button,.button,.btn,.ls-btn,.fp-btn,.rp-small-button,.mini,.btn-action
+):is(:disabled,[aria-disabled="true"]),
+.main-shell :is(button,.btn):is(:disabled,[aria-disabled="true"]) {
+  box-shadow:none !important;
+  transform:none !important;
+  filter:none !important;
+  cursor:not-allowed;
+}
+body.amanah-common-active :is(
+  button,.button,.btn,.ls-btn,.fp-btn,.rp-small-button,.mini,.btn-action,
+  a.ls-back,a.fp-back
+):focus-visible,
+.main-shell :is(button,.btn,a):focus-visible {
+  outline:2px solid var(--amanah-polish-accent-deep) !important;
+  outline-offset:3px !important;
+  box-shadow:0 0 0 4px var(--amanah-polish-focus) !important;
+}
+
+/* Non-intrusive elevation for the app shell and table hierarchy. */
+#amanahTopbar {
+  box-shadow:0 2px 10px rgba(15,23,42,.028);
+}
+body.amanah-common-active :is(
+  .section-card,.ls-panel,.fp-panel,.rp-panel,.payroll-panel,.approval-panel,
+  .report-card,.summary-card
+) {
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+body.amanah-common-active :is(
+  .section-card,.ls-panel,.fp-panel,.rp-panel,.payroll-panel,.approval-panel
+) {
+  border-radius:14px;
+}
+body.amanah-common-active :is(
+  table tbody tr, .ls-tablewrap tbody tr
+) {
+  transition:background-color .16s ease;
+}
+@media (hover:hover) {
+  body.amanah-common-active table tbody tr:hover:not(.selected):not([aria-selected="true"]) {
+    background-color:color-mix(in srgb, var(--amanah-polish-soft) 57%, white);
+  }
+}
+body.amanah-common-active :is(
+  .tab-button,.tab,.tabs button,.filter-tab
+) {
+  transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+@media (hover:hover) {
+  body.amanah-common-active :is(.tab-button,.tab,.tabs button,.filter-tab):not(.active):hover {
+    color:var(--amanah-polish-ink);
+    border-color:var(--amanah-polish-accent);
+  }
+}
+
+/* Preserve print layouts; no hover effects or decorative extras in printed records. */
+@media print {
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item)::before {
+    display:none !important;
+  }
+  body.amanah-common-active :is(button,.button,.btn,.ls-btn,.fp-btn,.mini),
+  .main-shell :is(button,.btn) {
+    transition:none !important;
+    transform:none !important;
+    box-shadow:none !important;
+  }
+}
+
+/* Motion remains optional for accessibility and touch devices. */
+@media (prefers-reduced-motion: reduce) {
+  :is(#amanahSidebar,.sidebar) *,
+  :is(#amanahTopbar,.topbar) *,
+  body.amanah-common-active :is(button,.button,.btn,.ls-btn,.fp-btn,.mini,.btn-action,table tbody tr,.tab-button),
+  .main-shell :is(button,.btn,.repair-link) {
+    animation-duration:.01ms !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  :is(#amanahSidebar,.sidebar) :is(.amanah-nav-item,.nav-item):hover,
+  :is(#amanahSidebar,.sidebar) :is(.amanah-user-gear,.user-gear):hover,
+  body.amanah-common-active :is(button,.button,.btn,.ls-btn,.fp-btn,.mini):hover,
+  .main-shell :is(button,.btn):hover {
+    transform:none !important;
+  }
+}
