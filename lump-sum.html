@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AMANAH Lump-Sum Contracts</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
-<link rel="stylesheet" href="lump-sum.css?v=7">
+<link rel="stylesheet" href="lump-sum.css?v=8">
 <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=2">
 <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
 <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -19,7 +19,7 @@
     <div>
       <small>AMANAH • CONTRACT PAYMENT CONTROL</small>
       <h1>LUMP-SUM CONTRACTS</h1>
-      <p>Fixed-price direct labor groups and independent subcontractors. Certified progress, approvals, and payment history.</p>
+      <p>Direct labor and subcontractor contracts: certify work, obtain approval, and charge Project Cost only when payments are actually released.</p>
     </div>
     <a href="payroll.html" class="ls-back">← BACK TO PAYROLL</a>
   </div>
@@ -52,6 +52,10 @@
       <div><small>ADVANCE OUTSTANDING</small><strong id="lsAdvance">₱0.00</strong></div>
     </div>
 
+    <div class="ls-accounting-note" role="note">
+      <strong>PROJECT COST POSTING • PAID AMOUNTS ONLY</strong>
+      <span>Approved progress billings are not yet expenses. Only recorded payments (mobilization advances, progress billing disbursements, and retention releases) increase the assigned project's actual Lump-Sum labor cost. Each payment is recorded once, dated when paid.</span>
+    </div>
     <div class="ls-info" id="lsCompliance"></div>
     <div class="ls-subhead"><h3>PROGRESS BILLINGS</h3><button type="button" id="lsNewBilling" class="ls-btn primary" hidden>+ PREPARE BILLING</button></div>
     <div class="ls-tablewrap">
@@ -122,7 +126,7 @@
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="lump-sum.js?v=12"></script>
+<script src="lump-sum.js?v=11"></script>
 <script src="amanah-ui.js?v=38"></script>
 </body>
 </html>
