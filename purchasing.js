@@ -221,6 +221,7 @@ function bind(){
  document.getElementById("detailPrimaryAction").addEventListener("click",primaryDetailAction);
  document.getElementById("detailPickupButton").addEventListener("click",openBulkPickupModal);
  document.getElementById("detailDeliverButton").addEventListener("click",openDeliverSiteModal);
+ document.getElementById("detailPostMaterialCostButton").addEventListener("click",postReceivedMaterialsProjectCost);
  document.getElementById("closeBulkPickup").addEventListener("click",closeBulkPickupModal);
  document.getElementById("cancelBulkPickup").addEventListener("click",closeBulkPickupModal);
  document.getElementById("submitBulkPickup").addEventListener("click",submitBulkPickup);
@@ -711,6 +712,7 @@ async function renderSampleMaterialEvidence(items){
 
 function openRequestDetails(id){
  state.activeRequestId=id;state.activeOrderId=null;
+ document.getElementById("detailPostMaterialCostButton").style.display="none";
  const r=state.requests.find(x=>x.purchase_request_id===id),items=state.requestItems.filter(x=>x.purchase_request_id===id);if(!r)return;
  const title=document.getElementById("detailTitle");title.dataset.type="PR";title.textContent="PURCHASE REQUEST DETAILS";
  document.getElementById("detailBody").innerHTML='<div class="detail-grid"><div class="detail-card"><label>Request No.</label><strong>'+esc(r.request_no)+'</strong></div><div class="detail-card"><label>Status</label><strong>'+statusBadge(r.status)+'</strong></div><div class="detail-card"><label>Project</label><div>'+esc(r.project_name)+'<br><small>'+esc(r.project_location||"")+'</small></div></div><div class="detail-card"><label>Requester</label><div>'+esc(r.requester_name)+'<br><small>'+esc(r.requester_position||r.requester_role)+'</small></div></div><div class="detail-card"><label>Request Date</label><div>'+esc(fmtDate(r.request_date))+'</div></div><div class="detail-card"><label>Needed By</label><div>'+esc(fmtDate(r.needed_by_date))+'</div></div><div class="detail-card"><label>Priority</label><div>'+esc(r.priority)+'</div></div><div class="detail-card"><label>Purchase Type</label><div>'+esc(normalizePurchaseType(r.purchase_type))+'</div></div><div class="detail-card full"><label>Purpose</label><div>'+esc(r.purpose||"—")+'</div></div><div class="detail-card full"><label>Remarks</label><div>'+esc(r.remarks||"—")+'</div></div></div><div class="section-label">REQUEST ITEMS</div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+items.map(i=>'<tr><td><strong>'+esc(i.material_name)+'</strong></td><td>'+esc(i.specifications||"—")+'</td><td>'+esc(i.quantity)+'</td><td>'+esc(i.unit)+'</td></tr>').join("")+'</tbody></table></div><div class="section-label">SAMPLE MATERIAL PHOTO</div><div id="sampleMaterialEvidence"></div>';
@@ -1648,7 +1650,11 @@ async function openPODetails(id){
    '</div>'+
    '<div class="section-label">MATERIAL SUPPLY TRACKING</div>'+
    '<div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Specifications</th><th>Ordered</th><th>Unit</th><th>Supply Status</th><th>Confirmed</th><th>Received</th><th>Ready for Pickup</th><th>Remaining</th><th>Received Date</th><th>Delivery Ref.</th><th>Unit Price</th><th>Total</th><th>Action</th></tr></thead><tbody>'+supplyRows+'</tbody></table></div>'+
-   '<div class="total-box"><span>PO TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>';
+   '<div class="total-box"><span>PO TOTAL</span><strong>'+money(o.grand_total)+'</strong></div>'+
+   '<section id="poReceivedCostSection" class="po-received-cost-panel" aria-live="polite">'+
+     '<div class="po-received-cost-heading">RECEIVED MATERIALS • PROJECT COST</div>'+
+     '<div id="poReceivedCostStatus" class="po-received-cost-description">Checking posted and unposted received quantities…</div>'+
+   '</section>';
 
  document.querySelectorAll("[data-supply-item]").forEach(b=>b.addEventListener("click",()=>openSupplyModal(b.dataset.supplyItem)));
 
@@ -1665,8 +1671,106 @@ async function openPODetails(id){
  deliverButton.style.display=eligible.length&&state.access.canManage?"inline-block":"none";
  pickupButton.textContent="REQUEST MATERIALS PICKUP";
  deliverButton.textContent="DELIVER TO SITE";
+ const postButton=document.getElementById("detailPostMaterialCostButton");
+ postButton.style.display=state.access.canManage?"inline-block":"none";
+ postButton.disabled=true;
+ postButton.textContent="CHECKING RECEIVED COSTS…";
  document.getElementById("detailModal").style.display="flex";
+ await refreshReceivedMaterialPostingPreview(id);
 }
+
+async function refreshReceivedMaterialPostingPreview(poId){
+ const output=document.getElementById("poReceivedCostStatus");
+ const action=document.getElementById("detailPostMaterialCostButton");
+ if(!output||!action||state.activeOrderId!==poId)return;
+ action.disabled=true;
+ try{
+   const {data,error}=await supabaseClient.rpc("amanah_po_received_material_cost_status",{
+     p_purchase_order_id:poId
+   });
+   if(error)throw error;
+   if(state.activeOrderId!==poId || document.getElementById("detailTitle")?.dataset.type!=="PO")return;
+   const rows=Array.isArray(data?.items)?data.items:[];
+   const totalReceived=rows.reduce((sum,item)=>sum+Number(item.received_quantity||0),0);
+   const postedValue=rows.reduce((sum,item)=>sum+Number(item.posted_quantity||0)*Number(item.unit_price||0),0);
+   const eligible=rows.filter(item=>Number(item.unposted_received_quantity)>0 && Number(item.unit_price)>0);
+   const pendingUnpriced=rows.filter(item=>Number(item.unposted_received_quantity)>0 &&
+      !(Number(item.unit_price)>0));
+   const readyTotal=eligible.reduce((sum,item)=>sum+
+      Number(item.unposted_amount||0),0);
+   const postedQty=rows.reduce((sum,item)=>sum+Number(item.posted_quantity||0),0);
+   if(!data?.eligible_project_materials){
+     output.textContent="Cost posting is available only for active PROJECT MATERIALS orders. Maintenance and Repair Materials follow their separate cost processes.";
+     action.style.display="none";return;
+   }
+   const detail=rows.map(item=>
+     '<div class="po-received-cost-row">'+
+       '<span>'+esc(item.material_name)+' • Received '+esc(item.received_quantity)+' '+esc(item.unit)+
+         ' • Posted '+esc(item.posted_quantity)+' '+esc(item.unit)+'</span>'+
+       '<strong>'+(
+         Number(item.unposted_received_quantity)<=0?'POSTED / NOTHING NEW':
+         Number(item.unit_price)<=0?'ENTER UNIT PRICE FIRST':
+         esc(item.unposted_received_quantity)+' × '+money(item.unit_price)+' = '+money(item.unposted_amount)
+        )+'</strong>'+
+     '</div>'
+   ).join("");
+   output.innerHTML=
+     '<div class="po-received-cost-summary">'+
+       '<span>Received total: <strong>'+esc(totalReceived.toFixed(3))+'</strong></span>'+
+       '<span>Previously posted quantity: <strong>'+esc(postedQty.toFixed(3))+'</strong></span>'+
+       '<span>Ready to post: <strong>'+money(readyTotal)+'</strong></span>'+
+     '</div>'+detail+
+     '<p class="po-received-cost-hint">'+(
+       eligible.length? 'Only the unposted received quantities above will be charged to this project.':
+       pendingUnpriced.length?'Received materials are waiting for a saved Unit Price. Use EDIT PURCHASE ORDER or MANAGE SUPPLY first.':
+       'No newly received and priced materials remain to be posted.'
+     )+'</p>';
+   action.style.display=state.access.canManage?"inline-block":"none";
+   action.disabled=!state.access.canManage || !eligible.length;
+   action.textContent=eligible.length?"POST "+money(readyTotal)+" TO PROJECT COST":
+      (pendingUnpriced.length?"SAVE UNIT PRICE FIRST":"NO NEW RECEIVED COST");
+ }catch(error){
+   console.error("Unable to load received-cost status",error);
+   if(state.activeOrderId!==poId)return;
+   output.textContent="Cannot verify received material posting status: "+(error?.message||"Try again.");
+   action.disabled=true;
+   action.textContent="PROJECT COST UNAVAILABLE";
+ }
+}
+
+async function postReceivedMaterialsProjectCost(){
+ const poId=state.activeOrderId;
+ if(!poId||!state.access.canManage)return;
+ const button=document.getElementById("detailPostMaterialCostButton");
+ if(button.disabled)return;
+ const po=state.orders.find(row=>row.purchase_order_id===poId);
+ const choice=await showConfirm("POST RECEIVED MATERIALS TO PROJECT COST",
+   "Confirm posting only RECEIVED and PRICED material quantities for "+(po?.po_no||"this PO")+
+   ". This creates permanent, auditable Project Cost entries. Future partial receipts can be posted separately.",
+   "POST TO PROJECT COST");
+ if(!choice||state.activeOrderId!==poId)return;
+ button.disabled=true;
+ button.textContent="POSTING RECEIVED COST…";
+ try{
+   const {data,error}=await supabaseClient.rpc("amanah_post_received_materials_project_cost",{
+     p_purchase_order_id:poId
+   });
+   if(error)throw error;
+   await Promise.all([loadOrders(),loadRequests()]);
+   renderAll();
+   await openPODetails(poId);
+   msg(Number(data?.posted_lines||0)>0
+     ?(data.po_no||"Purchase Order")+": "+money(data.posted_amount)+" received material cost posted successfully. Repeating this action will not duplicate previously posted quantities."
+     :"No new received and priced materials remain to post.","ok");
+ }catch(error){
+   console.error("Unable to post received project material costs",error);
+   msg("Could not post received materials: "+(error?.message||"Please retry."),"err");
+   await refreshReceivedMaterialPostingPreview(poId);
+ }finally{
+   button.disabled=true;
+ }
+}
+
 async function deletePurchaseOrder(id){
  const o=state.orders.find(x=>x.purchase_order_id===id);if(!o)return;
  const confirmed=await showConfirm("DELETE PURCHASE ORDER","This will permanently delete "+o.po_no+" and its order lines. The linked Purchase Request will be returned to APPROVED.","DELETE PURCHASE ORDER",true);
