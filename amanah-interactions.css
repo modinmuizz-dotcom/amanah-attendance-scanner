@@ -284,7 +284,8 @@ body.amanah-common-active :is(
   transition:background-color .16s ease;
 }
 @media (hover:hover) {
-  body.amanah-common-active table tbody tr:hover:not(.selected):not([aria-selected="true"]) {
+  /* A white-blended hover is a Light Mode effect only; it makes dark rows unreadable. */
+  html:not([data-amanah-mode="dark"]) body.amanah-common-active table tbody tr:hover:not(.selected):not([aria-selected="true"]) {
     background-color:color-mix(in srgb, var(--amanah-polish-soft) 57%, white);
   }
 }
