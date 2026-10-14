@@ -81,10 +81,14 @@
   function build(){
     document.body.classList.add('amanah-common-active');
 
-    const style=document.createElement('link');
-    style.rel='stylesheet';
-    style.href='amanah-ui.css?v=6';
-    document.head.appendChild(style);
+    // The shared stylesheet is already loaded in <head> on management pages.
+    // Do not inject a second copy after paint (it can cause a visible layout shift).
+    if(!document.querySelector('link[rel="stylesheet"][href^="amanah-ui.css"]')){
+      const style=document.createElement('link');
+      style.rel='stylesheet';
+      style.href='amanah-ui.css?v=6';
+      document.head.appendChild(style);
+    }
 
     // Shared settings appear on every signed-in management page.
     if(!document.getElementById('amanahSettingsStyles')){
@@ -128,7 +132,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=5';
+      settingsScript.src='amanah-settings.js?v=6';
       document.head.appendChild(settingsScript);
     }
 
