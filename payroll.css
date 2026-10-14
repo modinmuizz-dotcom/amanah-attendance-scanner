@@ -527,7 +527,8 @@
   html[data-amanah-theme],
   html[data-amanah-mode],
   body,
-  body.amanah-common-active {
+  body.amanah-common-active,
+  html body.amanah-common-active {
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
