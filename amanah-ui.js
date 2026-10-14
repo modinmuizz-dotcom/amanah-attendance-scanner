@@ -91,7 +91,7 @@
       const settingsStyle=document.createElement('link');
       settingsStyle.id='amanahSettingsStyles';
       settingsStyle.rel='stylesheet';
-      settingsStyle.href='amanah-settings.css?v=1';
+      settingsStyle.href='amanah-settings.css?v=2';
       document.head.appendChild(settingsStyle);
     }
     if(!document.getElementById('amanahGlobalTheme')){
@@ -109,10 +109,17 @@
       interactionsStyle.href='amanah-interactions.css?v=1';
       document.head.appendChild(interactionsStyle);
     }
+    if(!document.getElementById('amanahDarkModeStyle')){
+      const darkStyle=document.createElement('link');
+      darkStyle.id='amanahDarkModeStyle';
+      darkStyle.rel='stylesheet';
+      darkStyle.href='amanah-dark-mode.css?v=1';
+      document.head.appendChild(darkStyle);
+    }
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=3';
+      settingsScript.src='amanah-settings.js?v=4';
       document.head.appendChild(settingsScript);
     }
 
