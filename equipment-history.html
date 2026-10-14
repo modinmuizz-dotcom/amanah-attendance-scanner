@@ -161,6 +161,12 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
 }
 @media(max-width:460px){.metrics{grid-template-columns:1fr}.page{padding:16px 10px 40px}.card{padding:13px}.hero{padding:18px}.hero-side{flex-direction:column}}
 </style>
+<link rel="stylesheet" href="amanah-settings.css?v=1">
+<link rel="stylesheet" href="amanah-global-theme.css?v=2">
+<style>
+.sidebar .user-gear{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;background:transparent;color:#cbd5e1;font-size:18px;cursor:pointer;}
+.sidebar .user-gear:hover,.sidebar .user-gear:focus-visible{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:#fff;}
+</style>
 </head>
 <body>
 <div class="app-shell">
@@ -210,7 +216,7 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
       <div class="user-card">
         <div class="avatar">SA</div>
         <div><div class="user-name">Super Admin</div><div class="user-role">Administrator</div></div>
-        <div class="user-gear">⚙</div>
+        <button type="button" id="amanahSettingsGear" class="user-gear" aria-label="Open account and appearance settings" aria-haspopup="dialog" title="Account & Settings">⚙</button>
       </div>
       <button class="sidebar-logout" id="sidebarLogoutButton">LOG OUT</button>
     </div>
@@ -335,5 +341,6 @@ th{background:#f8fafc;color:#475569;font-weight:900;text-transform:uppercase;fon
 </script>
 <script src="amanah-direct-print.js?v=1"></script>
 <script src="equipment-history.js?v=5"></script>
+<script src="amanah-settings.js?v=1"></script>
 </body>
 </html>
