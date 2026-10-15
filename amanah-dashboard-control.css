@@ -264,3 +264,14 @@
 @media print{
  .amanah-control{display:none!important}
 }
+
+/* Gold stays accessible on light backgrounds without changing the user's
+   selected theme. Dark Gold retains its warm visual accent. */
+@media screen {
+ html[data-amanah-theme="gold"]:not([data-amanah-mode="dark"]) .amanah-control {
+   --am-corp-accent:#805a10;
+ }
+ html[data-amanah-theme="gold"][data-amanah-mode="dark"] .amanah-control {
+   --am-corp-accent:#f0c95d;
+ }
+}
