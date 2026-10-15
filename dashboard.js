@@ -773,6 +773,31 @@ async function loadDashboardProjectCostChart() {
   }
 }
 
+// Legacy detail views are loaded only AFTER the role-aware Dashboard RPC
+// authorizes them. Never fetch full employee/equipment/attendance lists just
+// to populate redundant hidden KPI tiles.
+async function loadDashboardLegacyDetails(permissions) {
+  const p = permissions || {};
+  if (p.attendance) {
+    const {data,error} = await supabaseClient.from('attendance')
+      .select('*')
+      .order('created_at',{ascending:false})
+      .limit(30);
+    if (error) {
+      console.warn('Recent attendance cannot be loaded:',error);
+      const body = document.getElementById('attendanceBody');
+      if (body) body.innerHTML =
+        '<tr><td colspan="9" class="empty">Recent attendance is temporarily unavailable.</td></tr>';
+    } else {
+      renderAttendance(Array.isArray(data) ? data : []);
+    }
+  }
+  if (p.financial) {
+    await loadDashboardProjectCostChart();
+  }
+}
+window.loadDashboardLegacyDetails = loadDashboardLegacyDetails;
+
 async function logout() {
 
   await supabaseClient
@@ -786,13 +811,11 @@ async function logout() {
 
 
 document
-  .getElementById(
-    'refreshButton'
-  )
-  .addEventListener(
-    'click',
-    loadDashboard
-  );
+  .getElementById('refreshButton')
+  ?.addEventListener('click', () => {
+    if (window.__AMANAH_DASHBOARD_PERMS)
+      loadDashboardLegacyDetails(window.__AMANAH_DASHBOARD_PERMS);
+  });
 
 
 document
@@ -814,13 +837,11 @@ document.getElementById('refreshProjectCostChartButton')
 
 // Keep amounts current as costs or Project Master estimates are updated.
 window.setInterval(() => {
-  if (!document.hidden) {
+  if (!document.hidden && window.__AMANAH_DASHBOARD_PERMS?.financial) {
     loadDashboardProjectCostChart();
   }
 }, 60000);
 
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) loadDashboardProjectCostChart();
-});
-
-loadDashboard();
+// Initialization is controlled by the permission-checked corporate Dashboard,
+// avoiding duplicate queries and unauthorized legacy reports.
+// The main refresh button and page visibility refresh live in that controller.
