@@ -1,5 +1,8 @@
 /* Canva login layout. Scoped to the sign-in screen so workspace themes stay independent. */
 #loginScreen.am-login {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 100vh;
   min-height: 100svh;
   padding: clamp(20px, 4vw, 56px);
@@ -7,11 +10,28 @@
   align-content: center;
   justify-items: center;
   gap: 24px;
-  background: #f2f4f6;
+  background:
+    radial-gradient(ellipse at 92% 8%, rgba(218, 187, 114, .19), transparent 44%),
+    radial-gradient(ellipse at 5% 82%, rgba(115, 151, 179, .16), transparent 48%),
+    linear-gradient(135deg, #f3f6f8, #f8f8f4 55%, #edf2f5);
   color: #132035;
   color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Quiet engineering linework around the card; decorative and never interactive. */
+#loginScreen.am-login::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: url("assets/amanah-construction-background.svg") center / cover no-repeat;
+}
+#loginScreen .am-login-shell, #loginScreen .am-login-page-footer {
+  position: relative;
+  z-index: 1;
 }
 
 #loginScreen *, #loginScreen *::before, #loginScreen *::after { box-sizing: border-box; }
@@ -195,6 +215,7 @@
 
 @media (max-width: 700px) {
   #loginScreen.am-login { padding: 20px 16px; gap: 18px; }
+  #loginScreen.am-login::before { background-position: 72% center; opacity: .6; }
   #loginScreen .am-login-shell { grid-template-columns: 1fr; width: min(470px, 100%); min-height: 0; border-radius: 18px; }
   #loginScreen .am-login-brand { flex-direction: row; align-items: center; justify-content: flex-start; gap: 18px; padding: 24px 28px; }
   #loginScreen .am-login-logo { flex: 0 0 auto; width: 86px; margin: 0; }
