@@ -1,5 +1,26 @@
 /* AMANAH account settings – shared by management pages. */
 body.amanah-settings-open { overflow: hidden !important; }
+/* The avatar/name and the settings gear are separate native controls. */
+#amanahSidebar .amanah-user-profile, .sidebar .amanah-user-profile {
+  display:flex; align-items:center; gap:9px; flex:1; min-width:0; min-height:38px;
+  padding:4px 2px; margin:-4px 0; border:0; border-radius:7px; background:transparent;
+  color:inherit; font:inherit; text-align:left; cursor:pointer;
+}
+#amanahSidebar .amanah-user-profile:hover, .sidebar .amanah-user-profile:hover { background:rgba(255,255,255,.07); }
+#amanahSidebar .amanah-user-profile:focus-visible, .sidebar .amanah-user-profile:focus-visible {
+  outline:2px solid #e0bd62; outline-offset:3px;
+}
+.amanah-user-profile .amanah-profile-labels { display:block; min-width:0; flex:1; }
+.amanah-user-profile :is(.amanah-user-name,.amanah-user-role,.user-name,.user-role) {
+  display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.amanah-user-profile :is(.amanah-avatar,.avatar) { flex:0 0 30px; }
+#amanahTopbar button.amanah-top-avatar, .topbar button.top-avatar {
+  padding:0; border:0; cursor:pointer; font-family:inherit;
+}
+#amanahTopbar button.amanah-top-avatar:focus-visible, .topbar button.top-avatar:focus-visible {
+  outline:2px solid var(--amanah-polish-accent,#2563eb); outline-offset:3px;
+}
 #amanahSidebar .amanah-user-gear {
   margin-left:auto; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
   background:transparent; border:1px solid transparent; border-radius:8px; color:#cbd5e1;
@@ -46,6 +67,37 @@ body.amanah-settings-open { overflow: hidden !important; }
 .amanah-settings-profile > div:last-child { border-bottom:0; }
 .amanah-settings-profile span { font-size:11px; font-weight:700; color:#64748b; }
 .amanah-settings-profile strong { font-size:12px; font-weight:800; text-align:right; overflow-wrap:anywhere; }
+.amanah-account-summary { display:flex; align-items:center; gap:13px; margin:0 0 17px; }
+.amanah-account-avatar {
+  flex:0 0 48px; width:48px; height:48px; display:grid; place-items:center;
+  border-radius:50%; border:1px solid #d6dff0; background:#edf2fe; color:#24448a;
+  font-size:17px; font-weight:800;
+}
+.amanah-account-summary > div { min-width:0; }
+.amanah-account-summary strong { display:block; color:#19263b; font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
+.amanah-account-summary > div > span { display:block; margin-top:4px; color:#64748b; font-size:11px; line-height:1.5; }
+#amanahProfileForm { display:grid; gap:8px; margin-top:18px; }
+#amanahProfileForm label { margin:0; color:#334155; font-size:12px; font-weight:700; }
+#amanahProfileName {
+  width:100%; min-width:0; min-height:43px; padding:10px 12px;
+  border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#0f172a;
+  font:inherit; font-size:14px; outline:none;
+}
+#amanahProfileName:focus { border-color:var(--amanah-polish-accent,#2563eb); box-shadow:0 0 0 3px rgba(90,125,180,.12); }
+#amanahProfileName:disabled { opacity:.65; cursor:wait; }
+#amanahProfileForm .amanah-settings-help { margin:0; font-size:11px; }
+#amanahProfileSave {
+  min-height:38px; padding:10px 16px; border:0; border-radius:8px;
+  background:var(--amanah-polish-accent,#2563eb); color:var(--amanah-polish-on-accent,#fff);
+  font:inherit; font-size:11px; font-weight:800; cursor:pointer;
+}
+#amanahProfileSave:disabled { opacity:.6; cursor:wait; }
+html[data-amanah-theme="gold"] .amanah-account-avatar { background:#fbf3dc; color:#795817; border-color:#ead8aa; }
+html[data-amanah-mode="dark"] .amanah-account-summary strong,
+html[data-amanah-mode="dark"] #amanahProfileForm label { color:#edf3ff; }
+html[data-amanah-mode="dark"] .amanah-account-summary > div > span { color:#b2c2d9; }
+html[data-amanah-mode="dark"] .amanah-account-avatar { background:#2a3b54; color:#e7d6a3; border-color:#465b76; }
+html[data-amanah-mode="dark"] #amanahProfileName { background:#19283c; color:#f0f5ff; border-color:#48617b; }
 .amanah-settings-themes { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .amanah-settings-theme {
   display:flex; align-items:center; gap:10px; text-align:left; border:2px solid #e4e9f2; border-radius:10px;

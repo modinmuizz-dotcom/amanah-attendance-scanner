@@ -95,7 +95,7 @@
       const settingsStyle=document.createElement('link');
       settingsStyle.id='amanahSettingsStyles';
       settingsStyle.rel='stylesheet';
-      settingsStyle.href='amanah-settings.css?v=2';
+      settingsStyle.href='amanah-settings.css?v=3';
       document.head.appendChild(settingsStyle);
     }
     if(!document.getElementById('amanahGlobalTheme')){
@@ -132,7 +132,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=6';
+      settingsScript.src='amanah-settings.js?v=7';
       document.head.appendChild(settingsScript);
     }
 
@@ -230,7 +230,7 @@
         }).join('')).join('')+
       '</nav>'+
       '<div class="amanah-side-bottom"><div class="amanah-status-row"><span class="amanah-status-dot"></span>Local system online</div>'+
-      '<div class="amanah-user-card"><div class="amanah-avatar">A</div><div><div class="amanah-user-name" id="amanahCurrentUserName">AMANAH USER</div><div class="amanah-user-role" id="amanahCurrentUserRole">AUTHENTICATED</div></div><button class="amanah-user-gear" id="amanahSettingsGear" type="button" title="Account & Settings" aria-label="Open account and appearance settings" aria-haspopup="dialog">⚙</button></div>'+
+      '<div class="amanah-user-card"><button class="amanah-user-profile" id="amanahProfileButton" type="button" data-amanah-open-profile title="User Account" aria-label="Open your user account" aria-haspopup="dialog"><span class="amanah-avatar" data-amanah-account-avatar>A</span><span class="amanah-profile-labels"><span class="amanah-user-name" id="amanahCurrentUserName">AMANAH USER</span><span class="amanah-user-role" id="amanahCurrentUserRole">AUTHENTICATED</span></span></button><button class="amanah-user-gear" id="amanahSettingsGear" type="button" title="Account & Settings" aria-label="Open account and appearance settings" aria-haspopup="dialog">⚙</button></div>'+
       '<button class="amanah-sidebar-logout" id="amanahSidebarLogout" type="button">LOG OUT</button></div>';
 
     const topbar=document.createElement('header');
@@ -238,7 +238,7 @@
     const title=nav.flatMap(g=>g.items.map(i=>[i[0],i[1]])).find(x=>x[0]===current)?.[1]||'Dashboard';
     topbar.innerHTML=
       '<div class="amanah-breadcrumb"><button class="amanah-icon-btn amanah-menu-toggle" id="amanahMenuToggle" aria-label="Open menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span>Construction Management System</span><span class="amanah-crumb-arrow">›</span><strong>'+title+'</strong></div>'+
-      '<div class="amanah-top-right"><div class="amanah-local-ai"><span class="amanah-ai-dot"></span>Local AI</div><button class="amanah-icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button><div class="amanah-top-avatar">SA</div></div>';
+      '<div class="amanah-top-right"><div class="amanah-local-ai"><span class="amanah-ai-dot"></span>Local AI</div><button class="amanah-icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button><button class="amanah-top-avatar" type="button" data-amanah-open-profile data-amanah-account-avatar aria-label="Open your user account" aria-haspopup="dialog">A</button></div>';
 
     const overlay=document.createElement('div');overlay.id='amanahMobileOverlay';
 
@@ -306,18 +306,23 @@
       const permissionSet=new Set((permissionRows||[]).map(row=>row.permission_key));
       window.AMANAH_PERMISSION_SET=permissionSet;
       window.AMANAH_CURRENT_ROLE=role||'UNASSIGNED';
+      window.AMANAH_ACCOUNT_ROLE={user_id:session.user.id,role:window.AMANAH_CURRENT_ROLE};
       window.amanahCan=(permission)=>permissionSet.has(permission);
 
       const roleEl=document.getElementById('amanahCurrentUserRole');
       if(roleEl) roleEl.textContent=window.AMANAH_CURRENT_ROLE;
 
       const email=session.user?.email||'AMANAH USER';
-      const name=session.user?.user_metadata?.full_name ||
+      const display=window.AMANAH_ACCOUNT_DISPLAY;
+      const name=(display?.user_id===session.user.id && display.name) || session.user?.user_metadata?.full_name ||
         session.user?.user_metadata?.name ||
         email.split('@')[0];
 
       const nameEl=document.getElementById('amanahCurrentUserName');
       if(nameEl) nameEl.textContent=name;
+      const words=String(name).trim().split(/\s+/).filter(Boolean);
+      const initials=words.length ? (Array.from(words[0])[0]+(words.length>1?Array.from(words[words.length-1])[0]:'')).toUpperCase() : 'A';
+      document.querySelectorAll('[data-amanah-account-avatar]').forEach(node=>{node.textContent=initials;});
 
       const visibleLinks=[...document.querySelectorAll('.amanah-nav-item')];
       visibleLinks.forEach(link=>{

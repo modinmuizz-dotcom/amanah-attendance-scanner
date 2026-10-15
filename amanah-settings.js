@@ -25,6 +25,52 @@
   let editRevision = 0;
   let refreshRevision = 0;
   let writes = Promise.resolve();
+  let accountRequest = 0;
+  let profileUserId = null;
+
+  function displayName(user) {
+    const metadata = user?.user_metadata || {};
+    for (const value of [metadata.full_name, metadata.name]) {
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return typeof user?.email === 'string' ? user.email.split('@')[0] : 'AMANAH User';
+  }
+
+  // Display metadata is never used to authorize a role or grant permissions.
+  function syncAccountIdentity(user) {
+    const name = user ? displayName(user) : 'AMANAH USER';
+    const words = name.split(/\s+/).filter(Boolean);
+    const initials = user && words.length ?
+      (Array.from(words[0])[0] + (words.length > 1 ? Array.from(words[words.length - 1])[0] : '')).toUpperCase() : 'A';
+    window.AMANAH_ACCOUNT_DISPLAY = user ? { user_id: user.id, name, initials } : null;
+    document.querySelectorAll('#amanahCurrentUserName, .sidebar .user-name').forEach(node => { node.textContent = name; });
+    document.querySelectorAll('[data-amanah-account-avatar]').forEach(node => { node.textContent = initials; });
+    if (overlay) overlay.querySelector('#amanahSettingsName').textContent = name;
+    const role = window.AMANAH_ACCOUNT_ROLE;
+    const roleName = user && role?.user_id === user.id ? role.role : 'AUTHENTICATED';
+    document.querySelectorAll('#amanahCurrentUserRole, .sidebar .user-role').forEach(node => { node.textContent = roleName; });
+  }
+
+  function setProfileMessage(message, isError) {
+    if (!overlay) return;
+    const node = overlay.querySelector('#amanahProfileMessage');
+    node.textContent = message;
+    node.classList.toggle('is-error', !!isError);
+    node.hidden = !message;
+  }
+
+  function resetProfileEditor() {
+    profileUserId = null;
+    if (!overlay) return;
+    const input = overlay.querySelector('#amanahProfileName');
+    input.value = '';
+    input.disabled = true;
+    input.readOnly = false;
+    const button = overlay.querySelector('#amanahProfileSave');
+    button.disabled = true;
+    button.textContent = 'SAVE PROFILE';
+    setProfileMessage('', false);
+  }
 
   function normalizePreferences(raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -52,10 +98,18 @@
 
   function useAccount(user) {
     const userId = user && typeof user.id === 'string' ? user.id : null;
-    if (userId === currentUserId) return;
+    if (userId === currentUserId) {
+      syncAccountIdentity(user);
+      return;
+    }
+    const previousUserId = currentUserId;
     currentUserId = userId;
     sessionRevision++;
     editRevision++;
+    ++accountRequest;
+    resetProfileEditor();
+    if (previousUserId) closeSettings();
+    syncAccountIdentity(user);
     // Use the signed-in user's session metadata immediately to avoid a
     // Light Mode flash before the fresh account preferences finish loading.
     preferences = readAccountCache(userId) ||
@@ -94,6 +148,7 @@
       const { data: fresh, error: freshError } = await client.auth.getUser();
       if (request !== refreshRevision || expectedId !== currentUserId || expectedEdits !== editRevision) return;
       if (freshError || fresh?.user?.id !== expectedId) return;
+      syncAccountIdentity(fresh.user);
       const serverPrefs = normalizePreferences(fresh.user.user_metadata?.[METADATA_KEY]);
       if (serverPrefs) {
         preferences = serverPrefs;
@@ -187,17 +242,24 @@
     overlay.innerHTML = [
       '<section class="amanah-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="amanahSettingsTitle" tabindex="-1">',
       '  <header class="amanah-settings-heading">',
-      '    <div><div class="amanah-settings-kicker">AMANAH CONTROL CENTER</div><h2 id="amanahSettingsTitle">Account &amp; Settings</h2>',
-      '      <p>Manage your account security and personal display preferences.</p></div>',
+      '    <div><div class="amanah-settings-kicker">AMANAH CONTROL CENTER</div><h2 id="amanahSettingsTitle">User Account</h2>',
+      '      <p>Manage your profile, account security, and personal preferences.</p></div>',
       '    <button type="button" class="amanah-settings-close" data-amanah-settings-close aria-label="Close settings">×</button>',
       '  </header>',
       '  <div class="amanah-settings-content">',
-      '    <div class="amanah-settings-section"><h3>Account Information</h3>',
+      '    <div class="amanah-settings-section"><h3>Your Profile</h3>',
+      '      <div class="amanah-account-summary"><span class="amanah-account-avatar" data-amanah-account-avatar>A</span><div><strong id="amanahSettingsName">Loading…</strong><span>Your personal AMANAH account</span></div></div>',
       '      <div class="amanah-settings-profile">',
-      '        <div><span>Name</span><strong id="amanahSettingsName">Loading…</strong></div>',
       '        <div><span>Email</span><strong id="amanahSettingsEmail">Loading…</strong></div>',
       '        <div><span>System Role</span><strong id="amanahSettingsRole">—</strong></div>',
       '      </div>',
+      '      <form id="amanahProfileForm">',
+      '        <label for="amanahProfileName">Display name</label>',
+      '        <input id="amanahProfileName" name="display_name" type="text" autocomplete="name" maxlength="80" required disabled aria-describedby="amanahProfileNameHelp">',
+      '        <p id="amanahProfileNameHelp" class="amanah-settings-help">Shown in your sidebar and account profile.</p>',
+      '        <div class="amanah-settings-form-actions"><button id="amanahProfileSave" type="submit" disabled>SAVE PROFILE</button></div>',
+      '      </form>',
+      '      <div id="amanahProfileMessage" class="amanah-settings-message" role="status" aria-live="polite" hidden></div>',
       '    </div>',
       '    <div class="amanah-settings-section"><h3>Appearance</h3>',
       '      <p class="amanah-settings-help">Choose your colors and workspace brightness. Saved privately to your AMANAH login and synchronized across devices.</p>',
@@ -269,14 +331,17 @@
       savePreferences();
     });
     overlay.querySelector('#amanahChangePasswordForm').addEventListener('submit', updatePassword);
+    overlay.querySelector('#amanahProfileForm').addEventListener('submit', updateProfile);
     applyPreferences();
     return overlay;
   }
 
   async function fillAccount() {
     const node = ensureOverlay();
-    node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || document.querySelector('.sidebar .user-role')?.textContent || 'Not assigned';
-    node.querySelector('#amanahSettingsName').textContent = document.getElementById('amanahCurrentUserName')?.textContent || document.querySelector('.sidebar .user-name')?.textContent || 'AMANAH User';
+    const request = ++accountRequest;
+    const accountId = currentUserId;
+    resetProfileEditor();
+    node.querySelector('#amanahSettingsRole').textContent = 'Checking role…';
     node.querySelector('#amanahSettingsEmail').textContent = 'Checking session…';
     const client = getClient();
     if (!client || !client.auth) {
@@ -286,16 +351,80 @@
     try {
       const { data, error } = await client.auth.getUser();
       if (error) throw error;
-      if (node.hidden) return;
+      if (node.hidden || request !== accountRequest || accountId !== currentUserId) return;
       const user = data?.user;
-      const email = user?.email || 'Not signed in';
-      node.querySelector('#amanahSettingsEmail').textContent = email;
-      node.querySelector('#amanahSettingsName').textContent =
-        user?.user_metadata?.full_name || user?.user_metadata?.name ||
-        document.getElementById('amanahCurrentUserName')?.textContent || document.querySelector('.sidebar .user-name')?.textContent || email.split('@')[0];
-      node.querySelector('#amanahSettingsRole').textContent = window.AMANAH_CURRENT_ROLE || document.querySelector('.sidebar .user-role')?.textContent || 'Not assigned';
+      if (!user || !accountId || user.id !== accountId) throw new Error('Your session has changed. Please sign in again.');
+      syncAccountIdentity(user);
+      node.querySelector('#amanahSettingsEmail').textContent = user.email || 'No email available';
+      profileUserId = user.id;
+      const input = node.querySelector('#amanahProfileName');
+      input.value = displayName(user);
+      input.disabled = false;
+      node.querySelector('#amanahProfileSave').disabled = false;
+      const { data: role, error: roleError } = await client.rpc('amanah_get_current_role');
+      if (node.hidden || request !== accountRequest || accountId !== currentUserId) return;
+      if (roleError) throw new Error('Your profile is ready, but the system role could not be loaded.');
+      const assignedRole = typeof role === 'string' && role ? role : 'UNASSIGNED';
+      window.AMANAH_ACCOUNT_ROLE = { user_id: user.id, role: assignedRole };
+      node.querySelector('#amanahSettingsRole').textContent = assignedRole;
+      syncAccountIdentity(user);
     } catch (_) {
-      if (!node.hidden) node.querySelector('#amanahSettingsEmail').textContent = 'Unable to load account';
+      if (!node.hidden && request === accountRequest && accountId === currentUserId) {
+        if (!profileUserId) node.querySelector('#amanahSettingsEmail').textContent = 'Unable to verify account';
+        node.querySelector('#amanahSettingsRole').textContent = 'Unavailable';
+        setProfileMessage('Could not load all account details. Close and reopen User Account to retry.', true);
+      }
+    }
+  }
+
+  async function updateProfile(event) {
+    event.preventDefault();
+    const client = getClient();
+    const input = overlay.querySelector('#amanahProfileName');
+    const button = overlay.querySelector('#amanahProfileSave');
+    if (button.disabled) return;
+    const name = input.value.trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 80) return setProfileMessage('Enter a display name of 1 to 80 characters.', true);
+    const accountId = profileUserId;
+    const version = sessionRevision;
+    const request = accountRequest;
+    if (!client?.auth || !accountId || currentUserId !== accountId) {
+      return setProfileMessage('Please sign in again before saving your profile.', true);
+    }
+    button.disabled = true;
+    button.textContent = 'SAVING…';
+    input.readOnly = true;
+    setProfileMessage('Saving your profile…', false);
+    // Share the existing account metadata queue with appearance writes.
+    const update = writes.catch(() => {}).then(async () => {
+      if (currentUserId !== accountId || sessionRevision !== version) throw new Error('Your login has changed. Please sign in again.');
+      const { data: identity, error: identityError } = await client.auth.getUser();
+      if (identityError || identity?.user?.id !== accountId || currentUserId !== accountId || sessionRevision !== version) {
+        throw new Error('Your login has changed. Please sign in again.');
+      }
+      const { data, error } = await client.auth.updateUser({ data: { full_name: name } });
+      if (error) throw error;
+      if (currentUserId !== accountId || sessionRevision !== version) return;
+      if (data?.user?.id !== accountId || data.user.user_metadata?.full_name !== name) throw new Error('The profile update could not be confirmed. Please try again.');
+      syncAccountIdentity(data.user);
+      if (!overlay.hidden && request === accountRequest) {
+        input.value = name;
+        setProfileMessage('Your display name has been saved.', false);
+      }
+    });
+    writes = update.catch(() => {});
+    try {
+      await update;
+    } catch (error) {
+      if (currentUserId === accountId && sessionRevision === version && request === accountRequest) {
+        setProfileMessage(error?.message || 'Could not save your profile. Please try again.', true);
+      }
+    } finally {
+      if (currentUserId === accountId && profileUserId === accountId && request === accountRequest) {
+        button.disabled = false;
+        button.textContent = 'SAVE PROFILE';
+        input.readOnly = false;
+      }
     }
   }
 
@@ -327,32 +456,41 @@
     }
   }
 
-  function openSettings() {
+  function openSettings(focusProfile) {
     const node = ensureOverlay();
+    ++accountRequest;
+    resetProfileEditor();
     previouslyFocused = document.activeElement;
     node.hidden = false;
     document.body.classList.add('amanah-settings-open');
     node.querySelector('#amanahChangePasswordForm').reset();
+    node.querySelector('.amanah-settings-content').scrollTop = 0;
     setMessage('', false);
     applyPreferences();
     node.querySelector('.amanah-settings-close').focus();
-    refreshCurrentUser().then(fillAccount);
+    refreshCurrentUser().then(fillAccount).then(() => {
+      const input = node.querySelector('#amanahProfileName');
+      if (focusProfile && !node.hidden && !input.disabled && document.activeElement === node.querySelector('.amanah-settings-close')) input.focus();
+    });
   }
 
   function closeSettings() {
     if (!overlay || overlay.hidden) return;
+    ++accountRequest;
     overlay.hidden = true;
     document.body.classList.remove('amanah-settings-open');
     overlay.querySelector('#amanahChangePasswordForm').reset();
+    resetProfileEditor();
     if (previouslyFocused && typeof previouslyFocused.focus === 'function' && previouslyFocused.isConnected) {
       previouslyFocused.focus();
     }
   }
 
   document.addEventListener('click', event => {
-    if (event.target.closest && event.target.closest('#amanahSettingsGear')) {
+    const trigger = event.target.closest && event.target.closest('#amanahSettingsGear, [data-amanah-open-profile]');
+    if (trigger) {
       event.preventDefault();
-      openSettings();
+      openSettings(trigger.hasAttribute('data-amanah-open-profile'));
     }
   });
 
@@ -399,6 +537,8 @@
         useAccount(session?.user || null);
         // Avoid awaited Supabase calls inside its auth event callback.
         Promise.resolve().then(refreshCurrentUser);
+      } else if (event === 'USER_UPDATED' && session?.user?.id === currentUserId) {
+        syncAccountIdentity(session.user);
       }
     });
   }
