@@ -313,6 +313,11 @@ async function login(event) {
 
   event.preventDefault();
 
+  const submitButton = document.getElementById('loginSubmitButton');
+  const submitLabel = document.getElementById('loginSubmitLabel');
+  const loginForm = document.getElementById('loginForm');
+  if (submitButton?.disabled) return;
+
   hideMessage('loginMessage');
 
   const email =
@@ -324,6 +329,10 @@ async function login(event) {
     document.getElementById(
       'loginPassword'
     ).value;
+
+  if (submitButton) submitButton.disabled = true;
+  if (submitLabel) submitLabel.textContent = 'Signing in…';
+  loginForm?.setAttribute('aria-busy', 'true');
 
   try {
 
@@ -354,6 +363,12 @@ async function login(event) {
         'Unable to sign in.',
       'error'
     );
+
+  } finally {
+
+    if (submitButton) submitButton.disabled = false;
+    if (submitLabel) submitLabel.textContent = 'Sign in';
+    loginForm?.removeAttribute('aria-busy');
 
   }
 
