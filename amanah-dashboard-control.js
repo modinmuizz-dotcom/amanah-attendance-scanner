@@ -278,6 +278,11 @@
     if(costSection)costSection.hidden=!p.financial;
     const attendance=document.getElementById('attendanceBody')?.closest('section.panel');
     if(attendance)attendance.hidden=!p.attendance;
+    window.__AMANAH_DASHBOARD_PERMS = p;
+    if (typeof window.loadDashboardLegacyDetails === 'function') {
+      Promise.resolve(window.loadDashboardLegacyDetails(p)).catch(error =>
+        console.warn('Unable to refresh optional detailed reports:',error));
+    }
   }
 
   async function load() {
