@@ -92,17 +92,17 @@
   let lastData = null;
 
   function progressPanel(projects, p) {
-    if (!projects.length) return card('Project accomplishment',
-      'Based on reported progress in Project Master',
+    if (!projects.length) return card('Scheduled activity progress',
+      'Based on actual quantities for approved scheduled activities',
       noData('No active projects were returned.'),makeLink('project-schedule.html','Open Activity Calendar →',p,'am-corp-footer-link'));
 
     const countOverdue = projects.filter(x=>x.overdue === true).length;
     const rows = projects.map(project=>{
-      const raw = project.progress == null ? null : Number(project.progress);
+      const raw = project.progress_source === 'approved_activity_quantities' && project.progress != null ? Number(project.progress) : null;
       const valid = raw != null && Number.isFinite(raw);
       const percent = valid ? Math.max(0,Math.min(100,raw)) : 0;
       const statusText = project.overdue ? 'Past target date' :
-        valid ? (String(project.status||'Active').toUpperCase()) : 'Progress not reported';
+        valid ? (qty(project.completed_activities)+' of '+qty(project.activity_count)+' approved activities complete') : 'No measurable approved activities';
       const flag = project.overdue ? ' is-late' : '';
       return '<li class="am-corp-progress-item">'+
         '<div class="am-corp-progress-top"><strong>'+esc(project.name||project.id||'Project')+'</strong>'+
@@ -115,9 +115,9 @@
           esc(statusText)+'</span><span>'+esc(project.target_date ? 'Target '+project.target_date : 'No target date')+
           '</span></div></li>';
     }).join('');
-    return card('Project accomplishment',
+    return card('Scheduled activity progress',
       countOverdue ? qty(countOverdue)+' project(s) beyond target date' :
-        'Physical progress is separate from expenses',
+        'Average of approved activity completion; not total project scope',
       '<ul class="am-corp-progress-list">'+rows+'</ul>',
       makeLink('project-schedule.html','Open Activity Calendar →',p,'am-corp-footer-link'));
   }
