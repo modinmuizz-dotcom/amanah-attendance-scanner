@@ -13,13 +13,13 @@ DECLARE
  v_perms text[];
  v_fin boolean;v_prog boolean;v_work boolean;v_equip boolean;v_buy boolean;
  v_pay boolean;v_gm boolean;v_repair boolean;v_maint boolean;
- v_project_count int:=0;v_working int:=0;v_equipment int:=0;
+ v_project_count int:=0;v_working int:=0;v_active_equipment int:=0;
  v_cost numeric:=0;v_estimate numeric:=0;v_estimated_projects int:=0;
  v_fiscal jsonb:='{}';v_projects jsonb:='[]';
  v_workforce jsonb:='{}';v_equipment jsonb:='{}';v_procurement jsonb:='{}';v_payments jsonb:='{}';
  v_alerts jsonb:='[]';v_progress jsonb:='{}';
  v_active int:=0;v_late int:=0;v_pending int:=0;v_repair_open int:=0;
- v_await_post int:=0;v_unpriced int:=0;v_ready float8:=0;v_po_pending int:=0;
+ v_await_post int:=0;v_unpriced int:=0;v_ready numeric:=0;v_po_pending int:=0;
  v_payroll_pending int:=0;v_unreleased numeric:=0;v_lump_unpaid numeric:=0;
  v_attendance_count int:=0;v_completed int:=0;v_staff int:=0;
 BEGIN
@@ -43,7 +43,7 @@ BEGIN
 
  SELECT count(*) FILTER(WHERE upper(coalesce(status,''))='ACTIVE') INTO v_project_count
  FROM public.projects;
- SELECT count(*) FILTER(WHERE upper(coalesce(status,''))='ACTIVE') INTO v_equipment
+ SELECT count(*) FILTER(WHERE upper(coalesce(status,''))='ACTIVE') INTO v_active_equipment
  FROM public.equipment;
 
  IF v_work THEN
@@ -124,7 +124,7 @@ BEGIN
    SELECT count(*) FILTER (WHERE upper(coalesce(status,'')) NOT IN
        ('CLOSED','CANCELLED','COMPLETED','REJECTED'))
    INTO v_repair_open FROM public.repair_requests;
-   v_equipment:=jsonb_build_object('active_equipment',v_equipment,'open_repairs',v_repair_open);
+   v_equipment:=jsonb_build_object('active_equipment',v_active_equipment,'open_repairs',v_repair_open);
    IF (v_repair OR v_maint) AND v_repair_open>0 THEN v_alerts:=v_alerts||jsonb_build_array(
       jsonb_build_object('label','Equipment repair requests still open','count',v_repair_open,
          'url','repair-requests.html','type','warning'));END IF;
@@ -200,7 +200,7 @@ BEGIN
     'approvals',v_gm,'repairs',v_repair,'maintenance',v_maint),
   'overview',jsonb_build_object('active_projects',v_project_count,
     'currently_working',CASE WHEN v_work THEN v_working ELSE NULL END,
-    'active_equipment',CASE WHEN v_equip THEN v_equipment ELSE NULL END,
+    'active_equipment',CASE WHEN v_equip THEN v_active_equipment ELSE NULL END,
     'actual_cost',CASE WHEN v_fin THEN v_cost ELSE NULL END),
   'financial',v_fiscal,'projects',v_projects,'progress',v_progress,
   'workforce',v_workforce,'equipment',v_equipment,
