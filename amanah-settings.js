@@ -8,6 +8,10 @@
   // Do not migrate the old browser-wide key: it could belong to another user.
   const ACCOUNT_CACHE_PREFIX = 'amanah_ui_preferences_user_v2:';
   const METADATA_KEY = 'amanah_appearance_v1';
+  const PHOTO_KEY = 'amanah_avatar_path_v1';
+  const PHOTO_BUCKET = 'account-avatars';
+  const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+  const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
   const SUPABASE_URL = 'https://bafmycjninxomufhkjvy.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
   const defaultPreferences = () => ({ theme: 'blue', mode: 'light', compact: false });
@@ -27,6 +31,166 @@
   let writes = Promise.resolve();
   let accountRequest = 0;
   let profileUserId = null;
+  let avatar = { userId: null, path: null, url: null, expiresAt: 0, pending: null };
+  let photoEdit = { file: null, previewUrl: null, remove: false };
+  let photoSelectionRevision = 0;
+  let photoSelecting = false;
+  let profileBusy = false;
+
+  function photoPath(user) {
+    const path = user?.user_metadata?.[PHOTO_KEY];
+    // Metadata may select only a flat image in this account's private folder.
+    if (typeof path !== 'string' || !user?.id || !path.startsWith(user.id + '/')) return null;
+    return /^[a-zA-Z0-9_-]+\.(jpg|png|webp)$/.test(path.slice(user.id.length + 1)) ? path : null;
+  }
+
+  function renderAvatars() {
+    const display = window.AMANAH_ACCOUNT_DISPLAY;
+    const initials = display?.user_id === currentUserId ? display.initials : 'A';
+    const savedUrl = avatar.userId === currentUserId ? avatar.url : null;
+    document.querySelectorAll('[data-amanah-account-avatar]').forEach(node => {
+      const preview = node.hasAttribute('data-amanah-avatar-preview');
+      const url = preview && photoEdit.previewUrl ? photoEdit.previewUrl :
+        (preview && photoEdit.remove ? null : savedUrl);
+      if (!url) {
+        node.textContent = initials;
+        delete node.dataset.amanahAvatarSource;
+      } else if (node.dataset.amanahAvatarSource !== url || !node.querySelector('img')) {
+        const img = document.createElement('img');
+        img.className = 'amanah-avatar-image';
+        img.alt = preview ? 'Profile picture preview' : '';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', () => {
+          if (img.parentNode === node) {
+            node.textContent = initials;
+            delete node.dataset.amanahAvatarSource;
+          }
+        }, { once: true });
+        img.src = url;
+        node.replaceChildren(img);
+        node.dataset.amanahAvatarSource = url;
+      }
+    });
+  }
+
+  function loadAccountPhoto(user) {
+    const userId = user?.id || null;
+    const path = photoPath(user);
+    const samePhoto = avatar.userId === userId && avatar.path === path;
+    if (samePhoto && (avatar.pending || !path || (avatar.url && avatar.expiresAt > Date.now() + 60000))) {
+      renderAvatars();
+      return avatar.pending;
+    }
+    const state = { userId, path, url: samePhoto ? avatar.url : null, expiresAt: 0, pending: null };
+    avatar = state;
+    renderAvatars();
+    syncPhotoControls();
+    if (!path || userId !== currentUserId) return null;
+    // Defer API calls so this is also safe from Supabase's auth event callback.
+    state.pending = Promise.resolve().then(async () => {
+      const client = getClient();
+      if (!client?.storage || avatar !== state || currentUserId !== userId) return;
+      const { data, error } = await client.storage.from(PHOTO_BUCKET).createSignedUrl(path, 3600);
+      if (error) throw error;
+      if (typeof data?.signedUrl !== 'string') throw new Error('Photo unavailable');
+      if (avatar !== state || currentUserId !== userId) return;
+      state.url = data.signedUrl;
+      state.expiresAt = Date.now() + 3600000;
+      renderAvatars();
+    }).catch(() => {
+      if (avatar !== state || currentUserId !== userId) return;
+      state.url = null;
+      renderAvatars();
+    }).finally(() => { state.pending = null; });
+    return state.pending;
+  }
+
+  function syncPhotoControls() {
+    if (!overlay) return;
+    const ready = !!profileUserId && profileUserId === currentUserId;
+    const locked = !ready || profileBusy || photoSelecting;
+    const hasPhoto = !!photoEdit.file || (!photoEdit.remove && avatar.userId === currentUserId && !!avatar.path);
+    overlay.querySelector('#amanahPhotoChoose').disabled = locked;
+    overlay.querySelector('#amanahPhotoChoose').textContent = photoSelecting ? 'Checking photo…' : (hasPhoto ? 'Replace photo' : 'Upload photo');
+    overlay.querySelector('#amanahPhotoRemove').disabled = locked || !hasPhoto;
+    overlay.querySelector('#amanahProfilePhoto').disabled = locked;
+    overlay.querySelector('#amanahProfileSave').disabled = locked;
+  }
+
+  function resetPhotoEditor(keepBusy) {
+    ++photoSelectionRevision;
+    photoSelecting = false;
+    if (!keepBusy) profileBusy = false;
+    if (photoEdit.previewUrl) URL.revokeObjectURL(photoEdit.previewUrl);
+    photoEdit = { file: null, previewUrl: null, remove: false };
+    if (overlay) overlay.querySelector('#amanahProfilePhoto').value = '';
+    renderAvatars();
+    syncPhotoControls();
+  }
+
+  function verifyPhotoFile(file) {
+    if (!Object.prototype.hasOwnProperty.call(PHOTO_TYPES, file.type)) throw new Error('Choose a JPG, PNG, or WebP image.');
+    if (!file.size) throw new Error('This image is empty. Please choose another photo.');
+    if (file.size > PHOTO_MAX_BYTES) throw new Error('Your photo must be 5 MB or smaller.');
+  }
+
+  function decodePhoto(url) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      const timeout = window.setTimeout(() => finish(new Error('This image could not be opened. Please choose another photo.')), 10000);
+      function finish(error) {
+        window.clearTimeout(timeout);
+        image.onload = image.onerror = null;
+        if (error) reject(error); else resolve();
+      }
+      image.onload = () => finish(image.naturalWidth && image.naturalHeight ? null : new Error('This image could not be opened.'));
+      image.onerror = () => finish(new Error('This image could not be opened. Please choose another photo.'));
+      image.src = url;
+    });
+  }
+
+  async function selectProfilePhoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !profileUserId || profileBusy) return;
+    const owner = profileUserId;
+    const request = accountRequest;
+    const selection = ++photoSelectionRevision;
+    let url = null;
+    try {
+      verifyPhotoFile(file);
+      photoSelecting = true;
+      syncPhotoControls();
+      url = URL.createObjectURL(file);
+      await decodePhoto(url);
+      if (selection !== photoSelectionRevision || request !== accountRequest || owner !== currentUserId || owner !== profileUserId) return;
+      if (photoEdit.previewUrl) URL.revokeObjectURL(photoEdit.previewUrl);
+      photoEdit = { file, previewUrl: url, remove: false };
+      url = null;
+      renderAvatars();
+      setProfileMessage('Photo selected. Click Save Profile to apply it.', false);
+    } catch (error) {
+      if (selection === photoSelectionRevision && request === accountRequest && owner === currentUserId) {
+        setProfileMessage(error?.message || 'Please choose another photo.', true);
+      }
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+      if (selection === photoSelectionRevision) {
+        photoSelecting = false;
+        syncPhotoControls();
+      }
+    }
+  }
+
+  function removeProfilePhoto() {
+    if (!profileUserId || profileBusy || photoSelecting) return;
+    if (photoEdit.previewUrl) URL.revokeObjectURL(photoEdit.previewUrl);
+    photoEdit = { file: null, previewUrl: null, remove: true };
+    renderAvatars();
+    syncPhotoControls();
+    setProfileMessage('Photo removed from the preview. Click Save Profile to confirm.', false);
+  }
 
   function displayName(user) {
     const metadata = user?.user_metadata || {};
@@ -44,7 +208,7 @@
       (Array.from(words[0])[0] + (words.length > 1 ? Array.from(words[words.length - 1])[0] : '')).toUpperCase() : 'A';
     window.AMANAH_ACCOUNT_DISPLAY = user ? { user_id: user.id, name, initials } : null;
     document.querySelectorAll('#amanahCurrentUserName, .sidebar .user-name').forEach(node => { node.textContent = name; });
-    document.querySelectorAll('[data-amanah-account-avatar]').forEach(node => { node.textContent = initials; });
+    loadAccountPhoto(user);
     if (overlay) overlay.querySelector('#amanahSettingsName').textContent = name;
     const role = window.AMANAH_ACCOUNT_ROLE;
     const roleName = user && role?.user_id === user.id ? role.role : 'AUTHENTICATED';
@@ -61,6 +225,7 @@
 
   function resetProfileEditor() {
     profileUserId = null;
+    resetPhotoEditor();
     if (!overlay) return;
     const input = overlay.querySelector('#amanahProfileName');
     input.value = '';
@@ -248,7 +413,11 @@
       '  </header>',
       '  <div class="amanah-settings-content">',
       '    <div class="amanah-settings-section"><h3>Your Profile</h3>',
-      '      <div class="amanah-account-summary"><span class="amanah-account-avatar" data-amanah-account-avatar>A</span><div><strong id="amanahSettingsName">Loading…</strong><span>Your personal AMANAH account</span></div></div>',
+      '      <div class="amanah-account-summary"><span class="amanah-account-avatar" data-amanah-account-avatar data-amanah-avatar-preview>A</span><div><strong id="amanahSettingsName">Loading…</strong><span>Your personal AMANAH account</span>',
+      '        <div class="amanah-photo-actions"><button id="amanahPhotoChoose" type="button" disabled>Upload photo</button><button id="amanahPhotoRemove" type="button" disabled>Remove</button></div>',
+      '        <input id="amanahProfilePhoto" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a profile photo" aria-describedby="amanahPhotoHelp" hidden disabled>',
+      '        <p id="amanahPhotoHelp" class="amanah-settings-help">JPG, PNG or WebP · Up to 5 MB</p>',
+      '      </div></div>',
       '      <div class="amanah-settings-profile">',
       '        <div><span>Email</span><strong id="amanahSettingsEmail">Loading…</strong></div>',
       '        <div><span>System Role</span><strong id="amanahSettingsRole">—</strong></div>',
@@ -332,6 +501,9 @@
     });
     overlay.querySelector('#amanahChangePasswordForm').addEventListener('submit', updatePassword);
     overlay.querySelector('#amanahProfileForm').addEventListener('submit', updateProfile);
+    overlay.querySelector('#amanahPhotoChoose').addEventListener('click', () => overlay.querySelector('#amanahProfilePhoto').click());
+    overlay.querySelector('#amanahProfilePhoto').addEventListener('change', selectProfilePhoto);
+    overlay.querySelector('#amanahPhotoRemove').addEventListener('click', removeProfilePhoto);
     applyPreferences();
     return overlay;
   }
@@ -360,7 +532,7 @@
       const input = node.querySelector('#amanahProfileName');
       input.value = displayName(user);
       input.disabled = false;
-      node.querySelector('#amanahProfileSave').disabled = false;
+      syncPhotoControls();
       const { data: role, error: roleError } = await client.rpc('amanah_get_current_role');
       if (node.hidden || request !== accountRequest || accountId !== currentUserId) return;
       if (roleError) throw new Error('Your profile is ready, but the system role could not be loaded.');
@@ -388,10 +560,14 @@
     const accountId = profileUserId;
     const version = sessionRevision;
     const request = accountRequest;
+    const photoFile = photoEdit.file;
+    const removePhoto = photoEdit.remove;
+    const photoChanged = !!photoFile || removePhoto;
     if (!client?.auth || !accountId || currentUserId !== accountId) {
       return setProfileMessage('Please sign in again before saving your profile.', true);
     }
-    button.disabled = true;
+    profileBusy = true;
+    syncPhotoControls();
     button.textContent = 'SAVING…';
     input.readOnly = true;
     setProfileMessage('Saving your profile…', false);
@@ -402,14 +578,58 @@
       if (identityError || identity?.user?.id !== accountId || currentUserId !== accountId || sessionRevision !== version) {
         throw new Error('Your login has changed. Please sign in again.');
       }
-      const { data, error } = await client.auth.updateUser({ data: { full_name: name } });
-      if (error) throw error;
-      if (currentUserId !== accountId || sessionRevision !== version) return;
-      if (data?.user?.id !== accountId || data.user.user_metadata?.full_name !== name) throw new Error('The profile update could not be confirmed. Please try again.');
-      syncAccountIdentity(data.user);
-      if (!overlay.hidden && request === accountRequest) {
-        input.value = name;
-        setProfileMessage('Your display name has been saved.', false);
+      const oldPath = photoPath(identity.user);
+      let nextPath = removePhoto ? null : oldPath;
+      let uploadedPath = null;
+      let confirmed = false;
+      try {
+        const metadata = { full_name: name };
+        if (photoFile) {
+          verifyPhotoFile(photoFile);
+          if (!client.storage) throw new Error('Photo storage is unavailable. Please try again.');
+          const photoId = window.crypto.randomUUID();
+          uploadedPath = accountId + '/' + photoId + '.' + PHOTO_TYPES[photoFile.type];
+          const { error: uploadError } = await client.storage.from(PHOTO_BUCKET).upload(uploadedPath, photoFile, {
+            contentType: photoFile.type, cacheControl: '3600', upsert: false
+          });
+          if (uploadError) throw new Error('Could not upload your photo: ' + (uploadError.message || 'Please try again.'));
+          nextPath = uploadedPath;
+          // Uploading can take time. Re-verify the owner before updating metadata.
+          if (currentUserId !== accountId || sessionRevision !== version) throw new Error('Your login has changed. Please sign in again.');
+          const { data: freshIdentity, error: freshError } = await client.auth.getUser();
+          if (freshError || freshIdentity?.user?.id !== accountId || currentUserId !== accountId || sessionRevision !== version) {
+            throw new Error('Your login has changed. Please sign in again.');
+          }
+        }
+        if (photoChanged) metadata[PHOTO_KEY] = nextPath;
+        const { data, error } = await client.auth.updateUser({ data: metadata });
+        if (error) throw error;
+        if (data?.user?.id !== accountId || data.user.user_metadata?.full_name !== name ||
+            (photoChanged && (photoPath(data.user) !== nextPath))) {
+          throw new Error('The profile update could not be confirmed. Please try again.');
+        }
+        confirmed = true;
+        if (currentUserId !== accountId || sessionRevision !== version) return;
+        syncAccountIdentity(data.user);
+        await avatar.pending;
+        if (currentUserId !== accountId || sessionRevision !== version) return;
+        if (!overlay.hidden && request === accountRequest) {
+          resetPhotoEditor(true);
+          input.value = name;
+          setProfileMessage(photoChanged ? (nextPath ? 'Your profile and photo have been saved.' : 'Your profile has been saved and the photo removed.') : 'Your display name has been saved.', false);
+        }
+        if (photoChanged && oldPath && oldPath !== nextPath) await cleanupPhoto(client, oldPath, accountId, version);
+      } finally {
+        // On a failed save, delete a new upload only after confirming Auth did
+        // not commit its path. A lost response must not delete a saved photo.
+        if (uploadedPath && !confirmed && currentUserId === accountId && sessionRevision === version) {
+          try {
+            const { data: fresh, error } = await client.auth.getUser();
+            if (!error && fresh?.user?.id === accountId && photoPath(fresh.user) !== uploadedPath) {
+              await cleanupPhoto(client, uploadedPath, accountId, version);
+            }
+          } catch (_) { /* Keep the file when the final account state is uncertain. */ }
+        }
       }
     });
     writes = update.catch(() => {});
@@ -421,11 +641,20 @@
       }
     } finally {
       if (currentUserId === accountId && profileUserId === accountId && request === accountRequest) {
-        button.disabled = false;
+        profileBusy = false;
+        syncPhotoControls();
         button.textContent = 'SAVE PROFILE';
         input.readOnly = false;
       }
     }
+  }
+
+  async function cleanupPhoto(client, path, accountId, version) {
+    if (currentUserId !== accountId || sessionRevision !== version || !path?.startsWith(accountId + '/')) return;
+    try {
+      const { error } = await client.storage.from(PHOTO_BUCKET).remove([path]);
+      if (error) console.warn('AMANAH unused profile photo could not be removed.');
+    } catch (_) { console.warn('AMANAH unused profile photo could not be removed.'); }
   }
 
   async function updatePassword(event) {
@@ -550,7 +779,7 @@
     });
   }
 
-  window.AMANAH_SETTINGS = { refreshCurrentUser };
+  window.AMANAH_SETTINGS = { refreshCurrentUser, renderAvatars };
   applyPreferences();  // Retain the authenticated account first-paint appearance.
   watchAuthentication();
   refreshCurrentUser();

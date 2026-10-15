@@ -69,10 +69,30 @@ body.amanah-settings-open { overflow: hidden !important; }
 .amanah-settings-profile strong { font-size:12px; font-weight:800; text-align:right; overflow-wrap:anywhere; }
 .amanah-account-summary { display:flex; align-items:center; gap:13px; margin:0 0 17px; }
 .amanah-account-avatar {
-  flex:0 0 48px; width:48px; height:48px; display:grid; place-items:center;
+  flex:0 0 80px; width:80px; height:80px; display:grid; place-items:center;
   border-radius:50%; border:1px solid #d6dff0; background:#edf2fe; color:#24448a;
-  font-size:17px; font-weight:800;
+  font-size:25px; font-weight:800;
 }
+[data-amanah-account-avatar] { overflow:hidden; }
+[data-amanah-account-avatar] > .amanah-avatar-image {
+  display:block; width:100%; height:100%; min-width:0; object-fit:cover; border-radius:inherit;
+}
+.amanah-photo-actions { display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 7px; }
+.amanah-photo-actions button {
+  min-height:33px; padding:7px 11px; border:1px solid #cbd5e1; border-radius:7px;
+  background:#fff; color:#334155; font:inherit; font-size:11px; font-weight:700; cursor:pointer;
+}
+.amanah-photo-actions #amanahPhotoChoose {
+  border-color:var(--amanah-polish-accent,#2563eb); color:var(--amanah-polish-accent,#2563eb); background:#f8faff;
+}
+.amanah-photo-actions button:hover:not(:disabled) { background:#edf2fa; }
+.amanah-photo-actions button:disabled { opacity:.5; cursor:default; }
+#amanahProfilePhoto[hidden] { display:none !important; }
+.amanah-account-summary #amanahPhotoHelp { margin:0; font-size:10px; line-height:1.5; }
+html[data-amanah-mode="dark"] .amanah-photo-actions button { background:#19283c; color:#d8e5fa; border-color:#48617b; }
+html[data-amanah-mode="dark"] .amanah-photo-actions #amanahPhotoChoose { background:#233650; color:#e7edf9; border-color:#829bbb; }
+html[data-amanah-mode="dark"] .amanah-photo-actions button:hover:not(:disabled) { background:#30445f; }
+html[data-amanah-theme="gold"][data-amanah-mode="light"] .amanah-photo-actions #amanahPhotoChoose { background:#fffbef; color:#795817; border-color:#c39d46; }
 .amanah-account-summary > div { min-width:0; }
 .amanah-account-summary strong { display:block; color:#19263b; font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
 .amanah-account-summary > div > span { display:block; margin-top:4px; color:#64748b; font-size:11px; line-height:1.5; }
@@ -149,6 +169,10 @@ html[data-amanah-mode="dark"] #amanahProfileName { background:#19283c; color:#f0
   .amanah-settings-content { padding:0 17px 8px; }
   .amanah-settings-themes { grid-template-columns:1fr; }
   .amanah-settings-footer { padding:12px 17px; }
+}
+@media(max-width:380px) {
+  .amanah-account-avatar { flex-basis:64px; width:64px; height:64px; font-size:22px; }
+  .amanah-account-summary { gap:11px; }
 }
 
 /* Appearance: Classic Blue remains the existing unmodified default. */

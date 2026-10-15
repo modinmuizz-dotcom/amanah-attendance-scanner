@@ -95,7 +95,7 @@
       const settingsStyle=document.createElement('link');
       settingsStyle.id='amanahSettingsStyles';
       settingsStyle.rel='stylesheet';
-      settingsStyle.href='amanah-settings.css?v=3';
+      settingsStyle.href='amanah-settings.css?v=4';
       document.head.appendChild(settingsStyle);
     }
     if(!document.getElementById('amanahGlobalTheme')){
@@ -132,7 +132,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=8';
+      settingsScript.src='amanah-settings.js?v=9';
       document.head.appendChild(settingsScript);
     }
 
@@ -322,7 +322,11 @@
       if(nameEl) nameEl.textContent=name;
       const words=String(name).trim().split(/\s+/).filter(Boolean);
       const initials=words.length ? (Array.from(words[0])[0]+(words.length>1?Array.from(words[words.length-1])[0]:'')).toUpperCase() : 'A';
-      document.querySelectorAll('[data-amanah-account-avatar]').forEach(node=>{node.textContent=initials;});
+      if(window.AMANAH_SETTINGS?.renderAvatars && display?.user_id===session.user.id){
+        window.AMANAH_SETTINGS.renderAvatars();
+      }else{
+        document.querySelectorAll('[data-amanah-account-avatar]').forEach(node=>{node.textContent=initials;});
+      }
 
       const visibleLinks=[...document.querySelectorAll('.amanah-nav-item')];
       visibleLinks.forEach(link=>{
