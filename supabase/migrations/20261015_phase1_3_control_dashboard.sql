@@ -14,7 +14,7 @@ DECLARE
  v_fin boolean;v_prog boolean;v_work boolean;v_equip boolean;v_buy boolean;
  v_pay boolean;v_gm boolean;v_repair boolean;v_maint boolean;
  v_project_count int:=0;v_working int:=0;v_active_equipment int:=0;
- v_cost numeric:=0;v_estimate numeric:=0;v_estimated_projects int:=0;
+ v_cost numeric:=0;v_estimate numeric:=0;v_covered_cost numeric:=0;v_estimated_projects int:=0;v_missing_estimate int:=0;
  v_fiscal jsonb:='{}';v_projects jsonb:='[]';
  v_workforce jsonb:='{}';v_equipment jsonb:='{}';v_procurement jsonb:='{}';v_payments jsonb:='{}';
  v_alerts jsonb:='[]';v_progress jsonb:='{}';
@@ -62,13 +62,16 @@ BEGIN
  IF v_fin THEN
    SELECT coalesce(sum(coalesce(actual_cost,0)),0),
           coalesce(sum(estimate_cost),0),
-          count(*) FILTER(WHERE estimate_cost IS NOT NULL)
-    INTO v_cost,v_estimate,v_estimated_projects
+          coalesce(sum(actual_cost) FILTER (WHERE estimate_cost IS NOT NULL),0),
+          count(*) FILTER(WHERE estimate_cost IS NOT NULL),
+          count(*) FILTER(WHERE estimate_cost IS NULL)
+    INTO v_cost,v_estimate,v_covered_cost,v_estimated_projects,v_missing_estimate
     FROM public.get_dashboard_project_cost_chart();
    v_fiscal:=jsonb_build_object('actual_cost',v_cost,'saved_estimates',v_estimate,
-      'remaining_estimated_budget',v_estimate-v_cost,
+      'remaining_estimated_budget',v_estimate-v_covered_cost,
+      'actual_on_estimated_projects',v_covered_cost,'projects_missing_estimates',v_missing_estimate,
       'projects_with_estimates',v_estimated_projects,
-      'budget_coverage_note','Estimate availability varies by project');
+      'budget_coverage_note','Budget remaining only compares projects with saved estimates; actual total includes all projects');
    v_fiscal:=v_fiscal||jsonb_build_object('breakdown',(
      SELECT coalesce(jsonb_agg(jsonb_build_object('type',cost_type,'amount',total)
        ORDER BY total DESC),'[]'::jsonb)
