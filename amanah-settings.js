@@ -431,11 +431,13 @@
   async function updatePassword(event) {
     event.preventDefault();
     const client = getClient();
+    const accountId = currentUserId;
+    const version = sessionRevision;
     const password = overlay.querySelector('#amanahNewPassword').value;
     const confirm = overlay.querySelector('#amanahConfirmPassword').value;
     if (password.length < 8) return setMessage('Password must contain at least 8 characters.', true);
     if (password !== confirm) return setMessage('The two passwords do not match.', true);
-    if (!client || !client.auth) return setMessage('Authentication is unavailable. Please sign in again.', true);
+    if (!client || !client.auth || !accountId) return setMessage('Authentication is unavailable. Please sign in again.', true);
 
     const button = overlay.querySelector('#amanahPasswordSave');
     button.disabled = true;
@@ -443,13 +445,18 @@
     setMessage('', false);
     try {
       const { data: userData, error: userError } = await client.auth.getUser();
-      if (userError || !userData?.user) throw new Error('Your session has expired. Please sign in again.');
+      if (userError || userData?.user?.id !== accountId || currentUserId !== accountId || sessionRevision !== version) {
+        throw new Error('Your login has changed. Please sign in again.');
+      }
       const { error } = await client.auth.updateUser({ password: password });
       if (error) throw error;
+      if (currentUserId !== accountId || sessionRevision !== version) return;
       overlay.querySelector('#amanahChangePasswordForm').reset();
       setMessage('Your account password was updated successfully.', false);
     } catch (error) {
-      setMessage(error?.message || 'Could not update the password. Please try again.', true);
+      if (currentUserId === accountId && sessionRevision === version) {
+        setMessage(error?.message || 'Could not update the password. Please try again.', true);
+      }
     } finally {
       button.disabled = false;
       button.textContent = 'UPDATE PASSWORD';
