@@ -132,7 +132,7 @@
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
       settingsScript.id='amanahSettingsScript';
-      settingsScript.src='amanah-settings.js?v=9';
+      settingsScript.src='amanah-settings.js?v=10';
       document.head.appendChild(settingsScript);
     }
 
@@ -423,3 +423,4 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 })();
+

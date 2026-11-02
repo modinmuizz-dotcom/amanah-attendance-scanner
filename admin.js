@@ -175,6 +175,9 @@ const supabaseClient =
     SUPABASE_PUBLISHABLE_KEY
   );
 
+// The sidebar and User Account must share this page's authentication session.
+window.supabaseClient = supabaseClient;
+
 
 /* =========================================================
    APPLICATION STATE
@@ -359,8 +362,9 @@ async function login(event) {
 
     showMessage(
       'loginMessage',
-      error.message ||
-        'Unable to sign in.',
+      /failed to fetch|networkerror|load failed/i.test(error?.message || '')
+        ? 'Unable to connect to the sign-in service. Please retry, or open AMANAH in an Incognito window.'
+        : (error.message || 'Unable to sign in.'),
       'error'
     );
 
@@ -4819,37 +4823,26 @@ function bindEquipmentDirectActions() {
    AUTH STATE
    ========================================================= */
 
-supabaseClient.auth.onAuthStateChange(
-  async (_event, session) => {
-
-    if (session) {
-
-      showAdminApp(
-        session.user
-      );
-
-      try {
-
-        await loadAllData();
-
-      } catch (error) {
-
-        showMessage(
-          'globalMessage',
-          error.message,
-          'error'
-        );
-
-      }
-
-    } else {
-
-      showLoginScreen();
-
-    }
-
+let authStateRevision = 0;
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  const revision = ++authStateRevision;
+  if (!session) {
+    showLoginScreen();
+    return;
   }
-);
+
+  // Supabase can hold its session lock while notifying subscribers. Returning
+  // before loading data also lets refreshes and other tabs finish signing in.
+  window.setTimeout(() => {
+    if (revision !== authStateRevision) return;
+    showAdminApp(session.user);
+    loadAllData().catch(error => {
+      if (revision === authStateRevision) {
+        showMessage('globalMessage', error.message || 'Unable to load master data.', 'error');
+      }
+    });
+  }, 0);
+});
 
 
 /* =========================================================
@@ -4879,3 +4872,4 @@ document.addEventListener(
 
   }
 );
+

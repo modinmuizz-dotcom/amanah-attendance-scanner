@@ -287,11 +287,35 @@
 
   async function load() {
     const token=++generation;
+    let timeout;
     const refresh=root.querySelector('#amanahControlRefresh');
     if(refresh){refresh.disabled=true;refresh.setAttribute('aria-busy','true');}
     if(!lastData)root.innerHTML='<div class="am-corp-loading" role="status">Loading your management overview…</div>';
     try{
-      const {data,error}=await api.rpc('amanah_dashboard_control_center');
+      const request = (async () => {
+        const {data:auth,error:authError}=await api.auth.getSession();
+        if(authError?.name==='AuthSessionMissingError' ||
+           ['refresh_token_not_found','refresh_token_already_used','session_not_found'].includes(authError?.code)){
+          if(generation===token)location.replace('admin.html');
+          return null;
+        }
+        if(authError)throw authError;
+        if(!auth?.session){
+          if(generation===token)location.replace('admin.html');
+          return null;
+        }
+        return api.rpc('amanah_dashboard_control_center');
+      })();
+      const result=await Promise.race([
+        request,
+        new Promise((_,reject)=>{
+          timeout=window.setTimeout(()=>reject(new Error(
+            'The connection timed out. Please retry, or sign in again.'
+          )),15000);
+        })
+      ]);
+      if(!result)return;
+      const {data,error}=result;
       if(error)throw error;
       if(generation!==token)return;
       lastData=data||{};
@@ -314,6 +338,8 @@
           '<button type="button" class="am-corp-refresh" id="amanahControlRetry">Retry</button></div>';
         root.querySelector('#amanahControlRetry')?.addEventListener('click',load);
       }
+    }finally{
+      window.clearTimeout(timeout);
     }
   }
 
@@ -321,3 +347,4 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
   load();
 })();
+

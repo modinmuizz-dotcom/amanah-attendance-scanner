@@ -16,6 +16,9 @@ const supabaseClient =
     SUPABASE_PUBLISHABLE_KEY
   );
 
+// Share the saved session with the sidebar and User Account.
+window.supabaseClient = supabaseClient;
+
 
 function showMessage(
   message,
@@ -845,3 +848,4 @@ window.setInterval(() => {
 // Initialization is controlled by the permission-checked corporate Dashboard,
 // avoiding duplicate queries and unauthorized legacy reports.
 // The main refresh button and page visibility refresh live in that controller.
+

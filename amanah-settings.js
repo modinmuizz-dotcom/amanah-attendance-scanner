@@ -88,7 +88,7 @@
     syncPhotoControls();
     if (!path || userId !== currentUserId) return null;
     // Defer API calls so this is also safe from Supabase's auth event callback.
-    state.pending = Promise.resolve().then(async () => {
+    state.pending = new Promise(resolve => window.setTimeout(resolve, 0)).then(async () => {
       const client = getClient();
       if (!client?.storage || avatar !== state || currentUserId !== userId) return;
       const { data, error } = await client.storage.from(PHOTO_BUCKET).createSignedUrl(path, 3600);
@@ -772,7 +772,7 @@
                  session?.user?.id !== currentUserId) {
         useAccount(session?.user || null);
         // Avoid awaited Supabase calls inside its auth event callback.
-        Promise.resolve().then(refreshCurrentUser);
+        window.setTimeout(refreshCurrentUser, 0);
       } else if (event === 'USER_UPDATED' && session?.user?.id === currentUserId) {
         syncAccountIdentity(session.user);
       }
@@ -784,3 +784,4 @@
   watchAuthentication();
   refreshCurrentUser();
 })();
+
