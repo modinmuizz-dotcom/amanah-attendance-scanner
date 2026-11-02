@@ -15,6 +15,7 @@
     ]},
     {section:'PROJECT MANAGEMENT',items:[
       ['schedule','Activity Calendar','project-schedule.html','calendar','schedule.view'],
+      ['projectStructure','Project Structure','project-structure.html','file','master_data.projects|schedule.view|schedule.manage'],
       ['lumpContracts','Lump-Sum Contracts','lump-sum.html','file','schedule.view'],
     ]},
     {section:'WORKFORCE',items:[
@@ -68,6 +69,7 @@
     if(file==='purchasing.html') return 'purchasing';
     if(file==='suppliers.html') return 'suppliers';
     if(file==='project-schedule.html') return 'schedule';
+    if(file==='project-structure.html') return 'projectStructure';
     if(file==='reports.html') return 'reports';
     if(file==='attendance.html') return 'attendance';
     if(file==='activity-on-site.html') return 'activitiesSite';
@@ -154,6 +156,12 @@
           title:'MASTER DATA',
           desc:'Manage employees, equipment and projects used by the AMANAH construction management system.',
           badge:'Master Data Center'
+        },
+        'project-structure.html':{
+          kicker:'PROJECT MANAGEMENT',
+          title:'PROJECT STRUCTURE',
+          desc:'Define the work scope, allocate project weights and establish a versioned baseline.',
+          badge:'Work Structure'
         },
         'attendance.html':{
           kicker:'WORKFORCE CONTROL',
@@ -254,7 +262,7 @@
     const search=document.getElementById('amanahSideSearch');
     search?.addEventListener('input',()=>{
       const q=search.value.trim().toLowerCase();
-      sidebar.querySelectorAll('.amanah-nav-item').forEach(item=>item.style.display=(!q||item.textContent.toLowerCase().includes(q))?'flex':'none');
+      sidebar.querySelectorAll('.amanah-nav-item').forEach(item=>item.style.display=(item.dataset.accessHidden!=='true'&&(!q||item.textContent.toLowerCase().includes(q)))?'flex':'none');
     });
 
     // A fresh workspace may be entered without reloading this shared script
@@ -331,7 +339,7 @@
       const visibleLinks=[...document.querySelectorAll('.amanah-nav-item')];
       visibleLinks.forEach(link=>{
         const key=link.dataset.permission;
-        if(key && !permissionSet.has(key)){
+        if(key && !key.split('|').some(permission=>permissionSet.has(permission))){
           link.style.display='none';
           link.dataset.accessHidden='true';
         }
@@ -354,6 +362,7 @@
         'dashboard.html':['dashboard.view'],
         'roles-permissions.html':['roles.manage'],
         'project-schedule.html':['schedule.view'],
+        'project-structure.html':['master_data.projects','schedule.view','schedule.manage'],
         'attendance.html':['attendance.view'],
         'activity-on-site.html':['activities.view'],
         'payroll.html':['payroll.view'],

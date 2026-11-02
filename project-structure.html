@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="amanah-theme-boot.js?v=2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Structure | AMANAH</title>
+  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=6">
+  <link rel="stylesheet" href="project-structure.css?v=1">
+  <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
+  <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
+  <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
+  <link id="amanahDarkModeStyle" rel="stylesheet" href="amanah-dark-mode.css?v=3">
+  <link id="amanahDarkModulesStyle" rel="stylesheet" href="amanah-dark-modules.css?v=3">
+</head>
+<body>
+  <main class="ps-page">
+    <section class="ps-card ps-picker" aria-label="Select a project">
+      <label for="structureProject">PROJECT</label>
+      <select id="structureProject" disabled><option value="">Loading projects…</option></select>
+      <a class="ps-link" href="admin.html?tab=projects">Open Project Master ↗</a>
+    </section>
+    <div id="structureMessage" class="ps-message" role="status" aria-live="polite" hidden></div>
+    <section id="structureEmpty" class="ps-card ps-empty"><h2>Select a project to define its work structure</h2><p>Organize the work, assign each item's share of the project, and establish a 100% scope baseline.</p></section>
+    <div id="structureWorkspace" hidden>
+      <section class="ps-card ps-project">
+        <div><span class="ps-kicker" id="structureType"></span><h1 id="structureProjectName"></h1><p id="structureProjectMeta"></p></div>
+        <div><span class="ps-status" id="structureStatus"></span><small id="structureSaved"></small></div>
+      </section>
+      <section class="ps-summary" aria-label="Scope allocation summary">
+        <div class="ps-card"><span>WORK GROUPS</span><strong id="scopeGroups">0</strong><small>Structural, architectural and other scope</small></div>
+        <div class="ps-card"><span>WORK ITEMS</span><strong id="scopeItems">0</strong><small id="scopeUnassigned">No weights assigned</small></div>
+        <div class="ps-card"><span>ASSIGNED WEIGHT</span><strong id="scopeWeight">0.00%</strong><small>Share of the whole project</small></div>
+        <div class="ps-card"><span>REMAINING WEIGHT</span><strong id="scopeRemaining">100.00%</strong><small>Target total: exactly 100%</small></div>
+      </section>
+      <section class="ps-card ps-guide"><strong>Define the complete project scope</strong><p>Load a starting template, keep the applicable work, and enter weights based on the BOQ or agreed work values. Every row is a separately weighted work item. Location can identify its block, floor, room or area.</p><div class="ps-allocation" role="progressbar" aria-label="Project scope weight assigned" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="scopeBar"></span></div></section>
+      <div class="ps-toolbar" id="structureToolbar">
+        <div><button type="button" class="ps-button secondary" id="loadStructureTemplate">Load template</button><button type="button" class="ps-button secondary" id="addStructureGroup">+ Add work group</button></div>
+        <div><span id="structureDirty" class="ps-dirty" hidden>Unsaved changes</span><button type="button" class="ps-button secondary" id="reloadStructure">Reload saved</button><button type="button" class="ps-button primary" id="saveStructure">Save draft</button><button type="button" class="ps-button success" id="baselineStructure">Set baseline</button><button type="button" class="ps-button secondary" id="reopenStructure" hidden>Revise baseline</button></div>
+      </div>
+      <p id="structureAccessNote" class="ps-note"></p>
+      <div id="structureGroups"></div>
+      <section class="ps-card ps-history"><h2>Baseline record</h2><p>Saved drafts, baseline versions and revision reasons.</p><div id="structureEvents"></div></section>
+    </div>
+  </main>
+  <dialog id="structureConfirm" class="ps-dialog" aria-labelledby="structureDialogTitle">
+    <form method="dialog" id="structureConfirmForm">
+      <div class="ps-dialog-head"><h2 id="structureDialogTitle"></h2><p id="structureDialogText"></p></div>
+      <div id="structureReasonWrap" hidden><label for="structureReason">REVISION REASON</label><textarea id="structureReason" minlength="10" maxlength="1000" rows="4"></textarea><small>Explain the scope or weight change so the earlier baseline remains traceable.</small></div>
+      <div class="ps-dialog-actions"><button type="button" class="ps-button secondary" id="structureDialogCancel">Cancel</button><button type="submit" class="ps-button primary" id="structureDialogAccept" value="confirm">Continue</button></div>
+    </form>
+  </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+  <script src="project-structure-model.js?v=1"></script>
+  <script src="project-structure.js?v=1"></script>
+  <script src="amanah-ui.js?v=43"></script>
+</body>
+</html>

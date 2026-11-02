@@ -251,3 +251,17 @@ Structure:
 - Mobile Approved Work now returns and displays phase, section, work component, side and station range.
 - New Road Structure page: `road-project-structure.html?project_id=...`
 - PostGIS is enabled for embedded project map support.
+
+
+## 2026-11-02 — NON-ROAD PROJECT STRUCTURE, PHASE 1
+
+- Added Project Structure for SCHOOL BUILDING, MULTI PURPOSE BUILDING, COVERED COURT and WATER SYSTEM.
+- Access: Project Master action or Project Management → Project Structure. Existing Road Structure is separate.
+- Scope: project-specific templates, editable work groups/items, location/area, planned dates, and item weights as percentages of the entire project.
+- Templates start with zero weights; the engineer assigns the allocation. All baseline items need positive weights and the total must be exactly 100%.
+- Save Draft → Set Baseline. A saved baseline is locked; Revise Baseline requires a reason and retains the prior version snapshot.
+- Database: project_work_structures and project_work_structure_events; RLS read access uses existing project/schedule permissions. Direct client writes are revoked; private permission-checked commands serialize writes and enforce optimistic revisions.
+- Phase 1 does not change existing project accomplishment, road calculations, financial posting, payroll, or purchasing data.
+- Next Phase 2: manual cumulative work-item progress, evidence photos and immutable progress history with weighted group/project rollups.
+- Following phase: link the same work-item records to Activity Calendar, Dashboard, Project Master and Reports.
+- Validation: node --test tests/project-structure-*.test.cjs and supabase/tests/20261102_project_work_structure.sql (transactional fixtures rolled back).

@@ -1414,6 +1414,13 @@ function renderProjects() {
               </button>
             ` : ''}
 
+            ${['SCHOOL BUILDING','MULTI PURPOSE BUILDING','COVERED COURT','WATER SYSTEM'].includes(project.project_type) ? `
+              <a class="small-button material-estimate-button" style="text-decoration:none"
+                href="project-structure.html?project_id=${encodeURIComponent(project.project_id)}">
+                PROJECT STRUCTURE
+              </a>
+            ` : ''}
+
             ${window.AmanahProjectFootprint?.supports(project.project_type) ? `
               <button type="button" class="small-button material-estimate-button"
                 onclick="viewProjectSite('${encodeURIComponent(project.project_id)}')">
@@ -4854,6 +4861,9 @@ document.addEventListener(
   async () => {
 
     setupEvents();
+    if (new URLSearchParams(window.location.search).get('tab') === 'projects') {
+      document.querySelector('[data-tab="projectsTab"]')?.click();
+    }
 
     try {
 
