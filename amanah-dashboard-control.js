@@ -215,16 +215,6 @@
       infoRow('Currently without Time Out',qty(a.on_site),'attendance.html',p),
       makeLink('attendance.html','Open Attendance →',p,'am-corp-footer-link')));
 
-    const routeOrder=[
-      ['project-schedule.html','Activity Calendar'],['approvals.html','Approval Center'],
-      ['finance-payroll.html','Payroll Approvals'],['purchasing.html','Purchasing'],
-      ['payroll.html','Payroll'],['project-cost.html','Project Cost'],
-      ['equipment-maintenance.html','Maintenance'],['repair-requests.html','Repair Requests'],
-      ['attendance.html','Attendance'],['reports.html','Reports']
-    ];
-    const shortcuts=routeOrder.filter(item=>canVisit(item[0],p)).map(item=>
-      '<a href="'+item[0]+'">'+esc(item[1])+' <span aria-hidden="true">↗</span></a>').join('');
-
     const header='<div class="am-corp-hero">'+
       '<div class="am-corp-hero-copy"><span class="am-corp-kicker">'+
       '<span class="am-corp-kicker-mark" aria-hidden="true"></span>AMANAH CONSTRUCTION SERVICES / CONTROL CENTER</span>'+
@@ -250,18 +240,13 @@
       sectionHeader(primary.length?(financial?'03':'02'):(financial?'02':'01'),
         'OPERATIONS','Operational overview','Workforce, equipment, purchasing and payment monitoring.')+
       '<div class="am-corp-monitor-grid">'+monitoring.join('')+'</div></section>' : '';
-    const shortcutsSection=shortcuts ?
-      '<section class="am-corp-section am-corp-shortcut-section">'+
-      sectionHeader('','WORKSPACE','Quick access','Go directly to modules permitted for your account.')+
-      '<nav class="am-corp-shortcuts" aria-label="Authorized modules">'+shortcuts+'</nav></section>' : '';
-
     root.innerHTML=header+
       '<section class="am-corp-section am-corp-executive">'+
       sectionHeader('','EXECUTIVE SUMMARY','At a glance',
         'Live summary figures based on records available to your account.')+
       '<div class="am-corp-kpi-grid">'+(kpis||kpi('Workspace','Ready',
         'No additional KPI summaries are assigned to your role',0))+'</div></section>'+
-      prioritySection+financeSection+operationsSection+shortcutsSection;
+      prioritySection+financeSection+operationsSection;
 
     root.querySelector('#amanahControlRefresh')?.addEventListener('click',load);
     root.dataset.ready='true';
