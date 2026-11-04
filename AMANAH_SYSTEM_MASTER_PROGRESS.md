@@ -257,11 +257,22 @@ Structure:
 
 - Added Project Structure for SCHOOL BUILDING, MULTI PURPOSE BUILDING, COVERED COURT and WATER SYSTEM.
 - Access: Project Master action or Project Management → Project Structure. Existing Road Structure is separate.
-- Scope: project-specific templates, editable work groups/items, location/area, planned dates, and item weights as percentages of the entire project.
-- Templates start with zero weights; the engineer assigns the allocation. All baseline items need positive weights and the total must be exactly 100%.
+- Scope: project-specific templates, editable work groups/items, location/area and planned dates. The original flat item weights were replaced by editable group shares on 2026-11-04, as described below.
+- Templates start with zero shares; the engineer assigns the allocation. Baselines require a complete positive allocation.
 - Save Draft → Set Baseline. A saved baseline is locked; Revise Baseline requires a reason and retains the prior version snapshot.
 - Database: project_work_structures and project_work_structure_events; RLS read access uses existing project/schedule permissions. Direct client writes are revoked; private permission-checked commands serialize writes and enforce optimistic revisions.
 - Phase 1 does not change existing project accomplishment, road calculations, financial posting, payroll, or purchasing data.
 - Next Phase 2: manual cumulative work-item progress, evidence photos and immutable progress history with weighted group/project rollups.
 - Following phase: link the same work-item records to Activity Calendar, Dashboard, Project Master and Reports.
 - Validation: node --test tests/project-structure-*.test.cjs and supabase/tests/20261102_project_work_structure.sql (transactional fixtures rolled back).
+
+## 2026-11-04 — EDITABLE GROUP SHARES AND INDEPENDENT ITEM ALLOCATION
+
+- Project Share (%) is editable for each draft work group. Group shares divide the whole project and must total exactly 100% for a baseline.
+- Each work item has its own Item Share (% of Group). Item shares must total exactly 100% independently within every baseline group; the footer displays its assigned and remaining allocation.
+- Project Contribution (%) is calculated as group project share × item share ÷ 100. For example, a 60% Structural Work group and a 50% Excavation item contribute 30% of the project scope.
+- Preserved “Define the complete project scope”, the whole-project group share totals, and the allocation bar. Its caption reports weighted item allocation across the project and incomplete groups.
+- The v2 database commands enforce both allocation levels, permissions, optimistic revisions and baseline locking. Drafts may remain incomplete but cannot exceed either 100% total. Use Revise baseline with a reason to edit an approved baseline.
+- Legacy saved structures and audit snapshots retain their original weight model. The v2 reader converts legacy item weights into group shares and item percentages using largest-remainder rounding to total 100% within each nonzero group. Conversion is stored only on an authorized save or baseline revision. Cached v1 clients cannot overwrite v2 structures.
+- Validation: all 20 model/controller tests passed; both SQL regression suites passed with rolled-back fixtures, covering independent totals, decimals, invalid values, old-client compatibility, baseline history, stale writes and access restrictions.
+- This completes the scope-allocation adjustment in Phase 1. Actual accomplishment entry, evidence and weighted progress rollups remain Phase 2.

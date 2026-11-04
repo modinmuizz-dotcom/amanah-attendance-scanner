@@ -9,7 +9,14 @@ class Element {
   constructor(){this.listeners={};this.textContent='';this.innerHTML='';this.hidden=false;this.disabled=false;this.value='';this.dataset={};this.style={};this.attributes={};this.classList={toggle(){},add(){},remove(){}};}
   addEventListener(name,fn,options={}){(this.listeners[name]??=[]).push({fn,once:options.once});}
   async emit(name,event={}){for(const l of [...(this.listeners[name]||[])]){if(l.once)this.listeners[name]=this.listeners[name].filter(x=>x!==l);await l.fn(event);}}
-  querySelector(){return null;}
+  set innerHTML(value){this.html=value;this.dynamic=new Map();}
+  get innerHTML(){return this.html||'';}
+  querySelector(selector){
+    const match=selector.match(/^\[data-(group-weight|group-remaining|item-contribution)="([^"]+)"\]$/);
+    if(!match||!this.innerHTML.includes('data-'+match[1]+'="'+match[2]+'"'))return null;
+    if(!this.dynamic.has(selector))this.dynamic.set(selector,new Element());
+    return this.dynamic.get(selector);
+  }
   querySelectorAll(){return [];}
   setAttribute(k,v){this.attributes[k]=v;}
   removeAttribute(k){delete this.attributes[k];}
@@ -32,9 +39,9 @@ async function harness(options={}){
     from(){return{select(){return this;},in(){return this;},order:async()=>({data:[project],error:null})};},
     rpc:async(name,params)=>{
       calls.push({name,params});
-      if(name==='amanah_project_structure_get')return{data:{project,structure:saved,events:[],can_manage:canManage},error:null};
+      if(name==='amanah_project_structure_get_v2')return{data:{project,structure:saved,events:[],can_manage:canManage},error:null};
       if(options.writeError)return{data:null,error:options.writeError};
-      assert.equal(name,'amanah_project_structure_write');
+      assert.equal(name,'amanah_project_structure_write_v2');
       assert.equal(params.p_expected_revision,saved?.revision||0);
       if(params.p_action==='SAVE')saved={project_id:project.project_id,project_type:project.project_type,groups:JSON.parse(JSON.stringify(params.p_groups)),revision:(saved?.revision||0)+1,baseline_version:saved?.baseline_version||1,status:'DRAFT',updated_at:'2026-11-02T08:00:00Z'};
       else if(params.p_action==='BASELINE')saved={...saved,revision:saved.revision+1,status:'BASELINED'};
@@ -47,7 +54,7 @@ async function harness(options={}){
   vm.runInNewContext(fs.readFileSync(path.join(root,'project-structure.js'),'utf8'),context);
   await ready();
   const flush=async()=>{for(let i=0;i<4;i++)await new Promise(setImmediate);};
-  return{nodes,calls,redirects,saved:()=>saved,flush,click:async id=>{await nodes[id].emit('click');await flush();},input:async(group,item,field,value)=>nodes.structureGroups.emit('input',{target:{dataset:{field},value,closest:selector=>selector==='[data-group]'?{dataset:{group:group.id}}:{dataset:{item:item.id}}}})};
+  return{nodes,calls,redirects,saved:()=>saved,flush,click:async id=>{await nodes[id].emit('click');await flush();},groupInput:async(group,value)=>nodes.structureGroups.emit('input',{target:{dataset:{groupShare:group.id},value}}),input:async(group,item,field,value)=>nodes.structureGroups.emit('input',{target:{dataset:{field},value,closest:selector=>selector==='[data-group]'?{dataset:{group:group.id}}:{dataset:{item:item.id}}}})};
 }
 test('page controls load a template, save its weights, establish and revise the baseline',async()=>{
   const h=await harness();
@@ -58,19 +65,41 @@ test('page controls load a template, save its weights, establish and revise the 
   await h.click('saveStructure');
   assert.equal(h.saved().revision,1);assert.equal(h.nodes.structureDirty.hidden,true);
   const groups=h.saved().groups;
-  const items=groups.flatMap(g=>g.items.map(item=>({group:g,item})));
-  const base=Math.floor(10000/items.length);
-  for(let i=0;i<items.length;i++)await h.input(items[i].group,items[i].item,'weight',String((i===items.length-1?10000-base*i:base)/100));
+  for(let gi=0;gi<groups.length;gi++){
+    const group=groups[gi];await h.groupInput(group,String(gi===0?60:40));
+    const base=Math.floor(10000/group.items.length);
+    for(let i=0;i<group.items.length;i++)await h.input(group,group.items[i],'weight',String((i===group.items.length-1?10000-base*i:base)/100));
+  }
   assert.equal(h.nodes.scopeWeight.textContent,'100.00%');
   assert.equal(h.nodes.baselineStructure.disabled,true,'Unsaved weights must not activate a baseline');
   await h.click('saveStructure');
   assert.equal(h.saved().revision,2);assert.equal(h.nodes.baselineStructure.disabled,false);
+  assert.equal(h.saved().groups[0].share,60);assert.equal(h.saved().groups[1].share,40);
   await h.click('baselineStructure');
   assert.equal(h.saved().status,'BASELINED');assert.equal(h.nodes.saveStructure.hidden,true);
   assert.equal(h.nodes.reopenStructure.hidden,false);assert.match(h.nodes.structureGroups.innerHTML,/ disabled/);
   await h.click('reopenStructure');
   assert.equal(h.saved().status,'DRAFT');assert.equal(h.saved().baseline_version,2);
   assert.equal(h.calls.at(-2).params.p_reason,'Revise the agreed work allocation');
+});
+test('group input updates project totals and each item contribution live',async()=>{
+  const a=M.newGroup('STRUCTURAL'),b=M.newGroup('ARCHITECTURAL');a.share=60;b.share=40;
+  for(const g of [a,b]){g.items=[M.newItem('A'),M.newItem('B')];g.items.forEach(i=>i.weight=50);}
+  const h=await harness({saved:{groups:[a,b],status:'DRAFT',revision:1,baseline_version:1}});
+  assert.match(h.nodes.structureGroups.innerHTML,/data-group-share=/);
+  await h.groupInput(a,'50');
+  assert.equal(h.nodes.scopeWeight.textContent,'90.00%');assert.equal(h.nodes.scopeRemaining.textContent,'10.00%');
+  assert.equal(h.nodes.structureGroups.querySelector('[data-item-contribution="'+a.items[0].id+'"]').textContent,'25.00%');
+  await h.click('saveStructure');assert.equal(h.saved().groups[0].share,50);assert.equal(h.saved().groups[0].items[0].weight,50);
+});
+test('incomplete item allocation is visible in its group and the project scope',async()=>{
+  const a=M.newGroup('STRUCTURAL'),b=M.newGroup('ARCHITECTURAL');a.share=60;b.share=40;
+  for(const g of [a,b]){g.items=[M.newItem('A'),M.newItem('B')];g.items.forEach(i=>i.weight=50);}
+  const h=await harness({saved:{groups:[a,b],status:'DRAFT',revision:1,baseline_version:1}});
+  await h.input(a,a.items[0],'weight','25');
+  assert.equal(h.nodes.scopeWeight.textContent,'100.00%');assert.match(h.nodes.scopeDetail.textContent,/85.00%/);
+  assert.equal(h.nodes.structureGroups.querySelector('[data-group-weight="'+a.id+'"]').textContent,'75.00%');
+  assert.equal(h.nodes.scopeBar.style.width,'85%');assert.equal(h.nodes.baselineStructure.disabled,true);
 });
 test('view-only users see the scope without mutation controls',async()=>{
   const groups=M.template('SCHOOL BUILDING');

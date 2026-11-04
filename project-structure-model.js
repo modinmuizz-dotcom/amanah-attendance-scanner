@@ -1,4 +1,4 @@
-/* Shared scope model. Weights are percentages of the entire project. */
+/* Scope allocation: each group owns a project share; its items divide that group. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -43,17 +43,28 @@
     return {id: id(), name, location: '', weight: 0, planned_start: null, planned_end: null};
   }
   function newGroup(name = 'NEW WORK GROUP', id = uuid) {
-    return {id: id(), name, items: []};
+    return {id: id(), name, share: 0, items: []};
   }
   function template(type, id = uuid) {
     if (!types.includes(type)) throw new Error('This project type uses a different structure workflow.');
-    return templates[type].map(([name, items]) => ({id: id(), name, items: items.map(title => newItem(title, id))}));
+    return templates[type].map(([name, items]) => ({id: id(), name, share: 0, items: items.map(title => newItem(title, id))}));
   }
   const cents = value => Math.round(Number(value || 0) * 100);
+  function groupSummary(group) {
+    const assigned = group.items.reduce((sum, item) => sum + cents(item.weight), 0);
+    return {assigned, remaining: 10000 - assigned, share: cents(group.share), unassigned: group.items.filter(item => cents(item.weight) <= 0).length};
+  }
+  function contribution(group, item) {
+    return cents(group.share) * cents(item.weight) / 1000000;
+  }
   function summary(groups) {
     const items = groups.flatMap(group => group.items);
-    const assigned = items.reduce((sum, item) => sum + cents(item.weight), 0);
-    return {groups: groups.length, items: items.length, assigned, remaining: 10000 - assigned, unassigned: items.filter(item => cents(item.weight) <= 0).length};
+    const assigned = groups.reduce((sum, group) => sum + cents(group.share), 0);
+    const allocated = Math.round(groups.reduce((sum, group) => sum + cents(group.share) * groupSummary(group).assigned, 0) / 10000);
+    return {groups: groups.length, items: items.length, assigned, remaining: 10000 - assigned, allocated,
+      groupsUnassigned: groups.filter(group => cents(group.share) <= 0).length,
+      incompleteGroups: groups.filter(group => !group.items.length || groupSummary(group).assigned !== 10000 || groupSummary(group).unassigned > 0).length,
+      unassigned: items.filter(item => cents(item.weight) <= 0).length};
   }
   function validDate(value) {
     if (value == null) return true;
@@ -73,6 +84,8 @@
     for (const group of groups) {
       checkId(group.id);
       if (typeof group.name !== 'string' || !group.name.trim() || group.name.trim().length > 100) throw new Error('Each group needs a name of 1 to 100 characters.');
+      if (typeof group.share !== 'number' || !Number.isFinite(group.share) || group.share < 0 || group.share > 100 || Math.abs(group.share * 100 - cents(group.share)) > 0.000001) throw new Error('Group project shares must be between 0 and 100 with at most two decimal places.');
+      if (final && group.share <= 0) throw new Error('Assign a positive project share to every work group.');
       if (!Array.isArray(group.items)) throw new Error('Invalid work item list.');
       if (final && !group.items.length) throw new Error('Every baseline group must contain work items.');
       for (const item of group.items) {
@@ -86,17 +99,20 @@
         if (!validDate(item.planned_start) || !validDate(item.planned_end)) throw new Error('Use valid planned dates.');
         if (item.planned_start && item.planned_end && item.planned_end < item.planned_start) throw new Error('Planned finish cannot be before planned start.');
       }
+      const allocation = groupSummary(group).assigned;
+      if (allocation > 10000) throw new Error('Item shares in ' + group.name + ' cannot exceed 100%.');
+      if (final && allocation !== 10000) throw new Error('Item shares in ' + group.name + ' must total exactly 100%.');
     }
     const totals = summary(groups);
-    if (totals.assigned > 10000) throw new Error('Total work item weight cannot exceed 100%.');
-    if (final && totals.assigned !== 10000) throw new Error('Work item weights must total exactly 100% to set the baseline.');
+    if (totals.assigned > 10000) throw new Error('Work group project shares cannot exceed 100%.');
+    if (final && totals.assigned !== 10000) throw new Error('Work group project shares must total exactly 100% to set the baseline.');
     return totals;
   }
   function clean(groups) {
-    return groups.map(group => ({id: group.id, name: group.name.trim(), items: group.items.map(item => ({
+    return groups.map(group => ({id: group.id, name: group.name.trim(), share: Number(group.share), items: group.items.map(item => ({
       id: item.id, name: item.name.trim(), location: (item.location || '').trim(), weight: Number(item.weight),
       planned_start: item.planned_start || null, planned_end: item.planned_end || null
     }))}));
   }
-  return {types: Object.freeze(types), template, newItem, newGroup, summary, validate, clean, cents};
+  return {types: Object.freeze(types), template, newItem, newGroup, summary, groupSummary, contribution, validate, clean, cents};
 });

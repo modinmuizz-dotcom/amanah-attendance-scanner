@@ -58,14 +58,14 @@ window.supabaseClient = supabaseClient;
     $('loadStructureTemplate').disabled = !editable();
     $('addStructureGroup').disabled = !editable() || state.groups.length >= 20;
     $('saveStructure').disabled = !editable() || !state.dirty;
-    $('baselineStructure').disabled = !editable() || state.dirty || !state.structure || s.assigned !== 10000 || s.unassigned > 0 || !s.items || state.groups.some(g => !g.items.length);
+    $('baselineStructure').disabled = !editable() || state.dirty || !state.structure || s.assigned !== 10000 || s.groupsUnassigned > 0 || s.incompleteGroups > 0 || !s.items;
     $('reopenStructure').disabled = state.busy;
     $('reloadStructure').disabled = state.busy;
     $('structureDirty').hidden = !state.dirty;
     $('structureGroups').querySelectorAll('[data-add-item],[data-delete-item],[data-delete-group]').forEach(button => button.disabled = !editable());
     $('structureAccessNote').textContent = !state.canManage ? 'View access. An authorized engineer or project administrator manages this structure.' :
       !draft ? 'The baseline is locked. Use Revise baseline to record a scope or weight change with a reason.' :
-      'Save the draft first. Set baseline becomes available when every item has a positive weight and the total is exactly 100%.';
+      'Save the draft first. Group project shares must total 100%, and item shares within every group must also total 100% before setting the baseline.';
   }
   function renderSummary() {
     const s = M.summary(state.groups);
@@ -74,12 +74,20 @@ window.supabaseClient = supabaseClient;
     $('scopeWeight').textContent = pct(s.assigned);
     $('scopeRemaining').textContent = pct(s.remaining);
     $('scopeRemaining').classList.toggle('is-invalid', s.remaining < 0);
-    $('scopeUnassigned').textContent = s.unassigned + ' item' + (s.unassigned === 1 ? '' : 's') + ' awaiting a weight';
-    $('scopeBar').style.width = Math.min(100, Math.max(0, s.assigned / 100)) + '%';
-    $('scopeBar').parentElement.setAttribute('aria-valuenow', Math.min(100, Math.max(0, s.assigned / 100)));
+    $('scopeUnassigned').textContent = s.unassigned + ' item' + (s.unassigned === 1 ? '' : 's') + ' awaiting an item share';
+    $('scopeBar').style.width = Math.min(100, Math.max(0, s.allocated / 100)) + '%';
+    $('scopeBar').parentElement.setAttribute('aria-valuenow', Math.min(100, Math.max(0, s.allocated / 100)));
+    $('scopeDetail').textContent = 'Work-item allocation across the whole project: ' + pct(s.allocated) + '. ' + s.incompleteGroups + ' group' + (s.incompleteGroups === 1 ? '' : 's') + ' still need a complete 100% item allocation.';
     for (const group of state.groups) {
+      const allocation = M.groupSummary(group);
       const node = $('structureGroups').querySelector('[data-group-weight="' + group.id + '"]');
-      if (node) node.textContent = pct(M.summary([group]).assigned);
+      if (node) {node.textContent = pct(allocation.assigned);node.classList.toggle('is-invalid', allocation.assigned > 10000);}
+      const remaining = $('structureGroups').querySelector('[data-group-remaining="' + group.id + '"]');
+      if (remaining) remaining.textContent = pct(allocation.remaining) + ' remaining within this group';
+      for (const item of group.items) {
+        const contribution = $('structureGroups').querySelector('[data-item-contribution="' + item.id + '"]');
+        if (contribution) contribution.textContent = M.contribution(group, item).toFixed(2) + '%';
+      }
     }
     renderControls();
   }
@@ -90,19 +98,20 @@ window.supabaseClient = supabaseClient;
       const rows = group.items.map(item => '<tr data-group="' + esc(group.id) + '" data-item="' + esc(item.id) + '">' +
         '<td><input data-field="name" aria-label="Work item name" maxlength="200" value="' + esc(item.name) + '"' + disabled + '></td>' +
         '<td><input data-field="location" aria-label="Block, floor, room or area" maxlength="160" placeholder="Optional location" value="' + esc(item.location) + '"' + disabled + '></td>' +
-        '<td><input data-field="weight" aria-label="Work item weight as percent of project" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="' + esc(item.weight) + '"' + disabled + '></td>' +
+        '<td><input data-field="weight" aria-label="Item share as percent of its work group" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="' + esc(item.weight) + '"' + disabled + '></td>' +
+        '<td><strong class="ps-contribution" data-item-contribution="' + esc(item.id) + '">' + M.contribution(group, item).toFixed(2) + '%</strong></td>' +
         '<td><input data-field="planned_start" aria-label="Planned start" type="date" value="' + esc(item.planned_start || '') + '"' + disabled + '></td>' +
         '<td><input data-field="planned_end" aria-label="Planned finish" type="date" value="' + esc(item.planned_end || '') + '"' + disabled + '></td>' +
         (actions ? '<td><button type="button" class="ps-button danger" data-delete-item="' + esc(item.id) + '" data-group="' + esc(group.id) + '">Remove</button></td>' : '') + '</tr>').join('');
       return '<section class="ps-card ps-group" data-group="' + esc(group.id) + '">' +
         '<div class="ps-group-head"><div class="ps-group-title"><span>' + String(index + 1).padStart(2, '0') + '</span>' +
         '<input class="ps-group-name" data-group-name="' + esc(group.id) + '" maxlength="100" aria-label="Work group name" value="' + esc(group.name) + '"' + disabled + '></div>' +
-        '<div class="ps-group-meta"><span>PROJECT SHARE <strong data-group-weight="' + esc(group.id) + '">' + pct(M.summary([group]).assigned) + '</strong></span>' +
+        '<div class="ps-group-meta"><label class="ps-group-share">PROJECT SHARE (%) <input data-group-share="' + esc(group.id) + '" aria-label="Group project share for ' + esc(group.name) + '" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="' + esc(group.share) + '"' + disabled + '></label>' +
         (actions ? '<button type="button" class="ps-button danger" data-delete-group="' + esc(group.id) + '">Remove group</button>' : '') + '</div></div>' +
-        '<div class="ps-scroll"><table class="ps-table"><thead><tr><th scope="col">WORK ITEM</th><th scope="col">LOCATION / AREA</th><th scope="col">WEIGHT (%)</th><th scope="col">PLANNED START</th><th scope="col">PLANNED FINISH</th>' +
+        '<div class="ps-scroll"><table class="ps-table"><thead><tr><th scope="col">WORK ITEM</th><th scope="col">LOCATION / AREA</th><th scope="col">ITEM SHARE<br>(% OF GROUP)</th><th scope="col">PROJECT<br>CONTRIBUTION (%)</th><th scope="col">PLANNED START</th><th scope="col">PLANNED FINISH</th>' +
         (actions ? '<th scope="col">ACTION</th>' : '') + '</tr></thead><tbody>' +
-        (rows || '<tr><td colspan="6" class="ps-empty-inline">Add the work items that belong to this group.</td></tr>') + '</tbody></table></div>' +
-        '<div class="ps-group-foot"><span>' + group.items.length + ' work item' + (group.items.length === 1 ? '' : 's') + '</span>' +
+        (rows || '<tr><td colspan="' + (actions ? '7' : '6') + '" class="ps-empty-inline">Add the work items that belong to this group.</td></tr>') + '</tbody></table></div>' +
+        '<div class="ps-group-foot"><div><span>' + group.items.length + ' work item' + (group.items.length === 1 ? '' : 's') + ' · ITEM ALLOCATION <strong data-group-weight="' + esc(group.id) + '">' + pct(M.groupSummary(group).assigned) + '</strong> / 100%</span><small data-group-remaining="' + esc(group.id) + '">' + pct(M.groupSummary(group).remaining) + ' remaining within this group</small></div>' +
         (actions ? '<button type="button" class="ps-button secondary" data-add-item="' + esc(group.id) + '">+ Add work item</button>' : '<span>Saved ' + (state.structure?.status === 'BASELINED' ? 'baseline' : 'draft') + ' scope</span>') + '</div></section>';
     }).join('') : '<section class="ps-card ps-empty"><h2>No work groups yet</h2><p>Load the project template or add a work group to start defining the scope.</p></section>';
   }
@@ -148,7 +157,7 @@ window.supabaseClient = supabaseClient;
     state.busy = true;$('structureProject').disabled = true;
     empty('Loading project structure…', 'Opening the saved scope and baseline record.');
     try {
-      const data = await rpc('amanah_project_structure_get', {p_project_id:id});
+      const data = await rpc('amanah_project_structure_get_v2', {p_project_id:id});
       if (generation !== state.generation) return;
       state.project = data.project;state.structure = data.structure;state.groups = clone(data.structure?.groups || []);
       state.events = data.events || [];state.canManage = data.can_manage === true;
@@ -170,12 +179,12 @@ window.supabaseClient = supabaseClient;
     } catch (error) {message(error.message, true);return;}
     setBusy(true);message();
     try {
-      const saved = await rpc('amanah_project_structure_write', {p_project_id:id,p_action:action,p_groups:groups,p_expected_revision:state.structure?.revision || 0,p_reason:reason});
+      const saved = await rpc('amanah_project_structure_write_v2', {p_project_id:id,p_action:action,p_groups:groups,p_expected_revision:state.structure?.revision || 0,p_reason:reason});
       if (generation !== state.generation) return;
       state.structure = saved;state.groups = clone(saved.groups);state.dirty = false;
       let feedback = ({SAVE:'Draft saved successfully.',BASELINE:'Baseline set successfully. The scope and weights are now locked.',REOPEN:'A new draft version is ready. The earlier baseline has been retained in the record.'})[action];
       try {
-        const fresh = await rpc('amanah_project_structure_get', {p_project_id:id});
+        const fresh = await rpc('amanah_project_structure_get_v2', {p_project_id:id});
         if (generation !== state.generation) return;
         state.events = fresh.events || [];state.structure = fresh.structure;state.groups = clone(fresh.structure.groups);state.canManage = fresh.can_manage === true;
       } catch (_) {feedback += ' Reload saved to refresh the baseline record.';}
@@ -212,9 +221,10 @@ window.supabaseClient = supabaseClient;
     $('structureGroups').addEventListener('input', event => {
       if (!editable()) return;
       const input = event.target;
-      const groupId = input.dataset.groupName || input.closest('[data-group]')?.dataset.group;
+      const groupId = input.dataset.groupShare || input.dataset.groupName || input.closest('[data-group]')?.dataset.group;
       const group = state.groups.find(g => g.id === groupId);if (!group) return;
-      if (input.dataset.groupName) group.name = input.value;
+      if (input.dataset.groupShare) group.share = Number(input.value);
+      else if (input.dataset.groupName) group.name = input.value;
       else {
         const item = group.items.find(i => i.id === input.closest('[data-item]')?.dataset.item);
         const field = input.dataset.field;
@@ -244,7 +254,7 @@ window.supabaseClient = supabaseClient;
     $('saveStructure').addEventListener('click', () => command('SAVE'));
     $('baselineStructure').addEventListener('click', async () => {
       if (state.dirty || $('baselineStructure').disabled) return;
-      if (await confirmAction('Set project baseline?', 'Lock this saved scope and its 100% weight allocation. Future scope changes will require a new version and a revision reason.')) command('BASELINE');
+      if (await confirmAction('Set project baseline?', 'Lock the project group shares and the 100% item allocation within every group. Future scope changes will require a new version and a revision reason.')) command('BASELINE');
     });
     $('reopenStructure').addEventListener('click', async () => {
       const result = await confirmAction('Revise project baseline', 'Create a new draft version while retaining the earlier baseline record.', true);

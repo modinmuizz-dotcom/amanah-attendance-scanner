@@ -7,7 +7,7 @@
   <title>Project Structure | AMANAH</title>
   <link rel="stylesheet" href="style.css?v=4">
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="project-structure.css?v=1">
+  <link rel="stylesheet" href="project-structure.css?v=2">
   <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
   <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
   <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -22,7 +22,7 @@
       <a class="ps-link" href="admin.html?tab=projects">Open Project Master ↗</a>
     </section>
     <div id="structureMessage" class="ps-message" role="status" aria-live="polite" hidden></div>
-    <section id="structureEmpty" class="ps-card ps-empty"><h2>Select a project to define its work structure</h2><p>Organize the work, assign each item's share of the project, and establish a 100% scope baseline.</p></section>
+    <section id="structureEmpty" class="ps-card ps-empty"><h2>Select a project to define its work structure</h2><p>Assign each work group's project share, divide its items into 100%, and establish the complete scope baseline.</p></section>
     <div id="structureWorkspace" hidden>
       <section class="ps-card ps-project">
         <div><span class="ps-kicker" id="structureType"></span><h1 id="structureProjectName"></h1><p id="structureProjectMeta"></p></div>
@@ -31,10 +31,10 @@
       <section class="ps-summary" aria-label="Scope allocation summary">
         <div class="ps-card"><span>WORK GROUPS</span><strong id="scopeGroups">0</strong><small>Structural, architectural and other scope</small></div>
         <div class="ps-card"><span>WORK ITEMS</span><strong id="scopeItems">0</strong><small id="scopeUnassigned">No weights assigned</small></div>
-        <div class="ps-card"><span>ASSIGNED WEIGHT</span><strong id="scopeWeight">0.00%</strong><small>Share of the whole project</small></div>
-        <div class="ps-card"><span>REMAINING WEIGHT</span><strong id="scopeRemaining">100.00%</strong><small>Target total: exactly 100%</small></div>
+        <div class="ps-card"><span>ASSIGNED PROJECT SHARE</span><strong id="scopeWeight">0.00%</strong><small>Total of the work groups' project shares</small></div>
+        <div class="ps-card"><span>REMAINING PROJECT SHARE</span><strong id="scopeRemaining">100.00%</strong><small>Target group share total: exactly 100%</small></div>
       </section>
-      <section class="ps-card ps-guide"><strong>Define the complete project scope</strong><p>Load a starting template, keep the applicable work, and enter weights based on the BOQ or agreed work values. Every row is a separately weighted work item. Location can identify its block, floor, room or area.</p><div class="ps-allocation" role="progressbar" aria-label="Project scope weight assigned" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="scopeBar"></span></div></section>
+      <section class="ps-card ps-guide"><strong>Define the complete project scope</strong><p>Set each work group's share of the project so all group shares total 100%. Within every group, divide 100% between its work items. Each item's project contribution is its group share × its item share ÷ 100. Location can identify its block, floor, room or area.</p><div class="ps-allocation" role="progressbar" aria-label="Work-item allocation across the project" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="scopeBar"></span></div><p id="scopeDetail" class="ps-scope-detail"></p></section>
       <div class="ps-toolbar" id="structureToolbar">
         <div><button type="button" class="ps-button secondary" id="loadStructureTemplate">Load template</button><button type="button" class="ps-button secondary" id="addStructureGroup">+ Add work group</button></div>
         <div><span id="structureDirty" class="ps-dirty" hidden>Unsaved changes</span><button type="button" class="ps-button secondary" id="reloadStructure">Reload saved</button><button type="button" class="ps-button primary" id="saveStructure">Save draft</button><button type="button" class="ps-button success" id="baselineStructure">Set baseline</button><button type="button" class="ps-button secondary" id="reopenStructure" hidden>Revise baseline</button></div>
@@ -52,8 +52,8 @@
     </form>
   </dialog>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
-  <script src="project-structure-model.js?v=1"></script>
-  <script src="project-structure.js?v=1"></script>
+  <script src="project-structure-model.js?v=2"></script>
+  <script src="project-structure.js?v=2"></script>
   <script src="amanah-ui.js?v=43"></script>
 </body>
 </html>
