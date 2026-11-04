@@ -1,8 +1,9 @@
 const LS_URL='https://bafmycjninxomufhkjvy.supabase.co';
 const LS_KEY='sb_publishable_EeM9NowMW-xXiDC_F3I7cA_VoCJk9dJ';
 const lsDb=window.supabase.createClient(LS_URL,LS_KEY);
+const LS_EXP=window.AmanahProjectExpenses;
 const ls={projects:[],contracts:[],billings:[],payments:[],variations:[],
- activationRequests:[],permissions:{},selected:null,mode:null,saving:false};
+ activationRequests:[],costEntries:[],costError:null,permissions:{},selected:null,mode:null,saving:false};
 const LS_PHOTO_MAX=10;
 let lsBillingPhotos=[], lsGalleryGeneration=0;
 function clearBillingPhotoPreviews(){lsBillingPhotos.forEach(p=>URL.revokeObjectURL(p.preview));lsBillingPhotos=[];}
@@ -126,23 +127,27 @@ function closeModal(){if(ls.saving)return;clearBillingPhotoPreviews();$('lsModal
 function values(){return Object.fromEntries(new FormData($('lsForm')).entries());}
 async function rpc(fn,args){const {data,error}=await lsDb.rpc(fn,args||{});if(error)throw error;return data;}
 async function loadAll(){
- const [projects,contracts,billings,payments,variations,activations]=await Promise.all([
+ const [projects,contracts,billings,payments,variations,activations,costs]=await Promise.all([
   lsDb.from('projects').select('project_id,project_name,status').order('project_name'),
   lsDb.from('amanah_lump_contracts').select('*').order('created_at',{ascending:false}),
   lsDb.from('amanah_lump_billings').select('*').order('submitted_at',{ascending:false}),
-  lsDb.from('amanah_lump_payments').select('*').order('created_at',{ascending:false}),
+  LS_EXP.readAll(lsDb,'amanah_lump_payments').then(data=>({data:data.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),error:null})),
   lsDb.from('amanah_lump_variations').select('*').order('submitted_at',{ascending:false}),
-  lsDb.from('amanah_lump_activation_requests').select('*').order('submitted_at',{ascending:false})
+  lsDb.from('amanah_lump_activation_requests').select('*').order('submitted_at',{ascending:false}),
+  LS_EXP.readCosts(lsDb,{prefix:'LUMP-SUM:PAYMENT:'}).then(data=>({data,error:null})).catch(error=>({data:[],error}))
  ]);
  for(const x of [projects,contracts,billings,payments,variations,activations])if(x.error)throw x.error;
  ls.projects=projects.data||[];ls.contracts=contracts.data||[];ls.billings=billings.data||[];
  ls.payments=payments.data||[];ls.variations=variations.data||[];
  ls.activationRequests=activations.data||[];
+ ls.costEntries=costs.data||[];ls.costError=costs.error||null;
  renderContracts();
  const params=new URLSearchParams(location.search);
  const preferred=params.get('contract')||ls.selected;
  const billing=params.get('billing');
+ const payment=params.get('payment');
  if(billing){const claim=ls.billings.find(b=>b.id===billing);if(claim)ls.selected=claim.contract_id;}
+ else if(payment){const paid=ls.payments.find(p=>p.id===payment);if(paid)ls.selected=paid.contract_id;}
  else if(preferred && ls.contracts.some(c=>c.id===preferred))ls.selected=preferred;
  if(ls.selected && ls.contracts.some(c=>c.id===ls.selected))renderDetail();
  else {$('lsDetailPanel').hidden=true;}
@@ -270,10 +275,22 @@ function renderVariations(c){
 }
 function renderPayments(c){
  const ps=ls.payments.filter(p=>p.contract_id===c.id),body=$('lsPayments');
- if(!ps.length){body.innerHTML='<tr><td colspan="5">No advances or payments recorded.</td></tr>';return;}
- body.innerHTML=ps.map(p=>'<tr><td>'+esc(prettyDate(p.paid_on))+'</td><td>'+badge(p.payment_kind)+'</td>'+
- '<td><strong>'+money(p.amount)+'</strong></td><td>'+esc(p.payment_method)+'<small>'+esc(p.payment_reference)+'</small></td>'+
- '<td>'+esc(p.recipient_ack||'—')+'</td></tr>').join('');
+ const posted=ps.map(p=>LS_EXP.paymentPosting(p,c.project_id,ls.costEntries));
+ const total=posted.reduce((sum,p)=>sum+LS_EXP.cents(p.amount),0)/100;
+ const matched=posted.filter(p=>p.posted).length;
+ $('lsProjectCostPosting').innerHTML=(ls.costError?'Project cost posting status is unavailable. Refresh to retry.':
+  '<strong>POSTED TO PROJECT COST: '+money(total)+'</strong> · '+matched+' of '+ps.length+' payments matched'+(matched<ps.length?' · Review the unmatched payments below.':'.'))+
+  ' <a href="project-cost.html?project='+encodeURIComponent(c.project_id)+'">View project ledger ↗</a>';
+ if(!ps.length){body.innerHTML='<tr><td colspan="6">No advances or payments recorded.</td></tr>';return;}
+ const selectedPayment=new URLSearchParams(location.search).get('payment');
+ body.innerHTML=ps.map((p,index)=>{
+  const post=posted[index];
+  const status=ls.costError?'STATUS UNAVAILABLE':post.status;
+  return '<tr'+(p.id===selectedPayment?' class="ls-payment-selected"':'')+'><td>'+esc(prettyDate(p.paid_on))+'</td><td>'+badge(p.payment_kind)+'</td>'+
+   '<td><strong>'+money(p.amount)+'</strong></td><td>'+esc(p.payment_method)+'<small>'+esc(p.payment_reference)+'</small></td>'+
+   '<td>'+esc(p.recipient_ack||'—')+'</td><td class="ls-payment-posting">'+esc(status)+
+   (post.entry?'<small>'+money(post.amount)+' · Entry '+esc(post.entry.id)+'</small>':'')+'</td></tr>';
+ }).join('');
 }
 function projectOptions(){return [{value:'',label:'Select project'},...ls.projects.filter(p=>String(p.status||'').toUpperCase()==='ACTIVE')
  .map(p=>({value:p.project_id,label:p.project_name+' — '+p.project_id}))];}
@@ -473,7 +490,7 @@ async function decide(action,id){
   ?'Confirm the accomplished work and supporting evidence have been verified by the Site Engineer.'
   :reject?'This will reject the request. Please provide a reason for the approval record.'
   :variationAction?'Approve the variation and update the revised contract value?'
-  :'Approve this verified billing and post its earned cost to Project Cost Control?';
+  :'Approve this verified billing? Its actual cost will be posted when payment is recorded.';
  const context=(contract?.scope_title||'Lump-Sum Contract')+
    (billing?' • '+billing.milestone+' • '+money(billing.gross_amount):'')+
    (variation?' • '+variation.description+' • '+money(variation.amount_delta):'');

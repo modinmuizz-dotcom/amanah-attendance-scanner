@@ -7,6 +7,7 @@
 <title>AMANAH Lump-Sum Contracts</title>
 <link rel="stylesheet" href="amanah-ui.css?v=9">
 <link rel="stylesheet" href="lump-sum.css?v=8">
+<link rel="stylesheet" href="project-expenses.css?v=1">
 <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
 <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
 <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -68,8 +69,9 @@
     </div>
     <div class="ls-subhead"><h3>PAYMENTS / ADVANCES / RETENTION</h3><button type="button" id="lsNewPayment" class="ls-btn secondary" hidden>+ RECORD PAYMENT</button></div>
     <div class="ls-tablewrap">
-      <table><thead><tr><th>DATE</th><th>TYPE</th><th>AMOUNT</th><th>METHOD / REFERENCE</th><th>ACKNOWLEDGMENT</th></tr></thead><tbody id="lsPayments"><tr><td colspan="5">No payments recorded.</td></tr></tbody></table>
+      <table><thead><tr><th>DATE</th><th>TYPE</th><th>AMOUNT</th><th>METHOD / REFERENCE</th><th>ACKNOWLEDGMENT</th><th>PROJECT COST POSTING</th></tr></thead><tbody id="lsPayments"><tr><td colspan="6">No payments recorded.</td></tr></tbody></table>
     </div>
+    <div id="lsProjectCostPosting" class="ls-cost-posting-summary" role="status"></div>
   </section>
 
   <div id="lsModal" class="ls-modal" aria-hidden="true">
@@ -126,7 +128,8 @@
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="lump-sum.js?v=13"></script>
+<script src="amanah-project-expenses.js?v=1"></script>
+<script src="lump-sum.js?v=14"></script>
 <script src="amanah-ui.js?v=44"></script>
 </body>
 </html>

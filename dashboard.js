@@ -604,6 +604,7 @@ function renderAttendance(
 
 let dashboardCostRows = [];
 let dashboardCostRequest = 0;
+const dashboardExpenseVisible = new Map();
 
 function dashboardCurrency(amount) {
   return new Intl.NumberFormat('en-PH', {
@@ -635,8 +636,25 @@ function normalizeDashboardCostRow(row) {
     actual,
     estimate,
     usage,
-    hasEstimate
+    hasEstimate,
+    expenses:row.expenses||[],breakdown:row.breakdown||[],expense_count:row.expense_count||0
   };
+}
+
+function renderDashboardExpenseRecords(row) {
+  const M=window.AmanahProjectExpenses;
+  const shown=Math.min(row.expenses.length,dashboardExpenseVisible.get(row.project_id)||25);
+  const records=row.expenses.slice(0,shown).map(entry=>{
+    const href=M.paymentLink(entry),source=M.source(entry);
+    return '<tr><td>'+escapeHtml(entry.cost_date||'—')+'</td><td>'+escapeHtml(M.labels[M.category(entry)])+
+      '<small>'+(href?'<a href="'+escapeHtml(href)+'">'+escapeHtml(source)+' ↗</a>':escapeHtml(source))+'</small></td>'+
+      '<td>'+escapeHtml(entry.description||'—')+'<small>'+escapeHtml(entry.quantity??'')+' '+escapeHtml(entry.unit||'')+
+      (entry.unit_cost!=null?' × '+dashboardCurrency(entry.unit_cost):'')+'</small></td>'+
+      '<td>'+escapeHtml(entry.reference_id||'—')+'</td><td>'+dashboardCurrency(entry.amount)+'</td></tr>';
+  }).join('');
+  return '<div class="cost-chart-expense-scroll"><table class="cost-chart-expense-table"><thead><tr><th>DATE</th><th>CATEGORY / SOURCE</th><th>DESCRIPTION / QUANTITY</th><th>REFERENCE</th><th>AMOUNT</th></tr></thead><tbody>'+records+'</tbody></table></div>'+
+    '<div class="cost-chart-expense-footer"><span>'+shown+' of '+row.expenses.length+' expenses · Total '+dashboardCurrency(row.actual)+'</span>'+
+    (shown<row.expenses.length?'<button type="button" class="cost-chart-expense-more" data-expense-more="'+escapeHtml(row.project_id)+'">Show 25 more</button>':'')+'</div>';
 }
 
 function renderDashboardProjectCostChart() {
@@ -652,6 +670,7 @@ function renderDashboardProjectCostChart() {
     if (filter === 'over') return row.usage !== null && row.usage > 100;
     return true;
   });
+  const openProjects=new Set([...chart.querySelectorAll('details[open][data-expense-project]')].map(node=>node.dataset.expenseProject));
 
   // Keep projects without a usable percentage visible, but sort below measured projects.
   rows.sort((a, b) => {
@@ -689,9 +708,9 @@ function renderDashboardProjectCostChart() {
     const pct = usage === null ? '—' : usage.toFixed(2) + '%';
     const width = usage === null ? 0 : Math.max(0, Math.min(100, usage));
     const estimateLabel = row.estimate === null
-      ? 'Project estimate not saved'
+      ? dashboardCurrency(row.actual)+' recorded · Project estimate not saved'
       : !positiveEstimate
-        ? 'Saved estimate is ₱0.00'
+        ? dashboardCurrency(row.actual)+' recorded · Saved estimate is ₱0.00'
         : dashboardCurrency(row.actual) + ' / ' + dashboardCurrency(row.estimate);
     const stateLabel = row.estimate === null
       ? 'NO ESTIMATE'
@@ -735,6 +754,8 @@ function renderDashboardProjectCostChart() {
           <strong class="${usage === null ? 'missing' : tone}">${pct}</strong>
           <span>${stateLabel}</span>
         </div>
+        ${row.expenses.length ? '<div class="cost-chart-breakdown">'+row.breakdown.map(bucket=>'<div class="cost-chart-category"><span>'+escapeHtml(bucket.label)+'</span><strong>'+dashboardCurrency(bucket.amount)+'</strong></div>').join('')+'</div>'+
+          '<details class="cost-chart-expenses" data-expense-project="'+escapeHtml(row.project_id)+'"'+(openProjects.has(row.project_id)?' open':'')+'><summary>View '+row.expense_count+' recorded expense'+(row.expense_count===1?'':'s')+'</summary>'+renderDashboardExpenseRecords(row)+'</details>' : ''}
       </div>
     `;
   }).join('');
@@ -744,7 +765,7 @@ async function loadDashboardProjectCostChart() {
   const chart = document.getElementById('projectCostChartList');
   const count = document.getElementById('costChartCount');
   const button = document.getElementById('refreshProjectCostChartButton');
-  if (!chart || !count) return;
+  if (!chart || !count || !window.__AMANAH_DASHBOARD_PERMS?.financial) return;
 
   const request = ++dashboardCostRequest;
   if (!dashboardCostRows.length) {
@@ -752,17 +773,23 @@ async function loadDashboardProjectCostChart() {
     chart.innerHTML = '<div class="cost-chart-blank">Loading saved estimates and recorded expenses...</div>';
   }
   if (button) button.disabled = true;
+  const warning=document.getElementById('costChartError');
+  if(warning)warning.hidden=true;
 
   try {
-    const { data, error } = await supabaseClient.rpc('get_dashboard_project_cost_chart');
+    const [{data,error},entries]=await Promise.all([
+      supabaseClient.rpc('get_dashboard_project_cost_chart'),
+      window.AmanahProjectExpenses.readCosts(supabaseClient,{isCurrent:()=>request===dashboardCostRequest&&window.__AMANAH_DASHBOARD_PERMS?.financial})
+    ]);
     if (error) throw error;
-    if (request !== dashboardCostRequest) return;
+    if (request !== dashboardCostRequest || !entries || !window.__AMANAH_DASHBOARD_PERMS?.financial) return;
 
-    dashboardCostRows = (Array.isArray(data) ? data : []).map(normalizeDashboardCostRow);
+    dashboardCostRows = window.AmanahProjectExpenses.projects(Array.isArray(data)?data:[],entries).map(normalizeDashboardCostRow);
     renderDashboardProjectCostChart();
   } catch (error) {
     if (request !== dashboardCostRequest) return;
     console.error('Project Cost Chart:', error);
+    if(warning){warning.textContent='The complete expense report could not be refreshed. '+(dashboardCostRows.length?'The last loaded report is still shown. ':'')+'Please retry Refresh costs.';warning.hidden=false;}
     if (!dashboardCostRows.length) {
       count.textContent = 'Project cost data unavailable';
       chart.replaceChildren();
@@ -838,6 +865,13 @@ document.getElementById('projectCostChartFilter')
 document.getElementById('refreshProjectCostChartButton')
   ?.addEventListener('click', loadDashboardProjectCostChart);
 
+document.getElementById('projectCostChartList')?.addEventListener('click',event=>{
+  const button=event.target.closest('[data-expense-more]');if(!button)return;
+  const id=button.dataset.expenseMore;
+  dashboardExpenseVisible.set(id,(dashboardExpenseVisible.get(id)||25)+25);
+  renderDashboardProjectCostChart();
+});
+
 // Keep amounts current as costs or Project Master estimates are updated.
 window.setInterval(() => {
   if (!document.hidden && window.__AMANAH_DASHBOARD_PERMS?.financial) {
@@ -848,4 +882,3 @@ window.setInterval(() => {
 // Initialization is controlled by the permission-checked corporate Dashboard,
 // avoiding duplicate queries and unauthorized legacy reports.
 // The main refresh button and page visibility refresh live in that controller.
-

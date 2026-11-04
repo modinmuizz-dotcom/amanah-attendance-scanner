@@ -493,6 +493,7 @@
 
   </style>
   <link rel="stylesheet" href="amanah-ui.css?v=4">
+  <link rel="stylesheet" href="project-expenses.css?v=1">
 <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
 <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
 <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -716,7 +717,7 @@
     <div class="panel-header">
       <div class="cost-chart-heading">
         <h2 id="projectCostChartTitle">PROJECT COST CHART</h2>
-        <p>Project-by-project expenses compared with each saved Project Estimate. Financial usage only, not physical site progress.</p>
+        <p>Every recorded project expense, including paid lump-sum payments, compared with the saved Project Estimate. Expand a project to inspect its transactions.</p>
       </div>
       <div class="cost-chart-toolbar">
         <label for="projectCostChartFilter" style="font-size:11px;color:#64748b;font-weight:800;">SHOW</label>
@@ -756,6 +757,7 @@
           <span><i class="cost-chart-dot red" aria-hidden="true"></i>Over 100%</span>
         </div>
       </div>
+      <div id="costChartError" class="cost-chart-expense-error" role="alert" hidden></div>
       <div id="projectCostChartList" class="cost-chart-list" aria-live="polite">
         <div class="cost-chart-blank">Loading project expense data...</div>
       </div>
@@ -869,7 +871,8 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"
 ></script>
 
-<script src="dashboard.js?v=5"></script>
+<script src="amanah-project-expenses.js?v=1"></script>
+<script src="dashboard.js?v=6"></script>
 
 <script src="amanah-dashboard-control.js?v=6"></script>
 <script src="amanah-ui.js?v=44"></script>
