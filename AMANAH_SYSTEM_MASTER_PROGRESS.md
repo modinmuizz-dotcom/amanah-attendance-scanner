@@ -284,3 +284,12 @@ Structure:
 - Save draft remains the single save action for the structure. A successful save locks all fields again; a failed save preserves edited values and the rows that were open for editing. Clicking Edit alone does not mark the draft as changed.
 - Adding a new group or work item opens its new fields for entry. Loading/reloading a project, replacing a template, and revising a baseline reset existing fields to locked. Read-only access and baseline locks still apply.
 - Validation: all 25 model/controller tests passed, including row isolation, ignored locked-field events, save success/failure, new-item entry and baseline/view permissions. No database migration was needed.
+
+## 2026-11-04 — SHARED DARK-MODE TEXT READABILITY
+
+- Corrected Activity Details values, descriptions, dates, equipment names/contributions, progress quantities, evidence labels and remaining light progress panels. Shared value/readout classes and disabled/read-only controls use legible dark-theme colors.
+- Added a shared screen-only readability check for the 18 common management pages and standalone Equipment History. It measures text against the visible flat/gradient surface, adjusts low-contrast text toward a minimum 4.5:1 ratio, and retains the original color direction for semantic text where possible.
+- Dynamic records, opened dialogs, hover/focus rows, late stylesheets and appearance changes are checked in batched updates. A dedicated CSS layer lets marked text override legacy stylesheet colors without replacing their original declarations.
+- Light-mode/print rules, intentionally transparent text, maps, SVG/canvas graphics, photographs and login artwork remain governed by their existing styles. The fallback does not guess text colors over photographs or mixed light/dark imagery.
+- Updated shared asset versions on all 19 themed management pages. No database changes or workflow changes.
+- Validation: all 36 readability/model/controller tests passed, covering contrast arithmetic, the workspace palette, both surface directions, semantic colors, dynamic/hidden data, autofill, theme/print isolation, asset coverage and existing edit/save behavior. Shared CSS structure, JavaScript syntax and whitespace checks passed. Browser visual checks were unavailable because the runtime has no installed Chromium binary.

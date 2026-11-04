@@ -443,3 +443,63 @@ html[data-amanah-mode="dark"] body.amanah-common-active :is(
     transition:background-color .16s ease, color .16s ease;
   }
 }
+
+/* Readable record details throughout the management workspace. Keep foregrounds
+   paired with their surfaces; the original light-mode/print rules stay intact. */
+@media screen {
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(
+    .value,.field-value,.form-value,.readonly-value,.data-value,.record-value,
+    .summary-value,.detail-value,.detail-text,.table-value,.result-value,.record-title
+  ),
+  html[data-amanah-mode="dark"] .main-shell :is(.value,.detail-value,.detail-text,.summary-value) {
+    color:var(--am-module-text,#f1f6ff) !important;
+  }
+
+  /* Activity Calendar detail values use div.value, rather than strong. */
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal :is(
+    .detail-card .value,.detail-hero-title,.detail-description,
+    .detail-progress-head,.detail-progress-stat strong,
+    .detail-equipment-progress-title,.detail-equipment-name,
+    .detail-evidence-title,.detail-remark p
+  ) {color:var(--am-module-text) !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal :is(
+    .detail-progress-note,.detail-equipment-id,.detail-equipment-attendance,
+    .detail-equipment-progress-note,.detail-evidence-empty,.detail-evidence-loading,
+    .detail-evidence-caption,.detail-evidence-meta,.detail-hero-sub,
+    .detail-card label,.detail-progress-stat label,#detailCompletedAt
+  ) {color:var(--am-module-secondary) !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal :is(
+    .detail-progress,.detail-equipment-progress,.detail-evidence,.detail-remark
+  ) {
+    background:var(--am-module-card) !important;
+    color:var(--am-module-text) !important;
+    border-color:var(--am-module-border) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal :is(
+    .detail-progress-auto,.detail-progress-stat,.detail-evidence-card
+  ) {
+    background:var(--am-module-elevated) !important;
+    color:var(--am-module-text) !important;
+    border-color:var(--am-module-border) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal .detail-progress-track {
+    background:#354b67 !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-modal :is(
+    .detail-equipment-progress-total,.detail-equipment-qty,.detail-evidence-count
+  ) {color:#a7f3d0 !important;}
+  html[data-amanah-mode="dark"] body.amanah-common-active .detail-equipment-row {
+    border-color:var(--am-module-border) !important;
+  }
+
+  /* Read-only and disabled data must remain readable in forms and tables. */
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(input,select,textarea):is(:disabled,[readonly]),
+  html[data-amanah-mode="dark"] .main-shell :is(input,select,textarea):is(:disabled,[readonly]) {
+    opacity:1 !important;
+    color:var(--am-module-secondary,#c5d3e6) !important;
+    -webkit-text-fill-color:var(--am-module-secondary,#c5d3e6) !important;
+  }
+  html[data-amanah-mode="dark"] body.amanah-common-active :is(button,[role="button"]):disabled {
+    opacity:.8;
+  }
+}

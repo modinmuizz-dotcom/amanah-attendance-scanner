@@ -128,8 +128,15 @@
       const moduleStyle=document.createElement('link');
       moduleStyle.id='amanahDarkModulesStyle';
       moduleStyle.rel='stylesheet';
-      moduleStyle.href='amanah-dark-modules.css?v=3';
+      moduleStyle.href='amanah-dark-modules.css?v=4';
       document.head.appendChild(moduleStyle);
+    }
+    // Legacy inline readouts and newly inserted dialogs share the same contrast check.
+    if(!document.getElementById('amanahReadabilityScript')){
+      const readabilityScript=document.createElement('script');
+      readabilityScript.id='amanahReadabilityScript';
+      readabilityScript.src='amanah-readability.js?v=1';
+      document.head.appendChild(readabilityScript);
     }
     if(!document.getElementById('amanahSettingsScript')){
       const settingsScript=document.createElement('script');
@@ -432,4 +439,3 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 })();
-
