@@ -7,7 +7,7 @@
   <title>Project Structure | AMANAH</title>
   <link rel="stylesheet" href="style.css?v=4">
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="project-structure.css?v=3">
+  <link rel="stylesheet" href="project-structure.css?v=4">
   <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
   <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
   <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -20,6 +20,7 @@
       <label for="structureProject">PROJECT</label>
       <select id="structureProject" disabled><option value="">Loading projects…</option></select>
       <a class="ps-link" href="admin.html?tab=projects">Open Project Master ↗</a>
+      <button type="button" class="ps-button secondary" id="printStructure" disabled>Print / Save PDF</button>
     </section>
     <div id="structureMessage" class="ps-message" role="status" aria-live="polite" hidden></div>
     <section id="structureEmpty" class="ps-card ps-empty"><h2>Select a project to define its work structure</h2><p>Assign each work group's project share, divide its items into 100%, and establish the complete scope baseline.</p></section>
@@ -44,6 +45,7 @@
       <section class="ps-card ps-history"><h2>Baseline record</h2><p>Saved drafts, baseline versions and revision reasons.</p><div id="structureEvents"></div></section>
     </div>
   </main>
+  <section id="structurePrintReport" class="ps-print-report" aria-label="Project structure print report"></section>
   <dialog id="structureConfirm" class="ps-dialog" aria-labelledby="structureDialogTitle">
     <form method="dialog" id="structureConfirmForm">
       <div class="ps-dialog-head"><h2 id="structureDialogTitle"></h2><p id="structureDialogText"></p></div>
@@ -53,7 +55,8 @@
   </dialog>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <script src="project-structure-model.js?v=2"></script>
-  <script src="project-structure.js?v=3"></script>
+  <script src="project-structure-print.js?v=1"></script>
+  <script src="project-structure.js?v=4"></script>
   <script src="amanah-ui.js?v=44"></script>
 </body>
 </html>

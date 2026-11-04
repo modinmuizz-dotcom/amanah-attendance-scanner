@@ -53,6 +53,7 @@ window.supabaseClient = supabaseClient;
     });
   }
   function renderControls() {
+    $('printStructure').disabled = !state.project || state.busy;
     if (!state.project) return;
     const draft = state.structure?.status !== 'BASELINED';
     const s = M.summary(state.groups);
@@ -147,6 +148,12 @@ window.supabaseClient = supabaseClient;
     renderSummary();
   }
   function markDirty() { state.dirty = true; renderSummary(); }
+  function preparePrint() {
+    if (!state.project) return false;
+    $('structurePrintReport').innerHTML = window.AmanahProjectStructurePrint.build(state.project,state.structure,state.groups,{dirty:state.dirty});
+    document.body.classList.add('ps-print-ready');
+    return true;
+  }
   async function confirmAction(title, text, reason = false) {
     const dialog = $('structureConfirm');
     $('structureDialogTitle').textContent = title;
@@ -164,6 +171,7 @@ window.supabaseClient = supabaseClient;
     const generation = ++state.generation;
     state.project = null;state.structure = null;state.groups = [];state.events = [];state.canManage = false;state.dirty = false;
     resetEditing();
+    $('structurePrintReport').innerHTML = '';document.body.classList.remove('ps-print-ready');renderControls();
     message();
     if (!id) { empty('Select a project to define its work structure', 'Choose a school building, multi-purpose building, covered court or water system.');return; }
     state.busy = true;$('structureProject').disabled = true;
@@ -206,6 +214,8 @@ window.supabaseClient = supabaseClient;
     } finally { if (generation === state.generation) {state.busy = false;render();$('structureProject').disabled = false;} }
   }
   function bindEvents() {
+    $('printStructure').addEventListener('click', () => {if (!state.busy && preparePrint()) window.print();});
+    window.addEventListener('beforeprint', preparePrint);
     $('structureDialogCancel').addEventListener('click', () => $('structureConfirm').close('cancel'));
     $('structureProject').addEventListener('change', async event => {
       const target = event.target.value;

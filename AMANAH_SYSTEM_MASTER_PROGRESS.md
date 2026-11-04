@@ -304,3 +304,11 @@ Structure:
 - Dashboard lump-sum expense links open the corresponding contract payment, which is highlighted in the payment table. Payment history is read across all pages.
 - Paid-only recognition remains in force: only actual recorded advances, billing payments and retention releases contribute; approved unpaid billings and full contract values do not become expenses. Existing database posting triggers and financial records are unchanged.
 - Validation: all 48 automated tests passed, including missing estimates, full pagination, category reconciliation, payment posting matches, concurrent ledger changes, links, access, failed reads and existing theme/edit behavior. Read-only database reconciliation confirmed current chart/ledger totals, source references, no duplicate lump-sum postings and the enabled payment posting trigger. No database migration was needed.
+
+## 2026-11-04 — PROJECT STRUCTURE PRINT / SAVE PDF
+
+- Added Print / Save PDF beside the project picker. It opens the native browser print dialog in the same tab; authorized view-only users can also print their loaded project.
+- A separate printable snapshot contains the project name/ID/type/location, draft or baseline version, saved/printed timestamps in Philippine time, complete-scope summary, every work group and item, group/item percentages, calculated project contributions, locations and planned dates.
+- Current unsaved changes can be printed and are labelled UNSAVED DRAFT. Printing does not save, revise or lock the data. Ctrl+P rebuilds the snapshot from the current displayed scope.
+- A4 landscape layout uses wrapped text, repeated table headings and multi-page work groups. Sidebar, editing controls and scroll containers are excluded; print colors are dark text on white paper in either screen theme.
+- Validation: all 56 automated tests passed, including read-only baseline printing, same-tab print invocation, live unsaved edits, escaping, empty/incomplete scopes and all 400 rows of a large group. JavaScript syntax and whitespace checks passed. Browser print preview could not be visually inspected because Chromium is not installed in this runtime.

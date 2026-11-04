@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 const M=require('../project-structure-model.js');
+const Print=require('../project-structure-print.js');
 const root=path.resolve(__dirname,'..');
 class Element {
   constructor(){this.listeners={};this.textContent='';this.innerHTML='';this.hidden=false;this.disabled=false;this.value='';this.dataset={};this.style={};this.attributes={};this.classList={toggle(){},add(){},remove(){}};}
@@ -49,8 +50,9 @@ async function harness(options={}){
       return{data:saved,error:null};
     }
   };
-  const document={getElementById:id=>{assert.ok(nodes[id],'Unknown DOM ID '+id);return nodes[id];},addEventListener:(name,fn)=>{if(name==='DOMContentLoaded')ready=fn;}};
-  const context={window:{AmanahProjectStructure:M,supabase:{createClient:()=>client},setTimeout,clearTimeout,addEventListener(){}},document,location:{search:'?project_id=TEST-SCHOOL',replace:url=>redirects.push(url)},history:{replaceState(){}},URLSearchParams,console};
+  const body=new Element(),windowEvents=new Map();let printed=0;
+  const document={body,getElementById:id=>{assert.ok(nodes[id],'Unknown DOM ID '+id);return nodes[id];},addEventListener:(name,fn)=>{if(name==='DOMContentLoaded')ready=fn;}};
+  const context={window:{AmanahProjectStructure:M,AmanahProjectStructurePrint:Print,supabase:{createClient:()=>client},setTimeout,clearTimeout,addEventListener:(name,fn)=>windowEvents.set(name,fn),print:()=>printed++},document,location:{search:'?project_id=TEST-SCHOOL',replace:url=>redirects.push(url)},history:{replaceState(){}},URLSearchParams,console};
   vm.runInNewContext(fs.readFileSync(path.join(root,'project-structure.js'),'utf8'),context);
   await ready();
   const flush=async()=>{for(let i=0;i<4;i++)await new Promise(setImmediate);};
@@ -60,7 +62,7 @@ async function harness(options={}){
     assert.ok(row,'Work item must be rendered');
     return Object.fromEntries([...row.matchAll(/<input\b[^>]*>/g)].map(([tag])=>[tag.match(/data-field="([^"]+)"/)[1],{disabled:/\sdisabled(?:\s|>)/.test(tag)}]));
   };
-  return{nodes,calls,redirects,saved:()=>saved,flush,action,rowInputs,
+  return{nodes,calls,redirects,saved:()=>saved,printed:()=>printed,windowEvents,flush,action,rowInputs,
     editItem:(group,item)=>action({editItem:item.id,group:group.id}),editGroup:group=>action({editGroup:group.id}),
     click:async id=>{await nodes[id].emit('click');await flush();},groupInput:async(group,value)=>nodes.structureGroups.emit('input',{target:{dataset:{groupShare:group.id},value}}),input:async(group,item,field,value)=>nodes.structureGroups.emit('input',{target:{dataset:{field},value,closest:selector=>selector==='[data-group]'?{dataset:{group:group.id}}:{dataset:{item:item.id}}}})};
 }
@@ -206,4 +208,28 @@ test('adding a work item opens only the new row for entry',async()=>{
   const newId=[...h.nodes.structureGroups.innerHTML.matchAll(/<tr[^>]*data-item="([^"]+)"/g)][1][1];
   assert.ok(Object.values(h.rowInputs({id:newId})).every(i=>!i.disabled));
   assert.equal(h.nodes.saveStructure.disabled,false);
+});
+
+test('Print opens the same-tab dialog for read-only baseline access without writing data',async()=>{
+  const group=M.newGroup('STRUCTURAL');group.share=100;group.items=[M.newItem('EXCAVATION')];group.items[0].weight=100;
+  const h=await harness({canManage:false,saved:{groups:[group],status:'BASELINED',revision:1,baseline_version:2}});
+  assert.equal(h.nodes.printStructure.disabled,false);const reads=h.calls.length;
+  await h.click('printStructure');assert.equal(h.printed(),1);assert.equal(h.calls.length,reads);
+  assert.match(h.nodes.structurePrintReport.innerHTML,/BASELINE V2/);assert.match(h.nodes.structurePrintReport.innerHTML,/EXCAVATION/);
+  assert.doesNotMatch(h.nodes.structurePrintReport.innerHTML,/<input|<button/);
+});
+test('printing and Ctrl+P include current unsaved edits while keeping the draft editable',async()=>{
+  const group=M.newGroup('STRUCTURAL');group.share=100;group.items=[M.newItem('EXCAVATION')];group.items[0].weight=100;
+  const h=await harness({saved:{groups:[group],status:'DRAFT',revision:1,baseline_version:1}});
+  await h.editItem(group,group.items[0]);await h.input(group,group.items[0],'name','EXCAVATION · UPDATED');
+  const calls=h.calls.length;await h.click('printStructure');
+  assert.match(h.nodes.structurePrintReport.innerHTML,/UNSAVED DRAFT/);assert.match(h.nodes.structurePrintReport.innerHTML,/EXCAVATION · UPDATED/);
+  assert.equal(h.calls.length,calls);assert.equal(h.nodes.structureDirty.hidden,false);
+  assert.ok(Object.values(h.rowInputs(group.items[0])).every(i=>!i.disabled));
+  await h.input(group,group.items[0],'location','BLOCK B');h.windowEvents.get('beforeprint')();
+  assert.match(h.nodes.structurePrintReport.innerHTML,/BLOCK B/);assert.equal(h.printed(),1);
+});
+test('printing cannot open a project report before authentication and project loading',async()=>{
+  const h=await harness({loggedOut:true});await h.click('printStructure');assert.equal(h.printed(),0);
+  assert.equal(h.nodes.structurePrintReport.innerHTML,'');
 });
