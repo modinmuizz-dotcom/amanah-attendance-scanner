@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="amanah-theme-boot.js?v=2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPS Fleet Tracking | AMANAH</title>
+  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="amanah-ui.css?v=6">
+  <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
+  <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
+  <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
+  <link id="amanahDarkModeStyle" rel="stylesheet" href="amanah-dark-mode.css?v=3">
+  <link id="amanahDarkModulesStyle" rel="stylesheet" href="amanah-dark-modules.css?v=4">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="gps-fleet.css?v=1">
+</head>
+<body>
+  <main class="gps-page">
+    <div id="fleetMessage" class="gps-message" role="status" aria-live="polite">Verifying your AMANAH access…</div>
+    <div id="fleetWorkspace" hidden>
+      <section class="gps-summary" aria-label="Fleet summary">
+        <div class="gps-card"><span>VEHICLES</span><strong id="fleetTotal">—</strong><small>Available to the Cartrack integration</small></div>
+        <div class="gps-card"><span>RECENT LOCATIONS</span><strong id="fleetRecent">—</strong><small>GPS update within 15 minutes</small></div>
+        <div class="gps-card"><span>MOVING · RECENT</span><strong id="fleetMoving">—</strong><small>Speed reported above 0 km/h</small></div>
+        <div class="gps-card"><span>OLDER / UNAVAILABLE</span><strong id="fleetOlder">—</strong><small>Check each tracker’s last update</small></div>
+      </section>
+      <section class="gps-card gps-toolbar" aria-label="Fleet controls">
+        <label class="gps-search">Search vehicles<input id="fleetSearch" type="search" placeholder="Plate number or location…"></label>
+        <label>Status<select id="fleetFilter"><option value="">All vehicles</option><option value="recent">Recent locations</option><option value="moving">Moving · recent</option><option value="older">Older / time unavailable</option><option value="missing">No location</option></select></label>
+        <label class="gps-auto"><input id="fleetAuto" type="checkbox" checked> Auto refresh · 60 seconds</label>
+        <button id="fleetRefresh" type="button" class="gps-button" disabled>Refresh fleet</button>
+        <a class="gps-button secondary" href="https://fleetweb-ph.cartrack.com/map/fleet" target="_blank" rel="noopener noreferrer">Open Cartrack ↗</a>
+      </section>
+      <section class="gps-card gps-map-card" aria-label="Vehicle map">
+        <div class="gps-section-head"><div><h2>Latest vehicle positions</h2><p id="fleetFetched">No fleet snapshot loaded.</p></div><button id="fleetFit" type="button" class="gps-button secondary" disabled>Show vehicles</button></div>
+        <div id="fleetMap" aria-label="Cartrack vehicle locations"></div>
+        <p id="fleetMapNote" class="gps-note">Positions are the tracker’s last known locations. Older updates do not confirm a vehicle is currently there.</p>
+      </section>
+      <section class="gps-card" aria-label="Vehicle details">
+        <div class="gps-section-head"><h2>Vehicle details</h2><span id="fleetCount">No snapshot loaded</span></div>
+        <div class="gps-scroll"><table class="gps-table"><thead><tr><th>VEHICLE / PLATE</th><th>LAST REPORTED STATUS</th><th>SPEED</th><th>ODOMETER</th><th>GPS LOCATION UPDATED</th><th>LAST KNOWN LOCATION</th><th>ACTION</th></tr></thead><tbody id="fleetRows"><tr><td colspan="7">Loading fleet…</td></tr></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="gps-fleet-model.js?v=1"></script>
+  <script src="gps-fleet.js?v=1"></script>
+  <script src="amanah-ui.js?v=45"></script>
+</body>
+</html>

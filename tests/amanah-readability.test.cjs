@@ -136,10 +136,10 @@ test('all management pages load the updated shared theme and UI',()=>{
   for(const name of fs.readdirSync(root).filter(n=>n.endsWith('.html'))){
     const html=fs.readFileSync(path.join(root,name),'utf8');
     if(!html.includes('amanah-ui.js'))continue;
-    pages++;assert.match(html,/amanah-ui\.js\?v=44/,name);
+    pages++;assert.match(html,/amanah-ui\.js\?v=45/,name);
     if(html.includes('amanah-dark-modules.css'))assert.match(html,/amanah-dark-modules\.css\?v=4/,name);
   }
-  assert.equal(pages,18);
+  assert.equal(pages,19);
   const history=fs.readFileSync(path.join(root,'equipment-history.html'),'utf8');
   assert.match(history,/amanah-readability\.js\?v=1/);assert.match(history,/amanah-dark-modules\.css\?v=4/);
   const ui=fs.readFileSync(path.join(root,'amanah-ui.js'),'utf8');assert.match(ui,/amanah-readability\.js\?v=1/);

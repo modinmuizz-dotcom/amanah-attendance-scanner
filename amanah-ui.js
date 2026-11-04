@@ -25,6 +25,7 @@
     ]},
     {section:'EQUIPMENT',items:[
       ['equipment','Equipment','admin.html','truck','master_data.equipment'],
+      ['gpsFleet','GPS Fleet Tracking','gps-fleet.html','truck','master_data.equipment|equipment_history.view'],
       ['operators','Operators / Drivers','admin.html','users','master_data.employees'],
       ['maintenance','Maintenance','equipment-maintenance.html','wrench','maintenance.view'],
       ['repairs','Repair Requests','repair-requests.html','repair','repairs.view'],
@@ -63,6 +64,7 @@
     if(file==='finance-payroll.html') return 'financePayroll';
     if(file==='lump-sum.html') return 'lumpContracts';
     if(file==='equipment-history.html') return 'history';
+    if(file==='gps-fleet.html') return 'gpsFleet';
     if(file==='equipment-maintenance.html') return 'maintenance';
     if(file==='repair-requests.html') return 'repairs';
     if(file==='project-cost.html') return 'materials';
@@ -169,6 +171,12 @@
           title:'PROJECT STRUCTURE',
           desc:'Define the work scope, allocate project weights and establish a versioned baseline.',
           badge:'Work Structure'
+        },
+        'gps-fleet.html':{
+          kicker:'EQUIPMENT MONITORING',
+          title:'GPS FLEET TRACKING',
+          desc:'Monitor the latest vehicle positions and tracker updates from Cartrack.',
+          badge:'Cartrack Fleet'
         },
         'attendance.html':{
           kicker:'WORKFORCE CONTROL',
@@ -376,6 +384,7 @@
         'equipment-maintenance.html':['maintenance.view'],
         'repair-requests.html':['repairs.view'],
         'equipment-history.html':['equipment_history.view'],
+        'gps-fleet.html':['master_data.equipment','equipment_history.view'],
         'project-cost.html':['materials.view'],
         'purchasing.html':['purchasing.view'],
         'reports.html':['reports.view'],

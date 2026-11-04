@@ -312,3 +312,14 @@ Structure:
 - Current unsaved changes can be printed and are labelled UNSAVED DRAFT. Printing does not save, revise or lock the data. Ctrl+P rebuilds the snapshot from the current displayed scope.
 - A4 landscape layout uses wrapped text, repeated table headings and multi-page work groups. Sidebar, editing controls and scroll containers are excluded; print colors are dark text on white paper in either screen theme.
 - Validation: all 56 automated tests passed, including read-only baseline printing, same-tab print invocation, live unsaved edits, escaping, empty/incomplete scopes and all 400 rows of a large group. JavaScript syntax and whitespace checks passed. Browser print preview could not be visually inspected because Chromium is not installed in this runtime.
+
+## 2026-11-04 — CARTRACK GPS FLEET, PHASE 1
+
+- Added GPS Fleet Tracking under Equipment, with a Leaflet map, vehicle search/status filters, focus controls, speed, odometer in kilometers and each tracker’s own last GPS location update in Philippine time.
+- Recent positions (within 15 minutes) are distinguished from older, missing or time-unavailable positions. Refreshing a snapshot never refreshes an old tracker timestamp. Status describes the last reported movement/ignition; it is not proof that a tracker is online.
+- Added the cartrack-fleet Supabase Edge Function with JWT verification, current-user validation and existing Equipment / Equipment History permissions on every request, including cached responses. The fixed Philippine Cartrack endpoint supports reading fleet status only.
+- Cartrack credentials are read only from Edge Function secrets. Responses contain a whitelist of display fields, with no credentials, raw provider payloads or driver personal details. No service-role key, database migration or GPS history table is used.
+- Visible pages refresh at most once per minute. Concurrent requests share an upstream fetch within an isolate; short snapshot caching and provider retry delays reduce repeated calls. Failed refreshes retain the last displayed snapshot with an error; sign-out/access rejection clears it.
+- Configuration: docs/CARTRACK_SETUP.md. The owner must save a private replacement credential as CARTRACK_API_USERNAME and CARTRACK_API_PASSWORD directly in Supabase Edge Function secrets before live fleet verification. No credential from the shared screenshot was used or committed.
+- Equipment/project matching, trip playback and historical route storage remain later phases.
+- Validation: all 76 automated checks passed, including provider-field normalization, units/timezones, null values, incomplete responses, role and origin rejection, cache authorization, retry delays, redaction, hidden-tab refresh, late responses after logout and previous system regressions. Live vehicle comparison remains pending the private credential setup.

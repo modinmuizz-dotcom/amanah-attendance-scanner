@@ -1,0 +1,2 @@
+[functions.cartrack-fleet]
+verify_jwt = true
