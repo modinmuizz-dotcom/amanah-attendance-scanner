@@ -276,3 +276,11 @@ Structure:
 - Legacy saved structures and audit snapshots retain their original weight model. The v2 reader converts legacy item weights into group shares and item percentages using largest-remainder rounding to total 100% within each nonzero group. Conversion is stored only on an authorized save or baseline revision. Cached v1 clients cannot overwrite v2 structures.
 - Validation: all 20 model/controller tests passed; both SQL regression suites passed with rolled-back fixtures, covering independent totals, decimals, invalid values, old-client compatibility, baseline history, stale writes and access restrictions.
 - This completes the scope-allocation adjustment in Phase 1. Actual accomplishment entry, evidence and weighted progress rollups remain Phase 2.
+
+## 2026-11-04 — EXPLICIT EDIT CONTROLS FOR PROJECT STRUCTURE
+
+- Existing work items open locked. Each Action cell has a blue Edit button beside Remove, which unlocks only that row's name, location, item share and planned dates.
+- Work group names and project shares also open locked; Edit group unlocks only that group's header fields.
+- Save draft remains the single save action for the structure. A successful save locks all fields again; a failed save preserves edited values and the rows that were open for editing. Clicking Edit alone does not mark the draft as changed.
+- Adding a new group or work item opens its new fields for entry. Loading/reloading a project, replacing a template, and revising a baseline reset existing fields to locked. Read-only access and baseline locks still apply.
+- Validation: all 25 model/controller tests passed, including row isolation, ignored locked-field events, save success/failure, new-item entry and baseline/view permissions. No database migration was needed.

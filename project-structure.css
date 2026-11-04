@@ -55,6 +55,8 @@
 .ps-table td:nth-child(5),.ps-table td:nth-child(6){width:150px}
 .ps-table input{width:100%;font-size:12px}
 .ps-table input[data-field="weight"]{font-weight:900;text-align:right}
+.ps-action-cell{min-width:172px}
+.ps-row-actions{display:flex;align-items:center;gap:8px}
 .ps-group-foot{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;background:var(--ps-raised);font-size:11px;color:var(--ps-muted)}
 .ps-group-share{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:900;letter-spacing:.03em}
 .ps-group-share input{width:105px!important;text-align:right;font-weight:900;color:var(--ps-text)}
@@ -96,4 +98,4 @@
 }
 @media(max-width:1100px){.ps-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.ps-group-head{flex-wrap:wrap}.ps-toolbar>div{width:100%}}
 @media(max-width:650px){.ps-page{width:calc(100% - 24px);padding-top:15px}.ps-picker{gap:10px;padding:16px}.ps-picker select{width:100%;max-width:none;flex-basis:100%;min-width:0}.ps-project{align-items:flex-start;flex-direction:column;padding:19px}.ps-project>div:last-child{text-align:left}.ps-project h1{font-size:22px}.ps-summary{gap:9px}.ps-summary .ps-card{padding:15px}.ps-summary strong{font-size:24px}.ps-toolbar .ps-button{flex:1}.ps-group-head{padding:14px}.ps-group-title{width:100%}.ps-event{grid-template-columns:1fr;gap:4px}.ps-guide{padding:18px}.ps-group-foot{padding:13px;align-items:flex-start}.ps-history{padding:18px}}
-@media print{.ps-picker,.ps-toolbar,.ps-group-meta button,.ps-group-foot button,.ps-table th:last-child,.ps-table td:last-child{display:none}.ps-page{width:100%;padding:0}.ps-card{break-inside:avoid}.ps-scroll{overflow:visible}.ps-table{min-width:0}.ps-page input{border:0;padding:0;background:none}.ps-page{color:#0f172a}}
+@media print{.ps-picker,.ps-toolbar,.ps-group-meta button,.ps-group-foot button,.ps-action-cell{display:none}.ps-page{width:100%;padding:0}.ps-card{break-inside:avoid}.ps-scroll{overflow:visible}.ps-table{min-width:0}.ps-page input{border:0;padding:0;background:none}.ps-page{color:#0f172a}}
