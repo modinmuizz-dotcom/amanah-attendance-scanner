@@ -105,9 +105,13 @@ test('successful removal deletes both file and evidence metadata',async()=>{
 
 class Element{
   constructor(){this.listeners={};this.innerHTML='';this.textContent='';this.hidden=false;this.disabled=false;this.value='';this.files=[];this.open=false;this.classList={toggle(){}};}
+  set innerHTML(value){this.html=value;this.buttons=[...value.matchAll(/<button\b[^>]*>/g)].map(([tag])=>({disabled:false,dataset:Object.fromEntries([...tag.matchAll(/data-([a-z-]+)="([^"]*)"/g)].map(([,key,value])=>[key.replace(/-([a-z])/g,(_,c)=>c.toUpperCase()),value])),focus(){this.focused=true;}}));}
+  get innerHTML(){return this.html;}
   addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
   async emit(name,event={}){for(const fn of this.listeners[name]||[])await fn(event);}
-  querySelectorAll(){return[];}
+  querySelectorAll(selector){return selector==='button'?this.buttons:[];}
+  querySelector(selector){const index=selector.match(/^\[data-photo-unselect="(-?\d+)"\]$/)?.[1];return this.buttons.find(button=>button.dataset.photoUnselect===index)||null;}
+  focus(){this.focused=true;}
   removeAttribute(name){delete this[name];}
   showModal(){this.open=true;}
   close(){this.open=false;this.emit('close');}
@@ -116,15 +120,15 @@ class Element{
 async function uiHarness(options={}){
   const h=clientHarness(options),ids=[...fs.readFileSync(path.join(root,'project-structure.html'),'utf8').matchAll(/id="(workPhotos[^"]+)"/g)].map(x=>x[1]);
   assert.equal(new Set(ids).size,ids.length);const nodes=Object.fromEntries(ids.map(id=>[id,new Element()]));
-  const revoked=[],drawn=[];let urlId=0;
+  const revoked=[],drawn=[],decoded=[];let urlId=0;
   const canvas={width:0,height:0,getContext:()=>({fillRect(){},drawImage(...args){drawn.push(args);}}),toBlob:fn=>fn(photo())};
-  const browser={document:{getElementById:id=>nodes[id],createElement:()=>canvas},URL:{createObjectURL:()=> 'blob:test/'+(++urlId),revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> 'ui-photo-'+(++urlId)},createImageBitmap:async()=>({width:4800,height:3200,close(){}})};
+  const browser={document:{getElementById:id=>nodes[id],createElement:()=>canvas},URL:{createObjectURL:()=> 'blob:test/'+(++urlId),revokeObjectURL:url=>revoked.push(url)},crypto:{randomUUID:()=> 'ui-photo-'+(++urlId)},createImageBitmap:async file=>{decoded.push(file);return{width:4800,height:3200,close(){}};}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'project-work-photos.js'),'utf8'),{window:browser,Blob,Uint8Array,Map,Date,console});
   const changes=[];let confirmations=0;
   const gallery=browser.AmanahWorkPhotos.create({client:h.client,onChanged:id=>changes.push(id),confirm:async()=>{confirmations++;return options.confirm!==false;}});
   const flush=async()=>{for(let i=0;i<5;i++)await new Promise(setImmediate);};
   gallery.open(context);await flush();
-  return{...h,nodes,gallery,changes,revoked,canvas,drawn,flush,confirmations:()=>confirmations,choose:async files=>{nodes.workPhotosFiles.files=files;await nodes.workPhotosFiles.emit('change');},click:async(id,event)=>{await nodes[id].emit('click',event);await flush();}};
+  return{...h,nodes,gallery,changes,revoked,canvas,drawn,decoded,flush,confirmations:()=>confirmations,choose:async files=>{nodes.workPhotosFiles.files=files;await nodes.workPhotosFiles.emit('change');},unselect:async index=>nodes.workPhotosPreview.emit('click',{target:{closest:()=>({dataset:{photoUnselect:String(index)}})}}),click:async(id,event)=>{await nodes[id].emit('click',event);await flush();}};
 }
 test('engineer upload UI previews, resizes and saves photos without changing the scope',async()=>{
   const h=await uiHarness();await h.choose([photo()]);assert.equal(h.nodes.workPhotosUpload.disabled,false);assert.match(h.nodes.workPhotosPreview.innerHTML,/Selected photo 1/);
@@ -132,6 +136,25 @@ test('engineer upload UI previews, resizes and saves photos without changing the
   assert.equal(h.records.size,1);assert.equal([...h.records.values()][0].is_ready,true);assert.equal(h.canvas.width,2400);assert.equal(h.canvas.height,1600);
   assert.deepEqual(h.changes,[context.projectId]);assert.match(h.nodes.workPhotosGallery.innerHTML,/&lt;inspection note&gt;/);assert.doesNotMatch(h.nodes.workPhotosGallery.innerHTML,/<inspection note>/);
   assert.equal(h.nodes.workPhotosCount.textContent,'1 / 20 photos');assert.equal(h.nodes.workPhotosUpload.disabled,true);
+});
+test('removing a selected photo preserves the other photos and excludes it from the upload',async()=>{
+  const h=await uiHarness(),chosen=[photo(),photo(),photo()];await h.choose(chosen);
+  h.nodes.workPhotosCaption.value='Inspection note';h.nodes.workPhotosFiles.value='selected photos';
+  assert.equal(h.nodes.workPhotosPreview.querySelectorAll('button').length,3);
+  assert.match(h.nodes.workPhotosPreview.innerHTML,/aria-label="Remove selected photo 2"/);
+  await h.unselect(1);
+  assert.equal(h.nodes.workPhotosSelected.textContent,'2 photos selected');assert.equal(h.nodes.workPhotosFiles.value,'');
+  assert.equal(h.nodes.workPhotosPreview.querySelectorAll('button').length,2);assert.equal(h.revoked.length,3);
+  assert.equal(h.nodes.workPhotosPreview.querySelector('[data-photo-unselect="1"]').focused,true);
+  assert.equal(h.nodes.workPhotosCaption.value,'Inspection note');assert.equal(h.calls.length,1,'Selection removal only follows the initial gallery read');
+  await h.click('workPhotosUpload');assert.deepEqual(h.decoded,[chosen[0],chosen[2]]);assert.equal(h.records.size,2);assert.equal(h.confirmations(),0);
+});
+test('removing the final selected photo disables upload and permits selecting it again',async()=>{
+  const h=await uiHarness(),chosen=photo();await h.choose([chosen]);await h.unselect(0);
+  assert.equal(h.nodes.workPhotosPreview.innerHTML,'');assert.equal(h.nodes.workPhotosSelected.textContent,'No photos selected');
+  assert.equal(h.nodes.workPhotosUpload.disabled,true);assert.equal(h.nodes.workPhotosChoose.focused,true);
+  await h.click('workPhotosUpload');assert.equal(h.records.size,0);
+  await h.choose([chosen]);assert.equal(h.nodes.workPhotosSelected.textContent,'1 photo selected');assert.equal(h.nodes.workPhotosUpload.disabled,false);
 });
 test('viewers can browse photos but cannot upload or remove them',async()=>{
   const h=await uiHarness();await h.store.upload(context,[photo()]);h.gallery.open({...context,canManage:false});await h.flush();
@@ -146,6 +169,8 @@ test('remove requires confirmation and closing a gallery releases preview resour
 test('upload controls and dialog dismissal are guarded while a photo is being saved',async()=>{
   let resolve;const pending=new Promise(r=>resolve=r);const h=await uiHarness({uploadWait:pending});await h.choose([photo()]);
   const saving=h.click('workPhotosUpload');await h.flush();assert.equal(h.nodes.workPhotosClose.disabled,true);assert.equal(h.nodes.workPhotosChoose.disabled,true);
+  assert.equal(h.nodes.workPhotosPreview.querySelectorAll('button')[0].disabled,true);
+  await h.unselect(0);assert.equal(h.nodes.workPhotosSelected.textContent,'1 photo selected');
   let prevented=false;await h.nodes.workPhotosDialog.emit('cancel',{preventDefault:()=>{prevented=true;}});assert.equal(prevented,true);
-  resolve();await saving;assert.equal(h.nodes.workPhotosClose.disabled,false);
+  resolve();await saving;assert.equal(h.nodes.workPhotosClose.disabled,false);assert.equal(h.records.size,1);
 });

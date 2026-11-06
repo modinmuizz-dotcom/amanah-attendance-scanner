@@ -117,12 +117,13 @@
       $('workPhotosChoose').disabled=busy;$('workPhotosFiles').disabled=busy;$('workPhotosCaption').disabled=busy;
       $('workPhotosClose').disabled=busy;$('workPhotosReload').disabled=busy;
       $('workPhotosGallery').querySelectorAll('button').forEach(button=>button.disabled=busy);
+      $('workPhotosPreview').querySelectorAll('button').forEach(button=>button.disabled=busy);
       $('workPhotosUpload').textContent=busy?'Saving…':'Upload photos';
     }
     function releasePreviews(){previews.forEach(url=>root.URL.revokeObjectURL(url));previews=[];}
     function preview(){
       releasePreviews();previews=files.map(file=>root.URL.createObjectURL(file));
-      $('workPhotosPreview').innerHTML=previews.map((url,i)=>'<div><img src="'+esc(url)+'" alt="Selected photo '+(i+1)+'"><span>Photo '+(i+1)+'</span></div>').join('');
+      $('workPhotosPreview').innerHTML=previews.map((url,i)=>'<div><img src="'+esc(url)+'" alt="Selected photo '+(i+1)+'"><button type="button" class="ps-photo-unselect" data-photo-unselect="'+i+'" aria-label="Remove selected photo '+(i+1)+'" title="Remove selected photo '+(i+1)+'">×</button><span>Photo '+(i+1)+'</span></div>').join('');
       $('workPhotosSelected').textContent=files.length?files.length+' photo'+(files.length===1?'':'s')+' selected':'No photos selected';controls();
     }
     function showGallery(){
@@ -150,6 +151,15 @@
       const chosen=Array.from($('workPhotosFiles').files||[]);
       try{if(chosen.length>5)throw new Error('Choose up to 5 photos per upload.');chosen.forEach(checkFile);files=chosen;status();preview();}
       catch(error){files=[];$('workPhotosFiles').value='';preview();status(error.message,true);}
+    });
+    $('workPhotosPreview').addEventListener('click',event=>{
+      const button=event.target.closest('[data-photo-unselect]');
+      if(!button||busy||!context?.canManage)return;
+      const index=Number(button.dataset.photoUnselect);
+      if(!Number.isInteger(index)||index<0||index>=files.length)return;
+      files.splice(index,1);$('workPhotosFiles').value='';status();preview();
+      const next=$('workPhotosPreview').querySelector('[data-photo-unselect="'+Math.min(index,files.length-1)+'"]');
+      (next||$('workPhotosChoose')).focus();
     });
     $('workPhotosUpload').addEventListener('click',async()=>{
       if(busy||!context?.canManage||!files.length)return;
