@@ -35,6 +35,8 @@ async function harness(options={}){
   let ready,saved=options.saved||null;const calls=[],redirects=[];
   const project={project_id:'TEST-SCHOOL',project_name:'School <One>',project_type:'SCHOOL BUILDING',location:'Test site',status:'ACTIVE'};
   const canManage=options.canManage!==false;
+  const photoCalls=[];
+  const photoModule=options.photos?{create:()=>({counts:async()=>new Map(),reset(){},open:context=>photoCalls.push(context)})}:undefined;
   const client={
     auth:{getSession:async()=>({data:{session:options.loggedOut?null:{user:{id:'test'}}},error:null}),onAuthStateChange(){}},
     from(){return{select(){return this;},in(){return this;},order:async()=>({data:[project],error:null})};},
@@ -52,7 +54,7 @@ async function harness(options={}){
   };
   const body=new Element(),windowEvents=new Map();let printed=0;
   const document={body,getElementById:id=>{assert.ok(nodes[id],'Unknown DOM ID '+id);return nodes[id];},addEventListener:(name,fn)=>{if(name==='DOMContentLoaded')ready=fn;}};
-  const context={window:{AmanahProjectStructure:M,AmanahProjectStructurePrint:Print,supabase:{createClient:()=>client},setTimeout,clearTimeout,addEventListener:(name,fn)=>windowEvents.set(name,fn),print:()=>printed++},document,location:{search:'?project_id=TEST-SCHOOL',replace:url=>redirects.push(url)},history:{replaceState(){}},URLSearchParams,console};
+  const context={window:{AmanahProjectStructure:M,AmanahProjectStructurePrint:Print,AmanahWorkPhotos:photoModule,supabase:{createClient:()=>client},setTimeout,clearTimeout,addEventListener:(name,fn)=>windowEvents.set(name,fn),print:()=>printed++},document,location:{search:'?project_id=TEST-SCHOOL',replace:url=>redirects.push(url)},history:{replaceState(){}},URLSearchParams,console};
   vm.runInNewContext(fs.readFileSync(path.join(root,'project-structure.js'),'utf8'),context);
   await ready();
   const flush=async()=>{for(let i=0;i<4;i++)await new Promise(setImmediate);};
@@ -62,7 +64,7 @@ async function harness(options={}){
     assert.ok(row,'Work item must be rendered');
     return Object.fromEntries([...row.matchAll(/<input\b[^>]*>/g)].map(([tag])=>[tag.match(/data-field="([^"]+)"/)[1],{disabled:/\sdisabled(?:\s|>)/.test(tag)}]));
   };
-  return{nodes,calls,redirects,saved:()=>saved,printed:()=>printed,windowEvents,flush,action,rowInputs,
+  return{nodes,calls,redirects,photoCalls,saved:()=>saved,printed:()=>printed,windowEvents,flush,action,rowInputs,
     editItem:(group,item)=>action({editItem:item.id,group:group.id}),editGroup:group=>action({editGroup:group.id}),
     click:async id=>{await nodes[id].emit('click');await flush();},groupInput:async(group,value)=>nodes.structureGroups.emit('input',{target:{dataset:{groupShare:group.id},value}}),input:async(group,item,field,value)=>nodes.structureGroups.emit('input',{target:{dataset:{field},value,closest:selector=>selector==='[data-group]'?{dataset:{group:group.id}}:{dataset:{item:item.id}}}})};
 }
@@ -232,4 +234,25 @@ test('printing and Ctrl+P include current unsaved edits while keeping the draft 
 test('printing cannot open a project report before authentication and project loading',async()=>{
   const h=await harness({loggedOut:true});await h.click('printStructure');assert.equal(h.printed(),0);
   assert.equal(h.nodes.structurePrintReport.innerHTML,'');
+});
+test('saved baseline work items expose Photo evidence without unlocking weights or reopening the baseline',async()=>{
+  const group=M.newGroup('STRUCTURAL');group.share=100;group.items=[M.newItem('Excavation')];group.items[0].weight=100;
+  const h=await harness({photos:true,saved:{groups:[group],status:'BASELINED',revision:1,baseline_version:1}});
+  assert.match(h.nodes.structureGroups.innerHTML,/data-work-photos/);assert.doesNotMatch(h.nodes.structureGroups.innerHTML,/data-edit-item/);
+  await h.action({workPhotos:group.items[0].id,group:group.id});
+  assert.equal(h.photoCalls.length,1);assert.equal(h.photoCalls[0].canManage,true);assert.equal(h.photoCalls[0].projectId,'TEST-SCHOOL');
+  assert.equal(h.nodes.structureDirty.hidden,true);assert.equal(h.saved().status,'BASELINED');assert.ok(h.calls.every(call=>call.name!=='amanah_project_structure_write_v2'));
+});
+test('read-only users open an existing work item gallery with upload access disabled',async()=>{
+  const group=M.newGroup('STRUCTURAL');group.items=[M.newItem('Footing')];
+  const h=await harness({photos:true,canManage:false,saved:{groups:[group],status:'DRAFT',revision:1,baseline_version:1}});
+  await h.action({workPhotos:group.items[0].id,group:group.id});assert.equal(h.photoCalls.length,1);assert.equal(h.photoCalls[0].canManage,false);
+});
+test('new unsaved work items cannot open an evidence upload until Save draft succeeds',async()=>{
+  const group=M.newGroup('STRUCTURAL');group.items=[M.newItem('Existing item')];
+  const h=await harness({photos:true,saved:{groups:[group],status:'DRAFT',revision:1,baseline_version:1}});
+  await h.action({addItem:group.id});
+  const id=[...h.nodes.structureGroups.innerHTML.matchAll(/data-work-photos="([^"]+)"/g)].map(x=>x[1]).find(id=>id!==group.items[0].id);
+  await h.action({workPhotos:id,group:group.id});assert.equal(h.photoCalls.length,0);
+  await h.click('saveStructure');await h.action({workPhotos:id,group:group.id});assert.equal(h.photoCalls.length,1);
 });

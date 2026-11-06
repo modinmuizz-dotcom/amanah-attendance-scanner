@@ -17,6 +17,21 @@ window.supabaseClient = supabaseClient;
   const groupEditable = id => editable() && state.editingGroups.has(id);
   const resetEditing = () => {state.editingItems.clear();state.editingGroups.clear();};
   const dateLabel = value => value ? new Date(value).toLocaleString('en-PH', {timeZone:'Asia/Manila',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+  let photoCounts = new Map();
+  const photoKey = (group, item) => group + '/' + item;
+  const photos = window.AmanahWorkPhotos?.create({client:supabaseClient,onChanged:refreshPhotoCounts,confirm:confirmAction});
+  const itemSaved = (groupId,itemId) => !!state.structure?.groups?.some(group => group.id===groupId && group.items.some(item=>item.id===itemId));
+  function photoButton(group,item) {
+    const saved=itemSaved(group.id,item.id),count=photoCounts.get(photoKey(group.id,item.id));
+    return '<button type="button" class="ps-button secondary evidence" data-work-photos="'+esc(item.id)+'" data-group="'+esc(group.id)+'"'+(!saved||state.busy||!photos?' disabled':'')+' title="'+(saved?'View or attach work item photos':'Save the draft before attaching photos to this work item')+'">Photo evidence'+(count!==undefined?' ('+count+')':'')+'</button>';
+  }
+  async function refreshPhotoCounts(projectId) {
+    if(!photos||!projectId)return;
+    const generation=state.generation;
+    try{const result=await photos.counts(projectId);if(generation!==state.generation||state.project?.project_id!==projectId)return;photoCounts=result;}
+    catch{if(generation!==state.generation)return;photoCounts=new Map();}
+    $('structureGroups').querySelectorAll('[data-work-photos]').forEach(button=>{const count=photoCounts.get(photoKey(button.dataset.group,button.dataset.workPhotos));button.textContent='Photo evidence'+(count!==undefined?' ('+count+')':'');});
+  }
 
   function message(text = '', error = false) {
     const node = $('structureMessage');
@@ -72,6 +87,7 @@ window.supabaseClient = supabaseClient;
     $('structureGroups').querySelectorAll('[data-add-item],[data-delete-item],[data-delete-group]').forEach(button => button.disabled = !editable());
     $('structureGroups').querySelectorAll('[data-edit-item]').forEach(button => button.disabled = !editable() || state.editingItems.has(button.dataset.editItem));
     $('structureGroups').querySelectorAll('[data-edit-group]').forEach(button => button.disabled = !editable() || state.editingGroups.has(button.dataset.editGroup));
+    $('structureGroups').querySelectorAll('[data-work-photos]').forEach(button => button.disabled = !photos || state.busy || !itemSaved(button.dataset.group,button.dataset.workPhotos));
     $('structureAccessNote').textContent = !state.canManage ? 'View access. An authorized engineer or project administrator manages this structure.' :
       !draft ? 'The baseline is locked. Use Revise baseline to record a scope or weight change with a reason.' :
       'Click Edit beside a work item or Edit group to unlock its fields, then use Save draft to save and lock them again. Group project shares and the item shares within each group must each total 100% before setting the baseline.';
@@ -113,7 +129,7 @@ window.supabaseClient = supabaseClient;
         '<td><strong class="ps-contribution" data-item-contribution="' + esc(item.id) + '">' + M.contribution(group, item).toFixed(2) + '%</strong></td>' +
         '<td><input data-field="planned_start" aria-label="Planned start" type="date" value="' + esc(item.planned_start || '') + '"' + disabled + '></td>' +
         '<td><input data-field="planned_end" aria-label="Planned finish" type="date" value="' + esc(item.planned_end || '') + '"' + disabled + '></td>' +
-        (actions ? '<td class="ps-action-cell"><div class="ps-row-actions"><button type="button" class="ps-button primary" data-edit-item="' + esc(item.id) + '" data-group="' + esc(group.id) + '" aria-label="Edit ' + esc(item.name) + '"' + (!editable() || state.editingItems.has(item.id) ? ' disabled' : '') + '>' + (state.editingItems.has(item.id) ? 'Editing' : 'Edit') + '</button><button type="button" class="ps-button danger" data-delete-item="' + esc(item.id) + '" data-group="' + esc(group.id) + '">Remove</button></div></td>' : '') + '</tr>';
+        '<td class="ps-action-cell"><div class="ps-row-actions">'+(actions ? '<button type="button" class="ps-button primary" data-edit-item="' + esc(item.id) + '" data-group="' + esc(group.id) + '" aria-label="Edit ' + esc(item.name) + '"' + (!editable() || state.editingItems.has(item.id) ? ' disabled' : '') + '>' + (state.editingItems.has(item.id) ? 'Editing' : 'Edit') + '</button><button type="button" class="ps-button danger" data-delete-item="' + esc(item.id) + '" data-group="' + esc(group.id) + '">Remove</button>' : '')+photoButton(group,item)+'</div></td></tr>';
       }).join('');
       return '<section class="ps-card ps-group" data-group="' + esc(group.id) + '">' +
         '<div class="ps-group-head"><div class="ps-group-title"><span>' + String(index + 1).padStart(2, '0') + '</span>' +
@@ -121,8 +137,8 @@ window.supabaseClient = supabaseClient;
         '<div class="ps-group-meta"><label class="ps-group-share">PROJECT SHARE (%) <input data-group-share="' + esc(group.id) + '" aria-label="Group project share for ' + esc(group.name) + '" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="' + esc(group.share) + '"' + groupDisabled + '></label>' +
         (actions ? '<button type="button" class="ps-button primary" data-edit-group="' + esc(group.id) + '"' + (!editable() || state.editingGroups.has(group.id) ? ' disabled' : '') + '>' + (state.editingGroups.has(group.id) ? 'Editing group' : 'Edit group') + '</button><button type="button" class="ps-button danger" data-delete-group="' + esc(group.id) + '">Remove group</button>' : '') + '</div></div>' +
         '<div class="ps-scroll"><table class="ps-table"><thead><tr><th scope="col">WORK ITEM</th><th scope="col">LOCATION / AREA</th><th scope="col">ITEM SHARE<br>(% OF GROUP)</th><th scope="col">PROJECT<br>CONTRIBUTION (%)</th><th scope="col">PLANNED START</th><th scope="col">PLANNED FINISH</th>' +
-        (actions ? '<th scope="col" class="ps-action-cell">ACTION</th>' : '') + '</tr></thead><tbody>' +
-        (rows || '<tr><td colspan="' + (actions ? '7' : '6') + '" class="ps-empty-inline">Add the work items that belong to this group.</td></tr>') + '</tbody></table></div>' +
+        '<th scope="col" class="ps-action-cell">ACTION</th></tr></thead><tbody>' +
+        (rows || '<tr><td colspan="7" class="ps-empty-inline">Add the work items that belong to this group.</td></tr>') + '</tbody></table></div>' +
         '<div class="ps-group-foot"><div><span>' + group.items.length + ' work item' + (group.items.length === 1 ? '' : 's') + ' · ITEM ALLOCATION <strong data-group-weight="' + esc(group.id) + '">' + pct(M.groupSummary(group).assigned) + '</strong> / 100%</span><small data-group-remaining="' + esc(group.id) + '">' + pct(M.groupSummary(group).remaining) + ' remaining within this group</small></div>' +
         (actions ? '<button type="button" class="ps-button secondary" data-add-item="' + esc(group.id) + '">+ Add work item</button>' : '<span>Saved ' + (state.structure?.status === 'BASELINED' ? 'baseline' : 'draft') + ' scope</span>') + '</div></section>';
     }).join('') : '<section class="ps-card ps-empty"><h2>No work groups yet</h2><p>Load the project template or add a work group to start defining the scope.</p></section>';
@@ -169,6 +185,7 @@ window.supabaseClient = supabaseClient;
   }
   async function loadProject(id) {
     const generation = ++state.generation;
+    photos?.reset();photoCounts=new Map();
     state.project = null;state.structure = null;state.groups = [];state.events = [];state.canManage = false;state.dirty = false;
     resetEditing();
     $('structurePrintReport').innerHTML = '';document.body.classList.remove('ps-print-ready');renderControls();
@@ -182,7 +199,7 @@ window.supabaseClient = supabaseClient;
       state.project = data.project;state.structure = data.structure;state.groups = clone(data.structure?.groups || []);
       state.events = data.events || [];state.canManage = data.can_manage === true;
       history.replaceState(null, '', 'project-structure.html?project_id=' + encodeURIComponent(id));
-      state.busy = false;render();
+      state.busy = false;render();refreshPhotoCounts(id);
     } catch (error) {
       if (generation !== state.generation) return;
       empty('Project Structure could not be loaded', 'Retry the request or select another project.', true);
@@ -211,7 +228,7 @@ window.supabaseClient = supabaseClient;
       message(feedback);
     } catch (error) {
       message((error.code === '40001' ? 'Another user changed this structure. Your unsaved work is still on screen. Reload the saved version before continuing.\n' : '') + (error.message || 'Unable to save the structure.'), true);
-    } finally { if (generation === state.generation) {state.busy = false;render();$('structureProject').disabled = false;} }
+    } finally { if (generation === state.generation) {state.busy = false;render();refreshPhotoCounts(id);$('structureProject').disabled = false;} }
   }
   function bindEvents() {
     $('printStructure').addEventListener('click', () => {if (!state.busy && preparePrint()) window.print();});
@@ -259,8 +276,13 @@ window.supabaseClient = supabaseClient;
       markDirty();
     });
     $('structureGroups').addEventListener('click', async event => {
-      if (!editable()) return;
       const button = event.target.closest('button');if (!button) return;
+      if(button.dataset.workPhotos){
+        if(state.busy||!photos||!itemSaved(button.dataset.group,button.dataset.workPhotos))return;
+        const group=state.groups.find(group=>group.id===button.dataset.group),item=group?.items.find(item=>item.id===button.dataset.workPhotos);if(!item)return;
+        photos.open({projectId:state.project.project_id,projectName:state.project.project_name,groupId:group.id,groupName:group.name,itemId:item.id,itemName:item.name,canManage:state.canManage});return;
+      }
+      if (!editable()) return;
       const groupId = button.dataset.addItem || button.dataset.deleteGroup || button.dataset.editGroup || button.dataset.group;
       const group = state.groups.find(g => g.id === groupId);if (!group) return;
       if (button.dataset.editItem) {
@@ -300,7 +322,7 @@ window.supabaseClient = supabaseClient;
     const {data, error} = await timed(supabaseClient.auth.getSession());
     if (error) throw error;
     if (!data?.session) {location.replace('admin.html');return;}
-    supabaseClient.auth.onAuthStateChange(event => {if (event === 'SIGNED_OUT') location.replace('admin.html');});
+    supabaseClient.auth.onAuthStateChange(event => {if (event === 'SIGNED_OUT') {photos?.reset();location.replace('admin.html');}});
     const result = await timed(supabaseClient.from('projects').select('project_id,project_name,project_type,location,status').in('project_type', M.types).order('project_name'));
     if (result.error) throw result.error;
     state.projects = result.data || [];

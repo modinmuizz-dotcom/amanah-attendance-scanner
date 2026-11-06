@@ -7,7 +7,7 @@
   <title>Project Structure | AMANAH</title>
   <link rel="stylesheet" href="style.css?v=4">
   <link rel="stylesheet" href="amanah-ui.css?v=6">
-  <link rel="stylesheet" href="project-structure.css?v=4">
+  <link rel="stylesheet" href="project-structure.css?v=5">
   <link id="amanahSettingsStyles" rel="stylesheet" href="amanah-settings.css?v=4">
   <link id="amanahGlobalTheme" rel="stylesheet" href="amanah-global-theme.css?v=2">
   <link id="amanahInteractionsStyle" rel="stylesheet" href="amanah-interactions.css?v=2">
@@ -53,10 +53,28 @@
       <div class="ps-dialog-actions"><button type="button" class="ps-button secondary" id="structureDialogCancel">Cancel</button><button type="submit" class="ps-button primary" id="structureDialogAccept" value="confirm">Continue</button></div>
     </form>
   </dialog>
+  <dialog id="workPhotosDialog" class="ps-dialog ps-photo-dialog" aria-labelledby="workPhotosTitle">
+    <div class="ps-photo-head"><div><h2 id="workPhotosTitle">Photo evidence</h2><p id="workPhotosContext"></p></div><button type="button" id="workPhotosClose" class="ps-button secondary" aria-label="Close photo evidence">Close</button></div>
+    <div class="ps-photo-body">
+      <div id="workPhotosMessage" class="ps-message" role="status" aria-live="polite" hidden></div>
+      <section id="workPhotosForm" class="ps-photo-upload" aria-label="Attach evidence photos">
+        <p class="ps-note">Attach photos for this specific work item. Choose up to 5 photos at a time, with a maximum of 20 per item. JPG, PNG or WebP; up to 10 MB each. Uploads are resized for viewing.</p>
+        <input id="workPhotosFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        <div class="ps-photo-choose"><button id="workPhotosChoose" type="button" class="ps-button secondary">Choose photos</button><span id="workPhotosSelected" class="ps-note">No photos selected</span></div>
+        <div id="workPhotosPreview" class="ps-photo-previews"></div>
+        <label for="workPhotosCaption">PHOTO NOTE <small>(optional)</small></label><textarea id="workPhotosCaption" maxlength="250" rows="2" placeholder="Describe the work shown, location or inspection details…"></textarea>
+        <button type="button" id="workPhotosUpload" class="ps-button primary" disabled>Upload photos</button>
+      </section>
+      <div class="ps-photo-gallery-head"><strong id="workPhotosCount"></strong><button id="workPhotosReload" type="button" class="ps-button secondary">Reload photos</button></div>
+      <div id="workPhotosGallery" class="ps-photo-gallery"></div>
+      <div id="workPhotosViewer" class="ps-photo-viewer" hidden><button id="workPhotosBack" class="ps-button secondary" type="button">← Back to gallery</button><img id="workPhotosFull" alt="Work item photo evidence"><p id="workPhotosFullCaption"></p></div>
+    </div>
+  </dialog>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
   <script src="project-structure-model.js?v=2"></script>
   <script src="project-structure-print.js?v=1"></script>
-  <script src="project-structure.js?v=4"></script>
+  <script src="project-work-photos.js?v=1"></script>
+  <script src="project-structure.js?v=5"></script>
   <script src="amanah-ui.js?v=45"></script>
 </body>
 </html>

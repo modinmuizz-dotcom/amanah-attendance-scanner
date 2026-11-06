@@ -56,7 +56,8 @@
 .ps-table input{width:100%;font-size:12px}
 .ps-table input[data-field="weight"]{font-weight:900;text-align:right}
 .ps-action-cell{min-width:172px}
-.ps-row-actions{display:flex;align-items:center;gap:8px}
+.ps-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ps-row-actions .evidence{flex-basis:100%;font-size:10px;text-align:center}
 .ps-group-foot{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;background:var(--ps-raised);font-size:11px;color:var(--ps-muted)}
 .ps-group-share{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:900;letter-spacing:.03em}
 .ps-group-share input{width:105px!important;text-align:right;font-weight:900;color:var(--ps-text)}
@@ -98,6 +99,25 @@
 }
 @media(max-width:1100px){.ps-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.ps-group-head{flex-wrap:wrap}.ps-toolbar>div{width:100%}}
 @media(max-width:650px){.ps-page{width:calc(100% - 24px);padding-top:15px}.ps-picker{gap:10px;padding:16px}.ps-picker select{width:100%;max-width:none;flex-basis:100%;min-width:0}.ps-project{align-items:flex-start;flex-direction:column;padding:19px}.ps-project>div:last-child{text-align:left}.ps-project h1{font-size:22px}.ps-summary{gap:9px}.ps-summary .ps-card{padding:15px}.ps-summary strong{font-size:24px}.ps-toolbar .ps-button{flex:1}.ps-group-head{padding:14px}.ps-group-title{width:100%}.ps-event{grid-template-columns:1fr;gap:4px}.ps-guide{padding:18px}.ps-group-foot{padding:13px;align-items:flex-start}.ps-history{padding:18px}}
+.ps-photo-dialog{width:min(920px,calc(100% - 32px));max-height:90vh;overflow:auto}
+.ps-photo-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:22px;border-bottom:1px solid var(--ps-line)}
+.ps-photo-head h2{margin:0 0 8px;overflow-wrap:anywhere}.ps-photo-head p{margin:0}
+.ps-photo-body{padding:22px}.ps-photo-upload{padding:16px;background:var(--ps-raised);border:1px solid var(--ps-line);border-radius:12px;margin-bottom:20px}
+.ps-photo-upload label{display:block;font-size:10px;font-weight:800;margin:16px 0 7px;color:var(--ps-text)}
+.ps-photo-upload textarea{display:block;width:100%;margin-bottom:12px;resize:vertical;background:var(--ps-bg)}
+.ps-photo-choose,.ps-photo-gallery-head{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.ps-photo-previews{display:flex;gap:10px;overflow:auto;margin-top:12px}.ps-photo-previews>div{flex:0 0 100px;font-size:11px;color:var(--ps-muted)}
+.ps-photo-previews img{display:block;width:100px;height:80px;object-fit:cover;border-radius:7px;margin-bottom:5px}
+.ps-photo-gallery-head{font-size:12px;margin-bottom:14px}.ps-photo-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.ps-photo-card{border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-bg);overflow:hidden;min-width:0}
+.ps-photo-image{display:block;width:100%;height:170px;padding:0;border:0;background:var(--ps-raised);cursor:zoom-in}.ps-photo-image img{display:block;width:100%;height:100%;object-fit:cover}
+.ps-photo-unavailable{height:170px;display:grid;place-items:center;font-size:12px;color:var(--ps-muted);background:var(--ps-raised)}
+.ps-photo-meta{padding:12px}.ps-photo-meta strong{font-size:12px;color:var(--ps-text)}.ps-photo-meta small{display:block;font-size:10px;line-height:1.5;color:var(--ps-muted);overflow-wrap:anywhere;margin-top:6px}
+.ps-photo-meta p,.ps-photo-viewer p{white-space:pre-wrap;overflow-wrap:anywhere}.ps-photo-meta .ps-button{margin-top:12px}
+.ps-photo-viewer img{display:block;max-width:100%;max-height:65vh;object-fit:contain;margin:16px auto;background:var(--ps-raised)}
+.ps-photo-dialog [hidden]{display:none!important}.ps-photo-dialog :is(button,textarea):focus-visible{outline:3px solid var(--ps-accent);outline-offset:3px}
+@media(max-width:700px){.ps-photo-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.ps-photo-body,.ps-photo-head{padding:16px}}
+@media(max-width:440px){.ps-photo-gallery{grid-template-columns:1fr}}
 .ps-print-report{display:none}
 @media print{
   @page{size:A4 landscape;margin:12mm}
